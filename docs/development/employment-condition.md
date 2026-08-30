@@ -6,7 +6,7 @@
 
 `EmploymentConditionEvaluator.evaluate(condition, answer)`는 확인한 단일 취업 요건과 명시적 답변을 비교해 `ConditionAssessment` 하나를 반환한다. 취업 제한 없음과 미해석 조건도 구분한다. 순수 Java 코드이며 인증키·Spring 실행·DB가 필요하지 않다.
 
-현재 `/conditions`의 주된 취업상태 문자열은 입력받지 않는다. 선택지 이름·원천 `jobCd`를 답변으로 변환하는 코드, 실제 정책 해석기, 질문 화면, HTTP API와 DB 저장은 없다. ‘재직하지 않음’을 복합적인 미취업 정의 전체와 같다고 판단하지 않는다.
+현재 `/conditions`의 주된 취업상태 문자열은 입력받지 않는다. 선택지 이름·원천 `jobCd`를 답변으로 변환하는 코드, 실제 정책 해석기, HTTP API와 DB 저장은 없다. [개발 전용 질문 미리보기](employment-question-preview.md)는 별도로 구현했지만 이 비교기와 연결하지 않았다. ‘재직하지 않음’을 복합적인 미취업 정의 전체와 같다고 판단하지 않는다.
 
 ## 조건과 답변
 

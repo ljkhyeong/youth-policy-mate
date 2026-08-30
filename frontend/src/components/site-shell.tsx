@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-export function SiteShell({ children, active }: { children: React.ReactNode; active: "home" | "conditions" }) {
+export function SiteShell({ children, active }: { children: React.ReactNode; active?: "home" | "conditions" }) {
   return (
     <div className="mx-auto flex min-h-svh max-w-6xl flex-col px-6 sm:px-10">
       <a className="skip-link" href="#main-content">본문으로 이동</a>

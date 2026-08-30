@@ -8,7 +8,7 @@
 |---|---|---|
 | 웹 | Next.js 16.3.3, React 19.2.8, `frontend/` | 시작 화면·비회원 조건 입력·공통 상태 안내 |
 | 웹 개발 도구 | TypeScript 5.9.3, Tailwind CSS 4.3.3, ESLint 9.39.5, Vitest 4.1.11 | 타입 검사·스타일·린트·입력 및 상태 화면 테스트 |
-| 서버 | Java 25, Spring Boot 4.1.1, `backend/` | 앱 기동·DB 연결·상태 확인·접근 차단·판정 결과 집계 |
+| 서버 | Java 25, Spring Boot 4.1.1, `backend/` | 앱 기동·DB 연결·상태 확인·접근 차단·판정 결과 집계·명시적 연령 비교 |
 | 모듈 구성 | Spring Modulith 2.1.1 core | 자격 판정용 `eligibility` 패키지. 모듈 의존 검증 테스트는 아직 없음 |
 | 빌드 | Gradle Wrapper 9.7.1, npm 잠금 파일 | 백엔드·프런트엔드 빌드 |
 | DB | PostgreSQL 18.6 Alpine, `compose.yaml` | 프로젝트 전용 로컬 DB |
@@ -105,7 +105,7 @@ npm run check:tools
 npm audit
 ```
 
-`test:eligibility`는 서버의 순수 Java 판정 결과 집계 테스트만 실행한다. API 인증키·DB·Docker 없이 충족·불충족·미확인·예외와 근거 보존을 확인한다. 실제 정책 조건의 비교 정확도 검증은 아니다. 구현 범위는 [자격 판정 결과](eligibility-decision.md)를 따른다.
+`test:eligibility`는 순수 Java 집계 14건과 연령 비교 18건, 총 32건을 실행한다. API 인증키·DB·Docker 없이 충족·불충족·미확인·예외와 근거 보존, 명시적 연령 범위·기준일 경계를 확인한다. 실제 정책 원문 해석의 정확도 검증은 아니다. 구현 범위는 [자격 판정 결과](eligibility-decision.md)와 [연령 조건 비교](age-condition.md)를 따른다.
 
 `check:backend`에 포함된 백엔드 통합 테스트는 Compose DB를 사용하지 않고 Testcontainers가 별도 PostgreSQL을 생성한다. 테스트가 끝나면 테스트용 컨테이너를 정리한다. Docker가 없으면 통합 테스트를 건너뛰지 않고 실패한다.
 
@@ -136,6 +136,8 @@ curl -i http://127.0.0.1:8080/actuator/env
 CI 구성 후에는 macOS arm64의 별도 임시 복사본에서 Node.js 24.20.0·npm 11.19.0으로 `npm ci --no-audit --no-fund`, 개발 도구 테스트 7개, 웹 테스트 5개, 린트·타입 검사·프로덕션 빌드를 모두 통과했다. 서버도 전체 `build`를 실행해 단위 14개·PostgreSQL 통합 2개가 실패·건너뛰기 없이 통과했다. actionlint 1.7.12로 워크플로 문법을 확인했다. GitHub의 Ubuntu 실행·캐시·보고서 업로드는 아직 확인하지 않았다. 자세한 환경과 경고는 [CI 검증 기록](ci.md#실제-확인한-결과)을 따른다.
 
 공통 상태 화면 추가 후에는 Node.js 25.4.0·npm 11.7.0에서 웹 테스트 8개·린트·타입 검사·빌드를 통과했다. 개발 미리보기와 운영 빌드의 404 차단, 데스크톱·모바일 배치를 확인했다. 실제 API 복구와 키보드 전용 흐름 등 미확인 범위는 [상태 화면 검증 기록](page-states.md#접근성과-검증)을 따른다.
+
+연령 비교기 추가 후에는 `npm run test:eligibility`의 32건과 `./backend/gradlew -p backend assemble --no-daemon` 빌드가 통과했다. 생일·윤일 경계와 미해석 조건은 인공 입력으로 검사했다. 실제 정책 API는 호출하지 않았으며 웹·PostgreSQL 통합 검사는 다시 실행하지 않았다. 상세 범위는 [연령 비교 검증 기록](age-condition.md#코드와-검증)을 따른다.
 
 ### 알려진 경고와 다음 확인 사항
 

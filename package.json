@@ -11,6 +11,8 @@
     "build:web": "npm run build --workspace frontend",
     "check:web": "npm run lint --workspace frontend && npm run typecheck --workspace frontend",
     "check:backend": "./backend/gradlew -p backend build --no-daemon",
+    "check:tools": "node --test scripts/ontong-api-probe.test.mjs",
+    "probe:ontong": "node --env-file-if-exists=.env scripts/ontong-api-probe.mjs",
     "db:up": "docker compose up -d --wait postgres",
     "db:down": "docker compose down"
   }

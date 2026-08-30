@@ -1,5 +1,7 @@
 package kr.youthpolicymate.policy;
 
+import java.time.LocalDate;
+import java.time.ZoneId;
 import java.util.Objects;
 import java.util.Optional;
 
@@ -20,5 +22,18 @@ public record RecruitmentSchedule(
             throw new IllegalArgumentException("신청기간의 원문 참조와 확인한 위치가 필요합니다.");
         }
         sourceExcerpt = Objects.requireNonNull(sourceExcerpt, "원문 발췌의 존재 여부가 필요합니다.");
+    }
+
+    // 달력 계산용 날짜이며 원본의 날짜형·시각형 구분은 applicationPeriod에 보존한다.
+    public Optional<LocalDate> confirmedDeadlineOnSeoul() {
+        return switch (applicationPeriod) {
+            case ApplicationPeriod.Dates dates -> Optional.of(dates.endsOnInclusive());
+            case ApplicationPeriod.Times times -> Optional.of(
+                    times.closesAtExclusive().withZoneSameInstant(ZoneId.of("Asia/Seoul")).toLocalDate());
+            case ApplicationPeriod.Rolling ignored -> Optional.empty();
+            case ApplicationPeriod.UntilExhausted ignored -> Optional.empty();
+            case ApplicationPeriod.Closed ignored -> Optional.empty();
+            case ApplicationPeriod.Unresolved ignored -> Optional.empty();
+        };
     }
 }

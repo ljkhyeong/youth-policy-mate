@@ -17,6 +17,8 @@
 
 온통청년 API 인증키는 신청 후 승인 대기 중입니다. 인증된 성공 응답, 정책 조회·수집·판정, 로그인·저장·알림 기능은 아직 구현하지 않았습니다. 시작 화면은 개발 준비 상태를 안내하며 실제 정책 데이터를 표시하지 않습니다.
 
+발급 후 사용할 단건 응답 점검 명령 `npm run probe:ontong`을 준비했습니다. 인증키를 노출하지 않고 미검증 JSON 응답을 로컬에 보관하는 개발 도구이며, 운영 수집기나 실제 API 검증 완료를 뜻하지 않습니다.
+
 주요 스택은 Next.js 16·React 19·TypeScript, Java 25·Spring Boot 4.1 모듈러 모놀리스, PostgreSQL 18입니다. 전체 선택과 책임 경계는 ADR을 기준으로 합니다. 월 운영비 상한은 3만 원이며 운영 장비·클라우드는 아직 정하지 않았습니다.
 
 ## 문서
@@ -26,6 +28,7 @@
 - [최초 제품 합의 기록](docs/alignments/seoul-mvp.html)
 - [전용 스킬과 재사용 출처](docs/development/skill-reuse.md)
 - [로컬 개발 환경과 검증 명령](docs/development/local-development.md)
+- [온통청년 인증키 설정과 응답 점검](docs/development/ontong-api-probe.md)
 - [온통청년 API 조사와 확인할 계약](docs/research/ontong-api-contract.md)
 - [정책 수집·판정 데이터 구조 초안](docs/design/policy-data-model.md)
 - [현재 작업 인계](HANDOFF.md)

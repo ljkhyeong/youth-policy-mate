@@ -73,7 +73,7 @@ npm run dev:web
 
 PostgreSQL은 기존 볼륨이 있으면 초기 계정·DB를 다시 만들지 않는다. 따라서 `.env`만 바꿔도 저장된 DB 비밀번호가 변경되는 것은 아니다. 기존 데이터가 있으면 볼륨을 삭제해서 해결하지 말고 계정 설정을 확인한다.
 
-API 인증키는 현재 필요하지 않다. 승인 대기 상태이며, 아직 API 키를 읽거나 외부 정책 API를 호출하는 코드는 없다. 발급된 키는 채팅·저장소·URL 로그에 남기지 않는다.
+앱 기동에는 API 인증키가 필요하지 않다. 발급 후 별도 개발 명령 `npm run probe:ontong`에서만 `ONTONG_API_KEY`를 읽어 외부 응답을 점검한다. 현재는 승인 대기 상태이며 실제 API 응답은 아직 확인하지 않았다. [인증키 설정·점검 방법](ontong-api-probe.md)을 따르고, 발급된 키는 채팅·저장소·URL 로그에 남기지 않는다.
 
 ### 데이터와 종료
 
@@ -93,10 +93,13 @@ npm run db:down
 npm run check:web
 npm run build:web
 npm run check:backend
+npm run check:tools
 npm audit
 ```
 
 백엔드 테스트는 Compose DB를 사용하지 않고 Testcontainers가 별도 PostgreSQL을 생성한다. 테스트가 끝나면 테스트용 컨테이너를 정리한다. Docker가 없으면 테스트를 건너뛰지 않고 실패한다.
+
+`check:tools`는 응답 점검 도구의 인공 응답 테스트 7개를 실행한다. API 인증키·Docker·네트워크가 필요하지 않으며 실제 API 계약을 검증하지 않는다.
 
 현재 백엔드 통합 테스트는 다음 2개다.
 

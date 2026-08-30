@@ -14,6 +14,8 @@
 - 업무 테이블과 Flyway SQL은 없다. DB에는 Flyway 관리 테이블만 만들어진다.
 - 빌드·타입 검사·린트와 PostgreSQL 통합 테스트 2개가 통과했다. 로컬 서버의 상태 응답 200과 차단 경로 403, 시작 화면도 확인했다.
 - 구체적인 버전, 실행·검증 명령과 알려진 경고는 [로컬 개발 안내](docs/development/local-development.md)를 따른다.
+- `scripts/ontong-api-probe.mjs`: 인증키 발급 후 목록·상세·지역 필터 응답을 1회씩 확보하는 개발용 점검 명령. `npm run probe:ontong`으로 실행한다. 결과는 Git에서 제외한 로컬 파일에 미검증 상태로 보관하며 DB에 적재하지 않는다.
+- `npm run check:tools`의 인공 응답 테스트 7개와 키 누락 시 요청 전 종료를 확인했다. 실제 온통청년 API를 호출하거나 성공 계약을 확인한 것은 아니다.
 
 ## 다음 작업 진입점
 
@@ -22,9 +24,12 @@
 - 최초 승인 기록: [서울 MVP 합의 개정 1](docs/alignments/seoul-mvp.html)
 - 적용할 스킬: [전용 스킬과 출처](docs/development/skill-reuse.md)
 - 조사 결과·미확인 계약: [온통청년 API 조사](docs/research/ontong-api-contract.md)
+- 인증키 설정·응답 확보 명령: [온통청년 응답 점검](docs/development/ontong-api-probe.md)
 - 성공 응답 확인 전 설계: [정책 수집·판정 데이터 구조 초안](docs/design/policy-data-model.md)
 
 다음 수집 구현은 인증키 발급 후 작은 목록·상세 성공 응답을 확보하는 데서 시작한다. 키 값은 채팅·저장소·요청 URL 로그에 남기지 않는다. 조사 문서 8절의 최소 확인 후 원천 DTO·정규화·저장 구조를 확정하고 작은 기능 흐름을 구현한다. 인증키가 준비되기 전에는 API의 지역 필터나 JSON 구조를 검증 완료로 표시하지 않는다. 현재의 로컬 개발 화면을 정책 목록·상세 구현 완료로 취급하지 않는다.
+
+키를 발급받으면 루트 `.env`의 `ONTONG_API_KEY`에 직접 설정한다. 먼저 `npm run probe:ontong`으로 받은 미검증 응답을 확인하고, 응답에 있는 정책번호로 상세를 점검한다. 점검 결과의 `UNVERIFIED` 표시는 정상 수집 성공을 뜻하지 않는다.
 
 ## 이번 조사에서 주의할 사항
 

@@ -27,6 +27,8 @@ API 인증키 없이 사용할 수 있는 비회원 조건 입력 화면(`/condi
 
 개발 전용 `/dev/income`에서 [소득 질문 미리보기](docs/development/income-question-preview.md)를 제공합니다. 대상·기간·단위를 안내하고 구간·모름 답변의 확인·수정·삭제와 기간 변경 시 초기화를 점검합니다. 구간 추가 확인은 별도 인공 상황이며 현재 답변을 판정한 결과가 아닙니다. 실제 소득을 입력할 필요가 없고 서버 전송·저장·판정 연결은 없습니다. 웹 테스트 17건·린트·타입 검사·빌드와 운영 경로 404를 확인했습니다.
 
+개발 전용 `/dev/eligibility`에서 [자격 결과·근거 미리보기](docs/development/eligibility-result-preview.md)를 제공합니다. 네 가지 고정 인공 결과로 모집 상태와 자격 안내의 분리, 항목별 미확인 이유, 정책 검토 이슈와 근거 펼치기를 점검합니다. 화면은 전체 상태를 다시 계산하지 않습니다. 결과 표시 작업에서 웹 테스트 24건·린트·타입 검사·빌드, 운영 경로 404와 모바일·데스크톱 표시를 확인했습니다. 실제 정책·서버 판정에는 연결하지 않았습니다.
+
 GitHub Actions에 웹·서버 병렬 CI를 구성했습니다. 인증키 없이 기존 테스트·린트·타입 검사·빌드를 실행하며 서버는 실제 PostgreSQL 통합 테스트를 포함합니다. 로컬 검사와 CI 문법 검사는 통과했지만, 원격 푸시와 GitHub 실행은 아직 하지 않았습니다. 범위와 남은 확인 사항은 [CI 안내](docs/development/ci.md)를 참고합니다.
 
 온통청년 API 인증키는 신청 후 승인 대기 중입니다. 인증된 성공 응답, 정책 조회·수집, 실제 정책을 연결한 자격 판정, 로그인·저장·알림 기능은 아직 구현하지 않았습니다. 연령·거주·취업·소득 비교기와 결과 집계 모델도 화면과 연결하지 않았습니다. 조건 입력 검사는 신청 자격 판정이 아니며 실제 정책이나 가상 추천 결과를 표시하지 않습니다.
@@ -47,6 +49,7 @@ GitHub Actions에 웹·서버 병렬 CI를 구성했습니다. 인증키 없이 
 - [공통 상태 화면과 개발 미리보기](docs/development/page-states.md)
 - [추가 확인 질문과 답변 미리보기](docs/development/employment-question-preview.md)
 - [소득 구간 질문과 추가 확인 미리보기](docs/development/income-question-preview.md)
+- [자격 결과·근거 표시와 개발 미리보기](docs/development/eligibility-result-preview.md)
 - [자격 판정 결과 집계와 근거 구조](docs/development/eligibility-decision.md)
 - [명시적 연령 조건 비교와 미지원 범위](docs/development/age-condition.md)
 - [명시적 거주 조건 비교와 기준일 처리](docs/development/residence-condition.md)

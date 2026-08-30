@@ -8,8 +8,8 @@
 |---|---|---|
 | 웹 | Next.js 16.3.3, React 19.2.8, `frontend/` | 시작 화면·비회원 조건 입력 |
 | 웹 개발 도구 | TypeScript 5.9.3, Tailwind CSS 4.3.3, ESLint 9.39.5, Vitest 4.1.11 | 타입 검사·스타일·린트·입력 검사 테스트 |
-| 서버 | Java 25, Spring Boot 4.1.1, `backend/` | 앱 기동·DB 연결·상태 확인·접근 차단 |
-| 모듈 구성 | Spring Modulith 2.1.1 core | 기능별 모듈 구현을 위한 의존성. 아직 업무 모듈은 없음 |
+| 서버 | Java 25, Spring Boot 4.1.1, `backend/` | 앱 기동·DB 연결·상태 확인·접근 차단·판정 결과 집계 |
+| 모듈 구성 | Spring Modulith 2.1.1 core | 자격 판정용 `eligibility` 패키지. 모듈 의존 검증 테스트는 아직 없음 |
 | 빌드 | Gradle Wrapper 9.7.1, npm 잠금 파일 | 백엔드·프런트엔드 빌드 |
 | DB | PostgreSQL 18.6 Alpine, `compose.yaml` | 프로젝트 전용 로컬 DB |
 
@@ -96,6 +96,7 @@ npm run db:down
 
 ```sh
 npm run test:web
+npm run test:eligibility
 npm run check:web
 npm run build:web
 npm run check:backend
@@ -103,7 +104,9 @@ npm run check:tools
 npm audit
 ```
 
-백엔드 테스트는 Compose DB를 사용하지 않고 Testcontainers가 별도 PostgreSQL을 생성한다. 테스트가 끝나면 테스트용 컨테이너를 정리한다. Docker가 없으면 테스트를 건너뛰지 않고 실패한다.
+`test:eligibility`는 서버의 순수 Java 판정 결과 집계 테스트만 실행한다. API 인증키·DB·Docker 없이 충족·불충족·미확인·예외와 근거 보존을 확인한다. 실제 정책 조건의 비교 정확도 검증은 아니다. 구현 범위는 [자격 판정 결과](eligibility-decision.md)를 따른다.
+
+`check:backend`에 포함된 백엔드 통합 테스트는 Compose DB를 사용하지 않고 Testcontainers가 별도 PostgreSQL을 생성한다. 테스트가 끝나면 테스트용 컨테이너를 정리한다. Docker가 없으면 통합 테스트를 건너뛰지 않고 실패한다.
 
 `check:tools`는 응답 점검 도구의 인공 응답 테스트 7개를 실행한다. API 인증키·Docker·네트워크가 필요하지 않으며 실제 API 계약을 검증하지 않는다.
 
@@ -126,6 +129,8 @@ curl -i http://127.0.0.1:8080/actuator/env
 2026-08-30에는 macOS arm64, Node.js 25.4.0·npm 11.7.0, Gradle이 준비한 Temurin 25.0.3, Docker 29.7.2 환경에서 개발 환경과 DB 연결·접근 차단을 확인했다. 추천 개발 버전인 Node.js 24에서 별도 실행한 결과는 아니다.
 
 조건 입력 추가 후 Vitest 5개, 린트·타입 검사와 프로덕션 빌드를 확인했다. `npm audit`의 알려진 취약점은 0건이다. 브라우저에서 빈 입력 오류·첫 오류 포커스, 확인 화면, 수정 시 값 유지, 초기화와 새로고침 시 값 삭제를 확인했다. 데스크톱 1280px와 모바일 390px 화면에서 시작·입력·확인 화면을 점검했다. 모바일은 브라우저 크기 변경이며 실제 휴대전화 검증이나 저장소에 추가한 E2E 자동 테스트는 아니다. 브라우저 도구의 Tab·Enter 동작이 반영되지 않아 키보드만 사용하는 전체 흐름은 확인하지 못했다. 상세 범위는 [비회원 조건 입력](guest-conditions.md)을 따른다.
+
+판정 결과 집계 모델 추가 후에는 `test:eligibility`의 14건과 `./backend/gradlew -p backend assemble --no-daemon` 빌드를 확인했다. 모두 통과했다. DB·웹 코드는 변경하지 않았으며 기존 PostgreSQL 통합 테스트와 프런트엔드 검사는 이 작업에서 다시 실행하지 않았다.
 
 ### 알려진 경고와 다음 확인 사항
 

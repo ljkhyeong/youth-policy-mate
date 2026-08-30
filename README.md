@@ -19,6 +19,8 @@ API 인증키 없이 사용할 수 있는 비회원 조건 입력 화면(`/condi
 
 서버에는 항목별 결과를 3단계 자격 상태로 합치는 모델과 근거 구조를 추가했습니다. 정책 미해석·예외·사용자 정보 누락을 구분하며, `npm run test:eligibility`로 인증키·DB 없이 검증할 수 있습니다.
 
+GitHub Actions에 웹·서버 병렬 CI를 구성했습니다. 인증키 없이 기존 테스트·린트·타입 검사·빌드를 실행하며 서버는 실제 PostgreSQL 통합 테스트를 포함합니다. 로컬 검사와 CI 문법 검사는 통과했지만, 원격 푸시와 GitHub 실행은 아직 하지 않았습니다. 범위와 남은 확인 사항은 [CI 안내](docs/development/ci.md)를 참고합니다.
+
 온통청년 API 인증키는 신청 후 승인 대기 중입니다. 인증된 성공 응답, 정책 조회·수집, 실제 정책의 조건 비교, 로그인·저장·알림 기능은 아직 구현하지 않았습니다. 결과 집계 모델도 화면과 연결하지 않았습니다. 조건 입력 검사는 신청 자격 판정이 아니며 실제 정책이나 가상 추천 결과를 표시하지 않습니다.
 
 발급 후 사용할 단건 응답 점검 명령 `npm run probe:ontong`을 준비했습니다. 인증키를 노출하지 않고 미검증 JSON 응답을 로컬에 보관하는 개발 도구이며, 운영 수집기나 실제 API 검증 완료를 뜻하지 않습니다.
@@ -32,6 +34,7 @@ API 인증키 없이 사용할 수 있는 비회원 조건 입력 화면(`/condi
 - [최초 제품 합의 기록](docs/alignments/seoul-mvp.html)
 - [전용 스킬과 재사용 출처](docs/development/skill-reuse.md)
 - [로컬 개발 환경과 검증 명령](docs/development/local-development.md)
+- [CI 구성과 검증 범위](docs/development/ci.md)
 - [비회원 조건 입력의 구현 범위](docs/development/guest-conditions.md)
 - [자격 판정 결과 집계와 근거 구조](docs/development/eligibility-decision.md)
 - [온통청년 인증키 설정과 응답 점검](docs/development/ontong-api-probe.md)

@@ -13,7 +13,7 @@
 | 빌드 | Gradle Wrapper 9.7.1, npm 잠금 파일 | 백엔드·프런트엔드 빌드 |
 | DB | PostgreSQL 18.6 Alpine, `compose.yaml` | 프로젝트 전용 로컬 DB |
 
-Spring Batch, OAuth2 공급자, OpenAPI와 생성 TypeScript 계약, shadcn/ui 컴포넌트, Playwright 자동 테스트, Outbox, CI와 배포 구성은 아직 추가하지 않았다. 해당 기능을 구현할 때 필요한 범위로 추가한다.
+Spring Batch, OAuth2 공급자, OpenAPI와 생성 TypeScript 계약, shadcn/ui 컴포넌트, Playwright 자동 테스트, Outbox와 배포 구성은 아직 추가하지 않았다. 해당 기능을 구현할 때 필요한 범위로 추가한다. 웹·서버 CI 워크플로는 작성했으며 설정과 원격 실행의 미확인 범위는 [CI 안내](ci.md)를 따른다.
 
 ## 2. 필요한 도구
 
@@ -126,11 +126,13 @@ curl -i http://127.0.0.1:8080/actuator/env
 
 첫 요청은 200과 `status: UP`, 두 번째는 403이어야 한다. Spring Boot가 제공하는 상태 그룹 이름은 응답에 포함될 수 있다.
 
-2026-08-30에는 macOS arm64, Node.js 25.4.0·npm 11.7.0, Gradle이 준비한 Temurin 25.0.3, Docker 29.7.2 환경에서 개발 환경과 DB 연결·접근 차단을 확인했다. 추천 개발 버전인 Node.js 24에서 별도 실행한 결과는 아니다.
+2026-08-30 최초 개발 환경 검증은 macOS arm64, Node.js 25.4.0·npm 11.7.0, Gradle이 준비한 Temurin 25.0.3, Docker 29.7.2에서 진행했다. 이후 Node.js 24에서 실행한 CI 검증 기록은 아래에 구분한다.
 
 조건 입력 추가 후 Vitest 5개, 린트·타입 검사와 프로덕션 빌드를 확인했다. `npm audit`의 알려진 취약점은 0건이다. 브라우저에서 빈 입력 오류·첫 오류 포커스, 확인 화면, 수정 시 값 유지, 초기화와 새로고침 시 값 삭제를 확인했다. 데스크톱 1280px와 모바일 390px 화면에서 시작·입력·확인 화면을 점검했다. 모바일은 브라우저 크기 변경이며 실제 휴대전화 검증이나 저장소에 추가한 E2E 자동 테스트는 아니다. 브라우저 도구의 Tab·Enter 동작이 반영되지 않아 키보드만 사용하는 전체 흐름은 확인하지 못했다. 상세 범위는 [비회원 조건 입력](guest-conditions.md)을 따른다.
 
 판정 결과 집계 모델 추가 후에는 `test:eligibility`의 14건과 `./backend/gradlew -p backend assemble --no-daemon` 빌드를 확인했다. 모두 통과했다. DB·웹 코드는 변경하지 않았으며 기존 PostgreSQL 통합 테스트와 프런트엔드 검사는 이 작업에서 다시 실행하지 않았다.
+
+CI 구성 후에는 macOS arm64의 별도 임시 복사본에서 Node.js 24.20.0·npm 11.19.0으로 `npm ci --no-audit --no-fund`, 개발 도구 테스트 7개, 웹 테스트 5개, 린트·타입 검사·프로덕션 빌드를 모두 통과했다. 서버도 전체 `build`를 실행해 단위 14개·PostgreSQL 통합 2개가 실패·건너뛰기 없이 통과했다. actionlint 1.7.12로 워크플로 문법을 확인했다. GitHub의 Ubuntu 실행·캐시·보고서 업로드는 아직 확인하지 않았다. 자세한 환경과 경고는 [CI 검증 기록](ci.md#실제-확인한-결과)을 따른다.
 
 ### 알려진 경고와 다음 확인 사항
 

@@ -19,7 +19,7 @@ body {
 }
 
 @layer components {
-  :where(a, button, input, select):focus-visible {
+  :where(a, button, input, select, summary):focus-visible {
     outline: 2px solid #0f766e;
     outline-offset: 4px;
   }

@@ -13,7 +13,7 @@
 
 ## 현재 상태
 
-2026-08-30에 MVP 범위와 기술 스택을 확정했습니다. 현재는 문서와 전용 스킬만 있으며 애플리케이션 구현 전입니다.
+2026-08-30에 MVP 범위와 기술 스택을 확정하고 온통청년 API의 공식 명세·코드 정의서·공개 정책 사례를 조사했습니다. 인증키를 사용한 성공 응답은 아직 확인하지 못했습니다. 현재는 문서와 전용 스킬만 있으며 애플리케이션 구현 전입니다.
 
 주요 스택은 Next.js 16·React 19·TypeScript, Java 25·Spring Boot 4.1 모듈러 모놀리스, PostgreSQL 18입니다. 전체 선택과 책임 경계는 ADR을 기준으로 합니다. 월 운영비 상한은 3만 원이며 운영 장비·클라우드는 아직 정하지 않았습니다.
 
@@ -23,6 +23,8 @@
 - [ADR-0001: 기술 스택과 책임 분리](docs/ADR/0001_기술스택과_책임_분리.md)
 - [최초 제품 합의 기록](docs/alignments/seoul-mvp.html)
 - [전용 스킬과 재사용 출처](docs/development/skill-reuse.md)
+- [온통청년 API 조사와 확인할 계약](docs/research/ontong-api-contract.md)
+- [정책 수집·판정 데이터 구조 초안](docs/design/policy-data-model.md)
 - [현재 작업 인계](HANDOFF.md)
 
 ## 개발 시작

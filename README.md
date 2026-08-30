@@ -33,6 +33,8 @@ API 인증키 없이 사용할 수 있는 비회원 조건 입력 화면(`/condi
 
 별도 일정 모듈에 [마감 알림 후보 날짜 계산](docs/development/deadline-reminder-candidates.md)을 추가했습니다. 서울 마감 날짜에서 D-7·D-3·D-1을 계산하고, 지난 날짜는 제외하며 오늘 후보는 발송 시각 확인 필요로 남깁니다. `npm run test:reminders`로 17건을 실행할 수 있습니다. 마감 날짜 제공 8건을 포함한 서버 단위 테스트 총 165건과 빌드가 통과했습니다. 실제 저장·수신 동의·예약·발송은 아직 구현하지 않았습니다.
 
+개발 전용 `/dev/reminders`에서 [마감·알림 후보 미리보기](docs/development/deadline-reminder-preview.md)를 제공합니다. 날짜형·시각형 마감, 오늘 후보의 발송 시각 확인 필요, 후보가 없는 이유를 일곱 가지 고정 인공 자료로 표시합니다. 화면은 날짜나 모집 상태를 계산하지 않으며 실제 서버·저장·예약·발송과 연결하지 않았습니다. 웹 테스트 32건·린트·타입 검사·빌드, 운영 경로 404와 모바일·데스크톱 표시를 확인했습니다.
+
 GitHub Actions에 웹·서버 병렬 CI를 구성했습니다. 인증키 없이 기존 테스트·린트·타입 검사·빌드를 실행하며 서버는 실제 PostgreSQL 통합 테스트를 포함합니다. 로컬 검사와 CI 문법 검사는 통과했지만, 원격 푸시와 GitHub 실행은 아직 하지 않았습니다. 범위와 남은 확인 사항은 [CI 안내](docs/development/ci.md)를 참고합니다.
 
 온통청년 API 인증키는 신청 후 승인 대기 중입니다. 인증된 성공 응답, 정책 조회·수집, 실제 정책을 연결한 자격 판정, 로그인·저장·알림 기능은 아직 구현하지 않았습니다. 연령·거주·취업·소득 비교기와 결과 집계 모델도 화면과 연결하지 않았습니다. 조건 입력 검사는 신청 자격 판정이 아니며 실제 정책이나 가상 추천 결과를 표시하지 않습니다.
@@ -63,6 +65,7 @@ GitHub Actions에 웹·서버 병렬 CI를 구성했습니다. 인증키 없이 
 - [모집 기간 상태 구현과 경계 검증](docs/development/recruitment-period.md)
 - [마감 알림 후보 날짜 설계](docs/design/deadline-reminder-candidates.md)
 - [마감 알림 후보 계산과 검증](docs/development/deadline-reminder-candidates.md)
+- [마감·알림 후보 표시와 개발 미리보기](docs/development/deadline-reminder-preview.md)
 - [온통청년 인증키 설정과 응답 점검](docs/development/ontong-api-probe.md)
 - [온통청년 API 조사와 확인할 계약](docs/research/ontong-api-contract.md)
 - [정책 수집·판정 데이터 구조 초안](docs/design/policy-data-model.md)

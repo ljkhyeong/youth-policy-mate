@@ -10,6 +10,7 @@
     "dev:backend": "./backend/gradlew -p backend bootRun --no-daemon --args='--spring.profiles.active=local'",
     "build:web": "npm run build --workspace frontend",
     "check:web": "npm run lint --workspace frontend && npm run typecheck --workspace frontend",
+    "test:web": "npm run test --workspace frontend",
     "check:backend": "./backend/gradlew -p backend build --no-daemon",
     "check:tools": "node --test scripts/ontong-api-probe.test.mjs",
     "probe:ontong": "node --env-file-if-exists=.env scripts/ontong-api-probe.mjs",

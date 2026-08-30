@@ -1,6 +1,6 @@
 # 로컬 개발 환경
 
-2026-08-30 기준. 이 문서는 현재 실행할 수 있는 개발 골격을 설명한다. 제품 기능의 완료 상태는 [HANDOFF](../../HANDOFF.md), 제품 요구는 [PRD](../PRD/0001_product-baseline/spec.md), 기술 선택은 [ADR](../ADR/0001_기술스택과_책임_분리.md)를 기준으로 한다.
+2026-08-31 기준. 이 문서는 현재 실행할 수 있는 개발 골격을 설명한다. 제품 기능의 완료 상태는 [HANDOFF](../../HANDOFF.md), 제품 요구는 [PRD](../PRD/0001_product-baseline/spec.md), 기술 선택은 [ADR](../ADR/0001_기술스택과_책임_분리.md)를 기준으로 한다.
 
 ## 1. 현재 구성과 버전
 
@@ -8,8 +8,8 @@
 |---|---|---|
 | 웹 | Next.js 16.3.3, React 19.2.8, `frontend/` | 시작 화면·비회원 조건 입력·공통 상태 안내·개발 전용 질문과 결과 표시 |
 | 웹 개발 도구 | TypeScript 5.9.3, Tailwind CSS 4.3.3, ESLint 9.39.5, Vitest 4.1.11 | 타입 검사·스타일·린트·입력 및 상태 화면 테스트 |
-| 서버 | Java 25, Spring Boot 4.1.1, `backend/` | 앱 기동·DB 연결·상태 확인·접근 차단·판정 결과 집계·명시적 연령·거주·단일 취업·소득 구간 비교 |
-| 모듈 구성 | Spring Modulith 2.1.1 core | 자격 판정용 `eligibility` 패키지. 모듈 의존 검증 테스트는 아직 없음 |
+| 서버 | Java 25, Spring Boot 4.1.1, `backend/` | 앱 기동·DB 연결·상태 확인·접근 차단·판정 결과 집계·명시적 연령·거주·단일 취업·소득 구간 비교·모집 기간 계산 |
+| 모듈 구성 | Spring Modulith 2.1.1 core | 자격 판정용 `eligibility`와 모집 기간용 `policy` 패키지. 모듈 의존 검증 테스트는 아직 없음 |
 | 빌드 | Gradle Wrapper 9.7.1, npm 잠금 파일 | 백엔드·프런트엔드 빌드 |
 | DB | PostgreSQL 18.6 Alpine, `compose.yaml` | 프로젝트 전용 로컬 DB |
 
@@ -101,6 +101,7 @@ npm run db:down
 ```sh
 npm run test:web
 npm run test:eligibility
+npm run test:recruitment
 npm run check:web
 npm run build:web
 npm run check:backend
@@ -109,6 +110,8 @@ npm audit
 ```
 
 `test:eligibility`는 순수 Java 집계 14건·연령 비교 18건·거주 비교 17건·취업 비교 21건·소득 비교 47건, 총 117건을 실행한다. API 인증키·DB·Docker 없이 충족·불충족·미확인·예외와 근거 보존, 조건별 범위·기준일·답변 기준 일치를 확인한다. 실제 정책 원문 해석의 정확도 검증은 아니다. 구현 범위는 [자격 판정 결과](eligibility-decision.md), [연령 비교](age-condition.md), [거주 비교](residence-condition.md), [단일 취업 비교](employment-condition.md), [소득 구간 비교](income-condition.md)를 따른다.
+
+`test:recruitment`는 순수 Java 모집 기간 테스트 23건을 실행한다. 서울 날짜 경계·명시적 접수 종료 시각·상시·소진 시 종료·미확인 이유·근거 보존을 검사하며 API 인증키·DB·Docker가 필요하지 않다. [모집 기간 구현](recruitment-period.md)에 입력 범위와 실제 원문 해석이 아닌 점을 정리했다.
 
 `check:backend`에 포함된 백엔드 통합 테스트는 Compose DB를 사용하지 않고 Testcontainers가 별도 PostgreSQL을 생성한다. 테스트가 끝나면 테스트용 컨테이너를 정리한다. Docker가 없으면 통합 테스트를 건너뛰지 않고 실패한다.
 
@@ -153,6 +156,8 @@ CI 구성 후에는 macOS arm64의 별도 임시 복사본에서 Node.js 24.20.0
 소득 질문 미리보기 추가 후에는 웹 테스트 17개·린트·타입 검사·프로덕션 빌드가 통과했다. 개발 경로 200·운영 경로 404, 답변 확인·수정·삭제와 기간 변경·새로고침 초기화, 데스크톱·모바일 구간 표시를 확인했다. 키보드 전용 흐름은 도구 입력 한계로 미확인이고 서버·DB 검사는 다시 실행하지 않았다. 생성 캐시 재생성 등 환경 처리와 범위는 [소득 질문 검증 기록](income-question-preview.md#검증-결과와-한계)을 따른다.
 
 결과 표시 컴포넌트와 미리보기 추가 후에는 웹 테스트 24개·린트·타입 검사·프로덕션 빌드가 통과했다. 개발 결과 경로 200·운영 결과 경로 404와 운영 조건 입력 200, 네 예시 전환·근거 펼치기·새로고침 초기화와 반응형 표시를 확인했다. 서버·DB 검사는 다시 실행하지 않았다. 키보드 입력의 검증 한계와 상세 범위는 [결과 화면 검증 기록](eligibility-result-preview.md#검증-결과와-한계)을 따른다.
+
+2026-08-31 모집 기간 모델 추가 후에는 모집 기간 23건과 기존 자격 판정 117건을 함께 실행해 총 140건이 통과했고 서버 `assemble`도 통과했다. 웹·PostgreSQL 통합 검사는 다시 실행하지 않았다. Gradle 캐시 접근 권한 처리와 Java agent 경고, 검증한 경계는 [모집 기간 검증 기록](recruitment-period.md#실행한-검증)을 따른다.
 
 ### 알려진 경고와 다음 확인 사항
 

@@ -13,7 +13,9 @@
 
 ## 현재 상태
 
-2026-08-30에 MVP 범위와 기술 스택을 확정하고 온통청년 API의 공식 명세·코드 정의서·공개 정책 사례를 조사했습니다. 인증키를 사용한 성공 응답은 아직 확인하지 못했습니다. 현재는 문서와 전용 스킬만 있으며 애플리케이션 구현 전입니다.
+2026-08-30에 MVP 범위·기술 스택을 확정하고 온통청년 API를 조사한 뒤, Next.js·Spring Boot와 로컬 PostgreSQL의 기본 개발 환경을 구성했습니다. 프런트엔드 빌드, 실제 DB를 사용하는 백엔드 테스트와 로컬 기동을 확인했습니다.
+
+온통청년 API 인증키는 신청 후 승인 대기 중입니다. 인증된 성공 응답, 정책 조회·수집·판정, 로그인·저장·알림 기능은 아직 구현하지 않았습니다. 시작 화면은 개발 준비 상태를 안내하며 실제 정책 데이터를 표시하지 않습니다.
 
 주요 스택은 Next.js 16·React 19·TypeScript, Java 25·Spring Boot 4.1 모듈러 모놀리스, PostgreSQL 18입니다. 전체 선택과 책임 경계는 ADR을 기준으로 합니다. 월 운영비 상한은 3만 원이며 운영 장비·클라우드는 아직 정하지 않았습니다.
 
@@ -23,10 +25,32 @@
 - [ADR-0001: 기술 스택과 책임 분리](docs/ADR/0001_기술스택과_책임_분리.md)
 - [최초 제품 합의 기록](docs/alignments/seoul-mvp.html)
 - [전용 스킬과 재사용 출처](docs/development/skill-reuse.md)
+- [로컬 개발 환경과 검증 명령](docs/development/local-development.md)
 - [온통청년 API 조사와 확인할 계약](docs/research/ontong-api-contract.md)
 - [정책 수집·판정 데이터 구조 초안](docs/design/policy-data-model.md)
 - [현재 작업 인계](HANDOFF.md)
 
 ## 개발 시작
 
-[AGENTS.md](AGENTS.md)와 HANDOFF를 읽고 요청에 맞는 `skills/`의 전용 스킬을 적용합니다. 실제 빌드·실행 명령은 애플리케이션 구성이 추가된 뒤 기록합니다.
+[AGENTS.md](AGENTS.md)와 HANDOFF를 읽고 요청에 맞는 `skills/`의 전용 스킬을 적용합니다. Node.js 24 LTS, JDK 21 이상, 실행 중인 Docker가 필요합니다. 앱에 필요한 Java 25는 Gradle 도구체인으로 준비합니다.
+
+저장소 루트에서 의존성과 DB를 준비합니다.
+
+```sh
+npm ci
+npm run db:up
+```
+
+서로 다른 터미널에서 서버와 웹을 실행합니다.
+
+```sh
+npm run dev:backend
+```
+
+```sh
+npm run dev:web
+```
+
+- 웹: <http://127.0.0.1:3000>
+- 백엔드 상태 확인: <http://127.0.0.1:8080/actuator/health>
+- 설정 변경·검증·종료 방법: [로컬 개발 안내](docs/development/local-development.md)

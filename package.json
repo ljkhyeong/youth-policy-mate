@@ -1,0 +1,17 @@
+{
+  "name": "youth-policy-mate",
+  "private": true,
+  "workspaces": ["frontend"],
+  "engines": {
+    "node": ">=24 <27"
+  },
+  "scripts": {
+    "dev:web": "npm run dev --workspace frontend",
+    "dev:backend": "./backend/gradlew -p backend bootRun --no-daemon --args='--spring.profiles.active=local'",
+    "build:web": "npm run build --workspace frontend",
+    "check:web": "npm run lint --workspace frontend && npm run typecheck --workspace frontend",
+    "check:backend": "./backend/gradlew -p backend build --no-daemon",
+    "db:up": "docker compose up -d --wait postgres",
+    "db:down": "docker compose down"
+  }
+}

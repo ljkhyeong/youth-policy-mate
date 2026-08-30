@@ -6,3 +6,9 @@
 !.env.example
 build/
 dist/
+.gradle/
+node_modules/
+.next/
+*.tsbuildinfo
+*.log
+frontend/next-env.d.ts

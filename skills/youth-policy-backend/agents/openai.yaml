@@ -1,0 +1,4 @@
+interface:
+  display_name: "청년정책 백엔드 개발"
+  short_description: "청년정책메이트 Spring 모듈 경계·DB 변경·최소 검증 절차"
+  default_prompt: "$youth-policy-backend 스킬을 사용해 청년정책메이트 백엔드 변경을 구현하고 필요한 검증을 진행해줘."

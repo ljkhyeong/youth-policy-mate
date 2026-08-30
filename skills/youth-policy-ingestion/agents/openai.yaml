@@ -1,0 +1,4 @@
+interface:
+  display_name: "청년정책 데이터 수집"
+  short_description: "청년정책메이트 원본 수집·개정 관리·자동 게시·재처리 절차"
+  default_prompt: "$youth-policy-ingestion 스킬을 사용해 정책 수집과 자동 게시 흐름을 구현하고 중복·실패 처리를 확인해줘."

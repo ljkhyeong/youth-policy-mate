@@ -1,0 +1,4 @@
+interface:
+  display_name: "청년정책 신청 조건 판정"
+  short_description: "청년정책메이트 3단계 신청 조건 판정과 근거·미확인 조건 처리"
+  default_prompt: "$youth-policy-eligibility 스킬을 사용해 정책 신청 조건 판정과 근거 표시를 구현해줘."

@@ -1,0 +1,4 @@
+interface:
+  display_name: "청년정책 일정과 알림"
+  short_description: "청년정책메이트 저장 일정·마감 알림·동의·중복 발송 처리 절차"
+  default_prompt: "$youth-policy-reminders 스킬을 사용해 정책 저장과 마감 알림 흐름을 구현하고 취소·기한 변경을 확인해줘."

@@ -1,0 +1,4 @@
+interface:
+  display_name: "청년정책 API 계약"
+  short_description: "청년정책메이트 REST API·오류 응답·생성 타입의 변경 절차"
+  default_prompt: "$youth-policy-api-contract 스킬을 사용해 API 계약과 프런트엔드 타입을 함께 확인해줘."

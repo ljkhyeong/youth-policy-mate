@@ -1,0 +1,4 @@
+interface:
+  display_name: "청년정책 프런트엔드 개발"
+  short_description: "청년정책메이트 Next.js 화면·로그인·개인정보 캐시 처리 절차"
+  default_prompt: "$youth-policy-frontend 스킬을 사용해 청년정책메이트 화면과 사용자 흐름을 구현해줘."

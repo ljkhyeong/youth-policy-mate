@@ -1,0 +1,4 @@
+interface:
+  display_name: "청년정책 문서 관리"
+  short_description: "청년정책메이트 PRD·ADR·인수인계 문서의 변경 기준과 확인 절차"
+  default_prompt: "$youth-policy-docs 스킬을 사용해 합의된 요구사항과 기술 결정을 문서에 반영해줘."

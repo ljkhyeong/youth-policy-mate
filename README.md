@@ -15,7 +15,9 @@
 
 2026-08-30에 MVP 범위·기술 스택을 확정하고 온통청년 API를 조사한 뒤, Next.js·Spring Boot와 로컬 PostgreSQL의 기본 개발 환경을 구성했습니다. 프런트엔드 빌드, 실제 DB를 사용하는 백엔드 테스트와 로컬 기동을 확인했습니다.
 
-온통청년 API 인증키는 신청 후 승인 대기 중입니다. 인증된 성공 응답, 정책 조회·수집·판정, 로그인·저장·알림 기능은 아직 구현하지 않았습니다. 시작 화면은 개발 준비 상태를 안내하며 실제 정책 데이터를 표시하지 않습니다.
+API 인증키 없이 사용할 수 있는 비회원 조건 입력 화면(`/conditions`)을 구현했습니다. 생년월일·서울 자치구·주된 취업상태를 입력하고, 확인·수정·초기화할 수 있습니다. 입력값은 화면 상태로만 사용하며 서버에 보내거나 저장하지 않습니다. 새로고침하면 초기화됩니다.
+
+온통청년 API 인증키는 신청 후 승인 대기 중입니다. 인증된 성공 응답, 정책 조회·수집·판정, 로그인·저장·알림 기능은 아직 구현하지 않았습니다. 조건 입력 검사는 신청 자격 판정이 아니며 실제 정책이나 가상 추천 결과를 표시하지 않습니다.
 
 발급 후 사용할 단건 응답 점검 명령 `npm run probe:ontong`을 준비했습니다. 인증키를 노출하지 않고 미검증 JSON 응답을 로컬에 보관하는 개발 도구이며, 운영 수집기나 실제 API 검증 완료를 뜻하지 않습니다.
 
@@ -28,6 +30,7 @@
 - [최초 제품 합의 기록](docs/alignments/seoul-mvp.html)
 - [전용 스킬과 재사용 출처](docs/development/skill-reuse.md)
 - [로컬 개발 환경과 검증 명령](docs/development/local-development.md)
+- [비회원 조건 입력의 구현 범위](docs/development/guest-conditions.md)
 - [온통청년 인증키 설정과 응답 점검](docs/development/ontong-api-probe.md)
 - [온통청년 API 조사와 확인할 계약](docs/research/ontong-api-contract.md)
 - [정책 수집·판정 데이터 구조 초안](docs/design/policy-data-model.md)
@@ -35,25 +38,23 @@
 
 ## 개발 시작
 
-[AGENTS.md](AGENTS.md)와 HANDOFF를 읽고 요청에 맞는 `skills/`의 전용 스킬을 적용합니다. Node.js 24 LTS, JDK 21 이상, 실행 중인 Docker가 필요합니다. 앱에 필요한 Java 25는 Gradle 도구체인으로 준비합니다.
+[AGENTS.md](AGENTS.md)와 HANDOFF를 읽고 요청에 맞는 `skills/`의 전용 스킬을 적용합니다. 웹만 실행할 때는 Node.js 24 LTS와 npm이 필요합니다. 서버까지 실행하려면 JDK 21 이상과 실행 중인 Docker도 필요합니다. 앱에 필요한 Java 25는 Gradle 도구체인으로 준비합니다.
 
-저장소 루트에서 의존성과 DB를 준비합니다.
+조건 입력 화면은 인증키·DB·백엔드 없이 실행할 수 있습니다. 저장소 루트에서 실행합니다.
 
 ```sh
 npm ci
-npm run db:up
-```
-
-서로 다른 터미널에서 서버와 웹을 실행합니다.
-
-```sh
-npm run dev:backend
-```
-
-```sh
 npm run dev:web
 ```
 
+서버도 확인하려면 DB를 준비하고 다른 터미널에서 백엔드를 실행합니다.
+
+```sh
+npm run db:up
+npm run dev:backend
+```
+
 - 웹: <http://127.0.0.1:3000>
+- 조건 입력: <http://127.0.0.1:3000/conditions>
 - 백엔드 상태 확인: <http://127.0.0.1:8080/actuator/health>
 - 설정 변경·검증·종료 방법: [로컬 개발 안내](docs/development/local-development.md)

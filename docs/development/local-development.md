@@ -6,14 +6,14 @@
 
 | 구성 | 버전·위치 | 현재 역할 |
 |---|---|---|
-| 웹 | Next.js 16.3.3, React 19.2.8, `frontend/` | 개발 준비 안내 화면 |
-| 웹 개발 도구 | TypeScript 5.9.3, Tailwind CSS 4.3.3, ESLint 9.39.5 | 타입 검사·스타일·린트 |
+| 웹 | Next.js 16.3.3, React 19.2.8, `frontend/` | 시작 화면·비회원 조건 입력 |
+| 웹 개발 도구 | TypeScript 5.9.3, Tailwind CSS 4.3.3, ESLint 9.39.5, Vitest 4.1.11 | 타입 검사·스타일·린트·입력 검사 테스트 |
 | 서버 | Java 25, Spring Boot 4.1.1, `backend/` | 앱 기동·DB 연결·상태 확인·접근 차단 |
 | 모듈 구성 | Spring Modulith 2.1.1 core | 기능별 모듈 구현을 위한 의존성. 아직 업무 모듈은 없음 |
 | 빌드 | Gradle Wrapper 9.7.1, npm 잠금 파일 | 백엔드·프런트엔드 빌드 |
 | DB | PostgreSQL 18.6 Alpine, `compose.yaml` | 프로젝트 전용 로컬 DB |
 
-Spring Batch, OAuth2 공급자, OpenAPI와 생성 TypeScript 계약, shadcn/ui 컴포넌트, Vitest·Playwright 테스트, Outbox, CI와 배포 구성은 아직 추가하지 않았다. 해당 기능을 구현할 때 필요한 범위로 추가한다.
+Spring Batch, OAuth2 공급자, OpenAPI와 생성 TypeScript 계약, shadcn/ui 컴포넌트, Playwright 자동 테스트, Outbox, CI와 배포 구성은 아직 추가하지 않았다. 해당 기능을 구현할 때 필요한 범위로 추가한다.
 
 ## 2. 필요한 도구
 
@@ -37,24 +37,29 @@ docker compose version
 
 모든 명령은 저장소 루트에서 실행한다.
 
+조건 입력 화면만 확인할 때는 아래 두 명령이면 된다. API 인증키·DB·백엔드가 필요하지 않다.
+
 ```sh
 npm ci
+npm run dev:web
+```
+
+백엔드도 실행하려면 DB를 준비한다.
+
+```sh
 npm run db:up
 ```
 
-DB가 정상 상태가 되면 각각 별도 터미널에서 실행한다.
+DB가 정상 상태가 되면 웹과 다른 터미널에서 서버를 실행한다.
 
 ```sh
 npm run dev:backend
 ```
 
-```sh
-npm run dev:web
-```
-
 | 항목 | 로컬 주소 |
 |---|---|
 | 웹 | <http://127.0.0.1:3000> |
+| 조건 입력 | <http://127.0.0.1:3000/conditions> |
 | 서버 상태 | <http://127.0.0.1:8080/actuator/health> |
 | PostgreSQL | `127.0.0.1:55432` |
 
@@ -90,6 +95,7 @@ npm run db:down
 ## 4. 검증 명령과 실제 확인 범위
 
 ```sh
+npm run test:web
 npm run check:web
 npm run build:web
 npm run check:backend
@@ -100,6 +106,8 @@ npm audit
 백엔드 테스트는 Compose DB를 사용하지 않고 Testcontainers가 별도 PostgreSQL을 생성한다. 테스트가 끝나면 테스트용 컨테이너를 정리한다. Docker가 없으면 테스트를 건너뛰지 않고 실패한다.
 
 `check:tools`는 응답 점검 도구의 인공 응답 테스트 7개를 실행한다. API 인증키·Docker·네트워크가 필요하지 않으며 실제 API 계약을 검증하지 않는다.
+
+`test:web`은 비회원 조건 입력 검사 테스트 5개를 실행한다. 필수 항목, 유효한 날짜와 미래 날짜, 선택지 범위, 19~34세를 공통 자격 제한으로 적용하지 않는 점, 서울 자정 경계를 확인한다. API 인증키·Docker·네트워크가 필요하지 않다.
 
 현재 백엔드 통합 테스트는 다음 2개다.
 
@@ -115,7 +123,9 @@ curl -i http://127.0.0.1:8080/actuator/env
 
 첫 요청은 200과 `status: UP`, 두 번째는 403이어야 한다. Spring Boot가 제공하는 상태 그룹 이름은 응답에 포함될 수 있다.
 
-2026-08-30에는 macOS arm64, Node.js 25.4.0·npm 11.7.0, Gradle이 준비한 Temurin 25.0.3, Docker 29.7.2 환경에서 위 검증이 통과했다. 추천 개발 버전인 Node.js 24에서 별도 실행한 결과는 아니다. 실제 로컬 기동 후 DB 연결과 상태 응답, 1280px 브라우저의 시작 화면·한글 문서 언어·검색 제외 메타데이터를 확인했다. 모바일 기기에서의 동작 검증이나 제품 흐름 E2E 테스트는 아직 없다. `npm audit`에서 알려진 취약점은 발견되지 않았다.
+2026-08-30에는 macOS arm64, Node.js 25.4.0·npm 11.7.0, Gradle이 준비한 Temurin 25.0.3, Docker 29.7.2 환경에서 개발 환경과 DB 연결·접근 차단을 확인했다. 추천 개발 버전인 Node.js 24에서 별도 실행한 결과는 아니다.
+
+조건 입력 추가 후 Vitest 5개, 린트·타입 검사와 프로덕션 빌드를 확인했다. `npm audit`의 알려진 취약점은 0건이다. 브라우저에서 빈 입력 오류·첫 오류 포커스, 확인 화면, 수정 시 값 유지, 초기화와 새로고침 시 값 삭제를 확인했다. 데스크톱 1280px와 모바일 390px 화면에서 시작·입력·확인 화면을 점검했다. 모바일은 브라우저 크기 변경이며 실제 휴대전화 검증이나 저장소에 추가한 E2E 자동 테스트는 아니다. 브라우저 도구의 Tab·Enter 동작이 반영되지 않아 키보드만 사용하는 전체 흐름은 확인하지 못했다. 상세 범위는 [비회원 조건 입력](guest-conditions.md)을 따른다.
 
 ### 알려진 경고와 다음 확인 사항
 
@@ -123,6 +133,7 @@ curl -i http://127.0.0.1:8080/actuator/env
 - ESLint 9.39.5 설치 시 지원 종료 경고가 나온다. 현재 Next.js 린트 설정이 사용하는 React·접근성·import 플러그인의 peer 범위가 ESLint 9까지여서 호환되는 버전을 고정했다. ESLint 10으로 올릴 때 세 플러그인의 지원 범위와 린트 동작을 함께 확인한다. 이는 개발 도구 경고이며 실행 의존성에 포함되지 않는다.
 - 테스트 라이브러리가 Java agent의 동적 로딩 경고를 출력할 수 있다. 경고를 숨기기 위한 JVM 옵션은 추가하지 않았다.
 - 현재 화면은 공개 제품 화면이 아니므로 `noindex, nofollow`를 적용했다. 실제 공개 정책 페이지를 구현할 때 공개 콘텐츠에 맞는 메타데이터와 검색 노출 정책으로 변경한다.
+- Next.js의 `agentRules` 자동 생성을 끄고 저장소의 `AGENTS.md`와 `skills/`를 사용한다. 개발 서버를 실행할 때 별도 `frontend/AGENTS.md`·`CLAUDE.md`가 생겨 작업 지침이 중복되는 것을 막는다.
 
 ## 5. 확인한 공식 자료
 

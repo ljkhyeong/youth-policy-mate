@@ -8,7 +8,7 @@
 |---|---|---|
 | 웹 | Next.js 16.3.3, React 19.2.8, `frontend/` | 시작 화면·비회원 조건 입력·공통 상태 안내·개발 전용 추가 질문 |
 | 웹 개발 도구 | TypeScript 5.9.3, Tailwind CSS 4.3.3, ESLint 9.39.5, Vitest 4.1.11 | 타입 검사·스타일·린트·입력 및 상태 화면 테스트 |
-| 서버 | Java 25, Spring Boot 4.1.1, `backend/` | 앱 기동·DB 연결·상태 확인·접근 차단·판정 결과 집계·명시적 연령·거주·단일 취업 비교 |
+| 서버 | Java 25, Spring Boot 4.1.1, `backend/` | 앱 기동·DB 연결·상태 확인·접근 차단·판정 결과 집계·명시적 연령·거주·단일 취업·소득 구간 비교 |
 | 모듈 구성 | Spring Modulith 2.1.1 core | 자격 판정용 `eligibility` 패키지. 모듈 의존 검증 테스트는 아직 없음 |
 | 빌드 | Gradle Wrapper 9.7.1, npm 잠금 파일 | 백엔드·프런트엔드 빌드 |
 | DB | PostgreSQL 18.6 Alpine, `compose.yaml` | 프로젝트 전용 로컬 DB |
@@ -106,7 +106,7 @@ npm run check:tools
 npm audit
 ```
 
-`test:eligibility`는 순수 Java 집계 14건·연령 비교 18건·거주 비교 17건·취업 비교 21건, 총 70건을 실행한다. API 인증키·DB·Docker 없이 충족·불충족·미확인·예외와 근거 보존, 연령·거주 범위 및 기준일, 취업 답변의 정책 개정·정의·요구 방향을 확인한다. 실제 정책 원문 해석의 정확도 검증은 아니다. 구현 범위는 [자격 판정 결과](eligibility-decision.md), [연령 비교](age-condition.md), [거주 비교](residence-condition.md), [단일 취업 비교](employment-condition.md)를 따른다.
+`test:eligibility`는 순수 Java 집계 14건·연령 비교 18건·거주 비교 17건·취업 비교 21건·소득 비교 47건, 총 117건을 실행한다. API 인증키·DB·Docker 없이 충족·불충족·미확인·예외와 근거 보존, 조건별 범위·기준일·답변 기준 일치를 확인한다. 실제 정책 원문 해석의 정확도 검증은 아니다. 구현 범위는 [자격 판정 결과](eligibility-decision.md), [연령 비교](age-condition.md), [거주 비교](residence-condition.md), [단일 취업 비교](employment-condition.md), [소득 구간 비교](income-condition.md)를 따른다.
 
 `check:backend`에 포함된 백엔드 통합 테스트는 Compose DB를 사용하지 않고 Testcontainers가 별도 PostgreSQL을 생성한다. 테스트가 끝나면 테스트용 컨테이너를 정리한다. Docker가 없으면 통합 테스트를 건너뛰지 않고 실패한다.
 
@@ -145,6 +145,8 @@ CI 구성 후에는 macOS arm64의 별도 임시 복사본에서 Node.js 24.20.0
 단일 취업 비교기 추가 후에는 `npm run test:eligibility`의 70건과 서버 `assemble`이 통과했다. 해당·비해당 요구 방향, 모름·누락, 정책 개정·정의·기준일이 다른 답변의 재사용 차단과 기존 집계를 인공 입력으로 검사했다. 실제 API 호출·프런트엔드 검사·PostgreSQL 통합 검사는 이번 작업에서 실행하지 않았다. 상세 범위는 [취업 비교 검증 기록](employment-condition.md#코드와-검증)을 따른다.
 
 추가 확인 질문 미리보기 구현 후에는 웹 테스트 12개·린트·타입 검사·프로덕션 빌드가 통과했다. 개발 경로 200과 운영 경로 404, 답변 확인·수정·삭제와 질문 개정 변경 시 초기화, 데스크톱·모바일 배치를 확인했다. 서버·DB 검사는 다시 실행하지 않았다. 키보드 검증의 한계와 빌드 캐시 처리 기록은 [추가 질문 검증 기록](employment-question-preview.md#검증-결과와-한계)을 따른다.
+
+소득 구간 비교기 추가 후에는 `./backend/gradlew -p backend test --tests 'kr.youthpolicymate.eligibility.*' assemble --no-daemon`으로 판정 117건과 서버 빌드가 통과했다. 포함 경계·일부 겹침·소수 정밀도·0원과 모름 구분·다른 입력 기준의 재사용 차단을 인공 자료로 확인했다. 실제 API·원천 매핑·소득 화면·보험료 산정 검증은 아니며 웹·PostgreSQL 통합 검사는 다시 실행하지 않았다. 상세 범위는 [소득 비교 검증 기록](income-condition.md#코드와-검증)을 따른다.
 
 ### 알려진 경고와 다음 확인 사항
 

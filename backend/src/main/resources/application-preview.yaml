@@ -12,5 +12,5 @@ springdoc:
     path: /dev/openapi
     version: OPENAPI_3_1
   packages-to-scan: kr.youthpolicymate.devpreview
-  paths-to-match: /api/dev/reminder-examples,/api/dev/eligibility-examples
+  paths-to-match: /api/dev/reminder-examples,/api/dev/eligibility-examples,/api/dev/eligibility-trial
   writer-with-order-by-keys: true

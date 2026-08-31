@@ -29,7 +29,7 @@ class PreviewApiContractTest {
         var response = mockMvc.perform(get("/dev/openapi")).andExpect(status().isOk()).andReturn();
         var actual = mapper.readTree(response.getResponse().getContentAsByteArray());
         assertThat(actual.path("openapi").asString()).startsWith("3.1.");
-        assertThat(actual.path("paths").size()).isEqualTo(2);
+        assertThat(actual.path("paths").size()).isEqualTo(3);
         assertThat(actual.path("paths").has("/api/dev/eligibility-examples")).isTrue();
         var uncertainty = actual.path("components").path("schemas").path("EligibilityCondition").path("properties").path("uncertainty");
         assertThat(uncertainty.path("enum").valueStream().anyMatch(value -> value.isNull())).isTrue();

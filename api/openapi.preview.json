@@ -1,7 +1,7 @@
 {
   "openapi" : "3.1.0",
   "info" : {
-    "description" : "고정 인공 자료의 계산 결과 조회만 제공한다. 실제 정책·회원·예약·발송 API가 아니다.",
+    "description" : "인공 자료 조회와 정해진 예시 답변의 계산만 제공한다. 실제 정책·회원·저장·예약·발송 API가 아니다.",
     "title" : "청년정책메이트 개발 전용 인공 자료 API",
     "version" : "preview-1"
   },
@@ -30,6 +30,63 @@
         },
         "summary" : "개발 전용 자격 판정 예시 조회",
         "tags" : [ "eligibility-preview-controller" ]
+      }
+    },
+    "/api/dev/eligibility-trial" : {
+      "get" : {
+        "operationId" : "getDevelopmentEligibilityQuestions",
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/EligibilityQuestionsResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "summary" : "인공 재판정 질문과 답변 선택지 조회",
+        "tags" : [ "eligibility-trial-controller" ]
+      },
+      "post" : {
+        "description" : "정해진 질문 버전·답변 코드만 받는다. 실제 개인정보·저장·외부 호출 없이 계산한다. 답변의 질문 버전이 다르면 기존 비교기가 재확인을 요구한다.",
+        "operationId" : "evaluateDevelopmentEligibilityAnswers",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/EligibilityTrialRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/EligibilityTrialResponse"
+                }
+              }
+            },
+            "description" : "인공 답변의 계산 결과"
+          },
+          "400" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/TrialInputError"
+                }
+              }
+            },
+            "description" : "필수 값 누락 또는 지원하지 않는 답변 코드"
+          }
+        },
+        "summary" : "인공 답변으로 자격 재판정",
+        "tags" : [ "eligibility-trial-controller" ]
       }
     },
     "/api/dev/reminder-examples" : {
@@ -238,6 +295,74 @@
         },
         "required" : [ "completion", "pendingIssues" ]
       },
+      "EligibilityQuestionSet" : {
+        "type" : "object",
+        "properties" : {
+          "employmentDescription" : {
+            "type" : "string"
+          },
+          "employmentEvidence" : {
+            "$ref" : "#/components/schemas/EligibilityEvidence"
+          },
+          "employmentRequirement" : {
+            "type" : "string"
+          },
+          "fixedInputs" : {
+            "type" : "string"
+          },
+          "id" : {
+            "type" : "string",
+            "enum" : [ "INITIAL", "REVISED" ]
+          },
+          "incomeDescription" : {
+            "type" : "string"
+          },
+          "incomeEvidence" : {
+            "$ref" : "#/components/schemas/EligibilityEvidence"
+          },
+          "incomeRequirement" : {
+            "type" : "string"
+          },
+          "label" : {
+            "type" : "string"
+          },
+          "policyId" : {
+            "type" : "string"
+          },
+          "policyRevision" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "employmentDescription", "employmentEvidence", "employmentRequirement", "fixedInputs", "id", "incomeDescription", "incomeEvidence", "incomeRequirement", "label", "policyId", "policyRevision" ]
+      },
+      "EligibilityQuestionsResponse" : {
+        "type" : "object",
+        "properties" : {
+          "dataKind" : {
+            "type" : "string",
+            "enum" : [ "SYNTHETIC" ]
+          },
+          "employmentChoices" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/TrialEmploymentChoice"
+            }
+          },
+          "incomeChoices" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/TrialIncomeChoice"
+            }
+          },
+          "questionSets" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/EligibilityQuestionSet"
+            }
+          }
+        },
+        "required" : [ "dataKind", "employmentChoices", "incomeChoices", "questionSets" ]
+      },
       "EligibilityRecruitment" : {
         "type" : "object",
         "description" : "자격 결과와 같은 인공 정책·개정·계산 시점을 사용한 별도 모집 상태",
@@ -276,6 +401,49 @@
           }
         },
         "required" : [ "basis", "conditions", "explanation", "policyReview", "status" ]
+      },
+      "EligibilityTrialRequest" : {
+        "type" : "object",
+        "properties" : {
+          "employmentChoice" : {
+            "type" : "string",
+            "enum" : [ "UNANSWERED", "APPLIES", "DOES_NOT_APPLY", "UNKNOWN" ]
+          },
+          "employmentQuestionSet" : {
+            "type" : "string",
+            "enum" : [ "INITIAL", "REVISED" ]
+          },
+          "incomeChoice" : {
+            "type" : "string",
+            "enum" : [ "UNANSWERED", "UNKNOWN", "ZERO", "UP_TO_20M", "BETWEEN_20M_30M", "BETWEEN_20M_25M", "OVER_25M" ]
+          },
+          "incomeQuestionSet" : {
+            "type" : "string",
+            "enum" : [ "INITIAL", "REVISED" ]
+          },
+          "questionSet" : {
+            "type" : "string",
+            "enum" : [ "INITIAL", "REVISED" ]
+          }
+        },
+        "required" : [ "employmentChoice", "employmentQuestionSet", "incomeChoice", "incomeQuestionSet", "questionSet" ]
+      },
+      "EligibilityTrialResponse" : {
+        "type" : "object",
+        "properties" : {
+          "dataKind" : {
+            "type" : "string",
+            "enum" : [ "SYNTHETIC" ]
+          },
+          "example" : {
+            "$ref" : "#/components/schemas/EligibilityExample"
+          },
+          "questionSet" : {
+            "type" : "string",
+            "enum" : [ "INITIAL", "REVISED" ]
+          }
+        },
+        "required" : [ "dataKind", "example", "questionSet" ]
       },
       "ReminderBasis" : {
         "type" : "object",
@@ -408,6 +576,44 @@
           }
         },
         "required" : [ "applicationPeriod", "basis", "dates", "deadlineOnSeoul", "explanation", "outcome", "recruitment" ]
+      },
+      "TrialEmploymentChoice" : {
+        "type" : "object",
+        "properties" : {
+          "label" : {
+            "type" : "string"
+          },
+          "value" : {
+            "type" : "string",
+            "enum" : [ "UNANSWERED", "APPLIES", "DOES_NOT_APPLY", "UNKNOWN" ]
+          }
+        },
+        "required" : [ "label", "value" ]
+      },
+      "TrialIncomeChoice" : {
+        "type" : "object",
+        "properties" : {
+          "label" : {
+            "type" : "string"
+          },
+          "value" : {
+            "type" : "string",
+            "enum" : [ "UNANSWERED", "UNKNOWN", "ZERO", "UP_TO_20M", "BETWEEN_20M_30M", "BETWEEN_20M_25M", "OVER_25M" ]
+          }
+        },
+        "required" : [ "label", "value" ]
+      },
+      "TrialInputError" : {
+        "type" : "object",
+        "properties" : {
+          "code" : {
+            "type" : "string"
+          },
+          "message" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "code", "message" ]
       }
     }
   }

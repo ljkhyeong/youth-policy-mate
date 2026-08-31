@@ -9,6 +9,7 @@ import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.context.ApplicationContext;
 import kr.youthpolicymate.devpreview.ReminderPreviewController;
 import kr.youthpolicymate.devpreview.EligibilityPreviewController;
+import kr.youthpolicymate.devpreview.EligibilityTrialController;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.test.web.servlet.MockMvc;
 import org.testcontainers.junit.jupiter.Container;
@@ -17,6 +18,7 @@ import org.testcontainers.postgresql.PostgreSQLContainer;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -56,7 +58,9 @@ class YouthPolicyMateApplicationTests {
     void deniesOtherPaths() throws Exception {
         assertThat(applicationContext.getBeansOfType(ReminderPreviewController.class)).isEmpty();
         assertThat(applicationContext.getBeansOfType(EligibilityPreviewController.class)).isEmpty();
-        for (String path : new String[]{"/actuator/env", "/api/dev/reminder-examples", "/api/dev/eligibility-examples", "/dev/openapi"}) {
+        assertThat(applicationContext.getBeansOfType(EligibilityTrialController.class)).isEmpty();
+        mockMvc.perform(post("/api/dev/eligibility-trial")).andExpect(status().isForbidden());
+        for (String path : new String[]{"/actuator/env", "/api/dev/reminder-examples", "/api/dev/eligibility-examples", "/api/dev/eligibility-trial", "/dev/openapi"}) {
             mockMvc.perform(get(path)).andExpect(status().isForbidden());
         }
     }

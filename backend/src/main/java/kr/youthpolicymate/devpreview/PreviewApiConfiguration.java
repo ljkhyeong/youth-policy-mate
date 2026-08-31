@@ -17,7 +17,7 @@ import org.springdoc.core.customizers.OpenApiCustomizer;
 @Profile("preview")
 @OpenAPIDefinition(
         info = @Info(title = "청년정책메이트 개발 전용 인공 자료 API", version = "preview-1",
-                description = "고정 인공 자료의 계산 결과 조회만 제공한다. 실제 정책·회원·예약·발송 API가 아니다."),
+                description = "인공 자료 조회와 정해진 예시 답변의 계산만 제공한다. 실제 정책·회원·저장·예약·발송 API가 아니다."),
         servers = @Server(url = "/"))
 class PreviewApiConfiguration {
 
@@ -34,9 +34,12 @@ class PreviewApiConfiguration {
     @Bean
     @Order(0)
     SecurityFilterChain previewApiSecurity(HttpSecurity http) throws Exception {
-        return http.securityMatcher("/api/dev/reminder-examples", "/api/dev/eligibility-examples", "/dev/openapi")
+        return http.securityMatcher("/api/dev/reminder-examples", "/api/dev/eligibility-examples", "/api/dev/eligibility-trial", "/dev/openapi")
+                // 저장·세션 변경이 없는 인공 계산 경로만 제외한다. 다른 경로의 CSRF 보호는 유지한다.
+                .csrf(csrf -> csrf.ignoringRequestMatchers("/api/dev/eligibility-trial"))
                 .authorizeHttpRequests(requests -> requests
-                        .requestMatchers(HttpMethod.GET, "/api/dev/reminder-examples", "/api/dev/eligibility-examples", "/dev/openapi").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/dev/reminder-examples", "/api/dev/eligibility-examples", "/api/dev/eligibility-trial", "/dev/openapi").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/dev/eligibility-trial").permitAll()
                         .anyRequest().denyAll())
                 .build();
     }

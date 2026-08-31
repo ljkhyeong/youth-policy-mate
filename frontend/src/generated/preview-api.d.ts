@@ -24,6 +24,27 @@ export interface paths {
         readonly patch?: never;
         readonly trace?: never;
     };
+    readonly "/api/dev/eligibility-trial": {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header?: never;
+            readonly path?: never;
+            readonly cookie?: never;
+        };
+        /** 인공 재판정 질문과 답변 선택지 조회 */
+        readonly get: operations["getDevelopmentEligibilityQuestions"];
+        readonly put?: never;
+        /**
+         * 인공 답변으로 자격 재판정
+         * @description 정해진 질문 버전·답변 코드만 받는다. 실제 개인정보·저장·외부 호출 없이 계산한다. 답변의 질문 버전이 다르면 기존 비교기가 재확인을 요구한다.
+         */
+        readonly post: operations["evaluateDevelopmentEligibilityAnswers"];
+        readonly delete?: never;
+        readonly options?: never;
+        readonly head?: never;
+        readonly patch?: never;
+        readonly trace?: never;
+    };
     readonly "/api/dev/reminder-examples": {
         readonly parameters: {
             readonly query?: never;
@@ -136,6 +157,27 @@ export interface components {
             readonly completion: "COMPLETE" | "INCOMPLETE";
             readonly pendingIssues: readonly components["schemas"]["EligibilityPendingIssue"][];
         };
+        readonly EligibilityQuestionSet: {
+            readonly employmentDescription: string;
+            readonly employmentEvidence: components["schemas"]["EligibilityEvidence"];
+            readonly employmentRequirement: string;
+            readonly fixedInputs: string;
+            /** @enum {string} */
+            readonly id: "INITIAL" | "REVISED";
+            readonly incomeDescription: string;
+            readonly incomeEvidence: components["schemas"]["EligibilityEvidence"];
+            readonly incomeRequirement: string;
+            readonly label: string;
+            readonly policyId: string;
+            readonly policyRevision: string;
+        };
+        readonly EligibilityQuestionsResponse: {
+            /** @enum {string} */
+            readonly dataKind: "SYNTHETIC";
+            readonly employmentChoices: readonly components["schemas"]["TrialEmploymentChoice"][];
+            readonly incomeChoices: readonly components["schemas"]["TrialIncomeChoice"][];
+            readonly questionSets: readonly components["schemas"]["EligibilityQuestionSet"][];
+        };
         /** @description 자격 결과와 같은 인공 정책·개정·계산 시점을 사용한 별도 모집 상태 */
         readonly EligibilityRecruitment: {
             readonly explanation: string;
@@ -149,6 +191,25 @@ export interface components {
             readonly policyReview: components["schemas"]["EligibilityPolicyReview"];
             /** @enum {string} */
             readonly status: "ELIGIBLE" | "NEEDS_REVIEW" | "INELIGIBLE";
+        };
+        readonly EligibilityTrialRequest: {
+            /** @enum {string} */
+            readonly employmentChoice: "UNANSWERED" | "APPLIES" | "DOES_NOT_APPLY" | "UNKNOWN";
+            /** @enum {string} */
+            readonly employmentQuestionSet: "INITIAL" | "REVISED";
+            /** @enum {string} */
+            readonly incomeChoice: "UNANSWERED" | "UNKNOWN" | "ZERO" | "UP_TO_20M" | "BETWEEN_20M_30M" | "BETWEEN_20M_25M" | "OVER_25M";
+            /** @enum {string} */
+            readonly incomeQuestionSet: "INITIAL" | "REVISED";
+            /** @enum {string} */
+            readonly questionSet: "INITIAL" | "REVISED";
+        };
+        readonly EligibilityTrialResponse: {
+            /** @enum {string} */
+            readonly dataKind: "SYNTHETIC";
+            readonly example: components["schemas"]["EligibilityExample"];
+            /** @enum {string} */
+            readonly questionSet: "INITIAL" | "REVISED";
         };
         readonly ReminderBasis: {
             /**
@@ -212,6 +273,20 @@ export interface components {
             readonly outcome: "CANDIDATES_AVAILABLE" | "NO_CONFIRMED_DEADLINE" | "RECRUITMENT_CLOSED" | "NO_REMAINING_DATES";
             readonly recruitment: components["schemas"]["ReminderRecruitment"];
         };
+        readonly TrialEmploymentChoice: {
+            readonly label: string;
+            /** @enum {string} */
+            readonly value: "UNANSWERED" | "APPLIES" | "DOES_NOT_APPLY" | "UNKNOWN";
+        };
+        readonly TrialIncomeChoice: {
+            readonly label: string;
+            /** @enum {string} */
+            readonly value: "UNANSWERED" | "UNKNOWN" | "ZERO" | "UP_TO_20M" | "BETWEEN_20M_30M" | "BETWEEN_20M_25M" | "OVER_25M";
+        };
+        readonly TrialInputError: {
+            readonly code: string;
+            readonly message: string;
+        };
     };
     responses: never;
     parameters: never;
@@ -245,6 +320,59 @@ export interface operations {
                     readonly [name: string]: unknown;
                 };
                 content?: never;
+            };
+        };
+    };
+    readonly getDevelopmentEligibilityQuestions: {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header?: never;
+            readonly path?: never;
+            readonly cookie?: never;
+        };
+        readonly requestBody?: never;
+        readonly responses: {
+            /** @description OK */
+            readonly 200: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["EligibilityQuestionsResponse"];
+                };
+            };
+        };
+    };
+    readonly evaluateDevelopmentEligibilityAnswers: {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header?: never;
+            readonly path?: never;
+            readonly cookie?: never;
+        };
+        readonly requestBody: {
+            readonly content: {
+                readonly "application/json": components["schemas"]["EligibilityTrialRequest"];
+            };
+        };
+        readonly responses: {
+            /** @description 인공 답변의 계산 결과 */
+            readonly 200: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["EligibilityTrialResponse"];
+                };
+            };
+            /** @description 필수 값 누락 또는 지원하지 않는 답변 코드 */
+            readonly 400: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["TrialInputError"];
+                };
             };
         };
     };

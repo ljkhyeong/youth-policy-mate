@@ -22,7 +22,9 @@
 
 앞선 마감 API 작업에서는 `preview` 프로필 전용 마감 계산 조회 API와 `/dev/reminders/server`를 연결했다. DB·인증키 없이 고정 인공 신청기간을 기존 서버 모델로 계산한다. DTO 기반 OpenAPI 3.1·생성 TypeScript와 계약 일치 검사를 추가했고 기본 서버의 개발 API 차단을 확인했다. 서버 전체 172건·웹 39건, 생성 타입 검사·린트·타입 검사·빌드가 통과했다. 브라우저에서 서버 중지 오류 → 기동 후 다시 불러오기 복구를 확인했고, 스트리밍 전에 운영 모드를 차단해 실제 404를 확인했다.
 
-이번에는 같은 `preview` 서버에 자격 예시 조회 API와 `/dev/eligibility/server`를 연결했다. 연령·거주·취업·소득 인공 규칙과 답변을 기존 비교기·집계 모델로 계산하고 전체 상태·항목별 근거·미확인 이유·개정·날짜를 생성 계약으로 전달한다. 모집 상태는 별도 계산한다. null enum 명세를 보완했고 서버 전체 175건·웹 45건, 생성 계약·린트·타입 검사·빌드가 통과했다. 서버 중지 후 복구, 네 예시·근거·반응형·운영 404를 확인했다. 키보드 전용 흐름은 도구의 Enter 입력 한계로 미확인이다. 실제 조건 입력·정책·회원·저장·예약·발송은 연결하지 않았다.
+앞선 자격 API 작업에서는 같은 `preview` 서버에 자격 예시 조회 API와 `/dev/eligibility/server`를 연결했다. 연령·거주·취업·소득 인공 규칙과 답변을 기존 비교기·집계 모델로 계산하고 전체 상태·항목별 근거·미확인 이유·개정·날짜를 생성 계약으로 전달한다. 모집 상태는 별도 계산한다. null enum 명세를 보완했고 서버 전체 175건·웹 45건, 생성 계약·린트·타입 검사·빌드가 통과했다. 서버 중지 후 복구, 네 예시·근거·반응형·운영 404를 확인했다. 실제 조건 입력·정책·회원·저장·예약·발송은 연결하지 않았다.
+
+이번에는 `/dev/eligibility/interactive`에 인공 취업·소득 답변 변경과 서버 재판정을 연결했다. 질문 GET·계산 POST는 `preview`에만 있고 자유 입력·회원 세션·저장은 없다. 답변 당시 질문의 개정·정의·기준일·소득 기간으로 기존 비교기를 호출하며 오래된 답변은 재사용하지 않는다. 화면은 답변 변경 시 결과를 지우고 늦은 응답을 무시하며, 질문 버전을 바꾸면 답변도 초기화한다. 서버 180건·웹 53건과 생성 계약·린트·타입 검사·빌드, 실패 후 재시도·운영 404를 확인했다. 자세한 범위는 [인공 답변 재판정](docs/development/eligibility-answer-trial.md)을 따른다.
 
 2026-08-30에 온통청년의 현재 API 명세, 코드 정의서와 공개 정책 사례 2건을 조사했다. 사용자는 인증키를 신청했고 승인 대기 중이다. 인증키를 사용한 성공 응답은 아직 확인하지 못했다. 키 없는 요청의 HTTP 400 HTML 응답을 정상 정책 응답으로 취급하지 않는다.
 
@@ -30,16 +32,17 @@
 
 - `frontend/`: Next.js App Router·React·TypeScript·Tailwind. 시작 화면과 비회원 조건 입력 흐름을 제공하며 정책 API를 호출하지 않는다. 이 화면은 백엔드·DB·인증키 없이 `npm run dev:web`으로 실행한다.
 - `frontend/src/features/conditions/`: 화면 입력 모델·입력 검사·입력/확인 폼. 취업상태 값은 화면 내부 선택지이며 외부 API 코드나 확정 DTO가 아니다.
-- `npm run test:web`: Vitest 테스트 45개. 기존 표시 32개와 마감 API 연결 7개·자격 API 연결 6개다. 이번 작업에서 테스트·생성 타입 검사·린트·타입 검사·프로덕션 빌드를 통과했다.
+- `npm run test:web`: Vitest 테스트 53개. 기존 표시 32개와 마감 API 연결 7개·자격 API 연결 6개·인공 답변 재판정 8개다. 이번 작업에서 테스트·생성 타입 검사·린트·타입 검사·프로덕션 빌드를 통과했다.
 - `frontend/src/components/page-state.tsx`: 공통 로딩·빈 결과·오류·404 표시. `/conditions`의 로딩, 공통 오류·없는 주소 안내에 연결했다. `/dev/states`는 개발 미리보기이며 운영 빌드에서 HTTP 404를 반환한다. 실제 정책 검색·API 실패 복구 검증은 아니다.
 - `frontend/src/app/dev/employment/`: 취업 사실의 정의·기준일·근거와 세 가지 답변을 점검하는 개발 전용 화면. 확인·수정·삭제, 예시 개정 변경 시 초기화를 제공한다. 운영 빌드의 404, 데스크톱·모바일과 답변 흐름을 확인했다. 서버 전송·저장·실제 판정은 없고 브라우저 방향키가 반영되지 않아 키보드 전용 전체 흐름은 미확인이다.
 - `frontend/src/app/dev/income/`: 소득 구간과 모름을 선택하는 개발 전용 화면. 본인·대상 기간·원화 단위·소득 정의와 경계 포함 여부를 표시하며 구간 추가 확인 예시는 현재 답변과 분리했다. 운영 404, 0원·모름·좁은 구간 확인, 수정·삭제·기간 변경·새로고침 초기화와 반응형을 점검했다. 브라우저 방향키 입력이 반영되지 않아 키보드 전용 전체 흐름은 미확인이다.
 - `frontend/src/features/eligibility/`·`frontend/src/app/dev/eligibility/`: 전체 상태를 그대로 표시하는 결과·근거 컴포넌트와 인공 예시. `server/`는 생성 응답 타입을 표시 모델로 변환하고 실패를 판정 결과로 대체하지 않는다. 네 예시·근거·서버 중지 후 복구·반응형·운영 404를 확인했다. 기본 `summary`의 Enter 동작은 도구 입력 한계로 미확인이다. [자격 서버 연결 기록](docs/development/eligibility-preview-api.md)을 따른다.
+- `frontend/src/app/dev/eligibility/interactive/`: 인공 질문 버전·정해진 답변 코드만 Server Action으로 전달한다. 서버 판정 결과를 재계산하지 않으며 답변 변경·초기화·질문 버전 변경 후 이전 결과와 늦은 응답을 사용하지 않는다. 실제 개인정보는 받지 않는다.
 - `frontend/src/features/reminders/`·`frontend/src/app/dev/reminders/`: 읽기 전용 표시 컴포넌트와 고정 예시. `server/` 경로는 Next.js 서버에서 개발 API를 캐시 없이 조회하고 생성 타입을 표시 모델로 바꾼다. 오류를 후보 없음으로 대체하지 않는다. 운영 404·반응형·연결 복구를 확인했고 실제 예약은 없다. [서버 연결 기록](docs/development/reminder-preview-api.md)에 검증 범위를 정리했다.
 - `backend/`: Java 25·Spring Boot·Spring MVC·JPA·Flyway·Spring Modulith core. 기본 모드는 GET `/actuator/health`만 허용하고 기본 로그인 계정을 생성하지 않는다.
-- `backend/src/main/java/kr/youthpolicymate/devpreview/`: `preview`에서만 GET `/api/dev/reminder-examples`·`/api/dev/eligibility-examples`·`/dev/openapi`를 추가 허용한다. `npm run dev:preview-api`로 루프백 8081에서 실행하며 DB는 사용하지 않는다. 기본 모드의 두 컨트롤러 미등록·403 차단을 실제 DB 통합 검사와 함께 확인했다.
+- `backend/src/main/java/kr/youthpolicymate/devpreview/`: `preview`에서만 두 고정 예시 API·명세의 GET과 `/api/dev/eligibility-trial`의 질문 GET·인공 계산 POST를 추가 허용한다. 이 계산 경로만 CSRF 검사에서 제외하며 다른 경로·메서드 차단은 유지한다. `npm run dev:preview-api`로 루프백 8081에서 실행하며 DB는 사용하지 않는다. 기본 모드의 세 컨트롤러 미등록·403 차단을 실제 DB 통합 검사와 함께 확인했다.
 - `npm run generate:api`: 실제 서버 OpenAPI 응답을 `api/openapi.preview.json`에 내보내고 `frontend/src/generated/preview-api.d.ts`를 생성한다. `npm run check:api-types`와 서버 계약 테스트로 일치를 검사한다. 생성 파일은 직접 수정하지 않는다.
-- `npm run test:preview-api`: 마감 API 4개·자격 API 3개·공통 명세 1개, 총 8개. 이번 전체 서버 빌드에서 기존 도메인 165개와 실제 DB·기본 차단 2개도 함께 실행해 총 175개가 통과했다.
+- `npm run test:preview-api`: 마감 API 4개·자격 API 3개·인공 답변 재판정 5개·공통 명세 1개, 총 13개. 이번 전체 서버 빌드에서 기존 도메인 165개와 실제 DB·기본 차단 2개도 함께 실행해 총 180개가 통과했다.
 - `backend/src/main/java/kr/youthpolicymate/policy/`: 확인된 날짜·시각 기간의 모집 상태와 근거를 제공한다. `Clock`을 한 번 읽고 서울 날짜를 계산하며 개발 API에만 연결했다. 복수·혼합·충돌 기간의 원문 해석, 최신 개정 적용, 실제 정책·예약·발송 연결은 아직 없다.
 - `RecruitmentSchedule.confirmedDeadlineOnSeoul()`: 확인된 마감의 서울 날짜를 제공한다. 날짜형은 날짜 그대로, 시각형은 마감 순간의 서울 날짜를 제공하며 원본 기간을 지우지 않는다.
 - `backend/src/main/java/kr/youthpolicymate/schedule/DeadlineReminderCandidates`: 기존 모집 상태와 시계 기준을 사용해 후보 날짜를 계산한다. 지난 날짜는 제외, 오늘 후보는 발송 시각 확인 필요로 표시한다. 빈 목록은 마감일 미확인·모집 마감·남은 후보 없음으로 구분하며 실제 예약 객체가 아니다.
@@ -48,7 +51,7 @@
 - 같은 패키지의 `ResidenceCondition`·`ResidenceConditionEvaluator`·`SeoulResidence`·`SeoulDistrict`: 확인한 전국·서울 전체·자치구 거주 범위와 서울 거주 입력을 비교한다. 정책 기준일과 거주 입력의 기준일이 다르면 해당 날짜의 사용자 정보 부족으로 보류한다. 원천 지역 코드 매핑·거주 기간·직장 소재지 예외는 아직 없으며 [거주 조건 비교](docs/development/residence-condition.md)를 따른다.
 - 같은 패키지의 `EmploymentFact`·`EmploymentAnswer`·`EmploymentCondition`·`EmploymentConditionEvaluator`: 확인한 단일 취업 사실과 해당·비해당·모름 답변을 비교한다. 취업 제한 없음은 해당 항목만 충족시키며, 미해석 조건은 답변으로 덮지 않는다. [단일 취업 조건 비교](docs/development/employment-condition.md)에 답변 재사용 범위와 미지원 조건을 정리했다.
 - 같은 패키지의 `IncomeBasis`·`IncomeRange`·`IncomeAnswer`·`IncomeCondition`·`IncomeConditionEvaluator`: 소득 구간의 포함 경계, 명시적인 한쪽 제한 없음, 모름·누락·기준 불일치를 구분한다. 내부 단위는 원으로 고정하며 원천 단위 확인·변환은 호출 측의 별도 책임이다. [소득 구간 비교](docs/development/income-condition.md)에 구현 범위와 미지원 산정을 정리했다.
-- `npm run test:eligibility`: 소득 47건·취업 21건·거주 17건·연령 18건·집계 14건, 총 117건. 이번 후보 날짜 작업에서 모집 31건·후보 17건과 함께 총 165건 및 서버 `assemble`을 실행해 모두 통과했다. API 인증키·DB·Docker가 필요하지 않다. 앞선 CI 구성 작업에서 통과한 PostgreSQL 통합 2건은 이번에 다시 실행하지 않았다.
+- `npm run test:eligibility`: 소득 47건·취업 21건·거주 17건·연령 18건·집계 14건, 총 117건. 이 명령은 API 인증키·DB·Docker 없이 실행한다. 이번에는 서버 전체 빌드에서 다른 도메인·개발 API·실제 DB 테스트와 함께 다시 확인했다.
 - `npm run test:recruitment`: 모집 상태 23건·마감 날짜 제공 8건, 총 31건. 서울 자정·시각 경계, 미확인 이유·근거·개정·원본 기간 보존과 서울 마감 날짜 제공을 확인한다. 실행·설계 범위는 [모집 기간 구현](docs/development/recruitment-period.md)을 따른다.
 - `npm run test:reminders`: 후보 날짜 17건. D-7·D-3·D-1의 달력 날짜, 미래·오늘·지난 날짜, 빈 후보 사유와 개정 변경 후 계산을 확인한다. [후보 날짜 구현](docs/development/deadline-reminder-candidates.md)에 미구현 예약·발송 범위를 함께 정리했다.
 - `compose.yaml`: 프로젝트 전용 PostgreSQL 18.6. 호스트 연결은 `127.0.0.1:55432`로 제한한다.
@@ -89,11 +92,12 @@
 - 날짜·시간대·오늘 후보와 빈 후보 안내: [마감·알림 후보 미리보기](docs/development/deadline-reminder-preview.md)
 - 서버 계산·생성 계약·실패 복구 연결: [개발 전용 마감 API](docs/development/reminder-preview-api.md)
 - 자격 계산·조건 근거·미확인 원인 전송: [개발 전용 자격 API](docs/development/eligibility-preview-api.md)
+- 인공 답변 변경·질문 버전·늦은 응답 처리: [인공 답변 재판정](docs/development/eligibility-answer-trial.md)
 
 ### 인증키 없이 이어갈 작업
 
-- 다음은 고정 인공 정책의 취업 질문·소득 구간 답변을 개발 전용 계산 요청과 연결한다. 실제 개인정보 대신 정해진 예시 답변만 보내고 정책 개정·정의·기준일 변경 시 이전 답변을 재사용하지 않는 흐름부터 확인한다. 기존 `/conditions` 입력·실제 정책·회원 저장·예약·발송은 별도이며 원천 파서는 성공 응답 확보 후 작성한다.
-- 서버 연결의 실제 오류 후 다시 불러오기 복구는 확인했다. 키보드 전용 전체 흐름은 도구의 Tab·Enter 입력이 반영되지 않아 미확인이다.
+- 인공 취업·소득 답변의 서버 재판정 연결을 완료했다. 다음 진입점은 [정책 수집·판정 데이터 구조 초안](docs/design/policy-data-model.md)을 기준으로 원본 스냅샷 저장·중복 수집·개정 변경의 최소 구현 범위를 정하는 것이다. 원천 DTO·필드 매핑·파서는 성공 응답 확보 전 확정하지 않는다. 실제 조건 전송·회원 저장·예약·발송도 별도다.
+- 질문 조회와 재판정 실패 후 재시도 복구를 확인했다. 키보드 전용 전체 흐름은 도구의 Tab·Enter 입력이 반영되지 않아 미확인이다.
 - CI를 원격에 푸시할 때 첫 GitHub 실행과 캐시·테스트 보고서를 확인한다. 이번 작업에서 푸시나 브랜치 보호 변경은 하지 않았다.
 
 ### 인증키 발급 후 이어갈 수집 작업

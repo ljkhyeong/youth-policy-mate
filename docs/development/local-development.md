@@ -70,13 +70,15 @@ DB 없이 서버 계산 결과를 확인하려면 위 DB 연결 서버 대신 `n
 | 마감·알림 후보 · 개발 전용 | <http://127.0.0.1:3000/dev/reminders> |
 | 마감 후보 서버 연결 · 개발 전용 | <http://127.0.0.1:3000/dev/reminders/server> |
 | 자격 판정 서버 연결 · 개발 전용 | <http://127.0.0.1:3000/dev/eligibility/server> |
+| 인공 답변 재판정 · 개발 전용 | <http://127.0.0.1:3000/dev/eligibility/interactive> |
 | 인공 마감 계산 API · preview 전용 | <http://127.0.0.1:8081/api/dev/reminder-examples> |
 | 인공 자격 계산 API · preview 전용 | <http://127.0.0.1:8081/api/dev/eligibility-examples> |
+| 인공 질문 GET·재판정 POST · preview 전용 | <http://127.0.0.1:8081/api/dev/eligibility-trial> |
 | 생성 OpenAPI · preview 전용 | <http://127.0.0.1:8081/dev/openapi> |
 | 서버 상태 | <http://127.0.0.1:8080/actuator/health> |
 | PostgreSQL | `127.0.0.1:55432` |
 
-웹과 로컬·preview 프로필의 서버·DB는 루프백 주소에만 연결한다. 다른 기기에 공개하거나 운영에 배포하기 위한 설정이 아니다. 기본 서버는 GET `/actuator/health`만 허용하고 preview는 두 인공 계산 API와 명세의 GET을 추가 허용한다. 상태 응답에 DB 연결 문자열이나 상세 정보를 노출하지 않는다. 소셜 로그인·실제 정책·회원 업무 API 연동은 아직 없다.
+웹과 로컬·preview 프로필의 서버·DB는 루프백 주소에만 연결한다. 다른 기기에 공개하거나 운영에 배포하기 위한 설정이 아니다. 기본 서버는 GET `/actuator/health`만 허용한다. preview는 두 고정 예시 API·명세의 GET, `/api/dev/eligibility-trial`의 질문 GET·인공 계산 POST를 추가 허용한다. 상태 응답에 DB 연결 문자열이나 상세 정보를 노출하지 않는다. 소셜 로그인·실제 정책·회원 업무 API 연동은 아직 없다.
 
 ### DB 설정 변경
 
@@ -131,14 +133,14 @@ npm audit
 
 `check:tools`는 응답 점검 도구의 인공 응답 테스트 7개를 실행한다. API 인증키·Docker·네트워크가 필요하지 않으며 실제 API 계약을 검증하지 않는다.
 
-`test:web`은 기존 조건·상태·질문·결과 표시 32개와 마감 API 연결 7개·자격 API 연결 6개, 총 45개를 실행한다. 날짜·기준·상태·근거 보존, 오류 원문 비노출, 조회 실패 시 결과 미제공과 운영 모드 호출 차단을 포함한다. API 인증키·Docker·네트워크가 필요하지 않다.
+`test:web`은 기존 조건·상태·질문·결과 표시 32개, 마감 API 연결 7개·자격 API 연결 6개·인공 답변 재판정 8개, 총 53개를 실행한다. 날짜·기준·상태·근거 보존, 오류 원문 비노출, 실패 시 결과 미제공, 늦은 응답 무시와 운영 모드 호출 차단을 포함한다. API 인증키·Docker·네트워크가 필요하지 않다.
 
-`test:preview-api`는 마감 API 4건·자격 API 3건·공통 계약 1건, 총 8건을 실행하며 DB·Docker가 필요하지 않다. `npm run generate:api`는 실제 생성 OpenAPI와 TypeScript를 갱신하고 `check:api-types`는 타입의 최신 여부만 확인한다. 재생성 절차는 [개발 API 안내](reminder-preview-api.md#계약-생성과-검사)를 따른다.
+`test:preview-api`는 마감 API 4건·자격 API 3건·인공 답변 재판정 5건·공통 계약 1건, 총 13건을 실행하며 DB·Docker가 필요하지 않다. `npm run generate:api`는 실제 생성 OpenAPI와 TypeScript를 갱신하고 `check:api-types`는 타입의 최신 여부만 확인한다. 재생성 절차는 [개발 API 안내](reminder-preview-api.md#계약-생성과-검사)를 따른다.
 
 현재 백엔드 통합 테스트는 다음 2개다.
 
 1. 실제 PostgreSQL 조회와 상태 응답 `UP`, 상세 정보 비노출.
-2. 상태 확인 외 경로인 `/actuator/env`의 접근 차단.
+2. 상태 확인 외 경로와 개발 API의 접근 차단, 기본 모드에서 개발 컨트롤러 미등록.
 
 기동 후 수동 상태 확인:
 
@@ -182,6 +184,8 @@ CI 구성 후에는 macOS arm64의 별도 임시 복사본에서 Node.js 24.20.0
 같은 날 개발 API 연결 후에는 서버 172건(도메인 165·API 5·실제 DB/기본 차단 2)과 전체 빌드, 웹 39건·생성 타입 검사·린트·타입 검사·빌드를 통과했다. 서버 미기동 오류에서 기동 후 다시 불러오기로 복구했고, 개발 200·운영 404와 반응형을 확인했다. 운영 모드에서 로딩 스트리밍 전에 차단하도록 레이아웃을 두었다. [API 연결 검증 기록](reminder-preview-api.md#검증-결과와-한계)에 범위와 한계를 정리했다.
 
 자격 API 연결 후에는 서버 175건(도메인 165·API/계약 8·실제 DB/기본 차단 2)과 전체 빌드, 웹 45건·생성 타입 검사·린트·타입 검사·빌드를 통과했다. null 허용 enum의 실제 명세도 검사하며 서버 중지 후 복구·개발 200·운영 404를 확인했다. [자격 서버 연결 기록](eligibility-preview-api.md)에 미확인 키보드 흐름과 실제 정책 연결 범위를 정리했다.
+
+인공 답변 재판정 연결 후에는 서버 180건(도메인 165·API/계약 13·실제 DB/기본 차단 2)과 전체 빌드, 웹 53건·생성 계약·린트·타입 검사·빌드를 통과했다. 인공 코드만 전송하고 이전 질문 답변은 재사용하지 않는다. 답변 변경·실패·재시도·운영 404와 미확인 범위는 [재판정 검증 기록](eligibility-answer-trial.md#검증)을 따른다.
 
 ### 알려진 경고와 다음 확인 사항
 

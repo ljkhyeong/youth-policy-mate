@@ -32,7 +32,7 @@ DB·Docker·인증키는 필요하지 않다. Java 도구체인과 의존성은 
 | 연령 불충족·예외 미확인·취업 정의 미해석 | `NEEDS_REVIEW` | `OPEN` |
 | 명확한 연령 불충족·소득 답변 누락 | `INELIGIBLE` | `OPEN` |
 
-모집 상태는 같은 인공 정책·개정·계산 시점으로 `RecruitmentAssessment`에서 별도로 계산한다. 예시의 취업 조건은 제한 없음 또는 미해석만 사용한다. 명시적 취업 답변의 화면 전송·재판정 연결은 아직 없다.
+모집 상태는 같은 인공 정책·개정·계산 시점으로 `RecruitmentAssessment`에서 별도로 계산한다. 이 고정 예시의 취업 조건은 제한 없음 또는 미해석만 사용한다. 명시적 인공 취업·소득 답변의 전송은 별도 [답변 재판정 화면](eligibility-answer-trial.md)에 연결했다.
 
 - `operationId`: `listDevelopmentEligibilityExamples`
 - 요청 본문·사용자 조건·인증키 없음. 응답은 200 JSON, `Cache-Control: no-store`.
@@ -40,7 +40,7 @@ DB·Docker·인증키는 필요하지 않다. Java 도구체인과 의존성은 
 - `EligibilityResultResponse`: 전체 상태·설명, 정책 ID·개정·규칙 버전·판정 시점, 검토 상태·미확인 이슈, 항목별 결과·근거.
 - `comparedValue`, `referenceDate`, `uncertainty`, `excerpt`는 항상 제공하며 값이 없으면 명시적인 null이다. null을 0원·오늘 날짜·입력 누락으로 바꾸지 않는다.
 - `UNKNOWN` 항목만 미확인 원인을 가진다. `MET`·`NOT_MET`의 원인은 null이다. 날짜는 `date`, 판정 시점은 `date-time`으로 구분한다.
-- 기본 서버에서는 컨트롤러가 등록되지 않고 접근은 403이다. `preview`도 두 예시 API와 명세의 GET만 추가 허용하며 쓰기를 차단한다.
+- 기본 서버에서는 컨트롤러가 등록되지 않고 접근은 403이다. `preview`의 두 고정 예시 API와 명세는 GET만 허용한다. 별도 `/api/dev/eligibility-trial`은 인공 질문 GET과 저장 없는 계산 POST만 허용한다.
 
 OpenAPI 3.1의 null 허용 enum은 타입과 enum 값 목록 양쪽에 실제 null이 있어야 한다. 현재 도구는 타입에만 null을 생성하므로 `PreviewApiConfiguration`의 명세 보정에서 해당 enum에 null을 추가한다. 생성 파일을 직접 수정하지 않으며 공통 `PreviewApiContractTest`가 이를 검사한다.
 
@@ -79,4 +79,4 @@ npm run build:web
 
 ## 다음 작업
 
-인증키 전에는 고정 인공 정책의 취업 질문·소득 구간 답변을 개발 전용 계산 요청과 연결할 수 있다. 실제 개인정보 대신 정해진 예시 답변만 보내고 정책 개정·정의·기준일 변경 시 이전 답변을 재사용하지 않는 흐름부터 확인한다. 실제 정책·원천 파서는 인증된 성공 응답 확보 후 연결한다.
+고정 인공 정책의 취업 질문·소득 구간 답변 연결은 [인공 답변 재판정](eligibility-answer-trial.md)에서 구현했다. 실제 개인정보·정책·원천 파서 연결은 별도이며 인증된 성공 응답을 확보한 후 원천 계약을 확정한다.

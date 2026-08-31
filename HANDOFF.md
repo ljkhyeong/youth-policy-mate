@@ -26,7 +26,9 @@
 
 앞선 재판정 연결에서는 `/dev/eligibility/interactive`에 인공 취업·소득 답변 변경과 서버 재판정을 연결했다. 질문 GET·계산 POST는 `preview`에만 있고 자유 입력·회원 세션·저장은 없다. 답변 당시 질문의 개정·정의·기준일·소득 기간으로 기존 비교기를 호출하며 오래된 답변은 재사용하지 않는다. 화면은 답변 변경 시 결과를 지우고 늦은 응답을 무시하며, 질문 버전을 바꾸면 답변도 초기화한다. 서버 180건·웹 53건과 생성 계약·린트·타입 검사·빌드, 실패 후 재시도·운영 404를 확인했다. 자세한 범위는 [인공 답변 재판정](docs/development/eligibility-answer-trial.md)을 따른다.
 
-이번에는 [원본 확인·개정 적용 경계](docs/design/policy-revision-application.md)를 설계하고 순수 Java의 `PolicyObservation`·`PolicyRevisionState`를 구현했다. 원본 참조와 비교 내용을 분리하고 같은 내용·재처리·낮은 순번·충돌·실패·비교 방식 변경을 구분한다. 내부 개정을 만든 근거와 최근 정상 확인 기록을 따로 유지한다. 전용 개정 11건·기존 모집 31건 검사와 전체 서버 191건·빌드가 통과했다. 화면·API 계약·DB 스키마는 변경하지 않았다. 실제 원본 취득·저장·순번 발급·DB 동시성 제어는 없으며 [검증 범위](docs/development/policy-revision-application.md)에 남은 작업을 정리했다.
+앞선 개정 작업에서는 [원본 확인·개정 적용 경계](docs/design/policy-revision-application.md)를 설계하고 순수 Java의 `PolicyObservation`·`PolicyRevisionState`를 구현했다. 원본 참조와 비교 내용을 분리하고 같은 내용·재처리·낮은 순번·충돌·실패·비교 방식 변경을 구분한다. 내부 개정을 만든 근거와 최근 정상 확인 기록을 따로 유지한다. 전용 개정 11건·기존 모집 31건 검사와 전체 서버 191건·빌드가 통과했다. 화면·API 계약·DB 스키마는 변경하지 않았다. 실제 원본 취득·저장·순번 발급·DB 동시성 제어는 없으며 [검증 범위](docs/development/policy-revision-application.md)에 남은 작업을 정리했다.
+
+이번에는 별도 `ingestion` 패키지에 [수집 실행 진행 모델](docs/development/collection-run-progress.md)을 추가했다. 페이지·항목별 시도·실패·중단을 보존하고 시작 전·실패·중단 위치만 재처리 대상으로 반환한다. 성공 페이지의 원본·항목 목록을 유지하며 명시적 종료, 검토 필요, 늦은 시도 결과·재전달·충돌을 구분한다. 전용 12건과 전체 서버 203건·빌드가 통과했다. 첫 전체 검사에서 임시 PostgreSQL 연결 오류로 통합 2건이 실패했으나 설정 변경 없는 재실행은 모두 통과했다. 화면·API 계약·DB 스키마는 바꾸지 않았다. 메모리 상태만 다루며 실제 수집·원본 저장·DB 재시작 복구·Spring Batch 실행은 아직 없다.
 
 2026-08-30에 온통청년의 현재 API 명세, 코드 정의서와 공개 정책 사례 2건을 조사했다. 사용자는 인증키를 신청했고 승인 대기 중이다. 인증키를 사용한 성공 응답은 아직 확인하지 못했다. 키 없는 요청의 HTTP 400 HTML 응답을 정상 정책 응답으로 취급하지 않는다.
 
@@ -44,9 +46,10 @@
 - `backend/`: Java 25·Spring Boot·Spring MVC·JPA·Flyway·Spring Modulith core. 기본 모드는 GET `/actuator/health`만 허용하고 기본 로그인 계정을 생성하지 않는다.
 - `backend/src/main/java/kr/youthpolicymate/devpreview/`: `preview`에서만 두 고정 예시 API·명세의 GET과 `/api/dev/eligibility-trial`의 질문 GET·인공 계산 POST를 추가 허용한다. 이 계산 경로만 CSRF 검사에서 제외하며 다른 경로·메서드 차단은 유지한다. `npm run dev:preview-api`로 루프백 8081에서 실행하며 DB는 사용하지 않는다. 기본 모드의 세 컨트롤러 미등록·403 차단을 실제 DB 통합 검사와 함께 확인했다.
 - `npm run generate:api`: 실제 서버 OpenAPI 응답을 `api/openapi.preview.json`에 내보내고 `frontend/src/generated/preview-api.d.ts`를 생성한다. `npm run check:api-types`와 서버 계약 테스트로 일치를 검사한다. 생성 파일은 직접 수정하지 않는다.
-- `npm run test:preview-api`: 마감 API 4개·자격 API 3개·인공 답변 재판정 5개·공통 명세 1개, 총 13개. 이번 전체 서버 빌드에서 도메인 176개와 실제 DB·기본 차단 2개도 함께 실행해 총 191개가 통과했다.
+- `npm run test:preview-api`: 마감 API 4개·자격 API 3개·인공 답변 재판정 5개·공통 명세 1개, 총 13개. 이번 전체 서버 빌드에서 도메인 188개와 실제 DB·기본 차단 2개도 함께 실행해 총 203개가 통과했다.
 - `backend/src/main/java/kr/youthpolicymate/policy/`: 확인된 날짜·시각 기간의 모집 상태와 근거를 제공한다. `Clock`을 한 번 읽고 서울 날짜를 계산하며 개발 API에만 연결했다. 복수·혼합·충돌 기간의 원문 해석, 실제 정책·저장·예약·발송 연결은 아직 없다.
 - 같은 패키지의 `PolicyObservation`·`PolicyRevisionState`: 원본 참조·비교 방식 버전/내용 해시·내부 순번으로 적용 여부와 다음 상태를 계산한다. 수집 실패에도 기존 정상 개정·확인 시각을 보존한다. API·모집·자격·DB에 연결하지 않은 독립적인 순수 모델이다.
+- `backend/src/main/java/kr/youthpolicymate/ingestion/`: `CollectionPosition`·`CollectionAttempt`·`CollectionRun`이 페이지·항목별 진행·시도 이력·재처리 위치를 계산한다. 정책 모듈의 원본 참조 값만 사용하며 개정 적용을 호출하지 않는다. 외부 요청·DB·스케줄러와 연결하지 않았다.
 - `RecruitmentSchedule.confirmedDeadlineOnSeoul()`: 확인된 마감의 서울 날짜를 제공한다. 날짜형은 날짜 그대로, 시각형은 마감 순간의 서울 날짜를 제공하며 원본 기간을 지우지 않는다.
 - `backend/src/main/java/kr/youthpolicymate/schedule/DeadlineReminderCandidates`: 기존 모집 상태와 시계 기준을 사용해 후보 날짜를 계산한다. 지난 날짜는 제외, 오늘 후보는 발송 시각 확인 필요로 표시한다. 빈 목록은 마감일 미확인·모집 마감·남은 후보 없음으로 구분하며 실제 예약 객체가 아니다.
 - `backend/src/main/java/kr/youthpolicymate/eligibility/`: 순수 Java 판정 결과·근거 모델. 정책 검토 미완료·조건 미해석을 먼저 보류하고 명확한 불충족·사용자 정보 누락·전체 충족을 구분한다. 개발용 인공 자료 API·화면에만 연결했고 원문 해석·실제 입력 연결은 없다.
@@ -57,6 +60,7 @@
 - `npm run test:eligibility`: 소득 47건·취업 21건·거주 17건·연령 18건·집계 14건, 총 117건. 이 명령은 API 인증키·DB·Docker 없이 실행한다. 이번에는 서버 전체 빌드에서 다른 도메인·개발 API·실제 DB 테스트와 함께 다시 확인했다.
 - `npm run test:recruitment`: 모집 상태 23건·마감 날짜 제공 8건, 총 31건. 서울 자정·시각 경계, 미확인 이유·근거·개정·원본 기간 보존과 서울 마감 날짜 제공을 확인한다. 실행·설계 범위는 [모집 기간 구현](docs/development/recruitment-period.md)을 따른다.
 - `npm run test:policy-revisions`: 개정 적용 11건. 재수집·재처리·낮은 순번·순번 충돌·A→B→A·실패·비교 방식 불일치를 검사한다. 같은 패키지의 다른 테스트가 섞이지 않도록 기존 모집 명령은 `Recruitment*`로 좁혔다. 두 명령을 각각 실행해 통과했다.
+- `npm run test:ingestion`: 수집 진행 12건. 부분 실패·명시적 종료·중단·재개·늦은 시도 결과·재전달·충돌·검토 필요를 확인한다. 인증키·DB·Docker 없이 실행한다. 실제 재시작·동시 작업자·중복 정책 반영 검증은 아니다.
 - `npm run test:reminders`: 후보 날짜 17건. D-7·D-3·D-1의 달력 날짜, 미래·오늘·지난 날짜, 빈 후보 사유와 개정 변경 후 계산을 확인한다. [후보 날짜 구현](docs/development/deadline-reminder-candidates.md)에 미구현 예약·발송 범위를 함께 정리했다.
 - `compose.yaml`: 프로젝트 전용 PostgreSQL 18.6. 호스트 연결은 `127.0.0.1:55432`로 제한한다.
 - 업무 테이블과 Flyway SQL은 없다. DB에는 Flyway 관리 테이블만 만들어진다.
@@ -78,6 +82,8 @@
 - 성공 응답 확인 전 설계: [정책 수집·판정 데이터 구조 초안](docs/design/policy-data-model.md)
 - 원본/내용·개정·순번과 실제 저장 원자성: [개정 적용 설계](docs/design/policy-revision-application.md)
 - 내부 적용 판단과 미구현 수집·저장 경계: [개정 적용 모델](docs/development/policy-revision-application.md)
+- 페이지·항목 시도·재처리 위치와 실제 저장 조건: [수집 진행 설계](docs/design/collection-run-progress.md)
+- 내부 진행·중단·재개와 검증 범위: [수집 진행 모델](docs/development/collection-run-progress.md)
 - 현재 화면 범위·후속 연결 지점: [비회원 조건 입력](docs/development/guest-conditions.md)
 - 판정 결과 집계·근거 구조·검증: [자격 판정 결과](docs/development/eligibility-decision.md)
 - 기준일·연령 범위 비교·미해석 처리: [연령 조건 비교](docs/development/age-condition.md)
@@ -103,7 +109,8 @@
 ### 인증키 없이 이어갈 작업
 
 - 원본·개정의 최소 적용 규칙과 저장 시 필요한 원자성 조건을 정리하고 순수 모델로 검증했다. 원천 성공 응답 전에는 운영 수집기·확정 DTO·Flyway DDL을 만들지 않는 기존 기준을 유지했다. 실제 저장·재시작·동시성 검증을 완료했다고 취급하지 않는다.
-- 키 미발급 상태에서 이어갈 독립 작업 후보는 수집 실행·항목 실패·재처리 위치의 내부 계약이다. 이번 모델은 한 정책의 현재 상태만 다루며 전체 실행 이력은 없다. 실제 원천 요청·정규화·원본 보관은 성공 계약과 보관 기준 확인 후 연결한다.
+- 수집 실행·항목 실패·재처리 위치의 내부 계약과 순수 모델도 구현했다. 단일 실행의 이력은 메모리에만 있으며 실제 원천 요청·정규화·원본 보관·재시작 복구는 성공 계약과 보관 기준 확인 후 연결한다.
+- 키 미발급 상태의 다음 독립 작업 후보는 정책 개정과 AI 요약·추출 후보의 버전 일치 검사다. 이전 개정의 늦은 후보를 현재 정책에 적용하지 않는 규칙만 먼저 검증할 수 있다. 실제 AI 공급자 호출·자동 공개·DB 저장을 함께 구현했다고 취급하지 않는다.
 - 질문 조회와 재판정 실패 후 재시도 복구를 확인했다. 키보드 전용 전체 흐름은 도구의 Tab·Enter 입력이 반영되지 않아 미확인이다.
 - CI를 원격에 푸시할 때 첫 GitHub 실행과 캐시·테스트 보고서를 확인한다. 이번 작업에서 푸시나 브랜치 보호 변경은 하지 않았다.
 
@@ -124,6 +131,6 @@
 
 - 운영비 상한은 월 3만 원이며 운영 장비·클라우드는 사용자 요청으로 나중에 정한다.
 - AI·이메일 공급자와 실제 호출 한도, 개인정보 보관·삭제 및 배포 준비는 PRD의 공개 전 확인 사항이다.
-- 현재 검증 범위는 개발 환경·DB 연결·접근 차단, 비회원 입력·인공 예시 표시, 서버의 조건 비교·모집·후보 계산, 개발용 자격·마감 API와 생성 계약·화면 연결·실패 복구, 내부 개정 적용 판단이다. 실제 수집·원본 저장·DB 중복 방지·정책 정확도·외부 연동·소셜 인증·예약·발송 검증으로 확대해서 보고하지 않는다.
+- 현재 검증 범위는 개발 환경·DB 연결·접근 차단, 비회원 입력·인공 예시 표시, 서버의 조건 비교·모집·후보 계산, 개발용 자격·마감 API와 생성 계약·화면 연결·실패 복구, 내부 개정 적용 판단·수집 진행 모델이다. 실제 수집·원본 저장·DB 중복 방지·정책 정확도·외부 연동·소셜 인증·예약·발송 검증으로 확대해서 보고하지 않는다.
 - CI 워크플로는 작성했지만 GitHub 실행은 아직 확인하지 않았다. 배포·운영 인증 설정은 없다. 로컬 DB 계정과 비밀번호를 운영 환경에 재사용하지 않는다.
 - 이 작업에서 스킬 원본은 `skills/`에 보관한다. 사용자 스킬 폴더의 링크 상태는 설치 위치에서 직접 확인한다.

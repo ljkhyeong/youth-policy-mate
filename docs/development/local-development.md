@@ -9,8 +9,8 @@
 | 웹 | Next.js 16.3.3, React 19.2.8, `frontend/` | 시작 화면·비회원 조건 입력·공통 상태 안내·개발 전용 질문·자격 결과·마감 후보 표시 |
 | 웹 개발 도구 | TypeScript 5.9.3, Tailwind CSS 4.3.3, ESLint 9.39.5, Vitest 4.1.11 | 타입 검사·스타일·린트·입력 및 상태 화면 테스트 |
 | API 계약 | springdoc-openapi 3.1.0, openapi-typescript 7.13.0 | 개발 전용 서버 DTO의 OpenAPI 3.1·TypeScript 생성과 일치 검사 |
-| 서버 | Java 25, Spring Boot 4.1.1, `backend/` | 앱 기동·DB 연결·접근 차단·조건 비교·모집/알림 후보 계산·정책 개정 적용 판단 모델 |
-| 모듈 구성 | Spring Modulith 2.1.1 core | 자격 판정용 `eligibility`, 모집 기간용 `policy`, 알림 후보 날짜용 `schedule` 패키지. 모듈 의존 검증 테스트는 아직 없음 |
+| 서버 | Java 25, Spring Boot 4.1.1, `backend/` | 앱 기동·DB 연결·접근 차단·조건 비교·모집/알림 후보 계산·개정 적용·수집 진행 모델 |
+| 모듈 구성 | Spring Modulith 2.1.1 core | 자격 판정용 `eligibility`, 모집 기간·개정용 `policy`, 알림 후보 날짜용 `schedule`, 수집 진행용 `ingestion` 패키지. 모듈 의존 검증 테스트는 아직 없음 |
 | 빌드 | Gradle Wrapper 9.7.1, npm 잠금 파일 | 백엔드·프런트엔드 빌드 |
 | DB | PostgreSQL 18.6 Alpine, `compose.yaml` | 프로젝트 전용 로컬 DB |
 
@@ -114,6 +114,7 @@ npm run test:web
 npm run test:eligibility
 npm run test:recruitment
 npm run test:policy-revisions
+npm run test:ingestion
 npm run test:reminders
 npm run test:preview-api
 npm run check:api-types
@@ -131,6 +132,8 @@ npm audit
 `test:policy-revisions`는 순수 Java 개정 적용 판단 11건을 실행한다. 원본/비교 내용 분리, 같은 결과 재처리, 낮은 순번·순번 충돌, A→B→A, 수집 실패·비교 방식 불일치를 확인한다. 인증키·DB·Docker가 필요하지 않으며 실제 저장·동시성 제어를 검증한 것은 아니다. [개정 적용 판단](policy-revision-application.md)에 구현·미구현 범위를 구분했다. 같은 정책 패키지의 새 테스트가 모집 검사에 섞이지 않도록 `test:recruitment`는 `Recruitment*`만 선택한다.
 
 `test:reminders`는 마감 알림 후보 날짜 테스트 17건을 실행한다. 월·연도·윤일 경계, 오늘 후보 구분·지난 날짜 제외, 후보 없음 사유와 개정 변경 후 계산을 확인한다. 인증키·DB·Docker 없이 실행하며 실제 예약·발송 검증은 아니다. [후보 날짜 구현](deadline-reminder-candidates.md)을 참고한다.
+
+`test:ingestion`은 수집 진행 모델 12건을 실행한다. 페이지·항목별 시도, 명시적 종료·부분 실패, 중단·재개·늦은 결과, 재전달·충돌과 검토 필요를 확인한다. 인증키·DB·Docker가 필요하지 않으며 실제 수집·DB 복구 검증은 아니다. [수집 진행 구현](collection-run-progress.md)에 상세 범위를 정리했다.
 
 `check:backend`에 포함된 백엔드 통합 테스트는 Compose DB를 사용하지 않고 Testcontainers가 별도 PostgreSQL을 생성한다. 테스트가 끝나면 테스트용 컨테이너를 정리한다. Docker가 없으면 통합 테스트를 건너뛰지 않고 실패한다.
 
@@ -191,6 +194,8 @@ CI 구성 후에는 macOS arm64의 별도 임시 복사본에서 Node.js 24.20.0
 인공 답변 재판정 연결 후에는 서버 180건(도메인 165·API/계약 13·실제 DB/기본 차단 2)과 전체 빌드, 웹 53건·생성 계약·린트·타입 검사·빌드를 통과했다. 인공 코드만 전송하고 이전 질문 답변은 재사용하지 않는다. 답변 변경·실패·재시도·운영 404와 미확인 범위는 [재판정 검증 기록](eligibility-answer-trial.md#검증)을 따른다.
 
 정책 개정 적용 모델 추가 후에는 전용 개정 11건·모집 31건 검사와 전체 서버 191건(도메인 176·API/계약 13·실제 DB/기본 차단 2) 및 빌드가 통과했다. 화면·API 계약·스키마는 변경하지 않아 웹 검사·브라우저는 다시 실행하지 않았다. 원본 저장·DB 중복 방지·원천 계약은 미구현이며 [개정 적용 검증](policy-revision-application.md#검증-범위)을 따른다.
+
+수집 진행 모델 추가 후에는 전용 12건과 전체 서버 203건(도메인 188·API/계약 13·실제 DB/기본 차단 2), 빌드가 통과했다. 첫 전체 검사에서 임시 PostgreSQL 연결 중 `EOFException`으로 통합 2건이 실패했으나 설정·테스트 변경 없는 재실행으로 통과했다. 원인은 확정하지 않았다. 웹·브라우저는 다시 검사하지 않았으며 [수집 진행 검증 기록](collection-run-progress.md#검사)을 따른다.
 
 ### 알려진 경고와 다음 확인 사항
 

@@ -8,12 +8,13 @@
 |---|---|---|
 | 웹 | Next.js 16.3.3, React 19.2.8, `frontend/` | 시작 화면·비회원 조건 입력·공통 상태 안내·개발 전용 질문·자격 결과·마감 후보 표시 |
 | 웹 개발 도구 | TypeScript 5.9.3, Tailwind CSS 4.3.3, ESLint 9.39.5, Vitest 4.1.11 | 타입 검사·스타일·린트·입력 및 상태 화면 테스트 |
+| API 계약 | springdoc-openapi 3.1.0, openapi-typescript 7.13.0 | 개발 전용 서버 DTO의 OpenAPI 3.1·TypeScript 생성과 일치 검사 |
 | 서버 | Java 25, Spring Boot 4.1.1, `backend/` | 앱 기동·DB 연결·상태 확인·접근 차단·판정 결과 집계·명시적 조건 비교·모집 기간과 마감 알림 후보 날짜 계산 |
 | 모듈 구성 | Spring Modulith 2.1.1 core | 자격 판정용 `eligibility`, 모집 기간용 `policy`, 알림 후보 날짜용 `schedule` 패키지. 모듈 의존 검증 테스트는 아직 없음 |
 | 빌드 | Gradle Wrapper 9.7.1, npm 잠금 파일 | 백엔드·프런트엔드 빌드 |
 | DB | PostgreSQL 18.6 Alpine, `compose.yaml` | 프로젝트 전용 로컬 DB |
 
-Spring Batch, OAuth2 공급자, OpenAPI와 생성 TypeScript 계약, shadcn/ui 컴포넌트, Playwright 자동 테스트, Outbox와 배포 구성은 아직 추가하지 않았다. 해당 기능을 구현할 때 필요한 범위로 추가한다. 웹·서버 CI 워크플로는 작성했으며 설정과 원격 실행의 미확인 범위는 [CI 안내](ci.md)를 따른다.
+Spring Batch, OAuth2 공급자, shadcn/ui 컴포넌트, Playwright 자동 테스트, Outbox와 배포 구성은 아직 추가하지 않았다. OpenAPI·생성 TypeScript는 개발 전용 인공 자료 API에 먼저 적용했으며 공개·회원 API 계약은 아직 없다. 웹·서버 CI의 원격 실행 미확인 범위는 [CI 안내](ci.md)를 따른다.
 
 ## 2. 필요한 도구
 
@@ -56,6 +57,8 @@ DB가 정상 상태가 되면 웹과 다른 터미널에서 서버를 실행한�
 npm run dev:backend
 ```
 
+DB 없이 서버 계산 결과를 확인하려면 위 DB 연결 서버 대신 `npm run dev:preview-api`를 실행한다. 고정 인공 자료만 계산하는 `preview` 프로필이며 루프백 8081을 사용한다. [개발 API 실행·계약 안내](reminder-preview-api.md)를 따른다. 운영에 이 프로필을 활성화하지 않는다.
+
 | 항목 | 로컬 주소 |
 |---|---|
 | 웹 | <http://127.0.0.1:3000> |
@@ -65,10 +68,13 @@ npm run dev:backend
 | 소득 질문 · 개발 전용 | <http://127.0.0.1:3000/dev/income> |
 | 자격 결과·근거 · 개발 전용 | <http://127.0.0.1:3000/dev/eligibility> |
 | 마감·알림 후보 · 개발 전용 | <http://127.0.0.1:3000/dev/reminders> |
+| 마감 후보 서버 연결 · 개발 전용 | <http://127.0.0.1:3000/dev/reminders/server> |
+| 인공 자료 계산 API · preview 전용 | <http://127.0.0.1:8081/api/dev/reminder-examples> |
+| 생성 OpenAPI · preview 전용 | <http://127.0.0.1:8081/dev/openapi> |
 | 서버 상태 | <http://127.0.0.1:8080/actuator/health> |
 | PostgreSQL | `127.0.0.1:55432` |
 
-웹과 로컬 프로필의 서버·DB는 루프백 주소에만 연결한다. 다른 기기에 공개하거나 운영에 배포하기 위한 설정이 아니다. 서버는 GET `/actuator/health`만 허용한다. 상태 응답에는 DB 연결 문자열이나 구성요소 상세 정보를 노출하지 않는다. 소셜 로그인과 프런트엔드의 업무 API 연동은 아직 없다.
+웹과 로컬·preview 프로필의 서버·DB는 루프백 주소에만 연결한다. 다른 기기에 공개하거나 운영에 배포하기 위한 설정이 아니다. 기본 서버는 GET `/actuator/health`만 허용하고 preview는 위 두 GET 경로를 추가 허용한다. 상태 응답에 DB 연결 문자열이나 상세 정보를 노출하지 않는다. 소셜 로그인·실제 정책·회원 업무 API 연동은 아직 없다.
 
 ### DB 설정 변경
 
@@ -104,6 +110,8 @@ npm run test:web
 npm run test:eligibility
 npm run test:recruitment
 npm run test:reminders
+npm run test:preview-api
+npm run check:api-types
 npm run check:web
 npm run build:web
 npm run check:backend
@@ -121,7 +129,9 @@ npm audit
 
 `check:tools`는 응답 점검 도구의 인공 응답 테스트 7개를 실행한다. API 인증키·Docker·네트워크가 필요하지 않으며 실제 API 계약을 검증하지 않는다.
 
-`test:web`은 비회원 조건 입력 5개·상태 화면 3개·취업 질문 4개·소득 질문 5개·자격 결과 표시 7개·마감 후보 표시 8개, 총 32개를 실행한다. 필수 항목·날짜·선택지·연령 제한 비적용·서울 자정 경계에 더해 상태 안내 역할, 오류 원문 비노출과 404 복귀 경로, 인공 질문의 답변 의미·모름 처리와 소득 구간 표시를 확인한다. 결과 표시는 전체 상태 유지·미확인 원인·검토 이슈·근거 비실행을 확인한다. 마감 후보 표시는 날짜형·시각형·고정 계산 기준·후보 없음 사유를 구분한다. API 인증키·Docker·네트워크가 필요하지 않다.
+`test:web`은 기존 조건·상태·질문·결과 표시 32개와 API 표시 변환·서버 조회 7개, 총 39개를 실행한다. 날짜·기준·상태·근거 보존, 오류 원문 비노출, 조회 실패 시 결과 미제공과 운영 모드 호출 차단을 포함한다. API 인증키·Docker·네트워크가 필요하지 않다.
+
+`test:preview-api`는 개발 API·직렬화·계약 비교 5건을 실행하며 DB·Docker가 필요하지 않다. `npm run generate:api`는 실제 생성 OpenAPI와 TypeScript를 갱신하고 `check:api-types`는 타입의 최신 여부만 확인한다. 재생성 절차는 [개발 API 안내](reminder-preview-api.md#계약-생성과-검사)를 따른다.
 
 현재 백엔드 통합 테스트는 다음 2개다.
 
@@ -166,6 +176,8 @@ CI 구성 후에는 macOS arm64의 별도 임시 복사본에서 Node.js 24.20.0
 2026-08-31 마감 알림 후보 날짜 추가 후에는 후보 17건·마감 날짜 제공 8건을 포함한 총 165건과 서버 `assemble`이 통과했다. 기존 자격 판정 117건·모집 상태 23건도 함께 실행했다. 웹·PostgreSQL 통합 검사는 다시 실행하지 않았으며, 실제 예약·발송은 연결하지 않았다. [후보 날짜 검증 기록](deadline-reminder-candidates.md#검증)에 상세 범위를 정리했다.
 
 2026-08-31 마감·알림 후보 미리보기 추가 후에는 웹 테스트 32개·린트·타입 검사·프로덕션 빌드가 통과했다. 개발 경로 200·운영 경로 404와 운영 조건 입력 200, 일곱 예시 전환·근거 표시·새로고침 초기화, 데스크톱·모바일 표시를 확인했다. 서버·DB 검사는 다시 실행하지 않았다. 키보드 입력과 새로고침 후 요소 조회의 도구 한계는 [마감 후보 화면 검증 기록](deadline-reminder-preview.md#검증-결과와-한계)에 정리했다.
+
+같은 날 개발 API 연결 후에는 서버 172건(도메인 165·API 5·실제 DB/기본 차단 2)과 전체 빌드, 웹 39건·생성 타입 검사·린트·타입 검사·빌드를 통과했다. 서버 미기동 오류에서 기동 후 다시 불러오기로 복구했고, 개발 200·운영 404와 반응형을 확인했다. 운영 모드에서 로딩 스트리밍 전에 차단하도록 레이아웃을 두었다. [API 연결 검증 기록](reminder-preview-api.md#검증-결과와-한계)에 범위와 한계를 정리했다.
 
 ### 알려진 경고와 다음 확인 사항
 

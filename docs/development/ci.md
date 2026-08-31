@@ -1,6 +1,6 @@
 # CI 구성과 검증 범위
 
-2026-08-30 기준. [.github/workflows/ci.yml](../../.github/workflows/ci.yml)에 GitHub Actions 검사를 구성했다. 로컬에서 아래 검사 명령과 워크플로 문법 검사를 통과했다. 워크플로를 원격 저장소에 푸시하거나 GitHub에서 실행하지는 않았다.
+2026-08-31 기준. [.github/workflows/ci.yml](../../.github/workflows/ci.yml)에 GitHub Actions 검사를 구성했다. 최초 검증과 이후 생성 계약 검사 추가를 아래에 구분한다. 워크플로를 원격 저장소에 푸시하거나 GitHub에서 실행하지는 않았다.
 
 ## 실행 조건과 검사
 
@@ -11,7 +11,7 @@
 
 | 작업 | 준비 | 검사 순서 | 제한 시간 |
 |---|---|---|---|
-| 웹 검사 | `.nvmrc`의 Node.js 24, npm 캐시, `npm ci --no-audit --no-fund` | 개발 도구 테스트 → 웹 단위 테스트 → 린트·타입 검사 → 프로덕션 빌드 | 15분 |
+| 웹 검사 | `.nvmrc`의 Node.js 24, npm 캐시, `npm ci --no-audit --no-fund` | 개발 도구 테스트 → 웹 단위 테스트 → 생성 API 타입 검사 → 린트·타입 검사 → 빌드 | 15분 |
 | 서버 검사 | Temurin Java 25, Gradle 캐시·Wrapper 검증, Docker 확인 | 서버 단위·PostgreSQL 통합 테스트와 빌드 | 20분 |
 
 웹은 저장소 루트의 기존 명령을 사용한다.
@@ -19,6 +19,7 @@
 ```sh
 npm run check:tools
 npm run test:web
+npm run check:api-types
 npm run check:web
 npm run build:web
 ```
@@ -62,6 +63,8 @@ Node.js와 actionlint는 공식 배포 파일의 SHA-256을 확인한 뒤 사용
 설치 시 기존 ESLint 9 지원 종료 경고와 npm의 일부 설치 스크립트 승인 관련 경고가 나왔다. 스크립트를 일괄 승인하거나 의존성을 변경하지 않았으며 검사·빌드는 통과했다. 서버 테스트의 Java agent 관련 경고도 이번 작업에서 숨기지 않았다.
 
 이 결과는 로컬 명령 검증이다. GitHub의 Ubuntu 실행 환경, Actions 자체의 실행, 캐시 저장·복원과 보고서 업로드까지 확인한 것은 아니다. 실제 정책 API 계약·판정 정확도·소셜 인증·알림 발송도 검증하지 않는다.
+
+2026-08-31에는 개발 API 연결과 함께 생성 타입 최신 여부 검사를 추가했다. 서버 테스트는 실제 생성 OpenAPI와 저장본을 비교한다. 로컬에서 서버 172건·빌드, 웹 39건·생성 타입 검사·린트·타입 검사·빌드를 통과했다. 변경 워크플로는 Ruby YAML 파서로 구문을 확인했으며 actionlint·Node.js 24 새 설치·개발 도구 테스트는 이번에 다시 실행하지 않았다. 자세한 범위는 [개발 API 검증](reminder-preview-api.md)을 따른다.
 
 ## 첫 원격 실행에서 확인할 사항
 

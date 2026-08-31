@@ -34,6 +34,7 @@ export default async function ServerEligibilityPreviewPage() {
           description="위 명령으로 미리보기 서버를 실행한 뒤 다시 불러와주세요. 연결 실패는 조건 불충족이나 추가 확인 판정이 아니며 고정 예시로 대신 표시하지 않습니다."
           actions={<RetryPreview />} />
       </div>}
+      <Link href="/dev/eligibility/interactive" prefetch={false} className="text-link mt-6">인공 답변을 바꾸며 재판정하기 →</Link>
       <Link href="/dev/eligibility" prefetch={false} className="text-link mt-6">서버 없는 고정 미리보기로 이동 →</Link>
     </main>
   </SiteShell>;

@@ -17,7 +17,7 @@ const evaluationTime = new Intl.DateTimeFormat("ko-KR", {
   hour: "2-digit", minute: "2-digit", hourCycle: "h23",
 });
 
-function Evidence({ evidence, label }: { evidence: EvidenceView; label: string }) {
+export function Evidence({ evidence, label }: { evidence: EvidenceView; label: string }) {
   return (
     <details className="mt-5 border-t border-stone-200 pt-2 text-sm">
       <summary className="min-h-11 cursor-pointer py-3 font-semibold text-teal-900">{label} 근거 보기</summary>

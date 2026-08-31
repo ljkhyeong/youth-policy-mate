@@ -31,9 +31,13 @@ export function toEligibilityExamplesView(response: EligibilityExamplesResponse)
   if (response.dataKind !== "SYNTHETIC" || !Array.isArray(response.examples) || response.examples.length === 0) {
     throw new Error("개발용 인공 자격 자료를 확인할 수 없습니다.");
   }
-  return response.examples.map((example: components["schemas"]["EligibilityExample"]) => ({
+  return response.examples.map(toEligibilityExampleView);
+}
+
+export function toEligibilityExampleView(example: components["schemas"]["EligibilityExample"]): EligibilityExampleView {
+  return {
     id: example.id, label: example.label, description: example.description,
     result: { ...example.result, conditions: example.result.conditions.map(toConditionView) },
     recruitment: { label: RECRUITMENT_LABELS[example.recruitment.status], explanation: example.recruitment.explanation },
-  }));
+  };
 }

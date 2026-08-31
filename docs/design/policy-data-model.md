@@ -22,6 +22,8 @@
 
 페이지·항목의 시도, 부분 실패와 재처리 위치는 [수집 실행 진행 설계](collection-run-progress.md)와 [내부 모델 구현](../development/collection-run-progress.md)을 따른다. 메모리 상태의 변경을 검증했으며 실행 이력 DB·실제 수집·재시작 복구는 아직 없다.
 
+AI 파생 결과의 개정·원본·생성 방식·요청 순번은 [AI 후보 설계](policy-ai-candidates.md)와 [내부 모델 구현](../development/policy-ai-candidates.md)을 따른다. 후보 참조의 수용·재사용만 확인하며 실제 AI 호출·본문 검증·자격 규칙 승격·저장은 아직 없다.
+
 ## 2. 정규화한 정책의 묶음
 
 | 묶음 | 내용 | 원천의 주요 근거 |

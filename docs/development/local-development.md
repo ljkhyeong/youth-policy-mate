@@ -9,8 +9,8 @@
 | 웹 | Next.js 16.3.3, React 19.2.8, `frontend/` | 시작 화면·비회원 조건 입력·공통 상태 안내·개발 전용 질문·자격 결과·마감 후보 표시 |
 | 웹 개발 도구 | TypeScript 5.9.3, Tailwind CSS 4.3.3, ESLint 9.39.5, Vitest 4.1.11 | 타입 검사·스타일·린트·입력 및 상태 화면 테스트 |
 | API 계약 | springdoc-openapi 3.1.0, openapi-typescript 7.13.0 | 개발 전용 서버 DTO의 OpenAPI 3.1·TypeScript 생성과 일치 검사 |
-| 서버 | Java 25, Spring Boot 4.1.1, `backend/` | 앱 기동·DB 연결·접근 차단·조건 비교·모집/알림 후보 계산·개정 적용·수집 진행 모델 |
-| 모듈 구성 | Spring Modulith 2.1.1 core | 자격 판정용 `eligibility`, 모집 기간·개정용 `policy`, 알림 후보 날짜용 `schedule`, 수집 진행용 `ingestion` 패키지. 모듈 의존 검증 테스트는 아직 없음 |
+| 서버 | Java 25, Spring Boot 4.1.1, `backend/` | 앱 기동·DB 연결·접근 차단·조건 비교·모집/알림 후보 계산·개정 적용·수집 진행·AI 후보 검사 |
+| 모듈 구성 | Spring Modulith 2.1.1 core | 자격 판정용 `eligibility`, 모집 기간·개정용 `policy`, 알림 후보 날짜용 `schedule`, 수집 진행·AI 후보용 `ingestion` 패키지. 모듈 의존 검증 테스트는 아직 없음 |
 | 빌드 | Gradle Wrapper 9.7.1, npm 잠금 파일 | 백엔드·프런트엔드 빌드 |
 | DB | PostgreSQL 18.6 Alpine, `compose.yaml` | 프로젝트 전용 로컬 DB |
 
@@ -115,6 +115,7 @@ npm run test:eligibility
 npm run test:recruitment
 npm run test:policy-revisions
 npm run test:ingestion
+npm run test:ai-candidates
 npm run test:reminders
 npm run test:preview-api
 npm run check:api-types
@@ -133,7 +134,9 @@ npm audit
 
 `test:reminders`는 마감 알림 후보 날짜 테스트 17건을 실행한다. 월·연도·윤일 경계, 오늘 후보 구분·지난 날짜 제외, 후보 없음 사유와 개정 변경 후 계산을 확인한다. 인증키·DB·Docker 없이 실행하며 실제 예약·발송 검증은 아니다. [후보 날짜 구현](deadline-reminder-candidates.md)을 참고한다.
 
-`test:ingestion`은 수집 진행 모델 12건을 실행한다. 페이지·항목별 시도, 명시적 종료·부분 실패, 중단·재개·늦은 결과, 재전달·충돌과 검토 필요를 확인한다. 인증키·DB·Docker가 필요하지 않으며 실제 수집·DB 복구 검증은 아니다. [수집 진행 구현](collection-run-progress.md)에 상세 범위를 정리했다.
+`test:ingestion`은 수집 진행 모델 12건과 AI 후보 모델 12건, 총 24건을 실행한다. 페이지·항목별 시도, 명시적 종료·부분 실패, 중단·재개·늦은 결과, 재전달·충돌과 검토 필요를 확인한다. 인증키·DB·Docker가 필요하지 않으며 실제 수집·DB 복구 검증은 아니다. [수집 진행 구현](collection-run-progress.md)에 상세 범위를 정리했다.
+
+`test:ai-candidates`는 AI 후보 모델 12건만 실행한다. 현재 개정·원본·생성 방식·요청 순번 검사, 같은 내용 재사용·A→B→A, 늦은 응답·재전달·충돌과 실패·한도 보류의 기존 후보 유지를 확인한다. 인증키·AI·DB 없이 인공 참조 값으로 검사하며 실제 본문 정확성·비용 차단 검증은 아니다. [AI 후보 구현](policy-ai-candidates.md)을 따른다.
 
 `check:backend`에 포함된 백엔드 통합 테스트는 Compose DB를 사용하지 않고 Testcontainers가 별도 PostgreSQL을 생성한다. 테스트가 끝나면 테스트용 컨테이너를 정리한다. Docker가 없으면 통합 테스트를 건너뛰지 않고 실패한다.
 
@@ -196,6 +199,8 @@ CI 구성 후에는 macOS arm64의 별도 임시 복사본에서 Node.js 24.20.0
 정책 개정 적용 모델 추가 후에는 전용 개정 11건·모집 31건 검사와 전체 서버 191건(도메인 176·API/계약 13·실제 DB/기본 차단 2) 및 빌드가 통과했다. 화면·API 계약·스키마는 변경하지 않아 웹 검사·브라우저는 다시 실행하지 않았다. 원본 저장·DB 중복 방지·원천 계약은 미구현이며 [개정 적용 검증](policy-revision-application.md#검증-범위)을 따른다.
 
 수집 진행 모델 추가 후에는 전용 12건과 전체 서버 203건(도메인 188·API/계약 13·실제 DB/기본 차단 2), 빌드가 통과했다. 첫 전체 검사에서 임시 PostgreSQL 연결 중 `EOFException`으로 통합 2건이 실패했으나 설정·테스트 변경 없는 재실행으로 통과했다. 원인은 확정하지 않았다. 웹·브라우저는 다시 검사하지 않았으며 [수집 진행 검증 기록](collection-run-progress.md#검사)을 따른다.
+
+AI 후보 개정·버전 검사 추가 후에는 전용 12건과 전체 서버 215건(도메인 200·API/계약 13·실제 DB/기본 차단 2), 빌드가 실패·건너뛰기 없이 통과했다. 이번 DB 검사는 첫 실행에 통과했다. 웹·브라우저·실제 AI는 검사하지 않았고 본문 품질·비용 차단 검증도 아니다. [AI 후보 검증 기록](policy-ai-candidates.md#검증)을 따른다.
 
 ### 알려진 경고와 다음 확인 사항
 

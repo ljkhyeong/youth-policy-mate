@@ -45,7 +45,9 @@ GitHub Actions에 웹·서버 병렬 CI를 구성했습니다. 인증키 없이 
 
 서버에 [정책 개정 적용 판단](docs/development/policy-revision-application.md)을 추가했습니다. 원본 참조와 비교 내용을 구분하고 같은 내용의 재수집·낮은 순번의 지연 응답·실패를 현재 개정에 반영할지 계산합니다. `npm run test:policy-revisions`로 11건을 실행할 수 있으며 전체 서버 191건과 빌드가 통과했습니다. DB·수집기·화면에는 연결하지 않은 내부 모델이며 실제 원본 저장이나 DB의 중복 방지 구현은 아닙니다.
 
-별도 수집 모듈에 [실행 진행·실패·재처리 위치 모델](docs/development/collection-run-progress.md)을 추가했습니다. 페이지·항목별 시도 이력을 유지하고 실패 위치만 다시 선택하며, 중단한 시도의 늦은 결과를 무시합니다. 빈 페이지를 종료로 추정하지 않고 검토 필요와 기술적 실패를 구분합니다. `npm run test:ingestion`의 12건과 전체 서버 203건·빌드가 통과했습니다. 메모리의 진행 상태만 다루며 실제 API 수집·DB 저장·서버 재시작 복구는 아직 없습니다.
+별도 수집 모듈에 [실행 진행·실패·재처리 위치 모델](docs/development/collection-run-progress.md)을 추가했습니다. 페이지·항목별 시도 이력을 유지하고 실패 위치만 다시 선택하며, 중단한 시도의 늦은 결과를 무시합니다. 빈 페이지를 종료로 추정하지 않고 검토 필요와 기술적 실패를 구분합니다. 추가 당시 수집 진행 12건과 전체 서버 203건·빌드가 통과했습니다. 메모리의 진행 상태만 다루며 실제 API 수집·DB 저장·서버 재시작 복구는 아직 없습니다.
+
+같은 모듈에 [AI 후보의 개정·버전 검사](docs/development/policy-ai-candidates.md)를 추가했습니다. 정책 개정·원본 근거·생성 방식·AI 요청 순번을 확인하고, 이전 개정의 후보를 현재 결과로 제공하지 않습니다. 실패·한도 보류는 기존 후보와 정책을 지우지 않습니다. `npm run test:ai-candidates`의 12건과 전체 서버 215건·빌드가 통과했습니다. `npm run test:ingestion`은 두 모델의 총 24건을 검사합니다. 실제 AI 호출·본문 품질 검사·비용 제한·자동 공개는 아직 없습니다.
 
 온통청년 API 인증키는 신청 후 승인 대기 중입니다. 인증된 성공 응답, 정책 조회·수집, 실제 정책을 연결한 자격 판정, 로그인·저장·알림 기능은 아직 구현하지 않았습니다. 서버 계산 연결은 개발용 인공 자료에 한정합니다. 조건 입력 검사는 신청 자격 판정이 아니며 실제 정책이나 가상 추천 결과를 표시하지 않습니다.
 
@@ -87,6 +89,8 @@ GitHub Actions에 웹·서버 병렬 CI를 구성했습니다. 인증키 없이 
 - [정책 개정 적용 판단 모델과 검증](docs/development/policy-revision-application.md)
 - [수집 실행·부분 실패·재처리 위치 설계](docs/design/collection-run-progress.md)
 - [수집 진행 모델과 검증·저장 전제](docs/development/collection-run-progress.md)
+- [정책 개정·생성 버전과 AI 후보 재사용 설계](docs/design/policy-ai-candidates.md)
+- [AI 후보 수용·늦은 결과 차단 모델과 검증](docs/development/policy-ai-candidates.md)
 - [취업 조건 비교 범위와 추가 확인 설계](docs/design/employment-condition.md)
 - [소득 입력 의미와 구간 비교 설계](docs/design/income-condition.md)
 - [현재 작업 인계](HANDOFF.md)

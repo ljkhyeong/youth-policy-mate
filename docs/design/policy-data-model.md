@@ -1,6 +1,6 @@
 # 정책 수집·판정 데이터 구조 초안
 
-- 상태: 원천 데이터·저장 구조 설계 초안. 인증키를 사용한 성공 응답과 업무 테이블은 아직 없음. 독립적인 [판정 결과 집계](../development/eligibility-decision.md), [연령](../development/age-condition.md)·[거주](../development/residence-condition.md)·[단일 취업](../development/employment-condition.md)·[소득 구간](../development/income-condition.md) 비교기는 구현
+- 상태: 원천 데이터·저장 구조 설계 초안. 인증키를 사용한 성공 응답과 업무 테이블은 아직 없음. 독립적인 [판정 결과 집계](../development/eligibility-decision.md), [연령](../development/age-condition.md)·[거주](../development/residence-condition.md)·[단일 취업](../development/employment-condition.md)·[소득 구간](../development/income-condition.md) 비교기와 [개정 적용 판단](../development/policy-revision-application.md)은 순수 모델로 구현
 - 제품 기준: [PRD-0001](../PRD/0001_product-baseline/spec.md)
 - 기술 기준: [ADR-0001](../ADR/0001_기술스택과_책임_분리.md)
 - 조사 근거: [온통청년 API 계약 조사](../research/ontong-api-contract.md)
@@ -63,6 +63,8 @@
 원본 해시와 정규화한 내용의 해시는 용도가 다르다. 둘 모두 개정의 선후관계를 나타내지는 않는다. `lastMdfcnDt`의 정확도·시간대·보장을 검증하기 전에는 그것 하나로 동시 실행 결과의 순서를 정하지 않는다. 초기에는 중첩 수집을 제한하고 정책 적용 시 기대한 현재 개정이 맞는지 확인하는 방식을 검토한다.
 
 재수집으로 같은 변경이 반복 반영되지 않아야 한다. 반대로 실제 내용이 A→B→A로 돌아온 경우 마지막 A는 새로운 변경일 수 있으므로 정책 전체 이력에 내용 해시를 전역 유일키로 두지 않는다.
+
+인증키 없이 진행할 내부 적용 규칙과 실제 저장의 원자성 조건은 [원본 확인과 정책 개정 적용 경계](policy-revision-application.md)에 구분했다. 원본 참조·비교 내용·내부 수집 순번으로 한 항목의 다음 상태를 계산하는 범위이며, 원천 DTO·저장 DDL·수집기 확정은 아니다.
 
 ## 5. 시간·모집 상태·알림
 

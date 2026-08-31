@@ -43,6 +43,8 @@ GitHub Actions에 웹·서버 병렬 CI를 구성했습니다. 인증키 없이 
 
 `/dev/eligibility/interactive`에서는 [인공 취업·소득 답변 재판정](docs/development/eligibility-answer-trial.md)을 점검합니다. 정해진 답변 코드를 기존 서버 비교기로 계산하며 질문 개정·기준 변경 시 답변과 결과를 초기화합니다. 답변 변경 후 늦게 도착한 응답은 무시합니다. 서버 180건·웹 53건, 생성 계약·린트·타입 검사·빌드, 오류 후 재시도·운영 404를 확인했습니다. 실제 개인정보는 받지 않습니다.
 
+서버에 [정책 개정 적용 판단](docs/development/policy-revision-application.md)을 추가했습니다. 원본 참조와 비교 내용을 구분하고 같은 내용의 재수집·낮은 순번의 지연 응답·실패를 현재 개정에 반영할지 계산합니다. `npm run test:policy-revisions`로 11건을 실행할 수 있으며 전체 서버 191건과 빌드가 통과했습니다. DB·수집기·화면에는 연결하지 않은 내부 모델이며 실제 원본 저장이나 DB의 중복 방지 구현은 아닙니다.
+
 온통청년 API 인증키는 신청 후 승인 대기 중입니다. 인증된 성공 응답, 정책 조회·수집, 실제 정책을 연결한 자격 판정, 로그인·저장·알림 기능은 아직 구현하지 않았습니다. 서버 계산 연결은 개발용 인공 자료에 한정합니다. 조건 입력 검사는 신청 자격 판정이 아니며 실제 정책이나 가상 추천 결과를 표시하지 않습니다.
 
 발급 후 사용할 단건 응답 점검 명령 `npm run probe:ontong`을 준비했습니다. 인증키를 노출하지 않고 미검증 JSON 응답을 로컬에 보관하는 개발 도구이며, 운영 수집기나 실제 API 검증 완료를 뜻하지 않습니다.
@@ -79,6 +81,8 @@ GitHub Actions에 웹·서버 병렬 CI를 구성했습니다. 인증키 없이 
 - [온통청년 인증키 설정과 응답 점검](docs/development/ontong-api-probe.md)
 - [온통청년 API 조사와 확인할 계약](docs/research/ontong-api-contract.md)
 - [정책 수집·판정 데이터 구조 초안](docs/design/policy-data-model.md)
+- [원본 확인·개정 적용·저장 원자성 설계](docs/design/policy-revision-application.md)
+- [정책 개정 적용 판단 모델과 검증](docs/development/policy-revision-application.md)
 - [취업 조건 비교 범위와 추가 확인 설계](docs/design/employment-condition.md)
 - [소득 입력 의미와 구간 비교 설계](docs/design/income-condition.md)
 - [현재 작업 인계](HANDOFF.md)

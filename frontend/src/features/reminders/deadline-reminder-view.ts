@@ -38,3 +38,10 @@ export type DeadlineReminderView = {
     sourceExcerpt: string | null;
   };
 };
+
+export type ReminderExampleView = {
+  id: string;
+  label: string;
+  description: string;
+  result: DeadlineReminderView;
+};

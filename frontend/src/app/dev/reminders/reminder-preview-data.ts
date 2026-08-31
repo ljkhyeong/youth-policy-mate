@@ -1,4 +1,4 @@
-import type { DeadlineReminderView } from "@/features/reminders/deadline-reminder-view";
+import type { DeadlineReminderView, ReminderExampleView } from "@/features/reminders/deadline-reminder-view";
 
 // 서버 계산 결과의 표시를 점검하는 고정 인공 자료다. 실제 정책·API 응답이 아니다.
 const dateResult: DeadlineReminderView = {
@@ -26,12 +26,7 @@ const dateResult: DeadlineReminderView = {
   },
 };
 
-export const REMINDER_EXAMPLES: readonly {
-  id: string;
-  label: string;
-  description: string;
-  result: DeadlineReminderView;
-}[] = [
+export const REMINDER_EXAMPLES: readonly ReminderExampleView[] = [
   {
     id: "dates", label: "날짜형 · 오늘 후보",
     description: "예시의 오늘은 2026-08-31입니다. 날짜만 확인된 마감과 오늘·미래 후보를 구분합니다.",

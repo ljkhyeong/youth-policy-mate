@@ -8,7 +8,7 @@ const [dates, times, unresolved, rolling, exhausted, closed, noRemaining] = REMI
 
 describe("마감과 알림 후보 표시", () => {
   it("날짜형 마감과 오늘·미래 후보를 시각 변환 없이 보여주고 예약 동작을 제공하지 않는다", () => {
-    const html = renderToStaticMarkup(<ReminderPreview />);
+    const html = renderToStaticMarkup(<ReminderPreview examples={REMINDER_EXAMPLES} />);
 
     expect(html).toContain("날짜형 신청기간 · 시작일과 종료일 포함");
     expect(html).toContain('dateTime="2026-09-07"');

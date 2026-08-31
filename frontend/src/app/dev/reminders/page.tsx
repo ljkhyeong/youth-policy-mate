@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { SiteShell } from "@/components/site-shell";
 import { ReminderPreview } from "./reminder-preview";
+import { REMINDER_EXAMPLES } from "./reminder-preview-data";
 
 export const metadata: Metadata = {
   title: "마감 알림 후보 미리보기 · 청년정책메이트",
@@ -21,7 +22,8 @@ export default function ReminderPreviewPage() {
           미리 정한 신청기간과 후보 날짜로 표시를 점검합니다. 실제 정책·서버 응답이 아니며 현재 날짜로 계산하지 않습니다.
           정책을 저장하거나 알림을 예약·발송하지 않고, 내 조건이나 앞선 질문의 답변도 가져오지 않습니다.
         </p>
-        <ReminderPreview />
+        <Link href="/dev/reminders/server" prefetch={false} className="text-link mt-4">서버 계산 연결 화면으로 이동 →</Link>
+        <ReminderPreview examples={REMINDER_EXAMPLES} />
         <Link href="/dev/eligibility" prefetch={false} className="text-link mt-6">자격 결과 미리보기로 이동 →</Link>
       </main>
     </SiteShell>

@@ -2,17 +2,17 @@
 
 import { useState } from "react";
 import { DeadlineReminder, REMINDER_OUTCOME_LABELS } from "@/features/reminders/deadline-reminder";
-import { REMINDER_EXAMPLES } from "./reminder-preview-data";
+import type { ReminderExampleView } from "@/features/reminders/deadline-reminder-view";
 
-export function ReminderPreview() {
+export function ReminderPreview({ examples }: { examples: readonly ReminderExampleView[] }) {
   const [exampleIndex, setExampleIndex] = useState(0);
   const [notice, setNotice] = useState("");
-  const example = REMINDER_EXAMPLES[exampleIndex];
+  const example = examples[exampleIndex];
 
   return (
     <div className="mt-9">
       <div role="group" aria-label="마감 알림 예시 선택" className="flex flex-wrap gap-x-3 border-b border-stone-300">
-        {REMINDER_EXAMPLES.map((item, index) => (
+        {examples.map((item, index) => (
           <button key={item.id} type="button" className="preview-choice" aria-pressed={index === exampleIndex}
             onClick={() => {
               if (index === exampleIndex) return;

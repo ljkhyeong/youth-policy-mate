@@ -9,6 +9,29 @@
     "url" : "/"
   } ],
   "paths" : {
+    "/api/dev/eligibility-examples" : {
+      "get" : {
+        "description" : "고정 인공 규칙·답변을 기존 비교기와 집계 모델로 계산한다. 사용자 입력·저장·외부 호출 없이 preview 프로필에서만 제공한다.",
+        "operationId" : "listDevelopmentEligibilityExamples",
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/EligibilityExamplesResponse"
+                }
+              }
+            },
+            "description" : "인공 자료의 자격·근거와 별도 모집 상태. 실제 정책 추천이나 자격 인증이 아니다."
+          },
+          "403" : {
+            "description" : "preview 프로필이 아니면 접근 거부. 오류 본문은 사용하지 않는다."
+          }
+        },
+        "summary" : "개발 전용 자격 판정 예시 조회",
+        "tags" : [ "eligibility-preview-controller" ]
+      }
+    },
     "/api/dev/reminder-examples" : {
       "get" : {
         "description" : "입력·저장·발송 없이 고정 인공 신청기간을 서버 도메인 모델로 계산한다. preview 프로필에서만 제공한다.",
@@ -77,6 +100,182 @@
           }
         },
         "required" : [ "closesAtExclusive", "closingTimeZone", "endsOnInclusive", "kind", "openingTimeZone", "opensAtInclusive", "reason", "startsOnInclusive" ]
+      },
+      "EligibilityBasis" : {
+        "type" : "object",
+        "properties" : {
+          "evaluatedAt" : {
+            "type" : "string",
+            "format" : "date-time",
+            "description" : "판정 계산 시점. 조건별 기준일이나 원문 수집 시각이 아님"
+          },
+          "policyId" : {
+            "type" : "string"
+          },
+          "policyRevision" : {
+            "type" : "string"
+          },
+          "ruleVersion" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "evaluatedAt", "policyId", "policyRevision", "ruleVersion" ]
+      },
+      "EligibilityCondition" : {
+        "type" : "object",
+        "properties" : {
+          "appliedCondition" : {
+            "type" : "string"
+          },
+          "comparedValue" : {
+            "type" : [ "string", "null" ],
+            "description" : "비교에 사용한 값. 없다고 0이나 미입력으로 단정하지 않는다"
+          },
+          "conditionId" : {
+            "type" : "string"
+          },
+          "evidence" : {
+            "$ref" : "#/components/schemas/EligibilityEvidence"
+          },
+          "explanation" : {
+            "type" : "string"
+          },
+          "outcome" : {
+            "type" : "string",
+            "enum" : [ "MET", "NOT_MET", "UNKNOWN" ]
+          },
+          "referenceDate" : {
+            "type" : [ "string", "null" ],
+            "format" : "date",
+            "description" : "조건별 정책 기준일. 없으면 null"
+          },
+          "uncertainty" : {
+            "type" : [ "string", "null" ],
+            "description" : "UNKNOWN 항목의 미확인 원인. MET·NOT_MET이면 null",
+            "enum" : [ "MISSING_USER_INPUT", "UNRESOLVED_POLICY", null ]
+          }
+        },
+        "required" : [ "appliedCondition", "comparedValue", "conditionId", "evidence", "explanation", "outcome", "referenceDate", "uncertainty" ]
+      },
+      "EligibilityEvidence" : {
+        "type" : "object",
+        "properties" : {
+          "excerpt" : {
+            "type" : [ "string", "null" ],
+            "description" : "기록된 원문 발췌. 없으면 null"
+          },
+          "location" : {
+            "type" : "string"
+          },
+          "sourceReference" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "excerpt", "location", "sourceReference" ]
+      },
+      "EligibilityExample" : {
+        "type" : "object",
+        "properties" : {
+          "description" : {
+            "type" : "string"
+          },
+          "id" : {
+            "type" : "string"
+          },
+          "label" : {
+            "type" : "string"
+          },
+          "recruitment" : {
+            "$ref" : "#/components/schemas/EligibilityRecruitment"
+          },
+          "result" : {
+            "$ref" : "#/components/schemas/EligibilityResultResponse"
+          }
+        },
+        "required" : [ "description", "id", "label", "recruitment", "result" ]
+      },
+      "EligibilityExamplesResponse" : {
+        "type" : "object",
+        "properties" : {
+          "dataKind" : {
+            "type" : "string",
+            "enum" : [ "SYNTHETIC" ]
+          },
+          "examples" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/EligibilityExample"
+            }
+          }
+        },
+        "required" : [ "dataKind", "examples" ]
+      },
+      "EligibilityPendingIssue" : {
+        "type" : "object",
+        "properties" : {
+          "evidence" : {
+            "$ref" : "#/components/schemas/EligibilityEvidence"
+          },
+          "explanation" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "evidence", "explanation" ]
+      },
+      "EligibilityPolicyReview" : {
+        "type" : "object",
+        "properties" : {
+          "completion" : {
+            "type" : "string",
+            "enum" : [ "COMPLETE", "INCOMPLETE" ]
+          },
+          "pendingIssues" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/EligibilityPendingIssue"
+            }
+          }
+        },
+        "required" : [ "completion", "pendingIssues" ]
+      },
+      "EligibilityRecruitment" : {
+        "type" : "object",
+        "description" : "자격 결과와 같은 인공 정책·개정·계산 시점을 사용한 별도 모집 상태",
+        "properties" : {
+          "explanation" : {
+            "type" : "string"
+          },
+          "status" : {
+            "type" : "string",
+            "enum" : [ "BEFORE_OPENING", "OPEN", "CLOSED", "ROLLING", "UNTIL_EXHAUSTED", "UNKNOWN" ]
+          }
+        },
+        "required" : [ "explanation", "status" ]
+      },
+      "EligibilityResultResponse" : {
+        "type" : "object",
+        "properties" : {
+          "basis" : {
+            "$ref" : "#/components/schemas/EligibilityBasis"
+          },
+          "conditions" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/EligibilityCondition"
+            }
+          },
+          "explanation" : {
+            "type" : "string"
+          },
+          "policyReview" : {
+            "$ref" : "#/components/schemas/EligibilityPolicyReview"
+          },
+          "status" : {
+            "type" : "string",
+            "enum" : [ "ELIGIBLE", "NEEDS_REVIEW", "INELIGIBLE" ]
+          }
+        },
+        "required" : [ "basis", "conditions", "explanation", "policyReview", "status" ]
       },
       "ReminderBasis" : {
         "type" : "object",

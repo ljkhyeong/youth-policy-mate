@@ -4,6 +4,26 @@
  */
 
 export interface paths {
+    readonly "/api/dev/eligibility-examples": {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header?: never;
+            readonly path?: never;
+            readonly cookie?: never;
+        };
+        /**
+         * 개발 전용 자격 판정 예시 조회
+         * @description 고정 인공 규칙·답변을 기존 비교기와 집계 모델로 계산한다. 사용자 입력·저장·외부 호출 없이 preview 프로필에서만 제공한다.
+         */
+        readonly get: operations["listDevelopmentEligibilityExamples"];
+        readonly put?: never;
+        readonly post?: never;
+        readonly delete?: never;
+        readonly options?: never;
+        readonly head?: never;
+        readonly patch?: never;
+        readonly trace?: never;
+    };
     readonly "/api/dev/reminder-examples": {
         readonly parameters: {
             readonly query?: never;
@@ -58,6 +78,77 @@ export interface components {
              * @description DATES의 시작일, 포함 경계
              */
             readonly startsOnInclusive: string | null;
+        };
+        readonly EligibilityBasis: {
+            /**
+             * Format: date-time
+             * @description 판정 계산 시점. 조건별 기준일이나 원문 수집 시각이 아님
+             */
+            readonly evaluatedAt: string;
+            readonly policyId: string;
+            readonly policyRevision: string;
+            readonly ruleVersion: string;
+        };
+        readonly EligibilityCondition: {
+            readonly appliedCondition: string;
+            /** @description 비교에 사용한 값. 없다고 0이나 미입력으로 단정하지 않는다 */
+            readonly comparedValue: string | null;
+            readonly conditionId: string;
+            readonly evidence: components["schemas"]["EligibilityEvidence"];
+            readonly explanation: string;
+            /** @enum {string} */
+            readonly outcome: "MET" | "NOT_MET" | "UNKNOWN";
+            /**
+             * Format: date
+             * @description 조건별 정책 기준일. 없으면 null
+             */
+            readonly referenceDate: string | null;
+            /**
+             * @description UNKNOWN 항목의 미확인 원인. MET·NOT_MET이면 null
+             * @enum {string|null}
+             */
+            readonly uncertainty: "MISSING_USER_INPUT" | "UNRESOLVED_POLICY" | null;
+        };
+        readonly EligibilityEvidence: {
+            /** @description 기록된 원문 발췌. 없으면 null */
+            readonly excerpt: string | null;
+            readonly location: string;
+            readonly sourceReference: string;
+        };
+        readonly EligibilityExample: {
+            readonly description: string;
+            readonly id: string;
+            readonly label: string;
+            readonly recruitment: components["schemas"]["EligibilityRecruitment"];
+            readonly result: components["schemas"]["EligibilityResultResponse"];
+        };
+        readonly EligibilityExamplesResponse: {
+            /** @enum {string} */
+            readonly dataKind: "SYNTHETIC";
+            readonly examples: readonly components["schemas"]["EligibilityExample"][];
+        };
+        readonly EligibilityPendingIssue: {
+            readonly evidence: components["schemas"]["EligibilityEvidence"];
+            readonly explanation: string;
+        };
+        readonly EligibilityPolicyReview: {
+            /** @enum {string} */
+            readonly completion: "COMPLETE" | "INCOMPLETE";
+            readonly pendingIssues: readonly components["schemas"]["EligibilityPendingIssue"][];
+        };
+        /** @description 자격 결과와 같은 인공 정책·개정·계산 시점을 사용한 별도 모집 상태 */
+        readonly EligibilityRecruitment: {
+            readonly explanation: string;
+            /** @enum {string} */
+            readonly status: "BEFORE_OPENING" | "OPEN" | "CLOSED" | "ROLLING" | "UNTIL_EXHAUSTED" | "UNKNOWN";
+        };
+        readonly EligibilityResultResponse: {
+            readonly basis: components["schemas"]["EligibilityBasis"];
+            readonly conditions: readonly components["schemas"]["EligibilityCondition"][];
+            readonly explanation: string;
+            readonly policyReview: components["schemas"]["EligibilityPolicyReview"];
+            /** @enum {string} */
+            readonly status: "ELIGIBLE" | "NEEDS_REVIEW" | "INELIGIBLE";
         };
         readonly ReminderBasis: {
             /**
@@ -130,6 +221,33 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    readonly listDevelopmentEligibilityExamples: {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header?: never;
+            readonly path?: never;
+            readonly cookie?: never;
+        };
+        readonly requestBody?: never;
+        readonly responses: {
+            /** @description 인공 자료의 자격·근거와 별도 모집 상태. 실제 정책 추천이나 자격 인증이 아니다. */
+            readonly 200: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["EligibilityExamplesResponse"];
+                };
+            };
+            /** @description preview 프로필이 아니면 접근 거부. 오류 본문은 사용하지 않는다. */
+            readonly 403: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     readonly listDevelopmentReminderExamples: {
         readonly parameters: {
             readonly query?: never;

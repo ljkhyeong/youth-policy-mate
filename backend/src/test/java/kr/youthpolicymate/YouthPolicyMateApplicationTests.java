@@ -8,6 +8,7 @@ import org.springframework.boot.testcontainers.service.connection.ServiceConnect
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.context.ApplicationContext;
 import kr.youthpolicymate.devpreview.ReminderPreviewController;
+import kr.youthpolicymate.devpreview.EligibilityPreviewController;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.test.web.servlet.MockMvc;
 import org.testcontainers.junit.jupiter.Container;
@@ -54,7 +55,8 @@ class YouthPolicyMateApplicationTests {
     @DisplayName("상태 확인 이외의 경로는 허용하지 않는다")
     void deniesOtherPaths() throws Exception {
         assertThat(applicationContext.getBeansOfType(ReminderPreviewController.class)).isEmpty();
-        for (String path : new String[]{"/actuator/env", "/api/dev/reminder-examples", "/dev/openapi"}) {
+        assertThat(applicationContext.getBeansOfType(EligibilityPreviewController.class)).isEmpty();
+        for (String path : new String[]{"/actuator/env", "/api/dev/reminder-examples", "/api/dev/eligibility-examples", "/dev/openapi"}) {
             mockMvc.perform(get(path)).andExpect(status().isForbidden());
         }
     }

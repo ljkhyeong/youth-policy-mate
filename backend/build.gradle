@@ -55,7 +55,7 @@ tasks.register('exportPreviewOpenApi', Test) {
     testClassesDirs = sourceSets.test.output.classesDirs
     classpath = sourceSets.test.runtimeClasspath
     useJUnitPlatform()
-    filter { includeTestsMatching 'kr.youthpolicymate.devpreview.ReminderPreviewApiTest.matchesGeneratedContract' }
+    filter { includeTestsMatching 'kr.youthpolicymate.devpreview.PreviewApiContractTest.matchesGeneratedContract' }
     systemProperty 'preview.contract.path', rootProject.file('../api/openapi.preview.json').absolutePath
     systemProperty 'preview.contract.update', 'true'
     outputs.upToDateWhen { false }

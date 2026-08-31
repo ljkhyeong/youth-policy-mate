@@ -2,17 +2,17 @@
 
 import { useState } from "react";
 import { EligibilityResult, ELIGIBILITY_STATUS_LABELS } from "@/features/eligibility/eligibility-result";
-import { ELIGIBILITY_EXAMPLES } from "./eligibility-preview-data";
+import type { EligibilityExampleView } from "@/features/eligibility/eligibility-result-view";
 
-export function EligibilityPreview() {
+export function EligibilityPreview({ examples }: { examples: readonly EligibilityExampleView[] }) {
   const [exampleIndex, setExampleIndex] = useState(0);
   const [notice, setNotice] = useState("");
-  const example = ELIGIBILITY_EXAMPLES[exampleIndex];
+  const example = examples[exampleIndex];
 
   return (
     <div className="mt-9">
       <div role="group" aria-label="자격 결과 예시 선택" className="flex flex-wrap gap-x-3 border-b border-stone-300">
-        {ELIGIBILITY_EXAMPLES.map((item, index) => (
+        {examples.map((item, index) => (
           <button key={item.id} type="button" className="preview-choice" aria-pressed={index === exampleIndex}
             onClick={() => {
               if (index === exampleIndex) return;

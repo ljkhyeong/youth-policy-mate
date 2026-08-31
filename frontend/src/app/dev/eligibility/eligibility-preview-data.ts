@@ -1,4 +1,4 @@
-import type { ConditionResultView, EligibilityResultView, EvidenceView, RecruitmentView } from "@/features/eligibility/eligibility-result-view";
+import type { ConditionResultView, EligibilityExampleView, EvidenceView, RecruitmentView } from "@/features/eligibility/eligibility-result-view";
 
 function evidence(location: string, excerpt: string | null): EvidenceView {
   return { sourceReference: "화면 점검용 인공 자료 · 실제 정책 원문 아님", location, excerpt };
@@ -45,16 +45,8 @@ const openRecruitment: RecruitmentView = {
   label: "모집 중 · 예시", explanation: "자료에 미리 정한 모집 상태입니다. 모집 중이어도 자격 충족을 뜻하지 않습니다.",
 };
 
-type EligibilityExample = {
-  id: string;
-  label: string;
-  description: string;
-  result: EligibilityResultView;
-  recruitment: RecruitmentView;
-};
-
 // 서버를 호출하거나 답변으로 계산하지 않는 고정 표시 자료다.
-export const ELIGIBILITY_EXAMPLES: readonly EligibilityExample[] = [
+export const ELIGIBILITY_EXAMPLES: readonly EligibilityExampleView[] = [
   {
     id: "eligible-closed", label: "전체 충족 · 모집 종료",
     description: "모든 조건을 충족해도 모집이 끝났다면 지금 신청할 수 없다는 점을 확인합니다.",

@@ -40,3 +40,11 @@ export type RecruitmentView = {
   label: string;
   explanation: string;
 };
+
+export type EligibilityExampleView = {
+  id: string;
+  label: string;
+  description: string;
+  result: EligibilityResultView;
+  recruitment: RecruitmentView;
+};

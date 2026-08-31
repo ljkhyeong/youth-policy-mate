@@ -4,7 +4,7 @@ import { PageState } from "@/components/page-state";
 import { SiteShell } from "@/components/site-shell";
 import { ReminderPreview } from "../reminder-preview";
 import { loadReminderExamples } from "./load-reminder-examples";
-import { RetryPreview } from "./retry-preview";
+import { RetryPreview } from "@/components/dev-preview/retry-preview";
 
 export const dynamic = "force-dynamic";
 export const metadata: Metadata = {

@@ -8,7 +8,7 @@ const [allMet, moreInput, unresolved, notMet] = ELIGIBILITY_EXAMPLES;
 
 describe("자격 결과와 근거 표시", () => {
   it("입력 기준 신청 가능과 모집 종료를 별도로 표시하고 신청을 유도하지 않는다", () => {
-    const html = renderToStaticMarkup(<EligibilityPreview />);
+    const html = renderToStaticMarkup(<EligibilityPreview examples={ELIGIBILITY_EXAMPLES} />);
 
     expect(html).toContain("입력 조건 기준 신청 가능");
     expect(html).toContain("모집 종료 · 예시");

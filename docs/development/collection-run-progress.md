@@ -36,7 +36,7 @@ npm run test:ingestion
 npm run check:backend
 ```
 
-첫 명령은 인증키·DB·Docker 없이 수집 진행 12건과 후속 [AI 후보](policy-ai-candidates.md) 12건, 총 24건을 실행한다. 전체 서버 빌드는 기존 PostgreSQL 통합 테스트 때문에 Docker가 필요하다. 수집 진행 테스트 12건은 다음을 확인한다.
+첫 명령은 인증키·DB·Docker 없이 수집 진행 12건과 후속 [AI 후보](policy-ai-candidates.md) 12·[사전 판단](ai-request-admission.md) 14건, 총 38건을 실행한다. 전체 서버 빌드는 기존 PostgreSQL 통합 테스트 때문에 Docker가 필요하다. 수집 진행 테스트 12건은 다음을 확인한다.
 
 - 등록한 작업만 시작하고 진행 중 작업은 중복 시작하지 않음
 - 빈 페이지와 명시적 범위 종료의 구분

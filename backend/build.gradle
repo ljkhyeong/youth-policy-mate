@@ -32,6 +32,7 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-validation'
     implementation 'org.springframework.boot:spring-boot-starter-webmvc'
     implementation 'org.springframework.modulith:spring-modulith-starter-core'
+    implementation 'org.springdoc:springdoc-openapi-starter-webmvc-api:3.1.0'
     implementation 'org.flywaydb:flyway-database-postgresql'
     runtimeOnly 'org.postgresql:postgresql'
 
@@ -45,4 +46,17 @@ dependencies {
 
 tasks.named('test') {
     useJUnitPlatform()
+    systemProperty 'preview.contract.path', rootProject.file('../api/openapi.preview.json').absolutePath
+}
+
+tasks.register('exportPreviewOpenApi', Test) {
+    description = '개발 전용 컨트롤러의 실제 OpenAPI 응답을 계약 파일로 생성한다.'
+    group = 'documentation'
+    testClassesDirs = sourceSets.test.output.classesDirs
+    classpath = sourceSets.test.runtimeClasspath
+    useJUnitPlatform()
+    filter { includeTestsMatching 'kr.youthpolicymate.devpreview.ReminderPreviewApiTest.matchesGeneratedContract' }
+    systemProperty 'preview.contract.path', rootProject.file('../api/openapi.preview.json').absolutePath
+    systemProperty 'preview.contract.update', 'true'
+    outputs.upToDateWhen { false }
 }

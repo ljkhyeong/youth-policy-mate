@@ -8,7 +8,9 @@
     "start": "next start --hostname 127.0.0.1",
     "lint": "eslint .",
     "typecheck": "next typegen && tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "generate:api-types": "openapi-typescript ../api/openapi.preview.json -o src/generated/preview-api.d.ts --immutable",
+    "check:api-types": "npm run generate:api-types -- --check"
   },
   "dependencies": {
     "next": "16.3.3",
@@ -22,6 +24,7 @@
     "@types/react-dom": "19.2.5",
     "eslint": "9.39.5",
     "eslint-config-next": "16.3.3",
+    "openapi-typescript": "7.13.0",
     "tailwindcss": "4.3.3",
     "typescript": "5.9.3",
     "vitest": "4.1.11"

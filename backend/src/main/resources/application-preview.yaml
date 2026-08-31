@@ -1,0 +1,16 @@
+spring:
+  autoconfigure:
+    exclude: org.springframework.boot.jdbc.autoconfigure.DataSourceAutoConfiguration
+
+server:
+  address: 127.0.0.1
+  port: 8081
+
+springdoc:
+  api-docs:
+    enabled: true
+    path: /dev/openapi
+    version: OPENAPI_3_1
+  packages-to-scan: kr.youthpolicymate.devpreview
+  paths-to-match: /api/dev/reminder-examples
+  writer-with-order-by-keys: true

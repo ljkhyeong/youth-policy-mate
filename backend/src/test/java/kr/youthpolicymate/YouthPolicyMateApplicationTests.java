@@ -6,6 +6,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
+import org.springframework.context.ApplicationContext;
+import kr.youthpolicymate.devpreview.ReminderPreviewController;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.test.web.servlet.MockMvc;
 import org.testcontainers.junit.jupiter.Container;
@@ -32,6 +34,9 @@ class YouthPolicyMateApplicationTests {
     @Autowired
     MockMvc mockMvc;
 
+    @Autowired
+    ApplicationContext applicationContext;
+
     @Test
     @DisplayName("실제 PostgreSQL에 연결하고 상태 확인 응답에는 상세 정보를 노출하지 않는다")
     void connectsToPostgresAndReportsHealthWithoutDetails() throws Exception {
@@ -48,7 +53,9 @@ class YouthPolicyMateApplicationTests {
     @Test
     @DisplayName("상태 확인 이외의 경로는 허용하지 않는다")
     void deniesOtherPaths() throws Exception {
-        mockMvc.perform(get("/actuator/env"))
-                .andExpect(status().isForbidden());
+        assertThat(applicationContext.getBeansOfType(ReminderPreviewController.class)).isEmpty();
+        for (String path : new String[]{"/actuator/env", "/api/dev/reminder-examples", "/dev/openapi"}) {
+            mockMvc.perform(get(path)).andExpect(status().isForbidden());
+        }
     }
 }

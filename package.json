@@ -8,6 +8,10 @@
   "scripts": {
     "dev:web": "npm run dev --workspace frontend",
     "dev:backend": "./backend/gradlew -p backend bootRun --no-daemon --args='--spring.profiles.active=local'",
+    "dev:preview-api": "./backend/gradlew -p backend bootRun --no-daemon --args='--spring.profiles.active=preview'",
+    "generate:api": "./backend/gradlew -p backend exportPreviewOpenApi --no-daemon && npm run generate:api-types --workspace frontend",
+    "check:api-types": "npm run check:api-types --workspace frontend",
+    "test:preview-api": "./backend/gradlew -p backend test --tests 'kr.youthpolicymate.devpreview.*' --no-daemon",
     "build:web": "npm run build --workspace frontend",
     "check:web": "npm run lint --workspace frontend && npm run typecheck --workspace frontend",
     "test:web": "npm run test --workspace frontend",

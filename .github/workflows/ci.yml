@@ -47,6 +47,9 @@ jobs:
       - name: 웹 단위 테스트
         run: npm run test:web
 
+      - name: OpenAPI 생성 타입 최신 여부 확인
+        run: npm run check:api-types
+
       - name: 웹 린트와 타입 검사
         run: npm run check:web
 

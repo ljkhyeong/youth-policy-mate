@@ -20,6 +20,7 @@
     "test:policy-revisions": "./backend/gradlew -p backend test --tests 'kr.youthpolicymate.policy.PolicyRevisionStateTest' --no-daemon",
     "test:ingestion": "./backend/gradlew -p backend test --tests 'kr.youthpolicymate.ingestion.*' --no-daemon",
     "test:ai-candidates": "./backend/gradlew -p backend test --tests 'kr.youthpolicymate.ingestion.PolicyAiCandidateStateTest' --no-daemon",
+    "test:ai-admission": "./backend/gradlew -p backend test --tests 'kr.youthpolicymate.ingestion.PolicyAiRequestAdmissionTest' --no-daemon",
     "test:reminders": "./backend/gradlew -p backend test --tests 'kr.youthpolicymate.schedule.*' --no-daemon",
     "check:backend": "./backend/gradlew -p backend build --no-daemon",
     "check:tools": "node --test scripts/ontong-api-probe.test.mjs",

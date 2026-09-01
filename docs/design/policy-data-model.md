@@ -1,6 +1,6 @@
 # 정책 수집·판정 데이터 구조 초안
 
-- 상태: 원천 데이터·저장 구조 설계 초안. 인증키를 사용한 성공 응답과 업무 테이블은 아직 없음. 독립적인 [판정 결과 집계](../development/eligibility-decision.md), [연령](../development/age-condition.md)·[거주](../development/residence-condition.md)·[단일 취업](../development/employment-condition.md)·[소득 구간](../development/income-condition.md) 비교기와 [개정 적용 판단](../development/policy-revision-application.md)은 순수 모델로 구현
+- 상태: 원천 데이터·저장 구조 설계 초안. 인증키를 사용한 성공 응답과 정책 원천 업무 테이블은 아직 없음. AI 예산·요청 예약 테이블은 이 초안과 별도로 구현했다. 독립적인 [판정 결과 집계](../development/eligibility-decision.md), [연령](../development/age-condition.md)·[거주](../development/residence-condition.md)·[단일 취업](../development/employment-condition.md)·[소득 구간](../development/income-condition.md) 비교기와 [개정 적용 판단](../development/policy-revision-application.md)은 순수 모델로 구현
 - 제품 기준: [PRD-0001](../PRD/0001_product-baseline/spec.md)
 - 기술 기준: [ADR-0001](../ADR/0001_기술스택과_책임_분리.md)
 - 조사 근거: [온통청년 API 계약 조사](../research/ontong-api-contract.md)

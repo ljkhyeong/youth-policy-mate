@@ -97,7 +97,7 @@ PostgreSQL은 기존 볼륨이 있으면 초기 계정·DB를 다시 만들지 �
 
 ### 데이터와 종료
 
-DB 볼륨은 `youth-policy-mate_postgres_data`이다. PostgreSQL 18의 데이터 경로에 맞춰 컨테이너의 `/var/lib/postgresql`에 마운트했다. 업무 마이그레이션은 없고, 서버가 처음 연결하면 `flyway_schema_history` 관리 테이블만 만든다. Hibernate는 스키마를 자동 생성·수정하지 않는다.
+DB 볼륨은 `youth-policy-mate_postgres_data`이다. PostgreSQL 18의 데이터 경로에 맞춰 컨테이너의 `/var/lib/postgresql`에 마운트했다. Flyway V1은 AI 예산 `ai_budgets`와 요청 예약 `ai_request_reservations`를 만든다. 정책 원천·회원·알림 테이블은 아직 없다. Hibernate는 스키마를 자동 생성·수정하지 않는다.
 
 웹과 서버는 실행 터미널에서 `Ctrl+C`로 종료한다. DB 컨테이너는 아래 명령으로 종료·제거하되 볼륨은 보존한다.
 
@@ -118,6 +118,7 @@ npm run test:ingestion
 npm run test:ai-candidates
 npm run test:ai-admission
 npm run test:ai-reservations
+npm run test:ai-reservation-db
 npm run test:reminders
 npm run test:preview-api
 npm run check:api-types
@@ -143,6 +144,8 @@ npm audit
 `test:ai-admission`은 사전 판단 14건만 실행한다. 후보 재사용, 신규·변경 개정·명시적 재시도, 예산 미설정·0원·기간, 예약액·소수 최대 비용·잔액 경계, 비용 미확인·만료·다른 요청의 비용을 확인한다. 실제 예약·정산·청구 차단은 없으며 [AI 사전 판단 구현](ai-request-admission.md)을 따른다.
 
 `test:ai-reservations`는 예약 상태 13건만 실행한다. 최대 비용 예약, 재전달·충돌, 외부 호출·결과 미확인, 정산·호출 전 취소·무과금 확인과 예약 초과 비용을 검사한다. 메모리 상태 전이이며 실제 PostgreSQL 동시성이나 공급자 청구 검증은 아니다. [AI 예약 상태 구현](ai-budget-reservation-lifecycle.md)을 따른다.
+
+`test:ai-reservation-db`는 실제 PostgreSQL 18.6에서 Flyway V1과 원자적 예약 5건을 실행한다. 예약·잔액 동시 갱신, 재전달·충돌, 최신 잔액과 한도, 동시 요청 직렬화, DB 제약을 검사한다. Docker가 필요하며 외부 AI나 공급자 청구는 사용하지 않는다.
 
 `check:backend`에 포함된 백엔드 통합 테스트는 Compose DB를 사용하지 않고 Testcontainers가 별도 PostgreSQL을 생성한다. 테스트가 끝나면 테스트용 컨테이너를 정리한다. Docker가 없으면 통합 테스트를 건너뛰지 않고 실패한다.
 
@@ -212,9 +215,10 @@ AI 요청 전 판단 추가 후에는 전용 14건과 전체 서버 229건(도�
 
 AI 예약 상태 추가 후에는 전용 13건과 전체 서버 242건(도메인 227·API/계약 13·실제 DB/기본 차단 2), 빌드가 실패·건너뛰기 없이 통과했다. 웹·브라우저·실제 AI·DB 예약·공급자 청구는 검사하지 않았다. [예약 상태 검증 기록](ai-budget-reservation-lifecycle.md#검사)을 따른다.
 
+PostgreSQL 원자적 예약 추가 후에는 전용 DB 5건과 전체 서버 247건(도메인 227·API/계약 13·PostgreSQL 예약·연결/기본 차단 7), 빌드가 실패·건너뛰기 없이 통과했다. 첫 전용 실행은 Java `Instant`의 SQL 유형을 추론하지 못해 5건이 실패했다. UTC `OffsetDateTime`과 PostgreSQL 마이크로초 정밀도로 매핑한 뒤 전용·전체 검사가 통과했다. 실제 AI 호출·호출 이후 상태·공급자 청구는 검사하지 않았다.
+
 ### 알려진 경고와 다음 확인 사항
 
-- 업무 마이그레이션이 없으므로 Flyway가 `No migrations found`를 출력한다. 경고를 없애려고 임시 업무 테이블을 만들지 않는다. 실제 데이터 구조가 확정되면 첫 마이그레이션을 추가한다.
 - ESLint 9.39.5 설치 시 지원 종료 경고가 나온다. 현재 Next.js 린트 설정이 사용하는 React·접근성·import 플러그인의 peer 범위가 ESLint 9까지여서 호환되는 버전을 고정했다. ESLint 10으로 올릴 때 세 플러그인의 지원 범위와 린트 동작을 함께 확인한다. 이는 개발 도구 경고이며 실행 의존성에 포함되지 않는다.
 - 테스트 라이브러리가 Java agent의 동적 로딩 경고를 출력할 수 있다. 경고를 숨기기 위한 JVM 옵션은 추가하지 않았다.
 - 현재 화면은 공개 제품 화면이 아니므로 `noindex, nofollow`를 적용했다. 실제 공개 정책 페이지를 구현할 때 공개 콘텐츠에 맞는 메타데이터와 검색 노출 정책으로 변경한다.

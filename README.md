@@ -57,7 +57,9 @@ Flyway V1·V2와 PostgreSQL 예약 저장소도 추가했습니다. 최초 예�
 
 [AI 요청 실행 포트와 인공 실행기](docs/development/policy-ai-execution.md)도 추가했습니다. 예약과 호출 식별 정보를 저장한 뒤 DB 트랜잭션 밖에서 공급자 독립 포트를 실행하고, 결과 미확인·청구 대기·확인된 비용·무과금을 기존 상태에 반영합니다. 인공 실행 7건과 전체 서버 261건·빌드가 통과했습니다. 실제 공급자·정책 본문·프롬프트·후보 DB 저장은 아직 없습니다.
 
-[AI 미완료 예약 복구 저장소](docs/development/ai-reservation-recovery.md)는 `HELD`·`DISPATCHED`·`OUTCOME_UNKNOWN` 예약의 확인 작업자를 제한된 시간 동안 한 명만 선택하고, 만료·완료 시도의 시작/종료 단계를 보존합니다. 복구 전용 7건과 전체 서버 268건·빌드가 통과했습니다. 실제 복구 작업자·공급자 조회·임대 갱신·상태 전이 펜싱은 아직 없습니다.
+[AI 미완료 예약 복구 저장소](docs/development/ai-reservation-recovery.md)는 `HELD`·`DISPATCHED`·`OUTCOME_UNKNOWN` 예약의 확인 작업자를 제한된 시간 동안 한 명만 선택하고, 만료·완료 시도의 시작/종료 단계를 보존합니다. 복구 전용 7건과 당시 전체 서버 268건·빌드가 통과했습니다.
+
+[AI 예약 인공 복구 조정자](docs/development/policy-ai-recovery-execution.md)는 공급자 독립 확인 포트를 트랜잭션 밖에서 호출하고 활성 시도 순번·작업자·만료 시각·관찰한 예약 상태가 일치할 때만 정산·무과금·호출 전 취소를 적용합니다. 전용 9건과 전체 서버 277건·빌드가 통과했습니다. 실제 공급자 조회·자동 작업자·임대 갱신은 아직 없습니다.
 
 온통청년 API 인증키는 신청 후 승인 대기 중입니다. 인증된 성공 응답, 정책 조회·수집, 실제 정책을 연결한 자격 판정, 로그인·저장·알림 기능은 아직 구현하지 않았습니다. 서버 계산 연결은 개발용 인공 자료에 한정합니다. 조건 입력 검사는 신청 자격 판정이 아니며 실제 정책이나 가상 추천 결과를 표시하지 않습니다.
 
@@ -109,6 +111,7 @@ Flyway V1·V2와 PostgreSQL 예약 저장소도 추가했습니다. 최초 예�
 - [AI 실행 포트와 인공 실행기 검증](docs/development/policy-ai-execution.md)
 - [AI 미완료 예약 복구 소유권 설계](docs/design/ai-reservation-recovery.md)
 - [AI 미완료 예약 복구 저장소 검증](docs/development/ai-reservation-recovery.md)
+- [AI 예약 인공 복구 조정자와 상태 변경 펜싱](docs/development/policy-ai-recovery-execution.md)
 - [취업 조건 비교 범위와 추가 확인 설계](docs/design/employment-condition.md)
 - [소득 입력 의미와 구간 비교 설계](docs/design/income-condition.md)
 - [현재 작업 인계](HANDOFF.md)

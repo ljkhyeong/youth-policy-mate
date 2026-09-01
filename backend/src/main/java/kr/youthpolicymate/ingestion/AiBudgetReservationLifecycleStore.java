@@ -7,6 +7,7 @@ import kr.youthpolicymate.ingestion.AiBudgetReservationState.NoChargeConfirmatio
 import kr.youthpolicymate.ingestion.AiBudgetReservationState.Phase;
 import kr.youthpolicymate.ingestion.AiBudgetReservationState.UncertainOutcome;
 import kr.youthpolicymate.ingestion.AiBudgetReservationState.UncertainReason;
+import kr.youthpolicymate.ingestion.AiReservationRecoveryStore.RecoveryFence;
 import org.springframework.context.annotation.Profile;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
@@ -93,12 +94,26 @@ public class AiBudgetReservationLifecycleStore {
 
     @Transactional
     public Transition settle(String reservationId, ChargeConfirmation confirmation) {
+        return settle(reservationId, confirmation, Optional.empty());
+    }
+
+    @Transactional
+    public Transition settleUnderRecovery(String reservationId, ChargeConfirmation confirmation,
+                                          RecoveryFence fence) {
+        Objects.requireNonNull(fence, "AI 예약 복구 펜싱 정보가 필요합니다.");
+        return settle(reservationId, confirmation, Optional.of(fence));
+    }
+
+    private Transition settle(String reservationId, ChargeConfirmation confirmation,
+                              Optional<RecoveryFence> fence) {
         requireReservationId(reservationId);
         Objects.requireNonNull(confirmation, "청구 확인 정보가 필요합니다.");
         var locked = lock(reservationId);
         if (locked.isEmpty()) return missing();
         var rows = locked.orElseThrow();
         var current = rows.reservation();
+        var fenceRejection = rejectFence(current, fence);
+        if (fenceRejection.isPresent()) return unchanged(fenceRejection.orElseThrow(), current);
 
         if (current.phase() == Phase.SETTLED) {
             return unchanged(sameCompletion(current, confirmation.confirmationId(), confirmation.confirmedAt())
@@ -132,12 +147,26 @@ public class AiBudgetReservationLifecycleStore {
 
     @Transactional
     public Transition cancelBeforeDispatch(String reservationId, Cancellation cancellation) {
+        return cancelBeforeDispatch(reservationId, cancellation, Optional.empty());
+    }
+
+    @Transactional
+    public Transition cancelBeforeDispatchUnderRecovery(String reservationId, Cancellation cancellation,
+                                                        RecoveryFence fence) {
+        Objects.requireNonNull(fence, "AI 예약 복구 펜싱 정보가 필요합니다.");
+        return cancelBeforeDispatch(reservationId, cancellation, Optional.of(fence));
+    }
+
+    private Transition cancelBeforeDispatch(String reservationId, Cancellation cancellation,
+                                            Optional<RecoveryFence> fence) {
         requireReservationId(reservationId);
         Objects.requireNonNull(cancellation, "호출 전 취소 정보가 필요합니다.");
         var locked = lock(reservationId);
         if (locked.isEmpty()) return missing();
         var rows = locked.orElseThrow();
         var current = rows.reservation();
+        var fenceRejection = rejectFence(current, fence);
+        if (fenceRejection.isPresent()) return unchanged(fenceRejection.orElseThrow(), current);
 
         if (current.phase() == Phase.CANCELLED) {
             return unchanged(sameCompletion(current, cancellation.cancellationId(), cancellation.cancelledAt())
@@ -161,12 +190,27 @@ public class AiBudgetReservationLifecycleStore {
 
     @Transactional
     public Transition releaseAfterNoCharge(String reservationId, NoChargeConfirmation confirmation) {
+        return releaseAfterNoCharge(reservationId, confirmation, Optional.empty());
+    }
+
+    @Transactional
+    public Transition releaseAfterNoChargeUnderRecovery(String reservationId,
+                                                        NoChargeConfirmation confirmation,
+                                                        RecoveryFence fence) {
+        Objects.requireNonNull(fence, "AI 예약 복구 펜싱 정보가 필요합니다.");
+        return releaseAfterNoCharge(reservationId, confirmation, Optional.of(fence));
+    }
+
+    private Transition releaseAfterNoCharge(String reservationId, NoChargeConfirmation confirmation,
+                                            Optional<RecoveryFence> fence) {
         requireReservationId(reservationId);
         Objects.requireNonNull(confirmation, "무과금 확인 정보가 필요합니다.");
         var locked = lock(reservationId);
         if (locked.isEmpty()) return missing();
         var rows = locked.orElseThrow();
         var current = rows.reservation();
+        var fenceRejection = rejectFence(current, fence);
+        if (fenceRejection.isPresent()) return unchanged(fenceRejection.orElseThrow(), current);
 
         if (current.phase() == Phase.RELEASED_NO_CHARGE) {
             return unchanged(sameCompletion(current, confirmation.confirmationId(), confirmation.confirmedAt())
@@ -234,6 +278,44 @@ public class AiBudgetReservationLifecycleStore {
                 .query(AiBudgetReservationLifecycleStore::snapshot)
                 .optional();
         return reservation.map(snapshot -> new LockedRows(budget, snapshot));
+    }
+
+    private Optional<Decision> rejectFence(Snapshot current, Optional<RecoveryFence> optionalFence) {
+        if (optionalFence.isEmpty()) return Optional.empty();
+        var fence = optionalFence.orElseThrow();
+        if (!current.reservationId().equals(fence.reservationId())) {
+            return Optional.of(Decision.RECOVERY_ATTEMPT_CONFLICT);
+        }
+
+        var attempt = jdbcClient.sql("""
+                select reservation_id, attempt_number, owner_id, status, claimed_at, lease_until
+                from ai_reservation_recovery_attempts
+                where attempt_id = :attemptId
+                for update
+                """)
+                .param("attemptId", fence.attemptId())
+                .query(AiBudgetReservationLifecycleStore::recoveryAttemptRow)
+                .optional();
+        if (attempt.isEmpty()) return Optional.of(Decision.RECOVERY_ATTEMPT_NOT_FOUND);
+
+        var stored = attempt.orElseThrow();
+        if (!stored.reservationId().equals(fence.reservationId())
+                || stored.attemptNumber() != fence.attemptNumber()
+                || !stored.ownerId().equals(fence.ownerId())) {
+            return Optional.of(Decision.RECOVERY_ATTEMPT_CONFLICT);
+        }
+        if (stored.status() != AiReservationRecoveryStore.Status.ACTIVE) {
+            return Optional.of(Decision.RECOVERY_ATTEMPT_INACTIVE);
+        }
+        if (fence.checkedAt().isBefore(stored.claimedAt())
+                || !fence.checkedAt().isBefore(stored.leaseUntil())) {
+            return Optional.of(Decision.RECOVERY_LEASE_EXPIRED);
+        }
+        if (current.phase() != fence.observedPhase()
+                || !sameDatabaseInstant(current.updatedAt(), fence.observedUpdatedAt())) {
+            return Optional.of(Decision.RECOVERY_RESERVATION_CHANGED);
+        }
+        return Optional.empty();
     }
 
     private void updateBudget(BudgetRow budget, BigDecimal releasedWon, BigDecimal confirmedWon, Instant at) {
@@ -314,6 +396,14 @@ public class AiBudgetReservationLifecycleStore {
         return new BudgetRow(resultSet.getString("budget_id"), resultSet.getBigDecimal("reserved_won"));
     }
 
+    private static RecoveryAttemptRow recoveryAttemptRow(ResultSet resultSet, int rowNumber) throws SQLException {
+        return new RecoveryAttemptRow(
+                resultSet.getString("reservation_id"), resultSet.getLong("attempt_number"),
+                resultSet.getString("owner_id"),
+                AiReservationRecoveryStore.Status.valueOf(resultSet.getString("status")),
+                instant(resultSet, "claimed_at"), instant(resultSet, "lease_until"));
+    }
+
     private static Instant lastActivityAt(Snapshot current) {
         return current.uncertain().map(UncertainOutcome::recordedAt)
                 .orElseGet(() -> current.dispatch().orElseThrow().dispatchedAt());
@@ -371,7 +461,9 @@ public class AiBudgetReservationLifecycleStore {
     public enum Decision {
         REPLAYED, RESERVATION_NOT_FOUND, DISPATCHED, DISPATCH_CONFLICT, OUTCOME_UNKNOWN,
         OUTCOME_ALREADY_UNKNOWN, SETTLED, SETTLED_OVER_RESERVATION, RELEASED_BEFORE_DISPATCH,
-        RELEASED_NO_CHARGE, INVALID_STATE, TERMINAL_CONFLICT, BUDGET_INCONSISTENT
+        RELEASED_NO_CHARGE, INVALID_STATE, TERMINAL_CONFLICT, BUDGET_INCONSISTENT,
+        RECOVERY_ATTEMPT_NOT_FOUND, RECOVERY_ATTEMPT_CONFLICT, RECOVERY_ATTEMPT_INACTIVE,
+        RECOVERY_LEASE_EXPIRED, RECOVERY_RESERVATION_CHANGED
     }
 
     public record Transition(Decision decision, Optional<Snapshot> reservation) {
@@ -403,4 +495,8 @@ public class AiBudgetReservationLifecycleStore {
 
     private record LockedRows(BudgetRow budget, Snapshot reservation) {}
     private record BudgetRow(String budgetId, BigDecimal reservedWon) {}
+    private record RecoveryAttemptRow(
+            String reservationId, long attemptNumber, String ownerId, AiReservationRecoveryStore.Status status,
+            Instant claimedAt, Instant leaseUntil
+    ) {}
 }

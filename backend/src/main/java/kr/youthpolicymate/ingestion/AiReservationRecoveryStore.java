@@ -343,6 +343,41 @@ public class AiReservationRecoveryStore {
         }
     }
 
+    public record RecoveryFence(
+            String attemptId, String reservationId, long attemptNumber, String ownerId,
+            Phase observedPhase, Instant observedUpdatedAt, Instant checkedAt
+    ) {
+        public RecoveryFence {
+            requireText(attemptId, "AI 예약 복구 시도 식별자가 필요합니다.");
+            requireText(reservationId, "AI 요청 예약 식별자가 필요합니다.");
+            if (attemptNumber < 1) throw new IllegalArgumentException("AI 예약 복구 시도 순번은 1 이상이어야 합니다.");
+            requireText(ownerId, "AI 예약 복구 작업자 식별자가 필요합니다.");
+            Objects.requireNonNull(observedPhase, "확인한 AI 요청 예약 단계가 필요합니다.");
+            Objects.requireNonNull(observedUpdatedAt, "확인한 AI 요청 예약 갱신 시각이 필요합니다.");
+            Objects.requireNonNull(checkedAt, "AI 예약 복구 결과 적용 시각이 필요합니다.");
+            if (checkedAt.isBefore(observedUpdatedAt)) {
+                throw new IllegalArgumentException("복구 결과 적용은 확인한 예약 상태보다 빠를 수 없습니다.");
+            }
+        }
+
+        public static RecoveryFence from(Attempt attempt,
+                                         AiBudgetReservationLifecycleStore.Snapshot observed,
+                                         Instant checkedAt) {
+            Objects.requireNonNull(attempt, "AI 예약 복구 시도가 필요합니다.");
+            Objects.requireNonNull(observed, "확인한 AI 요청 예약 상태가 필요합니다.");
+            Objects.requireNonNull(checkedAt, "AI 예약 복구 결과 적용 시각이 필요합니다.");
+            if (!attempt.reservationId().equals(observed.reservationId())) {
+                throw new IllegalArgumentException("복구 시도와 확인한 AI 요청 예약이 다릅니다.");
+            }
+            if (checkedAt.isBefore(attempt.claimedAt())) {
+                throw new IllegalArgumentException("복구 결과 적용은 소유권 획득보다 빠를 수 없습니다.");
+            }
+            return new RecoveryFence(
+                    attempt.attemptId(), attempt.reservationId(), attempt.attemptNumber(), attempt.ownerId(),
+                    observed.phase(), observed.updatedAt(), checkedAt);
+        }
+    }
+
     public record Attempt(
             String attemptId, String reservationId, long attemptNumber, String ownerId,
             Phase claimedPhase, Instant claimedAt, Instant leaseUntil, Status status,

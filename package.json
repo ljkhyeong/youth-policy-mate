@@ -25,6 +25,7 @@
     "test:ai-reservation-db": "./backend/gradlew -p backend test --tests 'kr.youthpolicymate.ingestion.AiBudgetReservationStoreTest' --no-daemon",
     "test:ai-execution": "./backend/gradlew -p backend test --tests 'kr.youthpolicymate.ingestion.PolicyAiExecutionCoordinatorTest' --no-daemon",
     "test:ai-recovery": "./backend/gradlew -p backend test --tests 'kr.youthpolicymate.ingestion.AiReservationRecoveryStoreTest' --no-daemon",
+    "test:ai-recovery-execution": "./backend/gradlew -p backend test --tests 'kr.youthpolicymate.ingestion.PolicyAiRecoveryCoordinatorTest' --no-daemon",
     "test:reminders": "./backend/gradlew -p backend test --tests 'kr.youthpolicymate.schedule.*' --no-daemon",
     "check:backend": "./backend/gradlew -p backend build --no-daemon",
     "check:tools": "node --test scripts/ontong-api-probe.test.mjs",

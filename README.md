@@ -55,6 +55,8 @@ GitHub Actions에 웹·서버 병렬 CI를 구성했습니다. 인증키 없이 
 
 Flyway V1·V2와 PostgreSQL 예약 저장소도 추가했습니다. 최초 예약은 최신 잔액을 잠가 확인하고, 호출 식별자·결과 미확인·정산·호출 전 취소·확인된 무과금 해제까지 멱등하게 저장합니다. 정산과 해제는 예약 상태와 예산 합계를 한 트랜잭션에서 바꾸며, 미완료 상태는 재시작 후 조회할 수 있습니다. PostgreSQL 전용 12건과 전체 서버 254건·빌드가 통과했습니다. 실제 AI 호출·공급자 청구 조회·외부 비용 상한 검증은 아직 없습니다.
 
+[AI 요청 실행 포트와 인공 실행기](docs/development/policy-ai-execution.md)도 추가했습니다. 예약과 호출 식별 정보를 저장한 뒤 DB 트랜잭션 밖에서 공급자 독립 포트를 실행하고, 결과 미확인·청구 대기·확인된 비용·무과금을 기존 상태에 반영합니다. 인공 실행 7건과 전체 서버 261건·빌드가 통과했습니다. 실제 공급자·정책 본문·프롬프트·후보 DB 저장은 아직 없습니다.
+
 온통청년 API 인증키는 신청 후 승인 대기 중입니다. 인증된 성공 응답, 정책 조회·수집, 실제 정책을 연결한 자격 판정, 로그인·저장·알림 기능은 아직 구현하지 않았습니다. 서버 계산 연결은 개발용 인공 자료에 한정합니다. 조건 입력 검사는 신청 자격 판정이 아니며 실제 정책이나 가상 추천 결과를 표시하지 않습니다.
 
 발급 후 사용할 단건 응답 점검 명령 `npm run probe:ontong`을 준비했습니다. 인증키를 노출하지 않고 미검증 JSON 응답을 로컬에 보관하는 개발 도구이며, 운영 수집기나 실제 API 검증 완료를 뜻하지 않습니다.
@@ -101,6 +103,8 @@ Flyway V1·V2와 PostgreSQL 예약 저장소도 추가했습니다. 최초 예�
 - [AI 사전 판단과 실제 예약·과금 차단의 경계](docs/development/ai-request-admission.md)
 - [AI 요청별 예산 예약·결과 미확인·정산 설계](docs/design/ai-budget-reservation-lifecycle.md)
 - [AI 예약·정산 상태 모델과 실제 DB 경계](docs/development/ai-budget-reservation-lifecycle.md)
+- [AI 실행 순서와 공급자 분리 설계](docs/design/policy-ai-execution.md)
+- [AI 실행 포트와 인공 실행기 검증](docs/development/policy-ai-execution.md)
 - [취업 조건 비교 범위와 추가 확인 설계](docs/design/employment-condition.md)
 - [소득 입력 의미와 구간 비교 설계](docs/design/income-condition.md)
 - [현재 작업 인계](HANDOFF.md)

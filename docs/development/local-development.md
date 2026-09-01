@@ -123,6 +123,7 @@ npm run test:ai-reservation-db
 npm run test:ai-execution
 npm run test:ai-recovery
 npm run test:ai-recovery-execution
+npm run test:ai-recovery-policy
 npm run test:reminders
 npm run test:preview-api
 npm run check:api-types
@@ -141,11 +142,13 @@ npm audit
 
 `test:reminders`는 마감 알림 후보 날짜 테스트 17건을 실행한다. 월·연도·윤일 경계, 오늘 후보 구분·지난 날짜 제외, 후보 없음 사유와 개정 변경 후 계산을 확인한다. 인증키·DB·Docker 없이 실행하며 실제 예약·발송 검증은 아니다. [후보 날짜 구현](deadline-reminder-candidates.md)을 참고한다.
 
-`test:ingestion`은 수집 진행 12·AI 후보 12·실행·복구 결과 연결 8·사전 판단 14·예약 상태 13건, 총 59건을 실행한다. 페이지·항목별 시도, 명시적 종료·부분 실패, 중단·재개·늦은 결과, AI 버전·재사용·실행·복구 응답의 현재 개정 재검사, 사전 비용, 예약·결과 미확인·정산 상태를 확인한다. 인증키·DB·Docker가 필요하지 않으며 실제 수집·DB 복구·후보 저장·과금 차단 검증은 아니다.
+`test:ingestion`은 수집 진행 12·AI 후보 12·실행·복구 결과 연결 8·사전 판단 14·예약 상태 13·복구 재확인 정책 10건, 총 69건을 실행한다. 페이지·항목별 시도, 명시적 종료·부분 실패, 중단·재개·늦은 결과, AI 버전·재사용·실행·복구 응답의 현재 개정 재검사, 사전 비용, 예약·결과 미확인·정산 상태와 재확인 보류를 확인한다. 인증키·DB·Docker가 필요하지 않으며 실제 수집·DB 복구·후보 저장·자동 작업자·과금 차단 검증은 아니다.
 
 `test:ai-candidates`는 AI 후보 모델 12건만 실행한다. 현재 개정·원본·생성 방식·요청 순번 검사, 같은 내용 재사용·A→B→A, 늦은 응답·재전달·충돌과 실패·한도 보류의 기존 후보 유지를 확인한다. 인증키·AI·DB 없이 인공 참조 값으로 검사하며 실제 본문 정확성·비용 차단 검증은 아니다. [AI 후보 구현](policy-ai-candidates.md)을 따른다.
 
 `test:ai-candidate-projection`은 실행·복구 결과 연결 8건만 실행한다. 확인한 응답만 현재 정책·최신 요청과 다시 비교하고 결과 미확인·미실행·청구 전용 복구·미적용 복구를 생략하는지 확인한다. 인증키·AI·DB 없이 실행하며 실제 후보 저장·자동 공개 검증은 아니다. [AI 결과 후보 연결](policy-ai-candidate-projection.md)을 따른다.
+
+`test:ai-recovery-policy`는 복구 재확인 순수 정책 10건만 실행한다. 첫 시도, 활성 임대와 재확인 간격, 확인 완료·실패, 수동 검토, 완료·만료를 포함한 최대 횟수와 종료 예약을 확인한다. 고정 운영값·자동 작업자·DB 대상 선택 검증은 아니며 [AI 복구 재확인 정책](ai-reservation-recovery-retry-policy.md)을 따른다.
 
 `test:ai-admission`은 사전 판단 14건만 실행한다. 후보 재사용, 신규·변경 개정·명시적 재시도, 예산 미설정·0원·기간, 예약액·소수 최대 비용·잔액 경계, 비용 미확인·만료·다른 요청의 비용을 확인한다. 실제 예약·정산·청구 차단은 없으며 [AI 사전 판단 구현](ai-request-admission.md)을 따른다.
 

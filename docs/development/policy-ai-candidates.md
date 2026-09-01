@@ -41,7 +41,7 @@ npm run test:ingestion
 npm run check:backend
 ```
 
-`test:ai-candidates`는 전용 12건, `test:ai-candidate-projection`은 결과 연결 8건을 실행한다. `test:ingestion`은 수집 진행 12·AI 후보 12·결과 연결 8·후속 [사전 판단](ai-request-admission.md) 14·[예약 상태](ai-budget-reservation-lifecycle.md) 13건, 총 59건을 선택한다. 이 단위 검사에는 인증키·DB·Docker가 필요하지 않다. 전체 빌드는 실제 PostgreSQL 통합 테스트 때문에 Docker가 필요하다.
+`test:ai-candidates`는 전용 12건, `test:ai-candidate-projection`은 결과 연결 8건을 실행한다. `test:ingestion`은 수집 진행 12·AI 후보 12·결과 연결 8·후속 [사전 판단](ai-request-admission.md) 14·[예약 상태](ai-budget-reservation-lifecycle.md) 13·[복구 재확인 정책](ai-reservation-recovery-retry-policy.md) 10건, 총 69건을 선택한다. 이 단위 검사에는 인증키·DB·Docker가 필요하지 않다. 전체 빌드는 실제 PostgreSQL 통합 테스트 때문에 Docker가 필요하다.
 
 전용 명령의 12건과 전체 빌드의 서버 215건(도메인 200·개발 API/계약 13·실제 DB/기본 차단 2)이 실패·건너뛰기 없이 통과했다. 이번 DB 검사는 첫 실행에 통과했다. Gradle 캐시·Docker 접근에는 권한 확장을 사용했고 기존 JVM 클래스 공유 경고는 유지했다.
 

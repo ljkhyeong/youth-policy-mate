@@ -1,6 +1,6 @@
 # AI 후보의 개정·버전 검사 모델
 
-2026-08-31 구현 기준. [설계](../design/policy-ai-candidates.md)에 따라 현재 정책에 맞는 AI 요약·조건 추출 후보 참조만 수용·재사용하는 순수 Java 모델을 추가했다. 실제 AI 호출·후보 본문·화면·DB는 연결하지 않았다.
+2026-09-01 구현 기준. [설계](../design/policy-ai-candidates.md)에 따라 현재 정책에 맞는 AI 요약·조건 추출 후보 참조만 수용·재사용하는 순수 Java 모델을 추가했다. 후속 [실행·복구 결과 연결](policy-ai-candidate-projection.md)은 인공 실행과 복구에서 확인한 응답을 이 모델에 전달한다. 실제 AI 호출·후보 본문·화면·DB는 연결하지 않았다.
 
 ## 코드와 사용
 
@@ -13,6 +13,7 @@
 | `Generated` | 후보 내부 ID·본문 SHA-256. 실제 본문 저장·정확성 검사 기능은 없음 |
 | `Unavailable` | 요청 실패·잘못된 출력·한도 보류를 호출 측이 분류한 값 |
 | `PolicyAiCandidateState` | 한 정책·작업 종류의 마지막 처리 결과와 마지막 정상 후보, 수용·현재 재사용 판단 |
+| `PolicyAiCandidateResultProjector` | 실행·복구 결과 중 확인 완료한 AI 응답만 `consider`에 전달하고 생략 사유를 반환 |
 
 `PolicyAiCandidateState.empty(policyId, kind)`로 시작한다. 요약과 조건 추출은 별도 상태이며 후보를 서로 교체하지 않는다.
 
@@ -40,7 +41,7 @@ npm run test:ingestion
 npm run check:backend
 ```
 
-`test:ai-candidates`는 전용 12건, `test:ingestion`은 수집 진행 12·AI 후보 12·후속 [사전 판단](ai-request-admission.md) 14·[예약 상태](ai-budget-reservation-lifecycle.md) 13건, 총 51건을 선택한다. 두 단위 검사에는 인증키·DB·Docker가 필요하지 않다. 전체 빌드는 실제 PostgreSQL 통합 테스트 때문에 Docker가 필요하다.
+`test:ai-candidates`는 전용 12건, `test:ai-candidate-projection`은 결과 연결 8건을 실행한다. `test:ingestion`은 수집 진행 12·AI 후보 12·결과 연결 8·후속 [사전 판단](ai-request-admission.md) 14·[예약 상태](ai-budget-reservation-lifecycle.md) 13건, 총 59건을 선택한다. 이 단위 검사에는 인증키·DB·Docker가 필요하지 않다. 전체 빌드는 실제 PostgreSQL 통합 테스트 때문에 Docker가 필요하다.
 
 전용 명령의 12건과 전체 빌드의 서버 215건(도메인 200·개발 API/계약 13·실제 DB/기본 차단 2)이 실패·건너뛰기 없이 통과했다. 이번 DB 검사는 첫 실행에 통과했다. Gradle 캐시·Docker 접근에는 권한 확장을 사용했고 기존 JVM 클래스 공유 경고는 유지했다.
 
@@ -55,4 +56,4 @@ npm run check:backend
 - 정책·예정 요청은 저장소의 최신 값이어야 한다. 응답이 스스로 제시한 요청을 최신 예정 요청으로 사용하면 안 된다. 기록 시점의 원자적 DB 비교·갱신은 아직 없다.
 - AI 결과 대기 중에는 DB 잠금을 잡지 않는다. 실제 저장에서는 정책 개정·최신 예정 요청·마지막 처리 순번을 함께 다시 확인해야 한다.
 - 현재 모델은 원본·정책 상태를 수정하지 않는다. 실제 화면의 원문 유지·안내와 규칙 판정 연결은 별도 구현이므로 PRD AC-06·AC-11 전체 완료가 아니다.
-- 수집 실행 모델과 AI 결과의 저장·재시작 복구, 실제 자동 공개·자격 규칙 승격은 연결하지 않았다. AI 후보를 확정 규칙으로 자동 바꾸는 메서드는 제공하지 않는다.
+- 실행·복구 결과는 현재 정책과 비교하는 순수 연결까지 구현했다. 후보 상태의 DB 저장·재시작 복구, 실제 자동 공개·자격 규칙 승격은 연결하지 않았다. AI 후보를 확정 규칙으로 자동 바꾸는 메서드는 제공하지 않는다.

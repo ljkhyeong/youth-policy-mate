@@ -61,6 +61,8 @@ Flyway V1·V2와 PostgreSQL 예약 저장소도 추가했습니다. 최초 예�
 
 [AI 예약 인공 복구 조정자](docs/development/policy-ai-recovery-execution.md)는 공급자 독립 확인 포트를 트랜잭션 밖에서 호출하고 활성 시도 순번·작업자·만료 시각·관찰한 예약 상태가 일치할 때만 정산·무과금·호출 전 취소를 적용합니다. 전용 9건과 전체 서버 277건·빌드가 통과했습니다. 실제 공급자 조회·자동 작업자·임대 갱신은 아직 없습니다.
 
+[AI 실행·복구 결과의 현재 후보 검사](docs/development/policy-ai-candidate-projection.md)는 정상 실행 응답과 적용 완료한 복구 응답만 기존 후보 모델에 전달합니다. 청구 사실만 확인한 복구나 만료·수동 검토 결과는 후보로 사용하지 않으며, 현재 정책 개정·원본·최신 요청이 바뀌면 기존 후보 상태를 유지합니다. 결과 연결 8건·복구 조정자 10건과 전체 서버 286건·빌드가 통과했습니다. 후보 본문과 후보 상태의 DB 저장은 아직 없습니다.
+
 온통청년 API 인증키는 신청 후 승인 대기 중입니다. 인증된 성공 응답, 정책 조회·수집, 실제 정책을 연결한 자격 판정, 로그인·저장·알림 기능은 아직 구현하지 않았습니다. 서버 계산 연결은 개발용 인공 자료에 한정합니다. 조건 입력 검사는 신청 자격 판정이 아니며 실제 정책이나 가상 추천 결과를 표시하지 않습니다.
 
 발급 후 사용할 단건 응답 점검 명령 `npm run probe:ontong`을 준비했습니다. 인증키를 노출하지 않고 미검증 JSON 응답을 로컬에 보관하는 개발 도구이며, 운영 수집기나 실제 API 검증 완료를 뜻하지 않습니다.
@@ -103,6 +105,7 @@ Flyway V1·V2와 PostgreSQL 예약 저장소도 추가했습니다. 최초 예�
 - [수집 진행 모델과 검증·저장 전제](docs/development/collection-run-progress.md)
 - [정책 개정·생성 버전과 AI 후보 재사용 설계](docs/design/policy-ai-candidates.md)
 - [AI 후보 수용·늦은 결과 차단 모델과 검증](docs/development/policy-ai-candidates.md)
+- [AI 실행·복구 결과의 현재 후보 검사 연결](docs/development/policy-ai-candidate-projection.md)
 - [AI 요청 전 재사용·비용 확인 설계](docs/design/ai-request-admission.md)
 - [AI 사전 판단과 실제 예약·과금 차단의 경계](docs/development/ai-request-admission.md)
 - [AI 요청별 예산 예약·결과 미확인·정산 설계](docs/design/ai-budget-reservation-lifecycle.md)

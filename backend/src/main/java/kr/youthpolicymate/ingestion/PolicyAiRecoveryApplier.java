@@ -14,6 +14,11 @@ import kr.youthpolicymate.ingestion.PolicyAiRecoveryPort.CheckFailed;
 import kr.youthpolicymate.ingestion.PolicyAiRecoveryPort.NoChargeFound;
 import kr.youthpolicymate.ingestion.PolicyAiRecoveryPort.NotDispatched;
 import kr.youthpolicymate.ingestion.PolicyAiRecoveryPort.Outcome;
+import kr.youthpolicymate.ingestion.PolicyAiRecoveryPort.ResponseFound;
+import kr.youthpolicymate.ingestion.PolicyAiExecutionPort.Billing;
+import kr.youthpolicymate.ingestion.PolicyAiExecutionPort.ConfirmedCharge;
+import kr.youthpolicymate.ingestion.PolicyAiExecutionPort.ConfirmedNoCharge;
+import kr.youthpolicymate.ingestion.PolicyAiExecutionPort.PendingCharge;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -62,6 +67,9 @@ public class PolicyAiRecoveryApplier {
         }
 
         RecoveryFence fence = RecoveryFence.from(attempt, observed, appliedAt);
+        if (outcome instanceof ResponseFound response) {
+            return applyBilling(attempt.reservationId(), response.billing(), fence);
+        }
         if (outcome instanceof ChargeFound charge) {
             return Optional.of(lifecycleStore.settleUnderRecovery(
                     attempt.reservationId(), charge.confirmation(), fence));
@@ -75,10 +83,24 @@ public class PolicyAiRecoveryApplier {
                 attempt.reservationId(), notDispatched.cancellation(), fence));
     }
 
+    private Optional<Transition> applyBilling(String reservationId, Billing billing, RecoveryFence fence) {
+        if (billing == PendingCharge.INSTANCE) return Optional.empty();
+        if (billing instanceof ConfirmedCharge confirmed) {
+            return Optional.of(lifecycleStore.settleUnderRecovery(
+                    reservationId, confirmed.confirmation(), fence));
+        }
+        var noCharge = (ConfirmedNoCharge) billing;
+        return Optional.of(lifecycleStore.releaseAfterNoChargeUnderRecovery(
+                reservationId, noCharge.confirmation(), fence));
+    }
+
     private static RecoveryResult completionResult(Outcome outcome, Optional<Transition> transition) {
         if (outcome == CheckFailed.INSTANCE) return RecoveryResult.CHECK_FAILED;
         if (outcome == PolicyAiRecoveryPort.ReviewRequired.INSTANCE) {
             return RecoveryResult.MANUAL_REVIEW_REQUIRED;
+        }
+        if (outcome instanceof ResponseFound response && response.billing() == PendingCharge.INSTANCE) {
+            return RecoveryResult.CHECK_COMPLETED;
         }
         return transition.filter(PolicyAiRecoveryApplier::changedReservation).isPresent()
                 ? RecoveryResult.CHECK_COMPLETED : RecoveryResult.MANUAL_REVIEW_REQUIRED;

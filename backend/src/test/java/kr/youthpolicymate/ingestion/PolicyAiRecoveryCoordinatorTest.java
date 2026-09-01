@@ -18,10 +18,14 @@ import kr.youthpolicymate.ingestion.PolicyAiRecoveryPort.Inspection;
 import kr.youthpolicymate.ingestion.PolicyAiRecoveryPort.NoChargeFound;
 import kr.youthpolicymate.ingestion.PolicyAiRecoveryPort.NotDispatched;
 import kr.youthpolicymate.ingestion.PolicyAiRecoveryPort.Outcome;
+import kr.youthpolicymate.ingestion.PolicyAiRecoveryPort.ResponseFound;
 import kr.youthpolicymate.ingestion.PolicyAiRecoveryPort.ReviewRequired;
+import kr.youthpolicymate.ingestion.PolicyAiExecutionPort.ConfirmedCharge;
+import kr.youthpolicymate.ingestion.PolicyAiExecutionPort.PendingCharge;
 import kr.youthpolicymate.ingestion.PolicyAiRequestAdmission.ReservationRequired;
 import kr.youthpolicymate.ingestion.PolicyAiResult.Kind;
 import kr.youthpolicymate.ingestion.PolicyAiResult.Request;
+import kr.youthpolicymate.ingestion.PolicyAiResult.Generated;
 import kr.youthpolicymate.policy.PolicyObservation;
 import kr.youthpolicymate.policy.PolicyObservation.ContentFingerprint;
 import kr.youthpolicymate.policy.PolicyObservation.Readable;
@@ -77,12 +81,15 @@ class PolicyAiRecoveryCoordinatorTest {
     @Test
     @DisplayName("DB 트랜잭션 밖에서 미확인 호출을 확인하고 활성 임대로 정산한다")
     void settlesUnknownOutcomeWithActiveFence() {
-        reserve("budget-a", "reservation-a", 10, "10");
+        var request = request(10);
+        reserve("budget-a", "reservation-a", request, "10");
         lifecycleStore.dispatch("reservation-a", new Dispatch("dispatch-a", NOW.plusSeconds(1)));
         lifecycleStore.markOutcomeUnknown("reservation-a", new UncertainOutcome(
                 "unknown-a", NOW.plusSeconds(2), UncertainReason.TIMEOUT));
-        var port = new ScriptedPort(new ChargeFound(
-                new ChargeConfirmation("charge-a", NOW.plusSeconds(4), money("7.50"))));
+        var result = new PolicyAiResult(request, NOW.plusSeconds(3),
+                new Generated("candidate-a", "c".repeat(64)));
+        var port = new ScriptedPort(new ResponseFound(result, new ConfirmedCharge(
+                new ChargeConfirmation("charge-a", NOW.plusSeconds(4), money("7.50")))));
 
         var run = coordinator(port, NOW.plusSeconds(5)).recoverNext(
                 lease("attempt-a", "worker-a", NOW.plusSeconds(3), NOW.plusSeconds(30)));
@@ -92,6 +99,8 @@ class PolicyAiRecoveryCoordinatorTest {
                     .isEqualTo(AiBudgetReservationLifecycleStore.Decision.SETTLED);
             assertThat(recovered.application().completion().decision())
                     .isEqualTo(AiReservationRecoveryStore.CompletionDecision.COMPLETED);
+            assertThat(recovered.outcome()).isEqualTo(new ResponseFound(result, new ConfirmedCharge(
+                    new ChargeConfirmation("charge-a", NOW.plusSeconds(4), money("7.50")))));
         });
         assertThat(port.calls()).isOne();
         assertThat(port.transactionActive()).isFalse();
@@ -103,6 +112,29 @@ class PolicyAiRecoveryCoordinatorTest {
             assertThat(attempt.claimedPhase()).isEqualTo(Phase.OUTCOME_UNKNOWN);
             assertThat(attempt.completedPhase()).contains(Phase.SETTLED);
         });
+    }
+
+    @Test
+    @DisplayName("복구한 AI 응답의 청구가 대기 중이면 예약액을 유지하고 응답 확인을 완료한다")
+    void recoversResponseWhileChargeRemainsPending() {
+        var request = request(10);
+        reserve("budget-a", "reservation-a", request, "10");
+        lifecycleStore.dispatch("reservation-a", new Dispatch("dispatch-a", NOW.plusSeconds(1)));
+        var result = new PolicyAiResult(request, NOW.plusSeconds(3),
+                new Generated("candidate-a", "c".repeat(64)));
+
+        var run = coordinator(new ScriptedPort(new ResponseFound(result, PendingCharge.INSTANCE)),
+                NOW.plusSeconds(4)).recoverNext(
+                lease("attempt-a", "worker-a", NOW.plusSeconds(2), NOW.plusSeconds(20)));
+
+        assertThat(run).isInstanceOfSatisfying(PolicyAiRecoveryCoordinator.Recovered.class, recovered -> {
+            assertThat(recovered.outcome()).isEqualTo(new ResponseFound(result, PendingCharge.INSTANCE));
+            assertThat(recovered.application().transition()).isEmpty();
+            assertThat(recovered.application().completion().attempt().orElseThrow().result())
+                    .contains(RecoveryResult.CHECK_COMPLETED);
+        });
+        assertThat(lifecycleStore.find("reservation-a").orElseThrow().phase()).isEqualTo(Phase.DISPATCHED);
+        assertThat(budgetAmounts("budget-a")).isEqualTo(new BudgetAmounts(money("0"), money("10")));
     }
 
     @Test
@@ -292,9 +324,13 @@ class PolicyAiRecoveryCoordinatorTest {
     }
 
     private void reserve(String budgetId, String reservationId, long requestSequence, String maximum) {
+        reserve(budgetId, reservationId, request(requestSequence), maximum);
+    }
+
+    private void reserve(String budgetId, String reservationId, Request request, String maximum) {
         var balance = insertBudget(budgetId);
         assertThat(reservationStore.reserve(reservationId,
-                required(balance, request(requestSequence), maximum), NOW).decision())
+                required(balance, request, maximum), NOW).decision())
                 .isEqualTo(AiBudgetReservationStore.Decision.RESERVED);
     }
 

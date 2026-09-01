@@ -10,6 +10,7 @@ import kr.youthpolicymate.ingestion.AiReservationRecoveryStore.Status;
 import kr.youthpolicymate.ingestion.PolicyAiRecoveryApplier.Application;
 import kr.youthpolicymate.ingestion.PolicyAiRecoveryPort.Inspection;
 import kr.youthpolicymate.ingestion.PolicyAiRecoveryPort.Outcome;
+import kr.youthpolicymate.ingestion.PolicyAiRecoveryPort.ResponseFound;
 import kr.youthpolicymate.ingestion.PolicyAiRecoveryPort.ReviewRequired;
 
 import java.time.Clock;
@@ -56,12 +57,22 @@ public final class PolicyAiRecoveryCoordinator {
         Outcome outcome = isTerminal(inspection.reservation().phase())
                 ? ReviewRequired.INSTANCE
                 : Objects.requireNonNull(recoveryPort.inspect(inspection), "AI 예약 복구 확인 결과가 필요합니다.");
+        validateResponseTiming(inspection, outcome);
         Application application = applier.apply(attempt, inspection.reservation(), outcome, clock.instant());
         return new Recovered(claim, inspection, outcome, application);
     }
 
     private static boolean isTerminal(Phase phase) {
         return phase == Phase.SETTLED || phase == Phase.CANCELLED || phase == Phase.RELEASED_NO_CHARGE;
+    }
+
+    private static void validateResponseTiming(Inspection inspection, Outcome outcome) {
+        if (!(outcome instanceof ResponseFound response)) return;
+        var dispatch = inspection.reservation().dispatch()
+                .orElseThrow(() -> new IllegalStateException("외부 호출 전 예약에서 AI 응답을 복구할 수 없습니다."));
+        if (response.result().recordedAt().isBefore(dispatch.dispatchedAt())) {
+            throw new IllegalStateException("복구한 AI 응답 확인은 외부 호출보다 빠를 수 없습니다.");
+        }
     }
 
     public sealed interface Run permits NotStarted, Recovered {}

@@ -6,6 +6,9 @@ import kr.youthpolicymate.ingestion.AiBudgetReservationState.ChargeConfirmation;
 import kr.youthpolicymate.ingestion.AiBudgetReservationState.NoChargeConfirmation;
 import kr.youthpolicymate.ingestion.AiReservationRecoveryStore.Attempt;
 import kr.youthpolicymate.ingestion.AiReservationRecoveryStore.Status;
+import kr.youthpolicymate.ingestion.PolicyAiExecutionPort.Billing;
+import kr.youthpolicymate.ingestion.PolicyAiExecutionPort.ConfirmedCharge;
+import kr.youthpolicymate.ingestion.PolicyAiExecutionPort.ConfirmedNoCharge;
 
 import java.util.Objects;
 
@@ -27,7 +30,23 @@ public interface PolicyAiRecoveryPort {
         }
     }
 
-    sealed interface Outcome permits ChargeFound, NoChargeFound, NotDispatched, CheckFailed, ReviewRequired {}
+    sealed interface Outcome permits ResponseFound, ChargeFound, NoChargeFound, NotDispatched,
+            CheckFailed, ReviewRequired {}
+
+    record ResponseFound(PolicyAiResult result, Billing billing) implements Outcome {
+        public ResponseFound {
+            Objects.requireNonNull(result, "복구한 AI 응답 결과가 필요합니다.");
+            Objects.requireNonNull(billing, "복구한 AI 응답의 청구 확인 상태가 필요합니다.");
+            if (billing instanceof ConfirmedCharge confirmed
+                    && confirmed.confirmation().confirmedAt().isBefore(result.recordedAt())) {
+                throw new IllegalArgumentException("복구한 청구 확인은 AI 응답 확인보다 빠를 수 없습니다.");
+            }
+            if (billing instanceof ConfirmedNoCharge noCharge
+                    && noCharge.confirmation().confirmedAt().isBefore(result.recordedAt())) {
+                throw new IllegalArgumentException("복구한 무과금 확인은 AI 응답 확인보다 빠를 수 없습니다.");
+            }
+        }
+    }
 
     record ChargeFound(ChargeConfirmation confirmation) implements Outcome {
         public ChargeFound {

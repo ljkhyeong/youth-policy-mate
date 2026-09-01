@@ -49,7 +49,9 @@ GitHub Actions에 웹·서버 병렬 CI를 구성했습니다. 인증키 없이 
 
 같은 모듈에 [AI 후보의 개정·버전 검사](docs/development/policy-ai-candidates.md)를 추가했습니다. 정책 개정·원본 근거·생성 방식·AI 요청 순번을 확인하고, 이전 개정의 후보를 현재 결과로 제공하지 않습니다. 실패·한도 보류는 기존 후보와 정책을 지우지 않습니다. 추가 당시 `npm run test:ai-candidates`의 12건과 전체 서버 215건·빌드가 통과했습니다. 실제 AI 호출·본문 품질 검사·자동 공개는 아직 없습니다.
 
-후속 [AI 요청 전 판단](docs/development/ai-request-admission.md)에서는 후보 재사용, 신규·변경 개정과 명시적 재시도, 주어진 예산·예약액·최대 비용을 확인합니다. 예산이나 비용이 미확인이면 보류하고, 잔액이 충분해도 ‘예산 예약 필요’까지만 반환합니다. AI 예산 배분·단가는 정하지 않았으며 실제 예약·정산·과금 차단은 없습니다. 전용 14건과 전체 서버 229건·빌드가 통과했습니다. `npm run test:ingestion`은 세 모델의 총 38건을 검사합니다.
+후속 [AI 요청 전 판단](docs/development/ai-request-admission.md)에서는 후보 재사용, 신규·변경 개정과 명시적 재시도, 주어진 예산·예약액·최대 비용을 확인합니다. 예산이나 비용이 미확인이면 보류하고, 잔액이 충분해도 ‘예산 예약 필요’까지만 반환합니다. AI 예산 배분·단가는 정하지 않았으며 실제 예약·정산·과금 차단은 없습니다. 추가 당시 전용 14건과 전체 서버 229건·빌드가 통과했습니다.
+
+[AI 요청 예약·정산 상태](docs/development/ai-budget-reservation-lifecycle.md)에서는 요청별 최대 비용 보유, 외부 호출, 결과 미확인, 실제 비용 정산과 확인된 무과금 해제를 구분합니다. 타임아웃이면 예약액을 유지하고 종료 결과가 충돌하면 기존 확정을 바꾸지 않습니다. 전용 13건과 전체 서버 242건·빌드가 통과했습니다. `npm run test:ingestion`은 네 모델의 총 51건을 검사합니다. 실제 DB 예약·AI 호출·공급자 청구 검증은 아직 없습니다.
 
 온통청년 API 인증키는 신청 후 승인 대기 중입니다. 인증된 성공 응답, 정책 조회·수집, 실제 정책을 연결한 자격 판정, 로그인·저장·알림 기능은 아직 구현하지 않았습니다. 서버 계산 연결은 개발용 인공 자료에 한정합니다. 조건 입력 검사는 신청 자격 판정이 아니며 실제 정책이나 가상 추천 결과를 표시하지 않습니다.
 
@@ -95,6 +97,8 @@ GitHub Actions에 웹·서버 병렬 CI를 구성했습니다. 인증키 없이 
 - [AI 후보 수용·늦은 결과 차단 모델과 검증](docs/development/policy-ai-candidates.md)
 - [AI 요청 전 재사용·비용 확인 설계](docs/design/ai-request-admission.md)
 - [AI 사전 판단과 실제 예약·과금 차단의 경계](docs/development/ai-request-admission.md)
+- [AI 요청별 예산 예약·결과 미확인·정산 설계](docs/design/ai-budget-reservation-lifecycle.md)
+- [AI 예약·정산 상태 모델과 실제 DB 경계](docs/development/ai-budget-reservation-lifecycle.md)
 - [취업 조건 비교 범위와 추가 확인 설계](docs/design/employment-condition.md)
 - [소득 입력 의미와 구간 비교 설계](docs/design/income-condition.md)
 - [현재 작업 인계](HANDOFF.md)

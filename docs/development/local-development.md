@@ -9,8 +9,8 @@
 | 웹 | Next.js 16.3.3, React 19.2.8, `frontend/` | 시작 화면·비회원 조건 입력·공통 상태 안내·개발 전용 질문·자격 결과·마감 후보 표시 |
 | 웹 개발 도구 | TypeScript 5.9.3, Tailwind CSS 4.3.3, ESLint 9.39.5, Vitest 4.1.11 | 타입 검사·스타일·린트·입력 및 상태 화면 테스트 |
 | API 계약 | springdoc-openapi 3.1.0, openapi-typescript 7.13.0 | 개발 전용 서버 DTO의 OpenAPI 3.1·TypeScript 생성과 일치 검사 |
-| 서버 | Java 25, Spring Boot 4.1.1, `backend/` | 앱 기동·DB 연결·접근 차단·조건 비교·모집/알림 후보 계산·개정 적용·수집 진행·AI 후보/사전 비용 검사 |
-| 모듈 구성 | Spring Modulith 2.1.1 core | 자격 판정용 `eligibility`, 모집 기간·개정용 `policy`, 알림 후보 날짜용 `schedule`, 수집 진행·AI 후보/사전 판단용 `ingestion` 패키지. 모듈 의존 검증 테스트는 아직 없음 |
+| 서버 | Java 25, Spring Boot 4.1.1, `backend/` | 앱 기동·DB 연결·접근 차단·조건 비교·모집/알림 후보 계산·개정 적용·수집 진행·AI 후보/비용·예약 상태 검사 |
+| 모듈 구성 | Spring Modulith 2.1.1 core | 자격 판정용 `eligibility`, 모집 기간·개정용 `policy`, 알림 후보 날짜용 `schedule`, 수집 진행·AI 후보/비용/예약 상태용 `ingestion` 패키지. 모듈 의존 검증 테스트는 아직 없음 |
 | 빌드 | Gradle Wrapper 9.7.1, npm 잠금 파일 | 백엔드·프런트엔드 빌드 |
 | DB | PostgreSQL 18.6 Alpine, `compose.yaml` | 프로젝트 전용 로컬 DB |
 
@@ -117,6 +117,7 @@ npm run test:policy-revisions
 npm run test:ingestion
 npm run test:ai-candidates
 npm run test:ai-admission
+npm run test:ai-reservations
 npm run test:reminders
 npm run test:preview-api
 npm run check:api-types
@@ -135,11 +136,13 @@ npm audit
 
 `test:reminders`는 마감 알림 후보 날짜 테스트 17건을 실행한다. 월·연도·윤일 경계, 오늘 후보 구분·지난 날짜 제외, 후보 없음 사유와 개정 변경 후 계산을 확인한다. 인증키·DB·Docker 없이 실행하며 실제 예약·발송 검증은 아니다. [후보 날짜 구현](deadline-reminder-candidates.md)을 참고한다.
 
-`test:ingestion`은 수집 진행 12·AI 후보 12·사전 판단 14건, 총 38건을 실행한다. 페이지·항목별 시도, 명시적 종료·부분 실패, 중단·재개·늦은 결과, 재전달·충돌과 검토 필요, AI 버전·재사용·사전 비용 비교를 확인한다. 인증키·DB·Docker가 필요하지 않으며 실제 수집·DB 복구·과금 차단 검증은 아니다.
+`test:ingestion`은 수집 진행 12·AI 후보 12·사전 판단 14·예약 상태 13건, 총 51건을 실행한다. 페이지·항목별 시도, 명시적 종료·부분 실패, 중단·재개·늦은 결과, AI 버전·재사용·사전 비용, 예약·결과 미확인·정산 상태를 확인한다. 인증키·DB·Docker가 필요하지 않으며 실제 수집·DB 복구·과금 차단 검증은 아니다.
 
 `test:ai-candidates`는 AI 후보 모델 12건만 실행한다. 현재 개정·원본·생성 방식·요청 순번 검사, 같은 내용 재사용·A→B→A, 늦은 응답·재전달·충돌과 실패·한도 보류의 기존 후보 유지를 확인한다. 인증키·AI·DB 없이 인공 참조 값으로 검사하며 실제 본문 정확성·비용 차단 검증은 아니다. [AI 후보 구현](policy-ai-candidates.md)을 따른다.
 
 `test:ai-admission`은 사전 판단 14건만 실행한다. 후보 재사용, 신규·변경 개정·명시적 재시도, 예산 미설정·0원·기간, 예약액·소수 최대 비용·잔액 경계, 비용 미확인·만료·다른 요청의 비용을 확인한다. 실제 예약·정산·청구 차단은 없으며 [AI 사전 판단 구현](ai-request-admission.md)을 따른다.
+
+`test:ai-reservations`는 예약 상태 13건만 실행한다. 최대 비용 예약, 재전달·충돌, 외부 호출·결과 미확인, 정산·호출 전 취소·무과금 확인과 예약 초과 비용을 검사한다. 메모리 상태 전이이며 실제 PostgreSQL 동시성이나 공급자 청구 검증은 아니다. [AI 예약 상태 구현](ai-budget-reservation-lifecycle.md)을 따른다.
 
 `check:backend`에 포함된 백엔드 통합 테스트는 Compose DB를 사용하지 않고 Testcontainers가 별도 PostgreSQL을 생성한다. 테스트가 끝나면 테스트용 컨테이너를 정리한다. Docker가 없으면 통합 테스트를 건너뛰지 않고 실패한다.
 
@@ -206,6 +209,8 @@ CI 구성 후에는 macOS arm64의 별도 임시 복사본에서 Node.js 24.20.0
 AI 후보 개정·버전 검사 추가 후에는 전용 12건과 전체 서버 215건(도메인 200·API/계약 13·실제 DB/기본 차단 2), 빌드가 실패·건너뛰기 없이 통과했다. 이번 DB 검사는 첫 실행에 통과했다. 웹·브라우저·실제 AI는 검사하지 않았고 본문 품질·비용 차단 검증도 아니다. [AI 후보 검증 기록](policy-ai-candidates.md#검증)을 따른다.
 
 AI 요청 전 판단 추가 후에는 전용 14건과 전체 서버 229건(도메인 214·API/계약 13·실제 DB/기본 차단 2), 빌드가 실패·건너뛰기 없이 통과했다. 웹·브라우저·실제 AI·가격 계산·예산 예약은 검사하지 않았다. [사전 판단 검증 기록](ai-request-admission.md#검사)에 확인 범위와 실제 과금 차단이 아닌 점을 구분했다.
+
+AI 예약 상태 추가 후에는 전용 13건과 전체 서버 242건(도메인 227·API/계약 13·실제 DB/기본 차단 2), 빌드가 실패·건너뛰기 없이 통과했다. 웹·브라우저·실제 AI·DB 예약·공급자 청구는 검사하지 않았다. [예약 상태 검증 기록](ai-budget-reservation-lifecycle.md#검사)을 따른다.
 
 ### 알려진 경고와 다음 확인 사항
 

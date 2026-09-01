@@ -1,6 +1,13 @@
 package kr.youthpolicymate.ingestion;
 
 import kr.youthpolicymate.ingestion.AiBudgetReservationStore.Decision;
+import kr.youthpolicymate.ingestion.AiBudgetReservationState.ChargeConfirmation;
+import kr.youthpolicymate.ingestion.AiBudgetReservationState.Cancellation;
+import kr.youthpolicymate.ingestion.AiBudgetReservationState.Dispatch;
+import kr.youthpolicymate.ingestion.AiBudgetReservationState.NoChargeConfirmation;
+import kr.youthpolicymate.ingestion.AiBudgetReservationState.Phase;
+import kr.youthpolicymate.ingestion.AiBudgetReservationState.UncertainOutcome;
+import kr.youthpolicymate.ingestion.AiBudgetReservationState.UncertainReason;
 import kr.youthpolicymate.ingestion.AiRequestBudget.Balance;
 import kr.youthpolicymate.ingestion.AiRequestBudget.CostCeiling;
 import kr.youthpolicymate.ingestion.PolicyAiRequestAdmission.ReservationRequired;
@@ -51,6 +58,9 @@ class AiBudgetReservationStoreTest {
 
     @Autowired
     AiBudgetReservationStore store;
+
+    @Autowired
+    AiBudgetReservationLifecycleStore lifecycleStore;
 
     @BeforeEach
     void setUp() {
@@ -168,6 +178,165 @@ class AiBudgetReservationStoreTest {
                 """).param("at", dbTime(NOW)).update()).isInstanceOf(DataIntegrityViolationException.class);
     }
 
+    @Test
+    @DisplayName("외부 호출 식별자를 기록하고 재전달과 충돌을 구분해 미완료 목록에서 조회한다")
+    void recordsDispatchAndFindsUnresolvedReservation() {
+        reserve("budget-a", "reservation-a", 10, "10");
+        var dispatch = new Dispatch("dispatch-a", NOW.plusSeconds(1).plusNanos(123_456_789));
+
+        assertThat(lifecycleStore.dispatch("reservation-a", dispatch).decision())
+                .isEqualTo(AiBudgetReservationLifecycleStore.Decision.DISPATCHED);
+        assertThat(lifecycleStore.dispatch("reservation-a", dispatch).decision())
+                .isEqualTo(AiBudgetReservationLifecycleStore.Decision.REPLAYED);
+        assertThat(lifecycleStore.dispatch("reservation-a",
+                new Dispatch("dispatch-b", dispatch.dispatchedAt())).decision())
+                .isEqualTo(AiBudgetReservationLifecycleStore.Decision.DISPATCH_CONFLICT);
+
+        var unresolved = lifecycleStore.unresolved(10);
+        assertThat(unresolved).singleElement().satisfies(snapshot -> {
+            assertThat(snapshot.phase()).isEqualTo(Phase.DISPATCHED);
+            assertThat(snapshot.dispatch().orElseThrow().dispatchId()).isEqualTo("dispatch-a");
+            assertThat(snapshot.actualWon()).isEmpty();
+        });
+    }
+
+    @Test
+    @DisplayName("결과 미확인은 예약액을 유지하고 같은 관찰 재전달과 다른 관찰을 구분한다")
+    void keepsReservationWhileOutcomeIsUnknown() {
+        reserve("budget-a", "reservation-a", 10, "10");
+        lifecycleStore.dispatch("reservation-a", new Dispatch("dispatch-a", NOW.plusSeconds(1)));
+        var uncertain = new UncertainOutcome("observation-a", NOW.plusSeconds(2).plusNanos(987_654_321),
+                UncertainReason.TIMEOUT);
+
+        assertThat(lifecycleStore.markOutcomeUnknown("reservation-a", uncertain).decision())
+                .isEqualTo(AiBudgetReservationLifecycleStore.Decision.OUTCOME_UNKNOWN);
+        assertThat(lifecycleStore.markOutcomeUnknown("reservation-a", uncertain).decision())
+                .isEqualTo(AiBudgetReservationLifecycleStore.Decision.REPLAYED);
+        assertThat(lifecycleStore.markOutcomeUnknown("reservation-a",
+                new UncertainOutcome("observation-b", uncertain.recordedAt(), UncertainReason.TIMEOUT)).decision())
+                .isEqualTo(AiBudgetReservationLifecycleStore.Decision.OUTCOME_ALREADY_UNKNOWN);
+
+        assertThat(budgetAmounts("budget-a").reservedWon()).isEqualByComparingTo("10");
+        assertThat(lifecycleStore.find("reservation-a").orElseThrow().uncertain().orElseThrow().reason())
+                .isEqualTo(UncertainReason.TIMEOUT);
+    }
+
+    @Test
+    @DisplayName("확인된 실제 비용을 정산하고 예약 초과 비용도 사실대로 반영한다")
+    void settlesConfirmedChargeIncludingOverReservation() {
+        reserve("budget-a", "reservation-a", 10, "10");
+        lifecycleStore.dispatch("reservation-a", new Dispatch("dispatch-a", NOW.plusSeconds(1)));
+        lifecycleStore.markOutcomeUnknown("reservation-a", new UncertainOutcome(
+                "observation-a", NOW.plusSeconds(2), UncertainReason.CONNECTION_LOST));
+        var confirmation = new ChargeConfirmation("confirmation-a", NOW.plusSeconds(3), money("7.50"));
+
+        assertThat(lifecycleStore.settle("reservation-a", confirmation).decision())
+                .isEqualTo(AiBudgetReservationLifecycleStore.Decision.SETTLED);
+        assertThat(lifecycleStore.settle("reservation-a", confirmation).decision())
+                .isEqualTo(AiBudgetReservationLifecycleStore.Decision.REPLAYED);
+        assertThat(budgetAmounts("budget-a"))
+                .isEqualTo(new BudgetAmounts(money("7.50"), money("0")));
+        assertThat(lifecycleStore.find("reservation-a").orElseThrow().uncertain()).isPresent();
+
+        reserve("budget-b", "reservation-b", 20, "5");
+        lifecycleStore.dispatch("reservation-b", new Dispatch("dispatch-b", NOW.plusSeconds(1)));
+        assertThat(lifecycleStore.settle("reservation-b",
+                new ChargeConfirmation("confirmation-b", NOW.plusSeconds(2), money("6.25"))).decision())
+                .isEqualTo(AiBudgetReservationLifecycleStore.Decision.SETTLED_OVER_RESERVATION);
+        assertThat(budgetAmounts("budget-b"))
+                .isEqualTo(new BudgetAmounts(money("6.25"), money("0")));
+    }
+
+    @Test
+    @DisplayName("외부 호출 전 취소만 예약액을 해제하고 이후 호출을 막는다")
+    void cancelsOnlyBeforeDispatch() {
+        reserve("budget-a", "reservation-a", 10, "10");
+        var cancellation = new Cancellation("cancellation-a", NOW.plusSeconds(1));
+
+        assertThat(lifecycleStore.cancelBeforeDispatch("reservation-a", cancellation).decision())
+                .isEqualTo(AiBudgetReservationLifecycleStore.Decision.RELEASED_BEFORE_DISPATCH);
+        assertThat(lifecycleStore.cancelBeforeDispatch("reservation-a", cancellation).decision())
+                .isEqualTo(AiBudgetReservationLifecycleStore.Decision.REPLAYED);
+        assertThat(lifecycleStore.dispatch("reservation-a",
+                new Dispatch("dispatch-a", NOW.plusSeconds(2))).decision())
+                .isEqualTo(AiBudgetReservationLifecycleStore.Decision.INVALID_STATE);
+        assertThat(budgetAmounts("budget-a"))
+                .isEqualTo(new BudgetAmounts(money("0"), money("0")));
+    }
+
+    @Test
+    @DisplayName("명시적으로 무과금이 확인된 외부 호출만 예약액을 해제한다")
+    void releasesOnlyAfterNoChargeConfirmation() {
+        reserve("budget-a", "reservation-a", 10, "10");
+        var confirmation = new NoChargeConfirmation("no-charge-a", NOW.plusSeconds(3));
+
+        assertThat(lifecycleStore.releaseAfterNoCharge("reservation-a", confirmation).decision())
+                .isEqualTo(AiBudgetReservationLifecycleStore.Decision.INVALID_STATE);
+        lifecycleStore.dispatch("reservation-a", new Dispatch("dispatch-a", NOW.plusSeconds(1)));
+        lifecycleStore.markOutcomeUnknown("reservation-a", new UncertainOutcome(
+                "observation-a", NOW.plusSeconds(2), UncertainReason.PROVIDER_STATUS_UNAVAILABLE));
+        assertThat(lifecycleStore.releaseAfterNoCharge("reservation-a", confirmation).decision())
+                .isEqualTo(AiBudgetReservationLifecycleStore.Decision.RELEASED_NO_CHARGE);
+        assertThat(lifecycleStore.releaseAfterNoCharge("reservation-a", confirmation).decision())
+                .isEqualTo(AiBudgetReservationLifecycleStore.Decision.REPLAYED);
+        assertThat(lifecycleStore.settle("reservation-a",
+                new ChargeConfirmation("charge-a", NOW.plusSeconds(4), money("1"))).decision())
+                .isEqualTo(AiBudgetReservationLifecycleStore.Decision.TERMINAL_CONFLICT);
+
+        var snapshot = lifecycleStore.find("reservation-a").orElseThrow();
+        assertThat(snapshot.phase()).isEqualTo(Phase.RELEASED_NO_CHARGE);
+        assertThat(snapshot.uncertain()).isPresent();
+        assertThat(budgetAmounts("budget-a"))
+                .isEqualTo(new BudgetAmounts(money("0"), money("0")));
+    }
+
+    @Test
+    @DisplayName("동시에 도착한 정산과 무과금 확인 중 하나만 예약액을 해제한다")
+    void serializesConcurrentTerminalResults() throws Exception {
+        reserve("budget-a", "reservation-a", 10, "10");
+        lifecycleStore.dispatch("reservation-a", new Dispatch("dispatch-a", NOW.plusSeconds(1)));
+        var start = new CountDownLatch(1);
+        List<AiBudgetReservationLifecycleStore.Decision> decisions;
+        try (var executor = Executors.newFixedThreadPool(2)) {
+            var settlement = executor.submit(() -> {
+                start.await();
+                return lifecycleStore.settle("reservation-a",
+                        new ChargeConfirmation("charge-a", NOW.plusSeconds(2), money("7"))).decision();
+            });
+            var noCharge = executor.submit(() -> {
+                start.await();
+                return lifecycleStore.releaseAfterNoCharge("reservation-a",
+                        new NoChargeConfirmation("no-charge-a", NOW.plusSeconds(2))).decision();
+            });
+            start.countDown();
+            decisions = List.of(settlement.get(10, TimeUnit.SECONDS), noCharge.get(10, TimeUnit.SECONDS));
+        }
+
+        assertThat(decisions).contains(AiBudgetReservationLifecycleStore.Decision.TERMINAL_CONFLICT);
+        var snapshot = lifecycleStore.find("reservation-a").orElseThrow();
+        assertThat(snapshot.phase()).isIn(Phase.SETTLED, Phase.RELEASED_NO_CHARGE);
+        assertThat(budgetAmounts("budget-a").reservedWon()).isEqualByComparingTo("0");
+        if (snapshot.phase() == Phase.SETTLED) {
+            assertThat(decisions).contains(AiBudgetReservationLifecycleStore.Decision.SETTLED);
+            assertThat(budgetAmounts("budget-a").confirmedWon()).isEqualByComparingTo("7");
+        } else {
+            assertThat(decisions).contains(AiBudgetReservationLifecycleStore.Decision.RELEASED_NO_CHARGE);
+            assertThat(budgetAmounts("budget-a").confirmedWon()).isEqualByComparingTo("0");
+        }
+    }
+
+    @Test
+    @DisplayName("PostgreSQL 제약은 단계에 필요한 외부 호출 정보를 누락할 수 없게 한다")
+    void enforcesLifecycleFieldConstraints() {
+        reserve("budget-a", "reservation-a", 10, "10");
+
+        assertThatThrownBy(() -> jdbcClient.sql("""
+                update ai_request_reservations set phase = 'DISPATCHED'
+                where reservation_id = 'reservation-a'
+                """).update()).isInstanceOf(DataIntegrityViolationException.class);
+        assertThat(lifecycleStore.find("reservation-a").orElseThrow().phase()).isEqualTo(Phase.HELD);
+    }
+
     private Balance insertBudget(String budgetId, String limit, String confirmed, String reserved) {
         var balance = balance(budgetId, limit, confirmed, reserved);
         jdbcClient.sql("""
@@ -184,6 +353,22 @@ class AiBudgetReservationStoreTest {
                 .param("createdAt", dbTime(NOW.minusSeconds(120)))
                 .update();
         return balance;
+    }
+
+    private void reserve(String budgetId, String reservationId, long requestSequence, String maximum) {
+        var balance = insertBudget(budgetId, "100", "0", "0");
+        assertThat(store.reserve(reservationId, required(balance, request(requestSequence), maximum), NOW).decision())
+                .isEqualTo(RESERVED);
+    }
+
+    private BudgetAmounts budgetAmounts(String budgetId) {
+        return jdbcClient.sql("""
+                select confirmed_won, reserved_won from ai_budgets where budget_id = :budgetId
+                """)
+                .param("budgetId", budgetId)
+                .query((resultSet, rowNumber) -> new BudgetAmounts(
+                        resultSet.getBigDecimal("confirmed_won"), resultSet.getBigDecimal("reserved_won")))
+                .single();
     }
 
     private static Balance balance(String budgetId, String limit, String confirmed, String reserved) {
@@ -211,5 +396,12 @@ class AiBudgetReservationStoreTest {
     private static BigDecimal money(String amount) { return new BigDecimal(amount); }
     private static OffsetDateTime dbTime(Instant instant) {
         return instant.truncatedTo(ChronoUnit.MICROS).atOffset(ZoneOffset.UTC);
+    }
+
+    private record BudgetAmounts(BigDecimal confirmedWon, BigDecimal reservedWon) {
+        private BudgetAmounts {
+            confirmedWon = confirmedWon.stripTrailingZeros();
+            reservedWon = reservedWon.stripTrailingZeros();
+        }
     }
 }

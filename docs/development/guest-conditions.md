@@ -1,6 +1,6 @@
 # 비회원 조건 입력
 
-2026-08-30 구현 기준. 제품 요구는 [PRD](../PRD/0001_product-baseline/spec.md), 실행 방법은 [로컬 개발 환경](local-development.md)을 따른다. 이 문서는 현재 화면의 구현 범위이며 정책 자격·회원 프로필 계약을 확정하지 않는다.
+2026-09-02 구현 기준. 제품 요구는 [PRD](../PRD/0001_product-baseline/spec.md), 화면 구조는 [웹앱 인터페이스 기준](../design/webapp-interface.md), 실행 방법은 [로컬 개발 환경](local-development.md)을 따른다. 이 문서는 현재 화면의 구현 범위이며 정책 자격·회원 프로필 계약을 확정하지 않는다.
 
 ## 실행과 동작
 
@@ -12,6 +12,8 @@
 4. 모두 지우기를 누르거나 새로고침하면 입력값을 초기화한다.
 
 값은 React 화면 상태에만 둔다. 서버 전송, URL 파라미터, 쿠키, 브라우저 저장소, 회원 저장은 사용하지 않는다. 기본 폼 제출에서도 개인정보가 직렬화되지 않도록 입력 요소에 `name`을 두지 않았다.
+
+홈에서는 서비스 설명보다 `내 조건 입력하기`를 먼저 제공한다. 데스크톱은 상단 메뉴, 모바일은 하단 고정 탭으로 홈과 내 조건을 오간다. 입력 화면은 한 열의 2단계 진행 표시를 사용하고 확인 화면은 입력값만 요약한다. 실제 정책 데이터가 연결되기 전에는 추천 카드나 신청 가능 여부를 만들지 않는다.
 
 ## 입력 검사와 자격 판정의 경계
 
@@ -28,7 +30,8 @@
 - `frontend/src/features/conditions/condition-form.tsx`: 입력·확인 화면 전환과 초기화, 오류·포커스 안내.
 - `frontend/src/features/conditions/condition-draft.ts`: 화면 내부 선택지와 입력 검사.
 - `frontend/src/lib/seoul-date.ts`: 지정한 시각의 서울 날짜 변환.
-- `frontend/src/components/site-shell.tsx`: 시작·입력 화면의 공통 탐색과 본문 건너뛰기 링크.
+- `frontend/src/components/site-shell.tsx`: 데스크톱 상단 메뉴, 모바일 하단 탭, 본문 건너뛰기 링크를 포함한 공통 앱 셸.
+- `frontend/src/app/globals.css`: 웹앱 공통 색상·간격·입력·탐색과 반응형 스타일.
 
 `ConditionDraft`는 API DTO가 아니다. 향후 프로필 저장 API를 추가할 때는 생성 TypeScript 계약을 사용하고 화면 모델과 명시적으로 연결한다.
 
@@ -36,7 +39,7 @@
 
 - `npm run test:web`: 이 화면의 필수값·날짜·선택지·연령 제한 비적용·서울 날짜 경계 5개를 포함한다. 현재 전체 웹 검증 범위는 [로컬 개발 안내](local-development.md#4-검증-명령과-실제-확인-범위)를 따른다.
 - `npm run check:web`: ESLint와 Next.js 경로 타입 생성·TypeScript 검사.
-- `npm run build:web`: 시작 화면 정적 빌드, 조건 입력 페이지 동적 빌드.
+- `npm run build:web`: 시작 화면 정적 빌드, 조건 입력 페이지 동적 빌드. 현재 제한된 실행 환경에서 Turbopack의 내부 포트 생성이 차단되어 같은 Next.js 소스를 `npm exec --workspace frontend -- next build --webpack`으로 추가 검증했다.
 - 브라우저: 입력 오류와 첫 오류 항목 포커스, 확인·수정·초기화, 새로고침 초기화, 데스크톱 1280px·모바일 390px 화면. 가상 입력값만 사용했다.
 
 현재 브라우저 확인은 저장소의 E2E 자동 테스트나 실제 휴대전화 검증을 의미하지 않는다. 오류·확인·수정 시 포커스 이동은 확인했지만, 브라우저 도구의 Tab·Enter 동작이 반영되지 않아 키보드만 사용하는 전체 흐름은 추가로 확인해야 한다. 외부 정책 API·자격 판정·인증·저장·알림은 검증 대상이 아니다.

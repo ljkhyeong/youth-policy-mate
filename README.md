@@ -15,7 +15,7 @@
 
 2026-08-30에 MVP 범위·기술 스택을 확정하고 온통청년 API를 조사한 뒤, Next.js·Spring Boot와 로컬 PostgreSQL의 기본 개발 환경을 구성했습니다. 프런트엔드 빌드, 실제 DB를 사용하는 백엔드 테스트와 로컬 기동을 확인했습니다.
 
-API 인증키 없이 사용할 수 있는 비회원 조건 입력 화면(`/conditions`)을 구현했습니다. 생년월일·서울 자치구·주된 취업상태를 입력하고, 확인·수정·초기화할 수 있습니다. 입력값은 화면 상태로만 사용하며 서버에 보내거나 저장하지 않습니다. 새로고침하면 초기화됩니다.
+API 인증키 없이 사용할 수 있는 비회원 조건 입력 화면(`/conditions`)을 구현했습니다. 홈은 설명보다 조건 입력 시작을 우선하는 앱 화면으로 구성했고, 모바일 하단 탭과 데스크톱 상단 메뉴에서 홈·내 조건을 이동할 수 있습니다. 생년월일·서울 자치구·주된 취업상태를 입력하고, 확인·수정·초기화할 수 있습니다. 입력값은 화면 상태로만 사용하며 서버에 보내거나 저장하지 않습니다. 새로고침하면 초기화됩니다. 화면 기준은 [웹앱 인터페이스](docs/design/webapp-interface.md)에 정리했습니다.
 
 조건 입력의 로딩 화면과 공통 오류·404 안내를 추가했습니다. 개발 모드의 `/dev/states`에서 로딩·빈 결과·오류를 미리 볼 수 있습니다. 실제 검색 결과가 아닌 화면 점검용이며, 운영 빌드에서는 이 경로를 404로 처리합니다.
 
@@ -96,6 +96,7 @@ Flyway V1·V2와 PostgreSQL 예약 저장소도 추가했습니다. 최초 예�
 - [전용 스킬과 재사용 출처](docs/development/skill-reuse.md)
 - [로컬 개발 환경과 검증 명령](docs/development/local-development.md)
 - [CI 구성과 검증 범위](docs/development/ci.md)
+- [모바일 우선 웹앱 인터페이스 기준](docs/design/webapp-interface.md)
 - [비회원 조건 입력의 구현 범위](docs/development/guest-conditions.md)
 - [공통 상태 화면과 개발 미리보기](docs/development/page-states.md)
 - [추가 확인 질문과 답변 미리보기](docs/development/employment-question-preview.md)

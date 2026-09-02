@@ -13,6 +13,9 @@ import kr.youthpolicymate.ingestion.AiReservationRecoveryRetryPolicy.Ready;
 import kr.youthpolicymate.ingestion.AiReservationRecoveryRetryPolicy.Schedule;
 import kr.youthpolicymate.ingestion.AiReservationRecoveryRetryPolicy.StopReason;
 import kr.youthpolicymate.ingestion.AiReservationRecoveryRetryPolicy.Stopped;
+import kr.youthpolicymate.ingestion.AiReservationRecoveryReviewStore.ResumeCommand;
+import kr.youthpolicymate.ingestion.AiReservationRecoveryReviewStore.ResumeDecision;
+import kr.youthpolicymate.ingestion.AiReservationRecoveryReviewStore.ResumeReason;
 import kr.youthpolicymate.ingestion.AiReservationRecoveryStore.Attempt;
 import kr.youthpolicymate.ingestion.AiReservationRecoveryStore.Completion;
 import kr.youthpolicymate.ingestion.AiReservationRecoveryStore.Lease;
@@ -76,6 +79,9 @@ class AiReservationRecoveryOperationsQueryTest {
 
     @Autowired
     AiReservationRecoveryStore recoveryStore;
+
+    @Autowired
+    AiReservationRecoveryReviewStore reviewStore;
 
     @Autowired
     AiReservationRecoveryOperationsQuery operationsQuery;
@@ -179,6 +185,35 @@ class AiReservationRecoveryOperationsQueryTest {
                     .containsExactly(Status.EXPIRED, Status.COMPLETED, Status.COMPLETED);
             assertThat(item.decision()).isEqualTo(new Stopped(StopReason.MAXIMUM_ATTEMPTS_REACHED, 3));
         });
+    }
+
+    @Test
+    @DisplayName("수동 검토 재개 이력을 조회하고 재개 시각부터 간격이 지나면 다음 배정을 허용한다")
+    void reportsAndAssignsResumedManualReview() {
+        reserve("manual", "policy-manual", Kind.SUMMARY, 10, at(0));
+        lifecycleStore.dispatch("manual", new Dispatch("dispatch-manual", at(1)));
+        recoveryStore.claim("manual", lease("attempt-manual", at(2), at(20)));
+        recoveryStore.complete(new Completion(
+                "attempt-manual", "worker-a", at(3), RecoveryResult.MANUAL_REVIEW_REQUIRED));
+        assertThat(reviewStore.resume(new ResumeCommand(
+                "resume-manual", "manual", "attempt-manual", "operator-a",
+                ResumeReason.SUPPLIER_STATE_VERIFIED, Phase.DISPATCHED, at(1), at(5))).decision())
+                .isEqualTo(ResumeDecision.RESUMED);
+
+        var deferred = operationsQuery.findOldestUnresolved(criteria(at(1), at(9), 10));
+        assertThat(deferred.items()).singleElement().satisfies(item -> {
+            assertThat(item.reviewResumes()).singleElement().satisfies(resume ->
+                    assertThat(resume.resumeId()).isEqualTo("resume-manual"));
+            assertThat(item.decision()).isEqualTo(new Deferred(HoldReason.RETRY_INTERVAL, at(10)));
+        });
+
+        var ready = operationsQuery.findOldestUnresolved(criteria(at(1), at(10), 10));
+        var outcome = workAssigner.assign(
+                ready, ready.items().getFirst(), lease("attempt-after-resume", at(10), at(30)));
+
+        assertThat(outcome).isInstanceOf(ReadyClaimed.class);
+        assertThat(recoveryStore.history("manual")).extracting(Attempt::attemptNumber)
+                .containsExactly(1L, 2L);
     }
 
     @Test
@@ -324,6 +359,7 @@ class AiReservationRecoveryOperationsQueryTest {
     }
 
     private void clearDatabase() {
+        jdbcClient.sql("delete from ai_reservation_recovery_review_resumes").update();
         jdbcClient.sql("delete from ai_reservation_recovery_attempts").update();
         jdbcClient.sql("delete from ai_request_reservations").update();
         jdbcClient.sql("delete from ai_budgets").update();

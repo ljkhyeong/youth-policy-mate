@@ -2,28 +2,40 @@ package kr.youthpolicymate.ingestion;
 
 import kr.youthpolicymate.ingestion.AiBudgetReservationLifecycleStore.Snapshot;
 import kr.youthpolicymate.ingestion.AiBudgetReservationState.Phase;
+import kr.youthpolicymate.ingestion.AiReservationRecoveryReviewStore.ResumeRecord;
 import kr.youthpolicymate.ingestion.AiReservationRecoveryStore.Attempt;
 import kr.youthpolicymate.ingestion.AiReservationRecoveryStore.RecoveryResult;
 import kr.youthpolicymate.ingestion.AiReservationRecoveryStore.Status;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 
 // 작업자를 실행하거나 DB를 바꾸지 않는다. 현재 예약과 복구 이력으로 다음 확인 가능 시점만 계산한다.
 public final class AiReservationRecoveryRetryPolicy {
     public Decision decide(Schedule schedule, Snapshot reservation,
                            List<Attempt> history, Instant evaluatedAt) {
+        return decide(schedule, reservation, history, List.of(), evaluatedAt);
+    }
+
+    public Decision decide(Schedule schedule, Snapshot reservation,
+                           List<Attempt> history, List<ResumeRecord> reviewResumes,
+                           Instant evaluatedAt) {
         Objects.requireNonNull(schedule, "AI 예약 복구 재확인 일정이 필요합니다.");
         Objects.requireNonNull(reservation, "AI 요청 예약 상태가 필요합니다.");
         Objects.requireNonNull(history, "AI 예약 복구 시도 이력이 필요합니다.");
+        Objects.requireNonNull(reviewResumes, "AI 예약 복구 수동 검토 재개 이력이 필요합니다.");
         Objects.requireNonNull(evaluatedAt, "AI 예약 복구 재확인 판단 시각이 필요합니다.");
         if (evaluatedAt.isBefore(reservation.updatedAt())) {
             throw new IllegalArgumentException("재확인 판단은 현재 예약 상태보다 빠를 수 없습니다.");
         }
 
         List<Attempt> attempts = validateHistory(reservation.reservationId(), history);
+        Map<String, ResumeRecord> resumesByAttempt = validateReviewResumes(
+                reservation.reservationId(), attempts, reviewResumes);
         if (isTerminal(reservation.phase())) {
             return new Stopped(StopReason.RESERVATION_TERMINAL, attempts.size());
         }
@@ -36,7 +48,8 @@ public final class AiReservationRecoveryRetryPolicy {
             return new Deferred(HoldReason.ACTIVE_LEASE, latest.leaseUntil());
         }
         if (latest.status() == Status.COMPLETED
-                && latest.result().orElseThrow() == RecoveryResult.MANUAL_REVIEW_REQUIRED) {
+                && latest.result().orElseThrow() == RecoveryResult.MANUAL_REVIEW_REQUIRED
+                && !isResumed(latest, resumesByAttempt, evaluatedAt)) {
             return new Stopped(StopReason.MANUAL_REVIEW_REQUIRED, attempts.size());
         }
         if (attempts.size() >= schedule.maximumAttempts()) {
@@ -44,6 +57,8 @@ public final class AiReservationRecoveryRetryPolicy {
         }
 
         Instant retryBasis = laterOf(reservation.updatedAt(), completedBoundary(latest));
+        ResumeRecord latestResume = resumesByAttempt.get(latest.attemptId());
+        if (latestResume != null) retryBasis = laterOf(retryBasis, latestResume.resumedAt());
         Instant eligibleAt = retryBasis.plus(schedule.delayAfter(latest.attemptNumber()));
         if (evaluatedAt.isBefore(eligibleAt)) {
             return new Deferred(HoldReason.RETRY_INTERVAL, eligibleAt);
@@ -68,6 +83,39 @@ public final class AiReservationRecoveryRetryPolicy {
             validateCompletion(attempt);
         }
         return attempts;
+    }
+
+    private static Map<String, ResumeRecord> validateReviewResumes(
+            String reservationId, List<Attempt> attempts, List<ResumeRecord> reviewResumes) {
+        Map<String, Attempt> attemptsById = new HashMap<>();
+        attempts.forEach(attempt -> attemptsById.put(attempt.attemptId(), attempt));
+
+        Map<String, ResumeRecord> resumesByAttempt = new HashMap<>();
+        for (ResumeRecord resume : List.copyOf(reviewResumes)) {
+            Objects.requireNonNull(resume, "AI 예약 복구 수동 검토 재개 이력에 빈 값이 있습니다.");
+            if (!reservationId.equals(resume.reservationId())) {
+                throw new IllegalArgumentException("현재 예약과 수동 검토 재개 이력의 예약 식별자가 다릅니다.");
+            }
+            Attempt attempt = attemptsById.get(resume.manualAttemptId());
+            if (attempt == null
+                    || attempt.status() != Status.COMPLETED
+                    || attempt.result().filter(result -> result == RecoveryResult.MANUAL_REVIEW_REQUIRED).isEmpty()) {
+                throw new IllegalArgumentException("수동 검토 재개 이력은 완료된 수동 검토 시도를 가리켜야 합니다.");
+            }
+            if (resume.resumedAt().isBefore(attempt.completedAt().orElseThrow())) {
+                throw new IllegalArgumentException("수동 검토 재개는 대상 복구 시도의 완료보다 빠를 수 없습니다.");
+            }
+            if (resumesByAttempt.putIfAbsent(resume.manualAttemptId(), resume) != null) {
+                throw new IllegalArgumentException("한 수동 검토 시도에는 재개 이력이 하나만 있어야 합니다.");
+            }
+        }
+        return resumesByAttempt;
+    }
+
+    private static boolean isResumed(Attempt attempt, Map<String, ResumeRecord> resumesByAttempt,
+                                     Instant evaluatedAt) {
+        ResumeRecord resume = resumesByAttempt.get(attempt.attemptId());
+        return resume != null && !resume.resumedAt().isAfter(evaluatedAt);
     }
 
     private static void validateCompletion(Attempt attempt) {

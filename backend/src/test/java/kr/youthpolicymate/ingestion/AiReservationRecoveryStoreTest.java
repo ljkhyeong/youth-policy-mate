@@ -9,6 +9,9 @@ import kr.youthpolicymate.ingestion.AiReservationRecoveryStore.Completion;
 import kr.youthpolicymate.ingestion.AiReservationRecoveryStore.Lease;
 import kr.youthpolicymate.ingestion.AiReservationRecoveryStore.RecoveryResult;
 import kr.youthpolicymate.ingestion.AiReservationRecoveryStore.Status;
+import kr.youthpolicymate.ingestion.AiReservationRecoveryReviewStore.ResumeCommand;
+import kr.youthpolicymate.ingestion.AiReservationRecoveryReviewStore.ResumeDecision;
+import kr.youthpolicymate.ingestion.AiReservationRecoveryReviewStore.ResumeReason;
 import kr.youthpolicymate.ingestion.PolicyAiRequestAdmission.ReservationRequired;
 import kr.youthpolicymate.ingestion.PolicyAiResult.Kind;
 import kr.youthpolicymate.ingestion.PolicyAiResult.Request;
@@ -63,8 +66,12 @@ class AiReservationRecoveryStoreTest {
     @Autowired
     AiReservationRecoveryStore recoveryStore;
 
+    @Autowired
+    AiReservationRecoveryReviewStore reviewStore;
+
     @BeforeEach
     void setUp() {
+        jdbcClient.sql("delete from ai_reservation_recovery_review_resumes").update();
         jdbcClient.sql("delete from ai_reservation_recovery_attempts").update();
         jdbcClient.sql("delete from ai_request_reservations").update();
         jdbcClient.sql("delete from ai_budgets").update();
@@ -72,6 +79,7 @@ class AiReservationRecoveryStoreTest {
 
     @AfterEach
     void tearDown() {
+        jdbcClient.sql("delete from ai_reservation_recovery_review_resumes").update();
         jdbcClient.sql("delete from ai_reservation_recovery_attempts").update();
         jdbcClient.sql("delete from ai_request_reservations").update();
         jdbcClient.sql("delete from ai_budgets").update();
@@ -230,6 +238,121 @@ class AiReservationRecoveryStoreTest {
                 )
                 """).param("at", dbTime(NOW.plusSeconds(1))).update())
                 .isInstanceOf(DataIntegrityViolationException.class);
+    }
+
+    @Test
+    @DisplayName("최신 수동 검토 시도를 운영자 근거와 예약 스냅샷으로 재개하고 재전달한다")
+    void resumesLatestManualReviewWithAuditRecord() {
+        reserve("budget-a", "reservation-a", 10, "10");
+        completeManualReview("reservation-a", "attempt-manual", "worker-a");
+        var command = new ResumeCommand(
+                "resume-a", "reservation-a", "attempt-manual", "operator-a",
+                ResumeReason.INTERNAL_STATE_VERIFIED, Phase.HELD, NOW, NOW.plusSeconds(5));
+
+        assertThat(reviewStore.resume(command).decision()).isEqualTo(ResumeDecision.RESUMED);
+        assertThat(reviewStore.resume(command).decision()).isEqualTo(ResumeDecision.REPLAYED);
+        assertThat(reviewStore.resume(new ResumeCommand(
+                "resume-a", "reservation-a", "attempt-manual", "operator-b",
+                ResumeReason.INTERNAL_STATE_VERIFIED, Phase.HELD, NOW, NOW.plusSeconds(5))).decision())
+                .isEqualTo(ResumeDecision.RESUME_ID_CONFLICT);
+
+        assertThat(reviewStore.history("reservation-a")).singleElement().satisfies(resume -> {
+            assertThat(resume.resumeId()).isEqualTo("resume-a");
+            assertThat(resume.manualAttemptId()).isEqualTo("attempt-manual");
+            assertThat(resume.operatorId()).isEqualTo("operator-a");
+            assertThat(resume.reason()).isEqualTo(ResumeReason.INTERNAL_STATE_VERIFIED);
+            assertThat(resume.observedPhase()).isEqualTo(Phase.HELD);
+            assertThat(resume.observedUpdatedAt()).isEqualTo(NOW);
+            assertThat(resume.resumedAt()).isEqualTo(NOW.plusSeconds(5));
+        });
+        assertThat(recoveryStore.history("reservation-a")).singleElement().satisfies(attempt -> {
+            assertThat(attempt.status()).isEqualTo(Status.COMPLETED);
+            assertThat(attempt.result()).contains(RecoveryResult.MANUAL_REVIEW_REQUIRED);
+        });
+    }
+
+    @Test
+    @DisplayName("예약 상태가 바뀌었거나 대상 수동 검토가 최신 시도가 아니면 재개하지 않는다")
+    void rejectsStaleReservationOrNonLatestManualAttempt() {
+        reserve("budget-a", "reservation-a", 10, "10");
+        completeManualReview("reservation-a", "attempt-manual-a", "worker-a");
+        lifecycleStore.dispatch("reservation-a", new Dispatch("dispatch-a", NOW.plusSeconds(3)));
+
+        assertThat(reviewStore.resume(new ResumeCommand(
+                "resume-stale", "reservation-a", "attempt-manual-a", "operator-a",
+                ResumeReason.SUPPLIER_STATE_VERIFIED, Phase.HELD, NOW, NOW.plusSeconds(4))).decision())
+                .isEqualTo(ResumeDecision.RESERVATION_CHANGED);
+
+        reserve("budget-b", "reservation-b", 11, "10");
+        completeManualReview("reservation-b", "attempt-manual-b", "worker-b");
+        recoveryStore.claim("reservation-b",
+                lease("attempt-later", "worker-b", NOW.plusSeconds(4), NOW.plusSeconds(14)));
+
+        assertThat(reviewStore.resume(new ResumeCommand(
+                "resume-old-attempt", "reservation-b", "attempt-manual-b", "operator-b",
+                ResumeReason.RECOVERY_INCIDENT_RESOLVED, Phase.HELD, NOW, NOW.plusSeconds(5))).decision())
+                .isEqualTo(ResumeDecision.MANUAL_ATTEMPT_NOT_LATEST);
+        assertThat(reviewStore.history("reservation-a")).isEmpty();
+        assertThat(reviewStore.history("reservation-b")).isEmpty();
+    }
+
+    @Test
+    @DisplayName("같은 수동 검토를 동시에 재개해도 감사 기록은 하나만 저장한다")
+    void resumesManualReviewOnceUnderConcurrency() throws Exception {
+        reserve("budget-a", "reservation-a", 10, "10");
+        completeManualReview("reservation-a", "attempt-manual", "worker-a");
+        var start = new CountDownLatch(1);
+        List<ResumeDecision> decisions;
+
+        try (var executor = Executors.newFixedThreadPool(2)) {
+            var first = executor.submit(() -> {
+                start.await();
+                return reviewStore.resume(new ResumeCommand(
+                        "resume-first", "reservation-a", "attempt-manual", "operator-a",
+                        ResumeReason.INTERNAL_STATE_VERIFIED, Phase.HELD, NOW, NOW.plusSeconds(5))).decision();
+            });
+            var second = executor.submit(() -> {
+                start.await();
+                return reviewStore.resume(new ResumeCommand(
+                        "resume-second", "reservation-a", "attempt-manual", "operator-b",
+                        ResumeReason.SUPPLIER_STATE_VERIFIED, Phase.HELD, NOW, NOW.plusSeconds(5))).decision();
+            });
+            start.countDown();
+            decisions = List.of(first.get(10, TimeUnit.SECONDS), second.get(10, TimeUnit.SECONDS));
+        }
+
+        assertThat(decisions).containsExactlyInAnyOrder(
+                ResumeDecision.RESUMED, ResumeDecision.ALREADY_RESUMED);
+        assertThat(reviewStore.history("reservation-a")).hasSize(1);
+    }
+
+    @Test
+    @DisplayName("PostgreSQL 제약은 허용되지 않은 수동 검토 재개 사유를 거절한다")
+    void enforcesManualReviewResumeConstraints() {
+        reserve("budget-a", "reservation-a", 10, "10");
+        completeManualReview("reservation-a", "attempt-manual", "worker-a");
+
+        assertThatThrownBy(() -> jdbcClient.sql("""
+                insert into ai_reservation_recovery_review_resumes (
+                    resume_id, manual_attempt_id, resumed_by, resume_reason,
+                    observed_reservation_phase, observed_reservation_updated_at, resumed_at
+                ) values (
+                    'resume-invalid', 'attempt-manual', 'operator-a', 'UNKNOWN_REASON',
+                    'HELD', :observedAt, :resumedAt
+                )
+                """)
+                .param("observedAt", dbTime(NOW))
+                .param("resumedAt", dbTime(NOW.plusSeconds(5)))
+                .update())
+                .isInstanceOf(DataIntegrityViolationException.class);
+    }
+
+    private void completeManualReview(String reservationId, String attemptId, String workerId) {
+        recoveryStore.claim(reservationId,
+                lease(attemptId, workerId, NOW.plusSeconds(1), NOW.plusSeconds(11)));
+        assertThat(recoveryStore.complete(new Completion(
+                attemptId, workerId, NOW.plusSeconds(2), RecoveryResult.MANUAL_REVIEW_REQUIRED)).decision())
+                .isEqualTo(AiReservationRecoveryStore.CompletionDecision.COMPLETED);
     }
 
     private void reserve(String budgetId, String reservationId, long requestSequence, String maximum) {

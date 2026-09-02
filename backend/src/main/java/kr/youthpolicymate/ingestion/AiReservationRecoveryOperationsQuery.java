@@ -7,6 +7,8 @@ import kr.youthpolicymate.ingestion.AiBudgetReservationState.UncertainOutcome;
 import kr.youthpolicymate.ingestion.AiBudgetReservationState.UncertainReason;
 import kr.youthpolicymate.ingestion.AiReservationRecoveryRetryPolicy.Decision;
 import kr.youthpolicymate.ingestion.AiReservationRecoveryRetryPolicy.Schedule;
+import kr.youthpolicymate.ingestion.AiReservationRecoveryReviewStore.ResumeReason;
+import kr.youthpolicymate.ingestion.AiReservationRecoveryReviewStore.ResumeRecord;
 import kr.youthpolicymate.ingestion.AiReservationRecoveryStore.Attempt;
 import kr.youthpolicymate.ingestion.AiReservationRecoveryStore.RecoveryResult;
 import kr.youthpolicymate.ingestion.AiReservationRecoveryStore.Status;
@@ -54,7 +56,10 @@ public class AiReservationRecoveryOperationsQuery {
                        attempt.attempt_id, attempt.attempt_number, attempt.owner_id,
                        attempt.claimed_phase, attempt.claimed_at, attempt.lease_until,
                        attempt.status as attempt_status, attempt.completed_phase as attempt_completed_phase,
-                       attempt.completed_at as attempt_completed_at, attempt.result as attempt_result
+                       attempt.completed_at as attempt_completed_at, attempt.result as attempt_result,
+                       resume.resume_id, resume.resumed_by, resume.resume_reason,
+                       resume.observed_reservation_phase,
+                       resume.observed_reservation_updated_at, resume.resumed_at
                 from (
                     select reservation_id, budget_id, policy_id, ai_kind, generation_version,
                            request_sequence, phase, maximum_won, reserved_at,
@@ -69,6 +74,8 @@ public class AiReservationRecoveryOperationsQuery {
                 ) reservation
                 left join ai_reservation_recovery_attempts attempt
                   on attempt.reservation_id = reservation.reservation_id
+                left join ai_reservation_recovery_review_resumes resume
+                  on resume.manual_attempt_id = attempt.attempt_id
                 order by reservation.updated_at, reservation.reservation_id, attempt.attempt_number
                 """)
                 .param("staleAtOrBefore", dbTime(criteria.staleAtOrBefore()))
@@ -81,12 +88,13 @@ public class AiReservationRecoveryOperationsQuery {
             Group group = grouped.computeIfAbsent(row.reservation().reservationId(), ignored ->
                     new Group(row.scope(), row.reservation()));
             row.attempt().ifPresent(group.attempts()::add);
+            row.resume().ifPresent(group.reviewResumes()::add);
         }
 
         List<Item> items = grouped.values().stream()
-                .map(group -> new Item(group.scope(), group.reservation(), group.attempts(),
+                .map(group -> new Item(group.scope(), group.reservation(), group.attempts(), group.reviewResumes(),
                         retryPolicy.decide(criteria.schedule(), group.reservation(),
-                                group.attempts(), criteria.evaluatedAt())))
+                                group.attempts(), group.reviewResumes(), criteria.evaluatedAt())))
                 .toList();
         return new Report(criteria, items);
     }
@@ -104,7 +112,7 @@ public class AiReservationRecoveryOperationsQuery {
                 nullableInstant(resultSet, "reservation_completed_at"),
                 Optional.ofNullable(resultSet.getBigDecimal("actual_won")),
                 instant(resultSet, "reservation_updated_at"));
-        return new Row(scope, reservation, optionalAttempt(resultSet));
+        return new Row(scope, reservation, optionalAttempt(resultSet), optionalResume(resultSet));
     }
 
     private static Optional<Dispatch> optionalDispatch(ResultSet resultSet) throws SQLException {
@@ -133,6 +141,18 @@ public class AiReservationRecoveryOperationsQuery {
                 completedPhase == null ? Optional.empty() : Optional.of(Phase.valueOf(completedPhase)),
                 nullableInstant(resultSet, "attempt_completed_at"),
                 result == null ? Optional.empty() : Optional.of(RecoveryResult.valueOf(result))));
+    }
+
+    private static Optional<ResumeRecord> optionalResume(ResultSet resultSet) throws SQLException {
+        String resumeId = resultSet.getString("resume_id");
+        if (resumeId == null) return Optional.empty();
+        return Optional.of(new ResumeRecord(
+                resumeId, resultSet.getString("reservation_id"), resultSet.getString("attempt_id"),
+                resultSet.getString("resumed_by"),
+                ResumeReason.valueOf(resultSet.getString("resume_reason")),
+                Phase.valueOf(resultSet.getString("observed_reservation_phase")),
+                instant(resultSet, "observed_reservation_updated_at"),
+                instant(resultSet, "resumed_at")));
     }
 
     private static Instant instant(ResultSet resultSet, String column) throws SQLException {
@@ -173,11 +193,14 @@ public class AiReservationRecoveryOperationsQuery {
         }
     }
 
-    public record Item(Scope scope, Snapshot reservation, List<Attempt> attempts, Decision decision) {
+    public record Item(Scope scope, Snapshot reservation, List<Attempt> attempts,
+                       List<ResumeRecord> reviewResumes, Decision decision) {
         public Item {
             Objects.requireNonNull(scope, "AI 예약 복구 운영 조회 범위가 필요합니다.");
             Objects.requireNonNull(reservation, "AI 예약 복구 운영 조회 예약이 필요합니다.");
             attempts = List.copyOf(Objects.requireNonNull(attempts, "AI 예약 복구 시도 이력이 필요합니다."));
+            reviewResumes = List.copyOf(Objects.requireNonNull(
+                    reviewResumes, "AI 예약 복구 수동 검토 재개 이력이 필요합니다."));
             Objects.requireNonNull(decision, "AI 예약 복구 운영 판단이 필요합니다.");
         }
     }
@@ -189,11 +212,13 @@ public class AiReservationRecoveryOperationsQuery {
         }
     }
 
-    private record Row(Scope scope, Snapshot reservation, Optional<Attempt> attempt) {}
+    private record Row(Scope scope, Snapshot reservation, Optional<Attempt> attempt,
+                       Optional<ResumeRecord> resume) {}
 
-    private record Group(Scope scope, Snapshot reservation, List<Attempt> attempts) {
+    private record Group(Scope scope, Snapshot reservation, List<Attempt> attempts,
+                         List<ResumeRecord> reviewResumes) {
         private Group(Scope scope, Snapshot reservation) {
-            this(scope, reservation, new ArrayList<>());
+            this(scope, reservation, new ArrayList<>(), new ArrayList<>());
         }
     }
 }

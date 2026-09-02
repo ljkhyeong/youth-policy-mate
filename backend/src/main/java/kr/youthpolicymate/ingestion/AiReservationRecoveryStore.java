@@ -25,12 +25,15 @@ import java.util.Optional;
 public class AiReservationRecoveryStore {
     private final JdbcClient jdbcClient;
     private final AiBudgetReservationLifecycleStore lifecycleStore;
+    private final AiReservationRecoveryReviewStore reviewStore;
     private final AiReservationRecoveryRetryPolicy retryPolicy = new AiReservationRecoveryRetryPolicy();
 
     public AiReservationRecoveryStore(JdbcClient jdbcClient,
-                                      AiBudgetReservationLifecycleStore lifecycleStore) {
+                                      AiBudgetReservationLifecycleStore lifecycleStore,
+                                      AiReservationRecoveryReviewStore reviewStore) {
         this.jdbcClient = Objects.requireNonNull(jdbcClient, "AI 예약 복구 DB 접근이 필요합니다.");
         this.lifecycleStore = Objects.requireNonNull(lifecycleStore, "AI 예약 상태 저장소가 필요합니다.");
+        this.reviewStore = Objects.requireNonNull(reviewStore, "AI 예약 복구 수동 검토 저장소가 필요합니다.");
     }
 
     @Transactional
@@ -153,7 +156,8 @@ public class AiReservationRecoveryStore {
 
         Snapshot snapshot = lifecycleStore.find(reservationId)
                 .orElseThrow(() -> new IllegalStateException("잠근 AI 요청 예약 상태를 조회하지 못했습니다."));
-        Decision decision = retryPolicy.decide(schedule, snapshot, history(reservationId), lease.claimedAt());
+        Decision decision = retryPolicy.decide(
+                schedule, snapshot, history(reservationId), reviewStore.history(reservationId), lease.claimedAt());
         if (!(decision instanceof Ready ready)) return new ReadyClaimSkipped(decision);
 
         ClaimOutcome claim = claimLocked(locked, lease);

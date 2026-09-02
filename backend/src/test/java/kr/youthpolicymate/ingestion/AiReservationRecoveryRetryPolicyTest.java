@@ -8,6 +8,8 @@ import kr.youthpolicymate.ingestion.AiReservationRecoveryRetryPolicy.Ready;
 import kr.youthpolicymate.ingestion.AiReservationRecoveryRetryPolicy.Schedule;
 import kr.youthpolicymate.ingestion.AiReservationRecoveryRetryPolicy.StopReason;
 import kr.youthpolicymate.ingestion.AiReservationRecoveryRetryPolicy.Stopped;
+import kr.youthpolicymate.ingestion.AiReservationRecoveryReviewStore.ResumeReason;
+import kr.youthpolicymate.ingestion.AiReservationRecoveryReviewStore.ResumeRecord;
 import kr.youthpolicymate.ingestion.AiReservationRecoveryStore.Attempt;
 import kr.youthpolicymate.ingestion.AiReservationRecoveryStore.RecoveryResult;
 import kr.youthpolicymate.ingestion.AiReservationRecoveryStore.Status;
@@ -92,6 +94,23 @@ class AiReservationRecoveryRetryPolicyTest {
 
         assertThat(policy.decide(schedule, snapshot(), List.of(review), at(20)))
                 .isEqualTo(new Stopped(StopReason.MANUAL_REVIEW_REQUIRED, 1));
+    }
+
+    @Test
+    @DisplayName("수동 검토를 재개해도 재확인 간격과 최대 시도 횟수를 유지한다")
+    void resumesManualReviewWithoutResettingRetryLimits() {
+        var review = completed(1, at(7), RecoveryResult.MANUAL_REVIEW_REQUIRED);
+        var resume = new ResumeRecord(
+                "resume-1", "reservation-a", review.attemptId(), "operator-a",
+                ResumeReason.INTERNAL_STATE_VERIFIED, Phase.DISPATCHED, at(1), at(20));
+
+        assertThat(policy.decide(schedule, snapshot(), List.of(review), List.of(resume), at(24)))
+                .isEqualTo(new Deferred(HoldReason.RETRY_INTERVAL, at(25)));
+        assertThat(policy.decide(schedule, snapshot(), List.of(review), List.of(resume), at(25)))
+                .isEqualTo(new Ready(2, at(25)));
+        assertThat(policy.decide(new Schedule(1, List.of()), snapshot(),
+                List.of(review), List.of(resume), at(25)))
+                .isEqualTo(new Stopped(StopReason.MAXIMUM_ATTEMPTS_REACHED, 1));
     }
 
     @Test

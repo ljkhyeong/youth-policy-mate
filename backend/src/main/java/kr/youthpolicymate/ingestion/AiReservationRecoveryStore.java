@@ -82,6 +82,55 @@ public class AiReservationRecoveryStore {
         requireText(reservationId, "복구할 AI 요청 예약 식별자가 필요합니다.");
         Objects.requireNonNull(schedule, "AI 예약 복구 재확인 일정이 필요합니다.");
         Objects.requireNonNull(lease, "AI 예약 복구 임대 정보가 필요합니다.");
+        return claimIfReadyLocked(reservationId, schedule, lease);
+    }
+
+    @Transactional
+    public ReadyClaimOutcome claimIfReadyForRun(String workRunId,
+                                                String reservationId,
+                                                Schedule schedule,
+                                                Lease lease) {
+        requireText(workRunId, "AI 예약 복구 작업 실행 식별자가 필요합니다.");
+        requireText(reservationId, "복구할 AI 요청 예약 식별자가 필요합니다.");
+        Objects.requireNonNull(schedule, "AI 예약 복구 재확인 일정이 필요합니다.");
+        Objects.requireNonNull(lease, "AI 예약 복구 임대 정보가 필요합니다.");
+
+        Optional<WorkRunRow> workRun = lockWorkRunForAssignment(workRunId);
+        if (workRun.isEmpty()) {
+            return new ReadyClaimRejected(claimOutcome(
+                    ClaimDecision.WORK_RUN_NOT_FOUND, Optional.empty()));
+        }
+        WorkRunRow current = workRun.orElseThrow();
+        if (!current.status().equals("RUNNING")) {
+            return new ReadyClaimRejected(claimOutcome(
+                    ClaimDecision.WORK_RUN_NOT_ACTIVE, Optional.empty()));
+        }
+        if (!current.workerId().equals(lease.ownerId())) {
+            return new ReadyClaimRejected(claimOutcome(
+                    ClaimDecision.WORK_RUN_WORKER_CONFLICT, Optional.empty()));
+        }
+
+        ReadyClaimOutcome outcome = claimIfReadyLocked(reservationId, schedule, lease);
+        if (!(outcome instanceof ReadyClaimed claimed)) return outcome;
+        if (claimed.decision() == ClaimDecision.REPLAYED) {
+            return findWorkRunId(claimed.attempt().attemptId()).filter(workRunId::equals).isPresent()
+                    ? claimed
+                    : new ReadyClaimRejected(claimOutcome(
+                            ClaimDecision.ATTEMPT_ID_CONFLICT, Optional.of(claimed.attempt())));
+        }
+
+        int inserted = jdbcClient.sql("""
+                insert into ai_reservation_recovery_work_run_attempts (attempt_id, run_id)
+                values (:attemptId, :runId)
+                """)
+                .param("attemptId", claimed.attempt().attemptId())
+                .param("runId", workRunId)
+                .update();
+        requireSingleUpdate(inserted);
+        return claimed;
+    }
+
+    private ReadyClaimOutcome claimIfReadyLocked(String reservationId, Schedule schedule, Lease lease) {
         lockAttemptId(lease.attemptId());
 
         var existing = findByAttemptId(lease.attemptId());
@@ -190,6 +239,38 @@ public class AiReservationRecoveryStore {
         return findByAttemptId(attemptId);
     }
 
+    @Transactional(readOnly = true)
+    public List<Attempt> historyForWorkRun(String workRunId) {
+        requireText(workRunId, "조회할 AI 예약 복구 작업 실행 식별자가 필요합니다.");
+        return jdbcClient.sql("""
+                select attempt.attempt_id, attempt.reservation_id, attempt.attempt_number,
+                       attempt.owner_id, attempt.claimed_phase, attempt.claimed_at,
+                       attempt.lease_until, attempt.status, attempt.completed_phase,
+                       attempt.completed_at, attempt.result
+                from ai_reservation_recovery_work_run_attempts link
+                join ai_reservation_recovery_attempts attempt
+                  on attempt.attempt_id = link.attempt_id
+                where link.run_id = :runId
+                order by attempt.claimed_at, attempt.attempt_id
+                """)
+                .param("runId", workRunId)
+                .query(AiReservationRecoveryStore::attempt)
+                .list();
+    }
+
+    @Transactional(readOnly = true)
+    public Optional<String> findWorkRunId(String attemptId) {
+        requireText(attemptId, "조회할 AI 예약 복구 시도 식별자가 필요합니다.");
+        return jdbcClient.sql("""
+                select run_id
+                from ai_reservation_recovery_work_run_attempts
+                where attempt_id = :attemptId
+                """)
+                .param("attemptId", attemptId)
+                .query(String.class)
+                .optional();
+    }
+
     private ClaimOutcome claimLocked(ReservationRow reservation, Lease lease) {
         if (isTerminal(reservation.phase())) {
             return claimOutcome(ClaimDecision.RESERVATION_TERMINAL, Optional.empty());
@@ -258,6 +339,19 @@ public class AiReservationRecoveryStore {
                 """)
                 .param("reservationId", reservationId)
                 .query(AiReservationRecoveryStore::reservationRow)
+                .optional();
+    }
+
+    private Optional<WorkRunRow> lockWorkRunForAssignment(String workRunId) {
+        return jdbcClient.sql("""
+                select worker_id, status
+                from ai_reservation_recovery_work_runs
+                where run_id = :runId
+                for share
+                """)
+                .param("runId", workRunId)
+                .query((resultSet, rowNumber) -> new WorkRunRow(
+                        resultSet.getString("worker_id"), resultSet.getString("status")))
                 .optional();
     }
 
@@ -365,7 +459,8 @@ public class AiReservationRecoveryStore {
 
     public enum ClaimDecision {
         CLAIMED, REPLAYED, RESERVATION_NOT_FOUND, RESERVATION_TERMINAL,
-        ALREADY_CLAIMED, ATTEMPT_ID_CONFLICT, NO_RESERVATION_AVAILABLE
+        ALREADY_CLAIMED, ATTEMPT_ID_CONFLICT, NO_RESERVATION_AVAILABLE,
+        WORK_RUN_NOT_FOUND, WORK_RUN_NOT_ACTIVE, WORK_RUN_WORKER_CONFLICT
     }
 
     public enum CompletionDecision {
@@ -506,4 +601,5 @@ public class AiReservationRecoveryStore {
     }
 
     private record ReservationRow(String reservationId, Phase phase, Instant updatedAt) {}
+    private record WorkRunRow(String workerId, String status) {}
 }

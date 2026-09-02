@@ -28,6 +28,17 @@ public final class AiReservationRecoveryWorkRunner {
     }
 
     public BatchRun run(Criteria criteria, Function<Item, Lease> leaseFactory) {
+        return runInternal(null, criteria, leaseFactory);
+    }
+
+    public BatchRun run(String workRunId, Criteria criteria, Function<Item, Lease> leaseFactory) {
+        if (workRunId == null || workRunId.isBlank()) {
+            throw new IllegalArgumentException("AI 예약 복구 작업 실행 식별자가 필요합니다.");
+        }
+        return runInternal(workRunId, criteria, leaseFactory);
+    }
+
+    private BatchRun runInternal(String workRunId, Criteria criteria, Function<Item, Lease> leaseFactory) {
         Objects.requireNonNull(criteria, "AI 예약 복구 운영 조회 조건이 필요합니다.");
         Objects.requireNonNull(leaseFactory, "준비된 복구 후보의 임대 생성기가 필요합니다.");
 
@@ -41,7 +52,9 @@ public final class AiReservationRecoveryWorkRunner {
 
             Lease lease = Objects.requireNonNull(
                     leaseFactory.apply(candidate), "준비된 복구 후보의 임대 정보가 필요합니다.");
-            ReadyClaimOutcome assignment = workAssigner.assign(report, candidate, lease);
+            ReadyClaimOutcome assignment = workRunId == null
+                    ? workAssigner.assign(report, candidate, lease)
+                    : workAssigner.assignForRun(workRunId, report, candidate, lease);
             if (!(assignment instanceof ReadyClaimed claimed)) {
                 results.add(new AssignmentNotClaimed(candidate, assignment));
                 continue;

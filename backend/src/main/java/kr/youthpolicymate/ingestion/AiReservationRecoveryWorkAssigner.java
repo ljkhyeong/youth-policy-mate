@@ -23,6 +23,27 @@ public class AiReservationRecoveryWorkAssigner {
     }
 
     public ReadyClaimOutcome assign(Report report, Item candidate, Lease lease) {
+        validateSelection(report, candidate, lease);
+        if (!(candidate.decision() instanceof Ready)) {
+            return new ReadyClaimSkipped(candidate.decision());
+        }
+        return recoveryStore.claimIfReady(
+                candidate.reservation().reservationId(), report.criteria().schedule(), lease);
+    }
+
+    public ReadyClaimOutcome assignForRun(String workRunId, Report report, Item candidate, Lease lease) {
+        if (workRunId == null || workRunId.isBlank()) {
+            throw new IllegalArgumentException("AI 예약 복구 작업 실행 식별자가 필요합니다.");
+        }
+        validateSelection(report, candidate, lease);
+        if (!(candidate.decision() instanceof Ready)) {
+            return new ReadyClaimSkipped(candidate.decision());
+        }
+        return recoveryStore.claimIfReadyForRun(
+                workRunId, candidate.reservation().reservationId(), report.criteria().schedule(), lease);
+    }
+
+    private static void validateSelection(Report report, Item candidate, Lease lease) {
         Objects.requireNonNull(report, "AI 예약 복구 운영 조회 결과가 필요합니다.");
         Objects.requireNonNull(candidate, "배정할 AI 예약 복구 후보가 필요합니다.");
         Objects.requireNonNull(lease, "AI 예약 복구 임대 정보가 필요합니다.");
@@ -34,10 +55,5 @@ public class AiReservationRecoveryWorkAssigner {
         if (lease.claimedAt().isBefore(criteria.evaluatedAt())) {
             throw new IllegalArgumentException("복구 소유권 획득은 운영 조회 판단보다 빠를 수 없습니다.");
         }
-        if (!(candidate.decision() instanceof Ready)) {
-            return new ReadyClaimSkipped(candidate.decision());
-        }
-        return recoveryStore.claimIfReady(
-                candidate.reservation().reservationId(), criteria.schedule(), lease);
     }
 }

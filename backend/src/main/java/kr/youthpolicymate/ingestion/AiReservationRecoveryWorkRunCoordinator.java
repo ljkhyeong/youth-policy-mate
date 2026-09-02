@@ -41,7 +41,7 @@ public final class AiReservationRecoveryWorkRunCoordinator {
         if (start.decision() != StartDecision.STARTED) return new NotStarted(start);
 
         try {
-            BatchRun batch = workRunner.run(request.criteria(), leaseFactory);
+            BatchRun batch = workRunner.run(request.runId(), request.criteria(), leaseFactory);
             CompletionOutcome completion = runStore.complete(new RunCompletion(
                     request.runId(), request.workerId(), clock.instant(), summarize(batch)));
             return new Finished(start, batch, completion);

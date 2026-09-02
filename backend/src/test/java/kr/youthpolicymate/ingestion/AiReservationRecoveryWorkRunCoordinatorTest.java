@@ -5,6 +5,8 @@ import kr.youthpolicymate.ingestion.AiRequestBudget.CostCeiling;
 import kr.youthpolicymate.ingestion.AiReservationRecoveryOperationsQuery.Criteria;
 import kr.youthpolicymate.ingestion.AiReservationRecoveryRetryPolicy.Schedule;
 import kr.youthpolicymate.ingestion.AiReservationRecoveryStore.Lease;
+import kr.youthpolicymate.ingestion.AiReservationRecoveryStore.ReadyClaimed;
+import kr.youthpolicymate.ingestion.AiReservationRecoveryStore.ReadyClaimRejected;
 import kr.youthpolicymate.ingestion.AiReservationRecoveryWorkRunCoordinator.Failed;
 import kr.youthpolicymate.ingestion.AiReservationRecoveryWorkRunCoordinator.Finished;
 import kr.youthpolicymate.ingestion.AiReservationRecoveryWorkRunCoordinator.NotStarted;
@@ -108,6 +110,11 @@ class AiReservationRecoveryWorkRunCoordinatorTest {
             assertThat(run.summary()).contains(new Summary(3, 1, 0, 1, 0, 1));
             assertThat(run.finishedAt()).contains(at(7));
         });
+        assertThat(recoveryStore.historyForWorkRun("run-a"))
+                .extracting(AiReservationRecoveryStore.Attempt::attemptId)
+                .containsExactly("attempt-b-finished", "attempt-c-fails");
+        assertThat(recoveryStore.findWorkRunId("attempt-b-finished")).contains("run-a");
+        assertThat(recoveryStore.findWorkRunId("attempt-active")).isEmpty();
     }
 
     @Test
@@ -173,6 +180,60 @@ class AiReservationRecoveryWorkRunCoordinatorTest {
     }
 
     @Test
+    @DisplayName("작업자나 실행 상태가 맞지 않으면 실행에 연결된 복구 시도를 만들지 않는다")
+    void rejectsAssignmentForWrongWorkerOrInactiveRun() {
+        reserve("a-ready", at(0));
+        var report = operationsQuery.findOldestUnresolved(criteria());
+        var candidate = report.items().getFirst();
+        runStore.start(request("run-guarded", "worker-a"));
+
+        var wrongWorker = workAssigner.assignForRun(
+                "run-guarded", report, candidate,
+                new Lease("attempt-wrong-worker", "worker-b", at(5), at(20)));
+        runStore.fail(new AiReservationRecoveryWorkRunStore.RunFailure(
+                "run-guarded", "worker-a", at(6)));
+        var inactive = workAssigner.assignForRun(
+                "run-guarded", report, candidate,
+                lease("attempt-inactive", at(6), at(20)));
+
+        assertThat(wrongWorker).isInstanceOfSatisfying(ReadyClaimRejected.class, rejected ->
+                assertThat(rejected.claim().decision()).isEqualTo(
+                        AiReservationRecoveryStore.ClaimDecision.WORK_RUN_WORKER_CONFLICT));
+        assertThat(inactive).isInstanceOfSatisfying(ReadyClaimRejected.class, rejected ->
+                assertThat(rejected.claim().decision()).isEqualTo(
+                        AiReservationRecoveryStore.ClaimDecision.WORK_RUN_NOT_ACTIVE));
+        assertThat(recoveryStore.history("a-ready")).isEmpty();
+        assertThat(recoveryStore.historyForWorkRun("run-guarded")).isEmpty();
+    }
+
+    @Test
+    @DisplayName("같은 실행의 연결만 재전달하고 같은 시도를 다른 실행에 연결하지 않는다")
+    void replaysLinkOnlyForSameWorkRun() {
+        reserve("a-ready", at(0));
+        var report = operationsQuery.findOldestUnresolved(criteria());
+        var candidate = report.items().getFirst();
+        var lease = lease("attempt-linked", at(5), at(20));
+        runStore.start(request("run-first", "worker-a"));
+        runStore.start(request("run-second", "worker-a"));
+
+        var first = workAssigner.assignForRun("run-first", report, candidate, lease);
+        var replay = workAssigner.assignForRun("run-first", report, candidate, lease);
+        var conflict = workAssigner.assignForRun("run-second", report, candidate, lease);
+
+        assertThat(first).isInstanceOfSatisfying(ReadyClaimed.class, claimed ->
+                assertThat(claimed.decision()).isEqualTo(
+                        AiReservationRecoveryStore.ClaimDecision.CLAIMED));
+        assertThat(replay).isInstanceOfSatisfying(ReadyClaimed.class, claimed ->
+                assertThat(claimed.decision()).isEqualTo(
+                        AiReservationRecoveryStore.ClaimDecision.REPLAYED));
+        assertThat(conflict).isInstanceOfSatisfying(ReadyClaimRejected.class, rejected ->
+                assertThat(rejected.claim().decision()).isEqualTo(
+                        AiReservationRecoveryStore.ClaimDecision.ATTEMPT_ID_CONFLICT));
+        assertThat(recoveryStore.findWorkRunId("attempt-linked")).contains("run-first");
+        assertThat(recoveryStore.historyForWorkRun("run-second")).isEmpty();
+    }
+
+    @Test
     @DisplayName("목록 실행 자체가 실패하면 실패 상태를 남기고 같은 실행을 반복하지 않는다")
     void recordsWholeRunFailureAndReplaysIt() {
         reserve("a-ready", at(0));
@@ -219,6 +280,26 @@ class AiReservationRecoveryWorkRunCoordinatorTest {
                 .isInstanceOf(DataIntegrityViolationException.class);
         assertThat(runStore.find("run-invalid")).hasValueSatisfying(run ->
                 assertThat(run.status()).isEqualTo(Status.RUNNING));
+    }
+
+    @Test
+    @DisplayName("PostgreSQL 외래 키는 존재하지 않는 실행과 복구 시도의 연결을 거절한다")
+    void rejectsLinkToMissingWorkRunInDatabase() {
+        reserve("a-ready", at(0));
+        recoveryStore.claim("a-ready", lease("attempt-direct", at(1), at(20)));
+        runStore.start(request("run-existing", "worker-a"));
+
+        assertThatThrownBy(() -> jdbcClient.sql("""
+                insert into ai_reservation_recovery_work_run_attempts (attempt_id, run_id)
+                values ('attempt-direct', 'missing-run')
+                """).update())
+                .isInstanceOf(DataIntegrityViolationException.class);
+        assertThatThrownBy(() -> jdbcClient.sql("""
+                insert into ai_reservation_recovery_work_run_attempts (attempt_id, run_id)
+                values ('missing-attempt', 'run-existing')
+                """).update())
+                .isInstanceOf(DataIntegrityViolationException.class);
+        assertThat(recoveryStore.findWorkRunId("attempt-direct")).isEmpty();
     }
 
     private AiReservationRecoveryWorkRunCoordinator coordinator(PolicyAiRecoveryPort port) {
@@ -279,6 +360,7 @@ class AiReservationRecoveryWorkRunCoordinatorTest {
     }
 
     private void clearDatabase() {
+        jdbcClient.sql("delete from ai_reservation_recovery_work_run_attempts").update();
         jdbcClient.sql("delete from ai_reservation_recovery_attempts").update();
         jdbcClient.sql("delete from ai_request_reservations").update();
         jdbcClient.sql("delete from ai_budgets").update();

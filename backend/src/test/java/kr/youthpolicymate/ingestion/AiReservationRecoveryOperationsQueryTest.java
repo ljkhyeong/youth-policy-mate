@@ -17,6 +17,9 @@ import kr.youthpolicymate.ingestion.AiReservationRecoveryStore.Attempt;
 import kr.youthpolicymate.ingestion.AiReservationRecoveryStore.Completion;
 import kr.youthpolicymate.ingestion.AiReservationRecoveryStore.Lease;
 import kr.youthpolicymate.ingestion.AiReservationRecoveryStore.RecoveryResult;
+import kr.youthpolicymate.ingestion.AiReservationRecoveryStore.ReadyClaimOutcome;
+import kr.youthpolicymate.ingestion.AiReservationRecoveryStore.ReadyClaimed;
+import kr.youthpolicymate.ingestion.AiReservationRecoveryStore.ReadyClaimSkipped;
 import kr.youthpolicymate.ingestion.AiReservationRecoveryStore.Status;
 import kr.youthpolicymate.ingestion.PolicyAiRequestAdmission.ReservationRequired;
 import kr.youthpolicymate.ingestion.PolicyAiResult.Kind;
@@ -45,6 +48,9 @@ import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 
 import static org.assertj.core.api.Assertions.*;
 
@@ -73,6 +79,9 @@ class AiReservationRecoveryOperationsQueryTest {
 
     @Autowired
     AiReservationRecoveryOperationsQuery operationsQuery;
+
+    @Autowired
+    AiReservationRecoveryWorkAssigner workAssigner;
 
     @BeforeEach
     void setUp() {
@@ -177,6 +186,97 @@ class AiReservationRecoveryOperationsQueryTest {
     void rejectsInvalidCriteria() {
         assertThatIllegalArgumentException().isThrownBy(() -> new Criteria(SCHEDULE, at(10), at(9), 10));
         assertThatIllegalArgumentException().isThrownBy(() -> new Criteria(SCHEDULE, at(10), at(10), 0));
+    }
+
+    @Test
+    @DisplayName("운영 조회에서 준비된 후보를 현재 상태로 다시 확인하고 소유권을 배정한다")
+    void assignsReadyCandidateAfterRecheck() {
+        reserve("ready", "policy-ready", Kind.SUMMARY, 10, at(0));
+        var report = operationsQuery.findOldestUnresolved(criteria(at(0), at(5), 10));
+        var lease = lease("attempt-ready", at(5), at(20));
+
+        var outcome = workAssigner.assign(report, report.items().getFirst(), lease);
+
+        assertThat(outcome).isEqualTo(new ReadyClaimed(
+                AiReservationRecoveryStore.ClaimDecision.CLAIMED,
+                recoveryStore.history("ready").getFirst()));
+        assertThat(recoveryStore.history("ready").getFirst().attemptNumber()).isEqualTo(1);
+    }
+
+    @Test
+    @DisplayName("운영 조회에서 보류된 후보는 소유권 획득을 시도하지 않는다")
+    void doesNotAssignCandidateDeferredByReport() {
+        reserve("deferred", "policy-deferred", Kind.SUMMARY, 10, at(0));
+        recoveryStore.claim("deferred", lease("attempt-active", at(1), at(20)));
+        var report = operationsQuery.findOldestUnresolved(criteria(at(0), at(5), 10));
+
+        var outcome = workAssigner.assign(
+                report, report.items().getFirst(), lease("attempt-new", at(5), at(30)));
+
+        assertThat(outcome).isEqualTo(new ReadyClaimSkipped(
+                new Deferred(HoldReason.ACTIVE_LEASE, at(20))));
+        assertThat(recoveryStore.history("deferred")).hasSize(1);
+    }
+
+    @Test
+    @DisplayName("조회 뒤 수동 검토가 기록되면 잠근 현재 이력으로 다시 확인해 배정을 중단한다")
+    void rechecksManualReviewRecordedAfterReport() {
+        reserve("changed", "policy-changed", Kind.SUMMARY, 10, at(0));
+        var report = operationsQuery.findOldestUnresolved(criteria(at(0), at(5), 10));
+        recoveryStore.claim("changed", lease("attempt-manual", at(1), at(4)));
+        recoveryStore.complete(new Completion(
+                "attempt-manual", "worker-a", at(2), RecoveryResult.MANUAL_REVIEW_REQUIRED));
+
+        var outcome = workAssigner.assign(
+                report, report.items().getFirst(), lease("attempt-new", at(5), at(30)));
+
+        assertThat(outcome).isEqualTo(new ReadyClaimSkipped(
+                new Stopped(StopReason.MANUAL_REVIEW_REQUIRED, 1)));
+        assertThat(recoveryStore.history("changed")).hasSize(1);
+    }
+
+    @Test
+    @DisplayName("같은 후보를 동시에 배정해도 한 작업자만 소유권을 얻는다")
+    void assignsCandidateOnceUnderConcurrency() throws Exception {
+        reserve("concurrent", "policy-concurrent", Kind.SUMMARY, 10, at(0));
+        var report = operationsQuery.findOldestUnresolved(criteria(at(0), at(5), 10));
+        var candidate = report.items().getFirst();
+        var start = new CountDownLatch(1);
+        List<ReadyClaimOutcome> outcomes;
+        try (var executor = Executors.newFixedThreadPool(2)) {
+            var first = executor.submit(() -> {
+                start.await();
+                return workAssigner.assign(report, candidate,
+                        new Lease("attempt-first", "worker-first", at(5), at(20)));
+            });
+            var second = executor.submit(() -> {
+                start.await();
+                return workAssigner.assign(report, candidate,
+                        new Lease("attempt-second", "worker-second", at(5), at(20)));
+            });
+            start.countDown();
+            outcomes = List.of(first.get(10, TimeUnit.SECONDS), second.get(10, TimeUnit.SECONDS));
+        }
+
+        assertThat(outcomes).filteredOn(ReadyClaimed.class::isInstance).hasSize(1);
+        assertThat(outcomes).filteredOn(ReadyClaimSkipped.class::isInstance).hasSize(1);
+        assertThat(recoveryStore.history("concurrent")).singleElement()
+                .satisfies(attempt -> assertThat(attempt.status()).isEqualTo(Status.ACTIVE));
+    }
+
+    @Test
+    @DisplayName("같은 배정 요청을 다시 보내면 새 시도 없이 기존 소유권을 재전달한다")
+    void replaysSameAssignment() {
+        reserve("replay", "policy-replay", Kind.SUMMARY, 10, at(0));
+        var report = operationsQuery.findOldestUnresolved(criteria(at(0), at(5), 10));
+        var lease = lease("attempt-replay", at(5), at(20));
+        workAssigner.assign(report, report.items().getFirst(), lease);
+
+        var replay = workAssigner.assign(report, report.items().getFirst(), lease);
+
+        assertThat(replay).isInstanceOfSatisfying(ReadyClaimed.class, claimed ->
+                assertThat(claimed.decision()).isEqualTo(AiReservationRecoveryStore.ClaimDecision.REPLAYED));
+        assertThat(recoveryStore.history("replay")).hasSize(1);
     }
 
     private void reserve(String reservationId, String policyId, Kind kind, long sequence, Instant reservedAt) {

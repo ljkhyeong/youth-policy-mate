@@ -1,6 +1,10 @@
 package kr.youthpolicymate.ingestion;
 
+import kr.youthpolicymate.ingestion.AiBudgetReservationLifecycleStore.Snapshot;
 import kr.youthpolicymate.ingestion.AiBudgetReservationState.Phase;
+import kr.youthpolicymate.ingestion.AiReservationRecoveryRetryPolicy.Decision;
+import kr.youthpolicymate.ingestion.AiReservationRecoveryRetryPolicy.Ready;
+import kr.youthpolicymate.ingestion.AiReservationRecoveryRetryPolicy.Schedule;
 import org.springframework.context.annotation.Profile;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
@@ -20,9 +24,13 @@ import java.util.Optional;
 @Profile("!preview")
 public class AiReservationRecoveryStore {
     private final JdbcClient jdbcClient;
+    private final AiBudgetReservationLifecycleStore lifecycleStore;
+    private final AiReservationRecoveryRetryPolicy retryPolicy = new AiReservationRecoveryRetryPolicy();
 
-    public AiReservationRecoveryStore(JdbcClient jdbcClient) {
-        this.jdbcClient = jdbcClient;
+    public AiReservationRecoveryStore(JdbcClient jdbcClient,
+                                      AiBudgetReservationLifecycleStore lifecycleStore) {
+        this.jdbcClient = Objects.requireNonNull(jdbcClient, "AI 예약 복구 DB 접근이 필요합니다.");
+        this.lifecycleStore = Objects.requireNonNull(lifecycleStore, "AI 예약 상태 저장소가 필요합니다.");
     }
 
     @Transactional
@@ -66,6 +74,46 @@ public class AiReservationRecoveryStore {
                 .optional();
         if (reservation.isEmpty()) return claimOutcome(ClaimDecision.NO_RESERVATION_AVAILABLE, Optional.empty());
         return claimLocked(reservation.orElseThrow(), lease);
+    }
+
+    // 운영 조회 결과를 그대로 믿지 않고 예약 행을 잠근 뒤 현재 상태와 전체 이력으로 다시 판단한다.
+    @Transactional
+    public ReadyClaimOutcome claimIfReady(String reservationId, Schedule schedule, Lease lease) {
+        requireText(reservationId, "복구할 AI 요청 예약 식별자가 필요합니다.");
+        Objects.requireNonNull(schedule, "AI 예약 복구 재확인 일정이 필요합니다.");
+        Objects.requireNonNull(lease, "AI 예약 복구 임대 정보가 필요합니다.");
+        lockAttemptId(lease.attemptId());
+
+        var existing = findByAttemptId(lease.attemptId());
+        if (existing.isPresent()) {
+            ClaimOutcome replay = classifyExistingClaim(existing.orElseThrow(), reservationId, lease);
+            return replay.decision() == ClaimDecision.REPLAYED
+                    ? new ReadyClaimed(ClaimDecision.REPLAYED, replay.attempt().orElseThrow())
+                    : new ReadyClaimRejected(replay);
+        }
+
+        var reservation = lockReservation(reservationId);
+        if (reservation.isEmpty()) {
+            return new ReadyClaimRejected(claimOutcome(
+                    ClaimDecision.RESERVATION_NOT_FOUND, Optional.empty()));
+        }
+        ReservationRow locked = reservation.orElseThrow();
+        if (lease.claimedAt().isBefore(locked.updatedAt())) {
+            throw new IllegalArgumentException("복구 소유권 획득은 현재 예약 상태보다 빠를 수 없습니다.");
+        }
+
+        Snapshot snapshot = lifecycleStore.find(reservationId)
+                .orElseThrow(() -> new IllegalStateException("잠근 AI 요청 예약 상태를 조회하지 못했습니다."));
+        Decision decision = retryPolicy.decide(schedule, snapshot, history(reservationId), lease.claimedAt());
+        if (!(decision instanceof Ready ready)) return new ReadyClaimSkipped(decision);
+
+        ClaimOutcome claim = claimLocked(locked, lease);
+        if (claim.decision() != ClaimDecision.CLAIMED) return new ReadyClaimRejected(claim);
+        Attempt attempt = claim.attempt().orElseThrow();
+        if (attempt.attemptNumber() != ready.nextAttemptNumber()) {
+            throw new IllegalStateException("재확인한 복구 시도 순번과 저장한 순번이 다릅니다.");
+        }
+        return new ReadyClaimed(ClaimDecision.CLAIMED, attempt);
     }
 
     @Transactional
@@ -414,6 +462,33 @@ public class AiReservationRecoveryStore {
         public ClaimOutcome {
             Objects.requireNonNull(decision, "AI 예약 복구 소유권 결과가 필요합니다.");
             Objects.requireNonNull(attempt, "AI 예약 복구 시도의 존재 여부가 필요합니다.");
+        }
+    }
+
+    public sealed interface ReadyClaimOutcome
+            permits ReadyClaimed, ReadyClaimSkipped, ReadyClaimRejected {}
+
+    public record ReadyClaimed(ClaimDecision decision, Attempt attempt) implements ReadyClaimOutcome {
+        public ReadyClaimed {
+            if (decision != ClaimDecision.CLAIMED && decision != ClaimDecision.REPLAYED) {
+                throw new IllegalArgumentException("준비된 복구 소유권 결과는 획득 또는 재전달이어야 합니다.");
+            }
+            Objects.requireNonNull(attempt, "획득한 AI 예약 복구 시도가 필요합니다.");
+        }
+    }
+
+    public record ReadyClaimSkipped(Decision decision) implements ReadyClaimOutcome {
+        public ReadyClaimSkipped {
+            Objects.requireNonNull(decision, "AI 예약 복구를 건너뛴 현재 판단이 필요합니다.");
+            if (decision instanceof Ready) {
+                throw new IllegalArgumentException("복구 가능 판단은 건너뛴 결과로 반환할 수 없습니다.");
+            }
+        }
+    }
+
+    public record ReadyClaimRejected(ClaimOutcome claim) implements ReadyClaimOutcome {
+        public ReadyClaimRejected {
+            Objects.requireNonNull(claim, "AI 예약 복구 소유권 거절 결과가 필요합니다.");
         }
     }
 

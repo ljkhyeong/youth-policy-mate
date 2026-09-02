@@ -73,6 +73,8 @@ Flyway V1·V2와 PostgreSQL 예약 저장소도 추가했습니다. 최초 예�
 
 [AI 예약 복구 제한 목록 실행](docs/development/ai-reservation-recovery-work-runner.md)은 한 운영 조회의 `limit` 안에서 보류·중단 후보를 DB 변경 없이 건너뛰고 `Ready` 후보만 배정·실행합니다. 조회 뒤 상태가 바뀌어 미배정되거나 후보 하나의 외부 확인이 실패해도 다음 후보를 계속 처리합니다. 전용 PostgreSQL 4건과 전체 서버 314건·빌드가 통과했습니다. 실제 공급자·주기 스케줄러·고정 재확인 값은 아직 없습니다.
 
+[AI 예약 복구 작업 실행 기록](docs/development/ai-reservation-recovery-work-runs.md)은 실행 ID·작업자·조회 조건을 Flyway V4 테이블에 먼저 저장하고, 같은 실행 ID의 동시·완료 재전달을 반복 실행하지 않습니다. 완료 시 보류·미배정·복구 완료·미시작·후보 실패 수를 저장하고 실행 전체 오류는 별도 실패 상태로 남깁니다. 제한 목록과 실행 기록 10건, 전체 서버 320건·빌드가 통과했습니다. 실제 공급자·주기 스케줄러와 오래된 실행 중 기록의 자동 종료는 아직 없습니다.
+
 온통청년 API 인증키는 신청 후 승인 대기 중입니다. 인증된 성공 응답, 정책 조회·수집, 실제 정책을 연결한 자격 판정, 로그인·저장·알림 기능은 아직 구현하지 않았습니다. 서버 계산 연결은 개발용 인공 자료에 한정합니다. 조건 입력 검사는 신청 자격 판정이 아니며 실제 정책이나 가상 추천 결과를 표시하지 않습니다.
 
 발급 후 사용할 단건 응답 점검 명령 `npm run probe:ontong`을 준비했습니다. 인증키를 노출하지 않고 미검증 JSON 응답을 로컬에 보관하는 개발 도구이며, 운영 수집기나 실제 API 검증 완료를 뜻하지 않습니다.
@@ -129,6 +131,7 @@ Flyway V1·V2와 PostgreSQL 예약 저장소도 추가했습니다. 최초 예�
 - [AI 예약 복구 내부 운영 조회](docs/development/ai-reservation-recovery-operations-query.md)
 - [AI 예약 복구 작업 배정과 잠금 후 재확인](docs/development/ai-reservation-recovery-work-assignment.md)
 - [AI 예약 복구 제한 목록 실행과 후보별 실패 격리](docs/development/ai-reservation-recovery-work-runner.md)
+- [AI 예약 복구 작업 실행 식별자·중복 기동·결과 집계](docs/development/ai-reservation-recovery-work-runs.md)
 - [취업 조건 비교 범위와 추가 확인 설계](docs/design/employment-condition.md)
 - [소득 입력 의미와 구간 비교 설계](docs/design/income-condition.md)
 - [현재 작업 인계](HANDOFF.md)

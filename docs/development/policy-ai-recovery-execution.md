@@ -35,7 +35,7 @@
 
 복구 조정자가 기록하는 `CHECK_COMPLETED`는 확인 결과를 예약 상태에 적용했거나 청구 대기 응답의 존재를 확인했다는 내부 기록이다. AI 후보가 최신 정책에 맞고 사용자에게 제공 가능하다는 뜻이 아니다. 후속 [결과 연결](policy-ai-candidate-projection.md)이 `ResponseFound`와 완료 상태를 확인한 뒤 현재 정책·최신 요청을 다시 검사한다.
 
-후속 [재확인 정책](ai-reservation-recovery-retry-policy.md)은 예약이 여전히 미완료일 때 활성 임대·시도 간격·최대 횟수·수동 검토를 구분한다. [내부 운영 조회](ai-reservation-recovery-operations-query.md)는 오래된 대상과 전체 이력에 이 판단을 적용하고 [작업 배정](ai-reservation-recovery-work-assignment.md)은 현재 상태를 잠근 뒤 다시 확인해 활성 시도를 만든다. `recoverAssigned`는 이 시도를 인공 확인·펜싱 적용 경로에 연결한다. [제한 목록 실행](ai-reservation-recovery-work-runner.md)은 한 조회 결과의 보류·중단 후보를 건너뛰고 준비된 후보를 순서대로 이 경로에 전달하지만, 주기 스케줄러는 아직 없으므로 자동 반복 실행을 구현한 것은 아니다.
+후속 [재확인 정책](ai-reservation-recovery-retry-policy.md)은 예약이 여전히 미완료일 때 활성 임대·시도 간격·최대 횟수·수동 검토를 구분한다. [내부 운영 조회](ai-reservation-recovery-operations-query.md)는 오래된 대상과 전체 이력에 이 판단을 적용하고 [작업 배정](ai-reservation-recovery-work-assignment.md)은 현재 상태를 잠근 뒤 다시 확인해 활성 시도를 만든다. `recoverAssigned`는 이 시도를 인공 확인·펜싱 적용 경로에 연결한다. [제한 목록 실행](ai-reservation-recovery-work-runner.md)은 한 조회 결과의 보류·중단 후보를 건너뛰고 준비된 후보를 순서대로 이 경로에 전달하며 [작업 실행 기록](ai-reservation-recovery-work-runs.md)은 실행 ID와 결과 집계를 저장한다. 주기 스케줄러는 아직 없으므로 자동 반복 실행을 구현한 것은 아니다.
 
 ## 검사
 
@@ -62,12 +62,12 @@ npm run check:backend
 - 배정 뒤 완료·교체된 시도의 외부 확인 차단
 - 배정 뒤 종료된 예약의 공급자 확인 생략과 수동 검토 완료
 
-전용 14건과 재확인 정책 10건, 내부 운영 조회·작업 배정 10건, 제한 목록 실행 4건과 전체 서버 314건이 실패·오류·건너뛰기 없이 통과했고 빌드도 성공했다. 화면·API·Flyway 계약은 변경하지 않았다.
+전용 14건과 재확인 정책 10건, 내부 운영 조회·작업 배정 10건, 제한 목록·작업 실행 기록 10건과 전체 서버 320건이 실패·오류·건너뛰기 없이 통과했고 빌드도 성공했다. 화면·API 계약은 변경하지 않았고 Flyway V4를 추가했다.
 
 ## 남은 작업
 
 - 실제 공급자 상태 조회 결과와 내부 결과의 검증 가능한 매핑
-- 제한 목록 실행을 호출할 스케줄러와 실제 운영 간격·최대 횟수
+- 오래된 실행 중 기록 처리, 스케줄러와 실제 운영 간격·최대 횟수
 - 같은 활성 배정의 중복 실행에 대한 공급자 조회 멱등 계약
 - 공급자 확인 근거와 인증·권한이 있는 운영 노출
 - 후보 상태의 PostgreSQL 저장과 저장 직전 현재 정책 개정 재검사

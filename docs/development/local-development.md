@@ -154,7 +154,7 @@ npm audit
 
 `test:ai-recovery-operations`는 실제 PostgreSQL 18.6에서 내부 운영 조회 5건과 작업 배정 5건, 총 10건을 실행한다. 오래된 미완료 예약 컷오프·정렬·최대 조회 수, 전체 이력 기반 판단, 조회 뒤 수동 검토 재확인, 보류 후보 미배정, 동시 배정 한 건, 동일 요청 재전달을 확인한다. Docker가 필요하며 관리자 API·화면·권한과 실제 공급자 확인 검증은 아니다. [AI 복구 내부 운영 조회](ai-reservation-recovery-operations-query.md)와 [작업 배정](ai-reservation-recovery-work-assignment.md)을 따른다.
 
-`test:ai-recovery-work`는 실제 PostgreSQL 18.6과 인공 복구 포트로 제한 목록 실행 4건을 실행한다. 보류·중단 후보 뒤의 준비된 후보, 조회 뒤 판단 변경, 조회 개수 제한과 후보 단위 외부 확인 실패 뒤 계속 실행을 확인한다. Docker가 필요하며 실제 공급자·주기 스케줄러·운영 재확인 값 검증은 아니다. [AI 복구 제한 목록 실행](ai-reservation-recovery-work-runner.md)을 따른다.
+`test:ai-recovery-work`는 실제 PostgreSQL 18.6과 인공 복구 포트로 제한 목록 4건과 작업 실행 기록 6건, 총 10건을 실행한다. 보류·중단 후보 뒤의 준비된 후보, 조회 뒤 판단 변경, 조회 개수 제한, 후보 단위 외부 확인 실패 뒤 계속 실행, 실행 ID 재전달·충돌·동시 기동, 완료 집계와 전체 실패 기록을 확인한다. Docker가 필요하며 실제 공급자·주기 스케줄러·운영 재확인 값 검증은 아니다. [AI 복구 제한 목록 실행](ai-reservation-recovery-work-runner.md)과 [작업 실행 기록](ai-reservation-recovery-work-runs.md)을 따른다.
 
 `test:ai-recovery-execution`은 실제 PostgreSQL 18.6과 인공 복구 포트로 조정자 14건을 실행한다. 기존 다음 예약 획득과 배정된 시도 실행, 트랜잭션 밖 확인, 정산·무과금·취소·청구 대기, 완료·교체·만료 임대와 변경·종료 예약의 펜싱을 확인한다. Docker가 필요하며 실제 공급자·주기 스케줄러 검증은 아니다. [인공 복구 조정자](policy-ai-recovery-execution.md)를 따른다.
 

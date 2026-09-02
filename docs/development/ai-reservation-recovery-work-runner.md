@@ -1,6 +1,6 @@
 # AI 예약 복구 제한 목록 실행
 
-2026-09-02 구현 기준. [내부 운영 조회](ai-reservation-recovery-operations-query.md)가 반환한 제한된 후보 목록을 순서대로 확인하고, 준비된 항목만 [작업 배정](ai-reservation-recovery-work-assignment.md)과 [복구 조정자](policy-ai-recovery-execution.md)에 연결한다. 실제 공급자·스케줄러·고정 운영값은 포함하지 않는다.
+2026-09-02 구현 기준. [내부 운영 조회](ai-reservation-recovery-operations-query.md)가 반환한 제한된 후보 목록을 순서대로 확인하고, 준비된 항목만 [작업 배정](ai-reservation-recovery-work-assignment.md)과 [복구 조정자](policy-ai-recovery-execution.md)에 연결한다. 후속 [작업 실행 기록](ai-reservation-recovery-work-runs.md)은 한 번의 목록 실행을 식별하고 중복 기동과 결과 집계를 PostgreSQL에 남긴다. 실제 공급자·스케줄러·고정 운영값은 포함하지 않는다.
 
 ## 실행 흐름
 
@@ -31,6 +31,8 @@
 - 주기 실행, 다음 실행 시각 예약, 임대 갱신, 수동 검토 재개는 구현하지 않았다.
 - 실제 공급자 빈이 없으므로 현재 검사는 인공 확인 포트만 사용한다.
 
+`AiReservationRecoveryWorkRunCoordinator`를 사용하면 실행 ID와 조회 조건을 먼저 `RUNNING`으로 저장하고, 목록 처리 뒤 후보 결과 개수를 `COMPLETED`로 기록한다. 같은 실행 ID의 실행 중·완료·실패 재전달은 목록 실행기를 다시 호출하지 않는다. 실행 전체 오류는 `FAILED`로 남기지만 후보 하나의 외부 확인 오류는 기존 `RecoveryFailed` 집계에 포함하고 다음 후보를 계속 처리한다.
+
 ## 검사
 
 저장소 루트에서 실행한다.
@@ -40,19 +42,20 @@ npm run test:ai-recovery-work
 npm run check:backend
 ```
 
-실제 PostgreSQL 18.6 Testcontainers를 사용하는 전용 4건은 다음 경계를 확인한다.
+실제 PostgreSQL 18.6 Testcontainers를 사용하는 제한 목록 4건은 다음 경계를 확인한다.
 
 - 오래된 보류·중단 후보 뒤의 `Ready` 후보 실행
 - 조회 뒤 수동 검토로 바뀐 첫 후보의 잠금 후 미배정과 다음 후보 실행
 - 운영 조회 `limit` 밖 예약의 미변경
 - 한 후보의 외부 확인 예외 기록과 다음 후보 계속 실행
 
-전용 4건과 전체 서버 314건이 실패·오류·건너뛰기 없이 통과했고 빌드도 성공했다. 전체 구성은 DB 없는 도메인 245건, 개발 API·계약 13건, PostgreSQL 예약·실행·복구·연결·운영 조회·작업 배정·제한 목록 실행/기본 차단 56건이다. 화면·API·Flyway 계약은 변경하지 않았다.
+작업 실행 기록 6건을 더한 전용 10건과 전체 서버 320건이 실패·오류·건너뛰기 없이 통과했고 빌드도 성공했다. 전체 구성은 DB 없는 도메인 245건, 개발 API·계약 13건, PostgreSQL 예약·실행·복구·연결·운영 조회·작업 배정·제한 목록·작업 실행 기록/기본 차단 62건이다. 화면·API 계약은 변경하지 않았고 Flyway V4를 추가했다.
 
 ## 남은 작업
 
 - 실제 공급자 상태 조회 어댑터와 확인 근거 보존
 - 공급자 선정 뒤 실제 재확인 간격·최대 시도 횟수·임대 길이 확정
-- 스케줄러의 실행 주기·중복 기동 경계와 작업자 식별자 생성
+- 오래된 `RUNNING` 실행의 조회와 명시적 실패·중단 처리
+- 스케줄러의 실행 주기와 실행 ID·작업자 ID 생성
 - 같은 활성 배정의 공급자 조회 멱등 계약
 - 인증·권한을 갖춘 관리자 조회와 수동 검토 재개 감사 기록

@@ -9,6 +9,8 @@ import kr.youthpolicymate.ingestion.AiBudgetReservationState.UncertainOutcome;
 import kr.youthpolicymate.ingestion.AiBudgetReservationState.UncertainReason;
 import kr.youthpolicymate.ingestion.AiRequestBudget.Balance;
 import kr.youthpolicymate.ingestion.AiRequestBudget.CostCeiling;
+import kr.youthpolicymate.ingestion.AiReservationRecoveryLeaseRenewalStore.RenewalCommand;
+import kr.youthpolicymate.ingestion.AiReservationRecoveryLeaseRenewalStore.RenewalDecision;
 import kr.youthpolicymate.ingestion.AiReservationRecoveryOperationsQuery.Criteria;
 import kr.youthpolicymate.ingestion.AiReservationRecoveryRetryPolicy.Schedule;
 import kr.youthpolicymate.ingestion.AiReservationRecoveryStore.Lease;
@@ -73,6 +75,7 @@ class PolicyAiRecoveryCoordinatorTest {
     @Autowired AiBudgetReservationStore reservationStore;
     @Autowired AiBudgetReservationLifecycleStore lifecycleStore;
     @Autowired AiReservationRecoveryStore recoveryStore;
+    @Autowired AiReservationRecoveryLeaseRenewalStore leaseRenewalStore;
     @Autowired AiReservationRecoveryOperationsQuery operationsQuery;
     @Autowired AiReservationRecoveryWorkAssigner workAssigner;
     @Autowired PolicyAiRecoveryApplier applier;
@@ -121,6 +124,37 @@ class PolicyAiRecoveryCoordinatorTest {
             assertThat(attempt.claimedPhase()).isEqualTo(Phase.OUTCOME_UNKNOWN);
             assertThat(attempt.completedPhase()).contains(Phase.SETTLED);
         });
+    }
+
+    @Test
+    @DisplayName("외부 확인 중 갱신한 임대로 기존 만료 뒤 결과를 안전하게 적용한다")
+    void appliesRecoveryResultWithinRenewedLease() {
+        reserve("budget-a", "reservation-a", 10, "10");
+        lifecycleStore.dispatch("reservation-a", new Dispatch("dispatch-a", NOW.plusSeconds(1)));
+        PolicyAiRecoveryPort renewingPort = inspection -> {
+            assertThat(TransactionSynchronizationManager.isActualTransactionActive()).isFalse();
+            assertThat(leaseRenewalStore.renew(new RenewalCommand(
+                    "renewal-a", "reservation-a", inspection.attempt().attemptId(),
+                    inspection.attempt().attemptNumber(), inspection.attempt().ownerId(),
+                    NOW.plusSeconds(4), NOW.plusSeconds(3), NOW.plusSeconds(10))).decision())
+                    .isEqualTo(RenewalDecision.RENEWED);
+            return new ChargeFound(new ChargeConfirmation(
+                    "charge-a", NOW.plusSeconds(3), money("7")));
+        };
+
+        var run = coordinator(renewingPort, NOW.plusSeconds(6)).recoverNext(
+                lease("attempt-a", "worker-a", NOW.plusSeconds(2), NOW.plusSeconds(4)));
+
+        assertThat(run).isInstanceOfSatisfying(PolicyAiRecoveryCoordinator.Recovered.class, recovered -> {
+            assertThat(recovered.application().transition().orElseThrow().decision())
+                    .isEqualTo(AiBudgetReservationLifecycleStore.Decision.SETTLED);
+            assertThat(recovered.application().completion().decision())
+                    .isEqualTo(AiReservationRecoveryStore.CompletionDecision.COMPLETED);
+        });
+        assertThat(recoveryStore.findAttempt("attempt-a").orElseThrow().leaseUntil())
+                .isEqualTo(NOW.plusSeconds(10));
+        assertThat(leaseRenewalStore.history("attempt-a")).hasSize(1);
+        assertThat(budgetAmounts("budget-a")).isEqualTo(new BudgetAmounts(money("7"), money("0")));
     }
 
     @Test
@@ -468,6 +502,7 @@ class PolicyAiRecoveryCoordinatorTest {
     }
 
     private void clearDatabase() {
+        jdbcClient.sql("delete from ai_reservation_recovery_lease_renewals").update();
         jdbcClient.sql("delete from ai_reservation_recovery_attempts").update();
         jdbcClient.sql("delete from ai_request_reservations").update();
         jdbcClient.sql("delete from ai_budgets").update();

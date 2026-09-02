@@ -9,6 +9,8 @@ import kr.youthpolicymate.ingestion.AiReservationRecoveryStore.Completion;
 import kr.youthpolicymate.ingestion.AiReservationRecoveryStore.Lease;
 import kr.youthpolicymate.ingestion.AiReservationRecoveryStore.RecoveryResult;
 import kr.youthpolicymate.ingestion.AiReservationRecoveryStore.Status;
+import kr.youthpolicymate.ingestion.AiReservationRecoveryLeaseRenewalStore.RenewalCommand;
+import kr.youthpolicymate.ingestion.AiReservationRecoveryLeaseRenewalStore.RenewalDecision;
 import kr.youthpolicymate.ingestion.AiReservationRecoveryReviewStore.ResumeCommand;
 import kr.youthpolicymate.ingestion.AiReservationRecoveryReviewStore.ResumeDecision;
 import kr.youthpolicymate.ingestion.AiReservationRecoveryReviewStore.ResumeReason;
@@ -69,8 +71,12 @@ class AiReservationRecoveryStoreTest {
     @Autowired
     AiReservationRecoveryReviewStore reviewStore;
 
+    @Autowired
+    AiReservationRecoveryLeaseRenewalStore leaseRenewalStore;
+
     @BeforeEach
     void setUp() {
+        jdbcClient.sql("delete from ai_reservation_recovery_lease_renewals").update();
         jdbcClient.sql("delete from ai_reservation_recovery_review_resumes").update();
         jdbcClient.sql("delete from ai_reservation_recovery_attempts").update();
         jdbcClient.sql("delete from ai_request_reservations").update();
@@ -79,6 +85,7 @@ class AiReservationRecoveryStoreTest {
 
     @AfterEach
     void tearDown() {
+        jdbcClient.sql("delete from ai_reservation_recovery_lease_renewals").update();
         jdbcClient.sql("delete from ai_reservation_recovery_review_resumes").update();
         jdbcClient.sql("delete from ai_reservation_recovery_attempts").update();
         jdbcClient.sql("delete from ai_request_reservations").update();
@@ -241,6 +248,163 @@ class AiReservationRecoveryStoreTest {
     }
 
     @Test
+    @DisplayName("활성 임대를 같은 작업자가 연장하고 같은 갱신 명령을 재전달한다")
+    void renewsActiveLeaseWithAuditRecord() {
+        reserve("budget-a", "reservation-a", 10, "10");
+        recoveryStore.claim("reservation-a",
+                lease("attempt-a", "worker-a", NOW.plusSeconds(1), NOW.plusSeconds(5)));
+        var command = renewal("renewal-a", "reservation-a", "attempt-a", 1, "worker-a",
+                NOW.plusSeconds(5), NOW.plusSeconds(3), NOW.plusSeconds(10));
+
+        assertThat(leaseRenewalStore.renew(command).decision()).isEqualTo(RenewalDecision.RENEWED);
+        assertThat(leaseRenewalStore.renew(command).decision()).isEqualTo(RenewalDecision.REPLAYED);
+        assertThat(leaseRenewalStore.renew(renewal(
+                "renewal-a", "reservation-a", "attempt-a", 1, "worker-a",
+                NOW.plusSeconds(5), NOW.plusSeconds(3), NOW.plusSeconds(11))).decision())
+                .isEqualTo(RenewalDecision.RENEWAL_ID_CONFLICT);
+        assertThat(leaseRenewalStore.renew(renewal(
+                "renewal-b", "reservation-a", "attempt-a", 1, "worker-a",
+                NOW.plusSeconds(10), NOW.plusSeconds(6), NOW.plusSeconds(15))).decision())
+                .isEqualTo(RenewalDecision.RENEWED);
+
+        assertThat(leaseRenewalStore.history("attempt-a")).satisfiesExactly(record -> {
+            assertThat(record.renewalId()).isEqualTo("renewal-a");
+            assertThat(record.reservationId()).isEqualTo("reservation-a");
+            assertThat(record.attemptNumber()).isOne();
+            assertThat(record.ownerId()).isEqualTo("worker-a");
+            assertThat(record.observedLeaseUntil()).isEqualTo(NOW.plusSeconds(5));
+            assertThat(record.renewedAt()).isEqualTo(NOW.plusSeconds(3));
+            assertThat(record.renewedLeaseUntil()).isEqualTo(NOW.plusSeconds(10));
+        }, record -> {
+            assertThat(record.renewalId()).isEqualTo("renewal-b");
+            assertThat(record.observedLeaseUntil()).isEqualTo(NOW.plusSeconds(10));
+            assertThat(record.renewedAt()).isEqualTo(NOW.plusSeconds(6));
+            assertThat(record.renewedLeaseUntil()).isEqualTo(NOW.plusSeconds(15));
+        });
+        assertThat(recoveryStore.findAttempt("attempt-a").orElseThrow().leaseUntil())
+                .isEqualTo(NOW.plusSeconds(15));
+    }
+
+    @Test
+    @DisplayName("다른 소유자와 시도 순번, 오래된 만료 시각과 끝난 임대의 갱신을 거절한다")
+    void fencesLeaseRenewalByOwnerAttemptAndTime() {
+        reserve("budget-a", "reservation-a", 10, "10");
+        recoveryStore.claim("reservation-a",
+                lease("attempt-a", "worker-a", NOW.plusSeconds(1), NOW.plusSeconds(5)));
+
+        assertThat(leaseRenewalStore.renew(renewal(
+                "renewal-wrong-owner", "reservation-a", "attempt-a", 1, "worker-b",
+                NOW.plusSeconds(5), NOW.plusSeconds(3), NOW.plusSeconds(10))).decision())
+                .isEqualTo(RenewalDecision.OWNER_CONFLICT);
+        assertThat(leaseRenewalStore.renew(renewal(
+                "renewal-wrong-attempt", "reservation-a", "attempt-a", 2, "worker-a",
+                NOW.plusSeconds(5), NOW.plusSeconds(3), NOW.plusSeconds(10))).decision())
+                .isEqualTo(RenewalDecision.ATTEMPT_CONFLICT);
+        assertThat(leaseRenewalStore.renew(renewal(
+                "renewal-current", "reservation-a", "attempt-a", 1, "worker-a",
+                NOW.plusSeconds(5), NOW.plusSeconds(3), NOW.plusSeconds(10))).decision())
+                .isEqualTo(RenewalDecision.RENEWED);
+        assertThat(leaseRenewalStore.renew(renewal(
+                "renewal-old-time", "reservation-a", "attempt-a", 1, "worker-a",
+                NOW.plusSeconds(10), NOW.plusSeconds(2), NOW.plusSeconds(12))).decision())
+                .isEqualTo(RenewalDecision.RENEWAL_TIME_CONFLICT);
+        assertThat(leaseRenewalStore.renew(renewal(
+                "renewal-stale", "reservation-a", "attempt-a", 1, "worker-a",
+                NOW.plusSeconds(5), NOW.plusSeconds(4), NOW.plusSeconds(12))).decision())
+                .isEqualTo(RenewalDecision.LEASE_CHANGED);
+        assertThat(leaseRenewalStore.renew(renewal(
+                "renewal-expired", "reservation-a", "attempt-a", 1, "worker-a",
+                NOW.plusSeconds(10), NOW.plusSeconds(10), NOW.plusSeconds(15))).decision())
+                .isEqualTo(RenewalDecision.LEASE_EXPIRED);
+
+        assertThat(leaseRenewalStore.history("attempt-a")).hasSize(1);
+        assertThat(recoveryStore.findAttempt("attempt-a").orElseThrow().leaseUntil())
+                .isEqualTo(NOW.plusSeconds(10));
+    }
+
+    @Test
+    @DisplayName("종료된 예약과 완료된 시도의 임대를 갱신하지 않는다")
+    void doesNotRenewTerminalReservationOrCompletedAttempt() {
+        reserve("budget-a", "reservation-a", 10, "10");
+        recoveryStore.claim("reservation-a",
+                lease("attempt-a", "worker-a", NOW.plusSeconds(1), NOW.plusSeconds(10)));
+        lifecycleStore.cancelBeforeDispatch("reservation-a",
+                new AiBudgetReservationState.Cancellation("cancel-a", NOW.plusSeconds(2)));
+
+        assertThat(leaseRenewalStore.renew(renewal(
+                "renewal-terminal", "reservation-a", "attempt-a", 1, "worker-a",
+                NOW.plusSeconds(10), NOW.plusSeconds(3), NOW.plusSeconds(15))).decision())
+                .isEqualTo(RenewalDecision.RESERVATION_TERMINAL);
+
+        reserve("budget-b", "reservation-b", 11, "10");
+        recoveryStore.claim("reservation-b",
+                lease("attempt-b", "worker-b", NOW.plusSeconds(1), NOW.plusSeconds(10)));
+        recoveryStore.complete(new Completion(
+                "attempt-b", "worker-b", NOW.plusSeconds(2), RecoveryResult.CHECK_FAILED));
+
+        assertThat(leaseRenewalStore.renew(renewal(
+                "renewal-completed", "reservation-b", "attempt-b", 1, "worker-b",
+                NOW.plusSeconds(10), NOW.plusSeconds(3), NOW.plusSeconds(15))).decision())
+                .isEqualTo(RenewalDecision.ATTEMPT_NOT_ACTIVE);
+        assertThat(leaseRenewalStore.history("attempt-a")).isEmpty();
+        assertThat(leaseRenewalStore.history("attempt-b")).isEmpty();
+    }
+
+    @Test
+    @DisplayName("같은 임대 스냅샷을 동시에 갱신해도 한 요청만 반영한다")
+    void renewsLeaseSnapshotOnceUnderConcurrency() throws Exception {
+        reserve("budget-a", "reservation-a", 10, "10");
+        recoveryStore.claim("reservation-a",
+                lease("attempt-a", "worker-a", NOW.plusSeconds(1), NOW.plusSeconds(5)));
+        var start = new CountDownLatch(1);
+        List<RenewalDecision> decisions;
+
+        try (var executor = Executors.newFixedThreadPool(2)) {
+            var first = executor.submit(() -> {
+                start.await();
+                return leaseRenewalStore.renew(renewal(
+                        "renewal-first", "reservation-a", "attempt-a", 1, "worker-a",
+                        NOW.plusSeconds(5), NOW.plusSeconds(3), NOW.plusSeconds(10))).decision();
+            });
+            var second = executor.submit(() -> {
+                start.await();
+                return leaseRenewalStore.renew(renewal(
+                        "renewal-second", "reservation-a", "attempt-a", 1, "worker-a",
+                        NOW.plusSeconds(5), NOW.plusSeconds(3), NOW.plusSeconds(11))).decision();
+            });
+            start.countDown();
+            decisions = List.of(first.get(10, TimeUnit.SECONDS), second.get(10, TimeUnit.SECONDS));
+        }
+
+        assertThat(decisions).containsExactlyInAnyOrder(
+                RenewalDecision.RENEWED, RenewalDecision.LEASE_CHANGED);
+        assertThat(leaseRenewalStore.history("attempt-a")).hasSize(1);
+    }
+
+    @Test
+    @DisplayName("PostgreSQL 제약은 끝난 임대의 갱신 감사 기록을 거절한다")
+    void enforcesLeaseRenewalConstraints() {
+        reserve("budget-a", "reservation-a", 10, "10");
+        recoveryStore.claim("reservation-a",
+                lease("attempt-a", "worker-a", NOW.plusSeconds(1), NOW.plusSeconds(5)));
+
+        assertThatThrownBy(() -> jdbcClient.sql("""
+                insert into ai_reservation_recovery_lease_renewals (
+                    renewal_id, attempt_id, attempt_number, owner_id,
+                    observed_lease_until, renewed_at, renewed_lease_until
+                ) values (
+                    'renewal-invalid', 'attempt-a', 1, 'worker-a',
+                    :observedLeaseUntil, :renewedAt, :renewedLeaseUntil
+                )
+                """)
+                .param("observedLeaseUntil", dbTime(NOW.plusSeconds(5)))
+                .param("renewedAt", dbTime(NOW.plusSeconds(5)))
+                .param("renewedLeaseUntil", dbTime(NOW.plusSeconds(10)))
+                .update())
+                .isInstanceOf(DataIntegrityViolationException.class);
+    }
+
+    @Test
     @DisplayName("최신 수동 검토 시도를 운영자 근거와 예약 스냅샷으로 재개하고 재전달한다")
     void resumesLatestManualReviewWithAuditRecord() {
         reserve("budget-a", "reservation-a", 10, "10");
@@ -395,6 +559,14 @@ class AiReservationRecoveryStoreTest {
 
     private static Lease lease(String attemptId, String ownerId, Instant claimedAt, Instant leaseUntil) {
         return new Lease(attemptId, ownerId, claimedAt, leaseUntil);
+    }
+
+    private static RenewalCommand renewal(String renewalId, String reservationId, String attemptId,
+                                          long attemptNumber, String ownerId, Instant observedLeaseUntil,
+                                          Instant renewedAt, Instant renewedLeaseUntil) {
+        return new RenewalCommand(
+                renewalId, reservationId, attemptId, attemptNumber, ownerId,
+                observedLeaseUntil, renewedAt, renewedLeaseUntil);
     }
 
     private static BigDecimal money(String amount) { return new BigDecimal(amount); }

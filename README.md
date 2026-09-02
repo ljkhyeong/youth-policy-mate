@@ -65,6 +65,8 @@ Flyway V1·V2와 PostgreSQL 예약 저장소도 추가했습니다. 최초 예�
 
 [AI 예약 복구 재확인 정책](docs/development/ai-reservation-recovery-retry-policy.md)은 호출 측이 명시한 최대 시도 횟수와 간격으로 첫 확인·활성 임대·재확인 대기·수동 검토·최대 횟수 도달을 구분합니다. 완료·만료 시도를 모두 횟수에 포함하며 고정 운영값은 넣지 않았습니다. 전용 10건·수집 69건과 전체 서버 296건·빌드가 통과했습니다. 실제 자동 작업자와 공급자별 간격은 아직 없습니다.
 
+[AI 예약 복구 내부 운영 조회](docs/development/ai-reservation-recovery-operations-query.md)는 명시한 기준 시각보다 오래된 미완료 예약을 제한된 수만큼 조회하고, 정책·AI 요청 범위와 예약 상태·전체 복구 이력·재확인 판단을 한 PostgreSQL 스냅샷으로 묶습니다. 읽기 전용이며 임대나 상태를 바꾸지 않습니다. 전용 5건과 전체 서버 301건·빌드가 통과했습니다. 관리자 API·화면·인증·권한과 실제 작업자 실행은 아직 없습니다.
+
 온통청년 API 인증키는 신청 후 승인 대기 중입니다. 인증된 성공 응답, 정책 조회·수집, 실제 정책을 연결한 자격 판정, 로그인·저장·알림 기능은 아직 구현하지 않았습니다. 서버 계산 연결은 개발용 인공 자료에 한정합니다. 조건 입력 검사는 신청 자격 판정이 아니며 실제 정책이나 가상 추천 결과를 표시하지 않습니다.
 
 발급 후 사용할 단건 응답 점검 명령 `npm run probe:ontong`을 준비했습니다. 인증키를 노출하지 않고 미검증 JSON 응답을 로컬에 보관하는 개발 도구이며, 운영 수집기나 실제 API 검증 완료를 뜻하지 않습니다.
@@ -118,6 +120,7 @@ Flyway V1·V2와 PostgreSQL 예약 저장소도 추가했습니다. 최초 예�
 - [AI 미완료 예약 복구 저장소 검증](docs/development/ai-reservation-recovery.md)
 - [AI 예약 인공 복구 조정자와 상태 변경 펜싱](docs/development/policy-ai-recovery-execution.md)
 - [AI 예약 복구 재확인·자동 중단 정책](docs/development/ai-reservation-recovery-retry-policy.md)
+- [AI 예약 복구 내부 운영 조회](docs/development/ai-reservation-recovery-operations-query.md)
 - [취업 조건 비교 범위와 추가 확인 설계](docs/design/employment-condition.md)
 - [소득 입력 의미와 구간 비교 설계](docs/design/income-condition.md)
 - [현재 작업 인계](HANDOFF.md)

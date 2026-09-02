@@ -124,6 +124,7 @@ npm run test:ai-execution
 npm run test:ai-recovery
 npm run test:ai-recovery-execution
 npm run test:ai-recovery-policy
+npm run test:ai-recovery-operations
 npm run test:reminders
 npm run test:preview-api
 npm run check:api-types
@@ -150,6 +151,8 @@ npm audit
 
 `test:ai-recovery-policy`는 복구 재확인 순수 정책 10건만 실행한다. 첫 시도, 활성 임대와 재확인 간격, 확인 완료·실패, 수동 검토, 완료·만료를 포함한 최대 횟수와 종료 예약을 확인한다. 고정 운영값·자동 작업자·DB 대상 선택 검증은 아니며 [AI 복구 재확인 정책](ai-reservation-recovery-retry-policy.md)을 따른다.
 
+`test:ai-recovery-operations`는 실제 PostgreSQL 18.6에서 내부 운영 조회 5건을 실행한다. 오래된 미완료 예약 컷오프·정렬·최대 조회 수, 전체 복구 이력을 사용한 활성 임대·재확인 간격·수동 검토·최대 횟수 판단과 조회 전후 상태 불변을 확인한다. Docker가 필요하며 관리자 API·화면·권한과 실제 작업자 실행 검증은 아니다. [AI 복구 내부 운영 조회](ai-reservation-recovery-operations-query.md)를 따른다.
+
 `test:ai-admission`은 사전 판단 14건만 실행한다. 후보 재사용, 신규·변경 개정·명시적 재시도, 예산 미설정·0원·기간, 예약액·소수 최대 비용·잔액 경계, 비용 미확인·만료·다른 요청의 비용을 확인한다. 실제 예약·정산·청구 차단은 없으며 [AI 사전 판단 구현](ai-request-admission.md)을 따른다.
 
 `test:ai-reservations`는 예약 상태 13건만 실행한다. 최대 비용 예약, 재전달·충돌, 외부 호출·결과 미확인, 정산·호출 전 취소·무과금 확인과 예약 초과 비용을 검사한다. 메모리 상태 전이이며 실제 PostgreSQL 동시성이나 공급자 청구 검증은 아니다. [AI 예약 상태 구현](ai-budget-reservation-lifecycle.md)을 따른다.
@@ -164,7 +167,7 @@ npm audit
 
 `test:preview-api`는 마감 API 4건·자격 API 3건·인공 답변 재판정 5건·공통 계약 1건, 총 13건을 실행하며 DB·Docker가 필요하지 않다. `npm run generate:api`는 실제 생성 OpenAPI와 TypeScript를 갱신하고 `check:api-types`는 타입의 최신 여부만 확인한다. 재생성 절차는 [개발 API 안내](reminder-preview-api.md#계약-생성과-검사)를 따른다.
 
-현재 백엔드 통합 테스트는 다음 2개다.
+기본 상태·접근 차단 통합 테스트는 다음 2개이며, AI 예약·실행·복구 저장소 검사는 별도 PostgreSQL Testcontainers 테스트로 실행한다.
 
 1. 실제 PostgreSQL 조회와 상태 응답 `UP`, 상세 정보 비노출.
 2. 상태 확인 외 경로와 개발 API의 접근 차단, 기본 모드에서 개발 컨트롤러 미등록.

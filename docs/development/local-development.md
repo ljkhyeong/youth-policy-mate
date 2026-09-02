@@ -158,7 +158,7 @@ npm audit
 
 `test:ai-recovery`는 실제 PostgreSQL 18.6에서 복구 소유권·수동 검토 재개·활성 임대 갱신 16건을 실행한다. 획득·완료·만료, 재전달·충돌, 동시 작업자, 재개와 갱신 감사, 소유자·시도 순번·예약·시각 펜싱과 DB 제약을 확인한다. Docker가 필요하며 자동 heartbeat와 실제 공급자 확인 검증은 아니다. [AI 복구 저장소](ai-reservation-recovery.md), [수동 검토 재개](ai-reservation-recovery-review-resume.md), [활성 임대 갱신](ai-reservation-recovery-lease-renewal.md)을 따른다.
 
-`test:ai-recovery-execution`은 실제 PostgreSQL 18.6과 인공 복구 포트로 조정자 15건을 실행한다. 기존 다음 예약 획득과 배정된 시도 실행, 트랜잭션 밖 확인, 정산·무과금·취소·청구 대기, 완료·교체·만료 임대와 변경·종료 예약의 펜싱, 외부 확인 중 갱신된 임대의 결과 적용을 확인한다. Docker가 필요하며 실제 공급자·주기 스케줄러·자동 heartbeat 검증은 아니다. [인공 복구 조정자](policy-ai-recovery-execution.md)를 따른다.
+`test:ai-recovery-execution`은 실제 PostgreSQL 18.6과 인공 복구 포트로 조정자 16건을 실행한다. 기존 다음 예약 획득과 배정된 시도 실행, 트랜잭션 밖 확인, 정산·무과금·취소·청구 대기, 완료·교체·만료 임대와 변경·종료 예약의 펜싱, 외부 확인 중 자동 heartbeat 갱신과 갱신 거절 뒤 결과 폐기를 확인한다. Docker가 필요하며 실제 공급자·운영 작업 스케줄러 검증은 아니다. [인공 복구 조정자](policy-ai-recovery-execution.md)와 [자동 heartbeat](ai-reservation-recovery-heartbeat.md)를 따른다.
 
 `test:ai-admission`은 사전 판단 14건만 실행한다. 후보 재사용, 신규·변경 개정·명시적 재시도, 예산 미설정·0원·기간, 예약액·소수 최대 비용·잔액 경계, 비용 미확인·만료·다른 요청의 비용을 확인한다. 실제 예약·정산·청구 차단은 없으며 [AI 사전 판단 구현](ai-request-admission.md)을 따른다.
 

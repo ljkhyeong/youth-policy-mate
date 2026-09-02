@@ -184,6 +184,12 @@ public class AiReservationRecoveryStore {
                 .list();
     }
 
+    @Transactional(readOnly = true)
+    public Optional<Attempt> findAttempt(String attemptId) {
+        requireText(attemptId, "조회할 AI 예약 복구 시도 식별자가 필요합니다.");
+        return findByAttemptId(attemptId);
+    }
+
     private ClaimOutcome claimLocked(ReservationRow reservation, Lease lease) {
         if (isTerminal(reservation.phase())) {
             return claimOutcome(ClaimDecision.RESERVATION_TERMINAL, Optional.empty());

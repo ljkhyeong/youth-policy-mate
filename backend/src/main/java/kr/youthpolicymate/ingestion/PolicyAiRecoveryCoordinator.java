@@ -6,6 +6,7 @@ import kr.youthpolicymate.ingestion.AiReservationRecoveryStore.Attempt;
 import kr.youthpolicymate.ingestion.AiReservationRecoveryStore.ClaimDecision;
 import kr.youthpolicymate.ingestion.AiReservationRecoveryStore.ClaimOutcome;
 import kr.youthpolicymate.ingestion.AiReservationRecoveryStore.Lease;
+import kr.youthpolicymate.ingestion.AiReservationRecoveryStore.ReadyClaimed;
 import kr.youthpolicymate.ingestion.AiReservationRecoveryStore.Status;
 import kr.youthpolicymate.ingestion.PolicyAiRecoveryApplier.Application;
 import kr.youthpolicymate.ingestion.PolicyAiRecoveryPort.Inspection;
@@ -43,7 +44,28 @@ public final class PolicyAiRecoveryCoordinator {
         if (claim.decision() != ClaimDecision.CLAIMED && claim.decision() != ClaimDecision.REPLAYED) {
             return new NotStarted(StopReason.CLAIM_REJECTED, claim);
         }
+        return recoverClaimed(claim);
+    }
 
+    public Run recoverAssigned(ReadyClaimed assignment) {
+        Objects.requireNonNull(assignment, "배정된 AI 예약 복구 시도가 필요합니다.");
+        ClaimOutcome assignedClaim = new ClaimOutcome(
+                assignment.decision(), Optional.of(assignment.attempt()));
+        Optional<Attempt> persisted = recoveryStore.findAttempt(assignment.attempt().attemptId());
+        if (persisted.isEmpty()) {
+            return new NotStarted(StopReason.ATTEMPT_NOT_FOUND, assignedClaim);
+        }
+
+        Attempt current = persisted.orElseThrow();
+        ClaimOutcome currentClaim = new ClaimOutcome(assignment.decision(), Optional.of(current));
+        if (!current.equals(assignment.attempt())) {
+            return new NotStarted(current.status() == Status.ACTIVE
+                    ? StopReason.ATTEMPT_CHANGED : StopReason.ATTEMPT_NOT_ACTIVE, currentClaim);
+        }
+        return recoverClaimed(currentClaim);
+    }
+
+    private Run recoverClaimed(ClaimOutcome claim) {
         Attempt attempt = claim.attempt().orElseThrow();
         if (attempt.status() != Status.ACTIVE) {
             return new NotStarted(StopReason.ATTEMPT_NOT_ACTIVE, claim);
@@ -77,7 +99,13 @@ public final class PolicyAiRecoveryCoordinator {
 
     public sealed interface Run permits NotStarted, Recovered {}
 
-    public enum StopReason { CLAIM_REJECTED, ATTEMPT_NOT_ACTIVE, RESERVATION_NOT_FOUND }
+    public enum StopReason {
+        CLAIM_REJECTED,
+        ATTEMPT_NOT_FOUND,
+        ATTEMPT_CHANGED,
+        ATTEMPT_NOT_ACTIVE,
+        RESERVATION_NOT_FOUND
+    }
 
     public record NotStarted(StopReason reason, ClaimOutcome claim) implements Run {
         public NotStarted {

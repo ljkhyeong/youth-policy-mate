@@ -9,8 +9,11 @@ import kr.youthpolicymate.ingestion.AiBudgetReservationState.UncertainOutcome;
 import kr.youthpolicymate.ingestion.AiBudgetReservationState.UncertainReason;
 import kr.youthpolicymate.ingestion.AiRequestBudget.Balance;
 import kr.youthpolicymate.ingestion.AiRequestBudget.CostCeiling;
+import kr.youthpolicymate.ingestion.AiReservationRecoveryOperationsQuery.Criteria;
+import kr.youthpolicymate.ingestion.AiReservationRecoveryRetryPolicy.Schedule;
 import kr.youthpolicymate.ingestion.AiReservationRecoveryStore.Lease;
 import kr.youthpolicymate.ingestion.AiReservationRecoveryStore.RecoveryResult;
+import kr.youthpolicymate.ingestion.AiReservationRecoveryStore.ReadyClaimed;
 import kr.youthpolicymate.ingestion.AiReservationRecoveryStore.Status;
 import kr.youthpolicymate.ingestion.PolicyAiRecoveryPort.ChargeFound;
 import kr.youthpolicymate.ingestion.PolicyAiRecoveryPort.CheckFailed;
@@ -46,10 +49,12 @@ import org.testcontainers.postgresql.PostgreSQLContainer;
 
 import java.math.BigDecimal;
 import java.time.Clock;
+import java.time.Duration;
 import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.time.temporal.ChronoUnit;
+import java.util.List;
 
 import static org.assertj.core.api.Assertions.*;
 
@@ -57,6 +62,8 @@ import static org.assertj.core.api.Assertions.*;
 @SpringBootTest
 class PolicyAiRecoveryCoordinatorTest {
     private static final Instant NOW = Instant.parse("2026-09-01T01:00:00Z");
+    private static final Schedule SCHEDULE = new Schedule(
+            3, List.of(Duration.ofSeconds(5), Duration.ofSeconds(20)));
 
     @Container
     @ServiceConnection
@@ -66,6 +73,8 @@ class PolicyAiRecoveryCoordinatorTest {
     @Autowired AiBudgetReservationStore reservationStore;
     @Autowired AiBudgetReservationLifecycleStore lifecycleStore;
     @Autowired AiReservationRecoveryStore recoveryStore;
+    @Autowired AiReservationRecoveryOperationsQuery operationsQuery;
+    @Autowired AiReservationRecoveryWorkAssigner workAssigner;
     @Autowired PolicyAiRecoveryApplier applier;
 
     @BeforeEach
@@ -318,9 +327,102 @@ class PolicyAiRecoveryCoordinatorTest {
         });
     }
 
+    @Test
+    @DisplayName("배정된 활성 시도를 다시 소유하지 않고 트랜잭션 밖에서 확인한다")
+    void recoversAssignedAttemptWithoutClaimingAgain() {
+        reserve("budget-a", "reservation-a", 10, "10");
+        lifecycleStore.dispatch("reservation-a", new Dispatch("dispatch-a", NOW.plusSeconds(1)));
+        ReadyClaimed assignment = assign("reservation-a",
+                lease("attempt-a", "worker-a", NOW.plusSeconds(2), NOW.plusSeconds(20)));
+        var port = new ScriptedPort(new ChargeFound(
+                new ChargeConfirmation("charge-a", NOW.plusSeconds(3), money("7"))));
+
+        var run = coordinator(port, NOW.plusSeconds(4)).recoverAssigned(assignment);
+
+        assertThat(run).isInstanceOfSatisfying(PolicyAiRecoveryCoordinator.Recovered.class, recovered -> {
+            assertThat(recovered.inspection().attempt().attemptId()).isEqualTo("attempt-a");
+            assertThat(recovered.application().transition().orElseThrow().decision())
+                    .isEqualTo(AiBudgetReservationLifecycleStore.Decision.SETTLED);
+        });
+        assertThat(port.calls()).isOne();
+        assertThat(port.transactionActive()).isFalse();
+        assertThat(recoveryStore.history("reservation-a")).singleElement()
+                .satisfies(attempt -> assertThat(attempt.status()).isEqualTo(Status.COMPLETED));
+    }
+
+    @Test
+    @DisplayName("배정 뒤 완료된 시도는 외부 확인을 다시 실행하지 않는다")
+    void doesNotRecoverAssignedAttemptCompletedBeforeExecution() {
+        reserve("budget-a", "reservation-a", 10, "10");
+        ReadyClaimed assignment = assign("reservation-a",
+                lease("attempt-a", "worker-a", NOW.plusSeconds(1), NOW.plusSeconds(20)));
+        recoveryStore.complete(new AiReservationRecoveryStore.Completion(
+                "attempt-a", "worker-a", NOW.plusSeconds(2), RecoveryResult.CHECK_FAILED));
+        var port = new ScriptedPort(ReviewRequired.INSTANCE);
+
+        var run = coordinator(port, NOW.plusSeconds(3)).recoverAssigned(assignment);
+
+        assertThat(run).isInstanceOfSatisfying(PolicyAiRecoveryCoordinator.NotStarted.class, stopped ->
+                assertThat(stopped.reason())
+                        .isEqualTo(PolicyAiRecoveryCoordinator.StopReason.ATTEMPT_NOT_ACTIVE));
+        assertThat(port.calls()).isZero();
+    }
+
+    @Test
+    @DisplayName("배정 뒤 교체된 시도는 외부 확인을 실행하지 않는다")
+    void doesNotRecoverAssignedAttemptReplacedBeforeExecution() {
+        reserve("budget-a", "reservation-a", 10, "10");
+        ReadyClaimed assignment = assign("reservation-a",
+                lease("attempt-a", "worker-a", NOW.plusSeconds(1), NOW.plusSeconds(3)));
+        assertThat(recoveryStore.claim("reservation-a",
+                lease("attempt-b", "worker-b", NOW.plusSeconds(4), NOW.plusSeconds(20))).decision())
+                .isEqualTo(AiReservationRecoveryStore.ClaimDecision.CLAIMED);
+        var port = new ScriptedPort(ReviewRequired.INSTANCE);
+
+        var run = coordinator(port, NOW.plusSeconds(5)).recoverAssigned(assignment);
+
+        assertThat(run).isInstanceOfSatisfying(PolicyAiRecoveryCoordinator.NotStarted.class, stopped ->
+                assertThat(stopped.reason())
+                        .isEqualTo(PolicyAiRecoveryCoordinator.StopReason.ATTEMPT_NOT_ACTIVE));
+        assertThat(port.calls()).isZero();
+        assertThat(recoveryStore.history("reservation-a")).satisfiesExactly(
+                first -> assertThat(first.status()).isEqualTo(Status.EXPIRED),
+                second -> assertThat(second.status()).isEqualTo(Status.ACTIVE));
+    }
+
+    @Test
+    @DisplayName("배정 뒤 예약이 종료되면 공급자를 확인하지 않고 수동 검토로 시도를 마친다")
+    void completesAssignedAttemptForTerminalReservationWithoutInspection() {
+        reserve("budget-a", "reservation-a", 10, "10");
+        ReadyClaimed assignment = assign("reservation-a",
+                lease("attempt-a", "worker-a", NOW.plusSeconds(1), NOW.plusSeconds(20)));
+        lifecycleStore.cancelBeforeDispatch(
+                "reservation-a", new Cancellation("cancel-a", NOW.plusSeconds(2)));
+        var port = new ScriptedPort(CheckFailed.INSTANCE);
+
+        var run = coordinator(port, NOW.plusSeconds(3)).recoverAssigned(assignment);
+
+        assertThat(run).isInstanceOfSatisfying(PolicyAiRecoveryCoordinator.Recovered.class, recovered -> {
+            assertThat(recovered.outcome()).isEqualTo(ReviewRequired.INSTANCE);
+            assertThat(recovered.application().completion().attempt().orElseThrow().result())
+                    .contains(RecoveryResult.MANUAL_REVIEW_REQUIRED);
+        });
+        assertThat(port.calls()).isZero();
+        assertThat(lifecycleStore.find("reservation-a").orElseThrow().phase()).isEqualTo(Phase.CANCELLED);
+    }
+
     private PolicyAiRecoveryCoordinator coordinator(PolicyAiRecoveryPort port, Instant appliedAt) {
         return new PolicyAiRecoveryCoordinator(recoveryStore, lifecycleStore, applier, port,
                 Clock.fixed(appliedAt, ZoneOffset.UTC));
+    }
+
+    private ReadyClaimed assign(String reservationId, Lease lease) {
+        var report = operationsQuery.findOldestUnresolved(new Criteria(
+                SCHEDULE, lease.claimedAt(), lease.claimedAt(), 10));
+        var candidate = report.items().stream()
+                .filter(item -> item.reservation().reservationId().equals(reservationId))
+                .findFirst().orElseThrow();
+        return (ReadyClaimed) workAssigner.assign(report, candidate, lease);
     }
 
     private void reserve(String budgetId, String reservationId, long requestSequence, String maximum) {

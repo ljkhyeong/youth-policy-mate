@@ -54,7 +54,7 @@ export function LoadErrorState({ onRetry, headingAs = "h2", headingRef }: {
       description="다시 불러오기를 눌러주세요. 문제가 계속되면 잠시 후 다시 이용해주세요. 저장하지 않은 입력 내용은 사라질 수 있어요."
       actions={<>
         <button type="button" className="button-primary" onClick={onRetry}>다시 불러오기</button>
-        <Link href="/" className="button-secondary">서비스 소개로</Link>
+        <Link href="/" className="button-secondary">홈으로</Link>
       </>}
     />
   );

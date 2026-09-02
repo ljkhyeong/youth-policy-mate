@@ -53,42 +53,52 @@ export function ConditionForm({ today }: { today: string }) {
 
   return (
     <section className="condition-panel" aria-label="내 조건 입력과 확인">
-      <ol className="mb-8 flex gap-5 border-b border-stone-200 pb-5 text-sm" aria-label="입력 단계">
-        <li aria-current={!confirmed ? "step" : undefined} className={!confirmed ? "font-bold text-teal-900" : "text-stone-500"}>1. 기본 조건 입력</li>
-        <li aria-current={confirmed ? "step" : undefined} className={confirmed ? "font-bold text-teal-900" : "text-stone-500"}>2. 내용 확인</li>
+      <ol className="form-progress" aria-label="입력 단계">
+        <li aria-current={!confirmed ? "step" : undefined} data-active={!confirmed}>
+          <span>1</span><strong>조건 입력</strong>
+        </li>
+        <li aria-hidden="true" className="progress-line" />
+        <li aria-current={confirmed ? "step" : undefined} data-active={confirmed}>
+          <span>2</span><strong>내용 확인</strong>
+        </li>
       </ol>
 
-      <p role="status" className="text-sm text-teal-800">{notice}</p>
+      <p role="status" className="form-notice">{notice}</p>
 
       {confirmed ? (
-        <div>
-          <p className="mb-2 text-sm font-semibold text-teal-800">입력 내용 확인</p>
-          <h2 ref={summaryRef} tabIndex={-1} className="text-2xl font-bold tracking-tight focus:outline-none">내 기본 조건을 확인해보세요.</h2>
-          <dl className="my-8 divide-y divide-stone-200 border-y border-stone-200 text-sm">
+        <div className="confirmation-view">
+          <span className="confirmation-icon" aria-hidden="true">✓</span>
+          <p className="confirmation-label">입력이 끝났어요</p>
+          <h2 ref={summaryRef} tabIndex={-1} className="confirmation-title">아래 내용이 맞는지 확인해주세요</h2>
+          <dl className="summary-list">
             <div className="summary-row"><dt>생년월일 · 양력</dt><dd>{draft.birthDate.replaceAll("-", ". ")}</dd></div>
             <div className="summary-row"><dt>주민등록상 거주지</dt><dd>서울특별시 {draft.district}</dd></div>
             <div className="summary-row"><dt>주된 취업상태</dt><dd>{employmentLabel}</dd></div>
           </dl>
-          <div className="border-l-2 border-teal-800 bg-teal-50 px-5 py-4 text-sm leading-7 text-teal-950">
-            <p className="font-semibold">정책 추천은 아직 준비 중이에요.</p>
-            <p>지금은 입력한 내용만 확인할 수 있어요. 정책 데이터가 연결되기 전에는 신청 가능 여부나 추천 목록을 표시하지 않습니다.</p>
+          <div className="availability-note">
+            <span aria-hidden="true">i</span>
+            <div>
+              <p>정책 추천은 준비 중이에요</p>
+              <p>실제 데이터가 연결되기 전에는 신청 가능 여부나 추천 목록을 표시하지 않아요.</p>
+            </div>
           </div>
-          <p className="mt-5 text-xs leading-6 text-stone-600">입력 내용은 서버로 보내거나 저장하지 않았어요. 이 화면을 새로고침하면 초기화됩니다.</p>
-          <div className="mt-8 flex flex-wrap gap-3">
-            <button type="button" className="button-primary" onClick={edit}>입력 내용 수정하기</button>
-            <button type="button" className="button-secondary" onClick={reset}>모두 지우기</button>
+          <p className="data-retention-note">입력 내용은 저장되지 않으며 새로고침하면 사라져요.</p>
+          <div className="form-actions">
+            <button type="button" className="button-primary button-block" onClick={edit}>입력 내용 수정하기</button>
+            <button type="button" className="text-button" onClick={reset}>입력 내용 모두 지우기</button>
           </div>
         </div>
       ) : (
         <form ref={formRef} onSubmit={submit} noValidate method="post" autoComplete="off">
-          <h2 className="text-xl font-bold tracking-tight">기본 조건</h2>
-          <p className="mt-2 text-sm leading-6 text-stone-600">세 항목을 입력하면 내용을 한 번 더 확인할 수 있어요.</p>
-          {Object.values(errors).some(Boolean) && <p role="alert" className="mt-5 text-sm font-semibold text-rose-800">아래 표시된 입력 항목을 확인해주세요.</p>}
+          <div className="form-heading">
+            <h2>기본 조건</h2>
+            <p>세 항목을 입력한 뒤 한 번 더 확인할 수 있어요.</p>
+          </div>
+          {Object.values(errors).some(Boolean) && <p role="alert" className="form-error-summary">표시된 입력 항목을 확인해주세요.</p>}
 
           {/* 기본 폼 제출로 개인정보가 전송되지 않도록 name을 두지 않고 화면 상태만 사용한다. */}
           <div className="form-field">
             <label htmlFor="birthDate">생년월일 <span className="font-normal text-stone-500">· 양력</span></label>
-            <p id="birthDate-help" className="field-help">생일이 음력이라면 양력 생년월일을 확인해 입력해주세요.</p>
             <input
               id="birthDate" type="date" min="0001-01-01" max={today} required
               value={draft.birthDate}
@@ -96,33 +106,35 @@ export function ConditionForm({ today }: { today: string }) {
               onChange={(event) => change("birthDate", event.target.value)}
               aria-invalid={Boolean(errors.birthDate)} aria-describedby={`birthDate-help${errors.birthDate ? " birthDate-error" : ""}`}
             />
+            <p id="birthDate-help" className="field-help">음력 생일이라면 양력 날짜로 입력해주세요.</p>
             {errors.birthDate && <p id="birthDate-error" className="field-error">{errors.birthDate}</p>}
           </div>
 
           <div className="form-field">
             <label htmlFor="district">서울 거주 자치구</label>
-            <p id="district-help" className="field-help">학교나 직장 위치가 아닌 주민등록상 거주지를 선택해주세요.</p>
             <select id="district" required value={draft.district} onChange={(event) => change("district", event.target.value)} aria-invalid={Boolean(errors.district)} aria-describedby={`district-help${errors.district ? " district-error" : ""}`}>
               <option value="">자치구 선택</option>
               {SEOUL_DISTRICTS.map((district) => <option key={district} value={district}>{district}</option>)}
             </select>
+            <p id="district-help" className="field-help">학교나 직장이 아닌 주민등록상 거주지예요.</p>
             {errors.district && <p id="district-error" className="field-error">{errors.district}</p>}
           </div>
 
           <div className="form-field">
             <label htmlFor="employmentStatus">주된 취업상태</label>
-            <p id="employmentStatus-help" className="field-help">현재 상황에 가장 가까운 항목을 선택해주세요.</p>
             <select id="employmentStatus" required value={draft.employmentStatus} onChange={(event) => change("employmentStatus", event.target.value)} aria-invalid={Boolean(errors.employmentStatus)} aria-describedby={`employmentStatus-help${errors.employmentStatus ? " employmentStatus-error" : ""}`}>
               <option value="">취업상태 선택</option>
               {EMPLOYMENT_OPTIONS.map(({ value, label }) => <option key={value} value={value}>{label}</option>)}
             </select>
+            <p id="employmentStatus-help" className="field-help">현재 상황에 가장 가까운 항목을 골라주세요.</p>
             {errors.employmentStatus && <p id="employmentStatus-error" className="field-error">{errors.employmentStatus}</p>}
           </div>
 
-          <p className="mt-7 border-t border-stone-200 pt-5 text-xs leading-6 text-stone-600">지금은 이 화면에서만 입력값을 사용해요. 서버 전송·회원 저장은 하지 않으며, 새로고침하면 입력 내용이 초기화됩니다.</p>
-          <div className="mt-6 flex flex-wrap gap-3">
-            <button type="submit" className="button-primary">입력 내용 확인하기 <span aria-hidden="true">→</span></button>
-            <button type="button" className="button-secondary" onClick={reset}>모두 지우기</button>
+          <div className="form-actions">
+            <button type="submit" className="button-primary button-block">
+              입력 내용 확인하기 <span className="button-arrow" aria-hidden="true">→</span>
+            </button>
+            <button type="button" className="text-button" onClick={reset}>입력 내용 모두 지우기</button>
           </div>
         </form>
       )}

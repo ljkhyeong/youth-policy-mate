@@ -151,7 +151,7 @@ npm audit
 
 `test:ai-recovery-policy`는 복구 재확인 순수 정책 10건만 실행한다. 첫 시도, 활성 임대와 재확인 간격, 확인 완료·실패, 수동 검토, 완료·만료를 포함한 최대 횟수와 종료 예약을 확인한다. 고정 운영값·자동 작업자·DB 대상 선택 검증은 아니며 [AI 복구 재확인 정책](ai-reservation-recovery-retry-policy.md)을 따른다.
 
-`test:ai-recovery-operations`는 실제 PostgreSQL 18.6에서 내부 운영 조회 5건을 실행한다. 오래된 미완료 예약 컷오프·정렬·최대 조회 수, 전체 복구 이력을 사용한 활성 임대·재확인 간격·수동 검토·최대 횟수 판단과 조회 전후 상태 불변을 확인한다. Docker가 필요하며 관리자 API·화면·권한과 실제 작업자 실행 검증은 아니다. [AI 복구 내부 운영 조회](ai-reservation-recovery-operations-query.md)를 따른다.
+`test:ai-recovery-operations`는 실제 PostgreSQL 18.6에서 내부 운영 조회 5건과 작업 배정 5건, 총 10건을 실행한다. 오래된 미완료 예약 컷오프·정렬·최대 조회 수, 전체 이력 기반 판단, 조회 뒤 수동 검토 재확인, 보류 후보 미배정, 동시 배정 한 건, 동일 요청 재전달을 확인한다. Docker가 필요하며 관리자 API·화면·권한, 후보 자동 순회와 실제 공급자 확인 검증은 아니다. [AI 복구 내부 운영 조회](ai-reservation-recovery-operations-query.md)와 [작업 배정](ai-reservation-recovery-work-assignment.md)을 따른다.
 
 `test:ai-admission`은 사전 판단 14건만 실행한다. 후보 재사용, 신규·변경 개정·명시적 재시도, 예산 미설정·0원·기간, 예약액·소수 최대 비용·잔액 경계, 비용 미확인·만료·다른 요청의 비용을 확인한다. 실제 예약·정산·청구 차단은 없으며 [AI 사전 판단 구현](ai-request-admission.md)을 따른다.
 

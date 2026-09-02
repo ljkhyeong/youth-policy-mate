@@ -9,7 +9,6 @@ import kr.youthpolicymate.ingestion.AiBudgetReservationState.UncertainOutcome;
 import kr.youthpolicymate.ingestion.AiBudgetReservationState.UncertainReason;
 import kr.youthpolicymate.ingestion.AiRequestBudget.Balance;
 import kr.youthpolicymate.ingestion.AiRequestBudget.CostCeiling;
-import kr.youthpolicymate.ingestion.AiReservationRecoveryLeaseRenewalStore.RenewalCommand;
 import kr.youthpolicymate.ingestion.AiReservationRecoveryLeaseRenewalStore.RenewalDecision;
 import kr.youthpolicymate.ingestion.AiReservationRecoveryOperationsQuery.Criteria;
 import kr.youthpolicymate.ingestion.AiReservationRecoveryRetryPolicy.Schedule;
@@ -17,6 +16,8 @@ import kr.youthpolicymate.ingestion.AiReservationRecoveryStore.Lease;
 import kr.youthpolicymate.ingestion.AiReservationRecoveryStore.RecoveryResult;
 import kr.youthpolicymate.ingestion.AiReservationRecoveryStore.ReadyClaimed;
 import kr.youthpolicymate.ingestion.AiReservationRecoveryStore.Status;
+import kr.youthpolicymate.ingestion.PolicyAiRecoveryHeartbeat.HeartbeatPlan;
+import kr.youthpolicymate.ingestion.PolicyAiRecoveryHeartbeat.HeartbeatScheduler;
 import kr.youthpolicymate.ingestion.PolicyAiRecoveryPort.ChargeFound;
 import kr.youthpolicymate.ingestion.PolicyAiRecoveryPort.CheckFailed;
 import kr.youthpolicymate.ingestion.PolicyAiRecoveryPort.Inspection;
@@ -127,22 +128,22 @@ class PolicyAiRecoveryCoordinatorTest {
     }
 
     @Test
-    @DisplayName("외부 확인 중 갱신한 임대로 기존 만료 뒤 결과를 안전하게 적용한다")
+    @DisplayName("외부 확인 중 자동 heartbeat로 갱신한 임대 안에서 결과를 적용한다")
     void appliesRecoveryResultWithinRenewedLease() {
         reserve("budget-a", "reservation-a", 10, "10");
         lifecycleStore.dispatch("reservation-a", new Dispatch("dispatch-a", NOW.plusSeconds(1)));
-        PolicyAiRecoveryPort renewingPort = inspection -> {
+        var scheduler = new ControlledHeartbeatScheduler();
+        var heartbeat = new PolicyAiRecoveryHeartbeat(
+                leaseRenewalStore, scheduler, Clock.fixed(NOW.plusSeconds(3), ZoneOffset.UTC),
+                new HeartbeatPlan(Duration.ofSeconds(2), Duration.ofSeconds(7)));
+        PolicyAiRecoveryPort port = inspection -> {
             assertThat(TransactionSynchronizationManager.isActualTransactionActive()).isFalse();
-            assertThat(leaseRenewalStore.renew(new RenewalCommand(
-                    "renewal-a", "reservation-a", inspection.attempt().attemptId(),
-                    inspection.attempt().attemptNumber(), inspection.attempt().ownerId(),
-                    NOW.plusSeconds(4), NOW.plusSeconds(3), NOW.plusSeconds(10))).decision())
-                    .isEqualTo(RenewalDecision.RENEWED);
+            scheduler.runOnce();
             return new ChargeFound(new ChargeConfirmation(
                     "charge-a", NOW.plusSeconds(3), money("7")));
         };
 
-        var run = coordinator(renewingPort, NOW.plusSeconds(6)).recoverNext(
+        var run = coordinator(port, NOW.plusSeconds(6), heartbeat).recoverNext(
                 lease("attempt-a", "worker-a", NOW.plusSeconds(2), NOW.plusSeconds(4)));
 
         assertThat(run).isInstanceOfSatisfying(PolicyAiRecoveryCoordinator.Recovered.class, recovered -> {
@@ -155,6 +156,40 @@ class PolicyAiRecoveryCoordinatorTest {
                 .isEqualTo(NOW.plusSeconds(10));
         assertThat(leaseRenewalStore.history("attempt-a")).hasSize(1);
         assertThat(budgetAmounts("budget-a")).isEqualTo(new BudgetAmounts(money("7"), money("0")));
+        assertThat(scheduler.initialDelay()).isEqualTo(Duration.ofSeconds(2));
+        assertThat(scheduler.delay()).isEqualTo(Duration.ofSeconds(2));
+        assertThat(scheduler.cancelled()).isTrue();
+    }
+
+    @Test
+    @DisplayName("heartbeat 갱신이 거절되면 외부 확인 결과를 적용하지 않는다")
+    void discardsRecoveryResultWhenHeartbeatIsRejected() {
+        reserve("budget-a", "reservation-a", 10, "10");
+        lifecycleStore.dispatch("reservation-a", new Dispatch("dispatch-a", NOW.plusSeconds(1)));
+        var scheduler = new ControlledHeartbeatScheduler();
+        var heartbeat = new PolicyAiRecoveryHeartbeat(
+                leaseRenewalStore, scheduler, Clock.fixed(NOW.plusSeconds(4), ZoneOffset.UTC),
+                new HeartbeatPlan(Duration.ofSeconds(2), Duration.ofSeconds(7)));
+        PolicyAiRecoveryPort port = inspection -> {
+            scheduler.runOnce();
+            return new ChargeFound(new ChargeConfirmation(
+                    "charge-a", NOW.plusSeconds(3), money("7")));
+        };
+
+        var run = coordinator(port, NOW.plusSeconds(5), heartbeat).recoverNext(
+                lease("attempt-a", "worker-a", NOW.plusSeconds(2), NOW.plusSeconds(4)));
+
+        assertThat(run).isInstanceOfSatisfying(
+                PolicyAiRecoveryCoordinator.HeartbeatStopped.class, stopped ->
+                        assertThat(stopped.renewal().decision()).isEqualTo(RenewalDecision.LEASE_EXPIRED));
+        assertThat(lifecycleStore.find("reservation-a").orElseThrow().phase()).isEqualTo(Phase.DISPATCHED);
+        assertThat(budgetAmounts("budget-a")).isEqualTo(new BudgetAmounts(money("0"), money("10")));
+        assertThat(recoveryStore.findAttempt("attempt-a").orElseThrow()).satisfies(attempt -> {
+            assertThat(attempt.status()).isEqualTo(Status.ACTIVE);
+            assertThat(attempt.leaseUntil()).isEqualTo(NOW.plusSeconds(4));
+        });
+        assertThat(leaseRenewalStore.history("attempt-a")).isEmpty();
+        assertThat(scheduler.cancelled()).isTrue();
     }
 
     @Test
@@ -450,6 +485,13 @@ class PolicyAiRecoveryCoordinatorTest {
                 Clock.fixed(appliedAt, ZoneOffset.UTC));
     }
 
+    private PolicyAiRecoveryCoordinator coordinator(PolicyAiRecoveryPort port,
+                                                     Instant appliedAt,
+                                                     PolicyAiRecoveryHeartbeat heartbeat) {
+        return new PolicyAiRecoveryCoordinator(recoveryStore, lifecycleStore, applier, port,
+                Clock.fixed(appliedAt, ZoneOffset.UTC), heartbeat);
+    }
+
     private ReadyClaimed assign(String reservationId, Lease lease) {
         var report = operationsQuery.findOldestUnresolved(new Criteria(
                 SCHEDULE, lease.claimedAt(), lease.claimedAt(), 10));
@@ -545,6 +587,31 @@ class PolicyAiRecoveryCoordinatorTest {
 
         private int calls() { return calls; }
         private boolean transactionActive() { return transactionActive; }
+    }
+
+    private static final class ControlledHeartbeatScheduler implements HeartbeatScheduler {
+        private Duration initialDelay;
+        private Duration delay;
+        private Runnable heartbeat;
+        private boolean cancelled;
+
+        @Override
+        public PolicyAiRecoveryHeartbeat.Cancellation schedule(
+                Duration initialDelay, Duration delay, Runnable heartbeat) {
+            this.initialDelay = initialDelay;
+            this.delay = delay;
+            this.heartbeat = heartbeat;
+            return () -> cancelled = true;
+        }
+
+        private void runOnce() {
+            if (heartbeat == null) throw new IllegalStateException("예약된 heartbeat가 필요합니다.");
+            heartbeat.run();
+        }
+
+        private Duration initialDelay() { return initialDelay; }
+        private Duration delay() { return delay; }
+        private boolean cancelled() { return cancelled; }
     }
 
     private record BudgetAmounts(BigDecimal confirmedWon, BigDecimal reservedWon) {

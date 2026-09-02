@@ -9,6 +9,8 @@ import kr.youthpolicymate.ingestion.AiReservationRecoveryStore.Lease;
 import kr.youthpolicymate.ingestion.AiReservationRecoveryStore.ReadyClaimed;
 import kr.youthpolicymate.ingestion.AiReservationRecoveryStore.Status;
 import kr.youthpolicymate.ingestion.PolicyAiRecoveryApplier.Application;
+import kr.youthpolicymate.ingestion.PolicyAiRecoveryHeartbeat.InspectionCompleted;
+import kr.youthpolicymate.ingestion.PolicyAiRecoveryHeartbeat.RenewalRejected;
 import kr.youthpolicymate.ingestion.PolicyAiRecoveryPort.Inspection;
 import kr.youthpolicymate.ingestion.PolicyAiRecoveryPort.Outcome;
 import kr.youthpolicymate.ingestion.PolicyAiRecoveryPort.ResponseFound;
@@ -25,17 +27,28 @@ public final class PolicyAiRecoveryCoordinator {
     private final PolicyAiRecoveryApplier applier;
     private final PolicyAiRecoveryPort recoveryPort;
     private final Clock clock;
+    private final Optional<PolicyAiRecoveryHeartbeat> heartbeat;
 
     public PolicyAiRecoveryCoordinator(AiReservationRecoveryStore recoveryStore,
                                        AiBudgetReservationLifecycleStore lifecycleStore,
                                        PolicyAiRecoveryApplier applier,
                                        PolicyAiRecoveryPort recoveryPort,
                                        Clock clock) {
+        this(recoveryStore, lifecycleStore, applier, recoveryPort, clock, null);
+    }
+
+    public PolicyAiRecoveryCoordinator(AiReservationRecoveryStore recoveryStore,
+                                       AiBudgetReservationLifecycleStore lifecycleStore,
+                                       PolicyAiRecoveryApplier applier,
+                                       PolicyAiRecoveryPort recoveryPort,
+                                       Clock clock,
+                                       PolicyAiRecoveryHeartbeat heartbeat) {
         this.recoveryStore = Objects.requireNonNull(recoveryStore, "AI 예약 복구 저장소가 필요합니다.");
         this.lifecycleStore = Objects.requireNonNull(lifecycleStore, "AI 예약 상태 저장소가 필요합니다.");
         this.applier = Objects.requireNonNull(applier, "AI 예약 복구 결과 적용기가 필요합니다.");
         this.recoveryPort = Objects.requireNonNull(recoveryPort, "AI 예약 복구 확인 포트가 필요합니다.");
         this.clock = Objects.requireNonNull(clock, "AI 예약 복구 시계가 필요합니다.");
+        this.heartbeat = Optional.ofNullable(heartbeat);
     }
 
     public Run recoverNext(Lease lease) {
@@ -76,9 +89,19 @@ public final class PolicyAiRecoveryCoordinator {
         }
 
         var inspection = new Inspection(reservation.orElseThrow(), attempt);
-        Outcome outcome = isTerminal(inspection.reservation().phase())
-                ? ReviewRequired.INSTANCE
-                : Objects.requireNonNull(recoveryPort.inspect(inspection), "AI 예약 복구 확인 결과가 필요합니다.");
+        Outcome outcome;
+        if (isTerminal(inspection.reservation().phase())) {
+            outcome = ReviewRequired.INSTANCE;
+        } else if (heartbeat.isEmpty()) {
+            outcome = Objects.requireNonNull(
+                    recoveryPort.inspect(inspection), "AI 예약 복구 확인 결과가 필요합니다.");
+        } else {
+            var inspectionResult = heartbeat.orElseThrow().inspect(inspection, recoveryPort);
+            if (inspectionResult instanceof RenewalRejected rejected) {
+                return new HeartbeatStopped(claim, inspection, rejected.renewal());
+            }
+            outcome = ((InspectionCompleted) inspectionResult).outcome();
+        }
         validateResponseTiming(inspection, outcome);
         Application application = applier.apply(attempt, inspection.reservation(), outcome, clock.instant());
         return new Recovered(claim, inspection, outcome, application);
@@ -97,7 +120,7 @@ public final class PolicyAiRecoveryCoordinator {
         }
     }
 
-    public sealed interface Run permits NotStarted, Recovered {}
+    public sealed interface Run permits NotStarted, HeartbeatStopped, Recovered {}
 
     public enum StopReason {
         CLAIM_REJECTED,
@@ -111,6 +134,18 @@ public final class PolicyAiRecoveryCoordinator {
         public NotStarted {
             Objects.requireNonNull(reason, "AI 예약 복구 중단 사유가 필요합니다.");
             Objects.requireNonNull(claim, "AI 예약 복구 소유권 결과가 필요합니다.");
+        }
+    }
+
+    public record HeartbeatStopped(
+            ClaimOutcome claim,
+            Inspection inspection,
+            AiReservationRecoveryLeaseRenewalStore.RenewalOutcome renewal
+    ) implements Run {
+        public HeartbeatStopped {
+            Objects.requireNonNull(claim, "AI 예약 복구 소유권 결과가 필요합니다.");
+            Objects.requireNonNull(inspection, "AI 예약 복구 확인 대상이 필요합니다.");
+            Objects.requireNonNull(renewal, "거절된 AI 예약 복구 임대 갱신 결과가 필요합니다.");
         }
     }
 

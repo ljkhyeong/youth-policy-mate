@@ -140,6 +140,54 @@ public class AiReservationRecoveryWorkRunStore {
     }
 
     @Transactional(readOnly = true)
+    public RunningReport findOldestRunning(RunningCriteria criteria) {
+        Objects.requireNonNull(criteria, "오래된 AI 예약 복구 작업 실행 조회 조건이 필요합니다.");
+        List<WorkRun> runs = jdbcClient.sql(select() + """
+                 where status = 'RUNNING' and evaluated_at <= :startedAtOrBefore
+                 order by evaluated_at, run_id
+                 limit :limit
+                """)
+                .param("startedAtOrBefore", dbTime(criteria.startedAtOrBefore()))
+                .param("limit", criteria.limit())
+                .query(AiReservationRecoveryWorkRunStore::run)
+                .list();
+        return new RunningReport(criteria, runs);
+    }
+
+    @Transactional
+    public AbortOutcome abort(AbortSelection selection) {
+        Objects.requireNonNull(selection, "AI 예약 복구 작업 실행 중단 선택이 필요합니다.");
+        WorkRun selected = selection.selected();
+        AbortCommand command = selection.command();
+        Optional<WorkRun> found = lock(selected.runId());
+        if (found.isEmpty()) return new AbortOutcome(AbortDecision.RUN_NOT_FOUND, Optional.empty());
+
+        WorkRun current = found.orElseThrow();
+        if (current.status() == Status.ABORTED) {
+            return new AbortOutcome(current.matches(command)
+                    ? AbortDecision.REPLAYED : AbortDecision.ABORT_CONFLICT, Optional.of(current));
+        }
+        if (current.status() != Status.RUNNING) {
+            return new AbortOutcome(AbortDecision.RUN_NOT_ACTIVE, Optional.of(current));
+        }
+
+        int updated = jdbcClient.sql("""
+                update ai_reservation_recovery_work_runs
+                set status = 'ABORTED', finished_at = :abortedAt,
+                    abort_reason = :abortReason, aborted_by = :abortedBy,
+                    updated_at = :abortedAt
+                where run_id = :runId and status = 'RUNNING'
+                """)
+                .param("abortedAt", dbTime(command.abortedAt()))
+                .param("abortReason", command.reason().name())
+                .param("abortedBy", command.operatorId())
+                .param("runId", selected.runId())
+                .update();
+        requireSingleUpdate(updated);
+        return new AbortOutcome(AbortDecision.ABORTED, find(selected.runId()));
+    }
+
+    @Transactional(readOnly = true)
     public Optional<WorkRun> find(String runId) {
         requireText(runId, "조회할 AI 예약 복구 작업 실행 식별자가 필요합니다.");
         return jdbcClient.sql(select() + " where run_id = :runId")
@@ -166,7 +214,8 @@ public class AiReservationRecoveryWorkRunStore {
                        stale_at_or_before, evaluated_at, candidate_limit,
                        status, finished_at, scanned_count, report_skipped_count,
                        assignment_not_claimed_count, recovery_finished_count,
-                       recovery_not_started_count, recovery_failed_count
+                       recovery_not_started_count, recovery_failed_count,
+                       abort_reason, aborted_by
                 from ai_reservation_recovery_work_runs
                 """;
     }
@@ -187,9 +236,15 @@ public class AiReservationRecoveryWorkRunStore {
                         resultSet.getInt("recovery_not_started_count"),
                         resultSet.getInt("recovery_failed_count")))
                 : Optional.empty();
+        Optional<AbortRecord> abort = status == Status.ABORTED
+                ? Optional.of(new AbortRecord(
+                        AbortReason.valueOf(resultSet.getString("abort_reason")),
+                        resultSet.getString("aborted_by"),
+                        instant(resultSet, "finished_at")))
+                : Optional.empty();
         return new WorkRun(
                 resultSet.getString("run_id"), resultSet.getString("worker_id"), criteria,
-                status, nullableInstant(resultSet, "finished_at"), summary);
+                status, nullableInstant(resultSet, "finished_at"), summary, abort);
     }
 
     private static String encodeDelays(List<Duration> delays) {
@@ -226,12 +281,14 @@ public class AiReservationRecoveryWorkRunStore {
         if (updated != 1) throw new IllegalStateException("AI 예약 복구 작업 실행을 갱신하지 못했습니다.");
     }
 
-    public enum Status { RUNNING, COMPLETED, FAILED }
+    public enum Status { RUNNING, COMPLETED, FAILED, ABORTED }
     public enum StartDecision { STARTED, ALREADY_RUNNING, REPLAYED, RUN_ID_CONFLICT }
     public enum CompletionDecision {
         COMPLETED, REPLAYED, RUN_NOT_FOUND, WORKER_CONFLICT, RUN_NOT_ACTIVE, COMPLETION_CONFLICT
     }
     public enum FailureDecision { FAILED, REPLAYED, RUN_NOT_FOUND, WORKER_CONFLICT, RUN_NOT_ACTIVE }
+    public enum AbortReason { PROCESS_TERMINATED, WORKER_UNREACHABLE, OPERATOR_DECISION }
+    public enum AbortDecision { ABORTED, REPLAYED, RUN_NOT_FOUND, RUN_NOT_ACTIVE, ABORT_CONFLICT }
 
     public record StartRequest(String runId, String workerId, Criteria criteria) {
         public StartRequest {
@@ -278,13 +335,69 @@ public class AiReservationRecoveryWorkRunStore {
         }
     }
 
+    public record RunningCriteria(Instant startedAtOrBefore, Instant evaluatedAt, int limit) {
+        public RunningCriteria {
+            Objects.requireNonNull(startedAtOrBefore, "오래된 작업 실행의 시작 시각 기준이 필요합니다.");
+            Objects.requireNonNull(evaluatedAt, "오래된 작업 실행의 조회 시각이 필요합니다.");
+            if (evaluatedAt.isBefore(startedAtOrBefore)) {
+                throw new IllegalArgumentException("오래된 작업 실행의 조회 시각은 시작 시각 기준보다 빠를 수 없습니다.");
+            }
+            if (limit < 1) throw new IllegalArgumentException("오래된 작업 실행의 최대 조회 수는 1 이상이어야 합니다.");
+        }
+    }
+
+    public record RunningReport(RunningCriteria criteria, List<WorkRun> runs) {
+        public RunningReport {
+            Objects.requireNonNull(criteria, "오래된 AI 예약 복구 작업 실행 조회 조건이 필요합니다.");
+            runs = List.copyOf(Objects.requireNonNull(runs, "오래된 AI 예약 복구 작업 실행 목록이 필요합니다."));
+            if (runs.size() > criteria.limit()) {
+                throw new IllegalArgumentException("오래된 AI 예약 복구 작업 실행 목록이 최대 조회 수보다 많습니다.");
+            }
+            if (runs.stream().anyMatch(run -> run.status() != Status.RUNNING
+                    || run.criteria().evaluatedAt().isAfter(criteria.startedAtOrBefore()))) {
+                throw new IllegalArgumentException("오래된 실행 조회 결과에는 기준 시각 이하의 실행 중 작업만 포함할 수 있습니다.");
+            }
+        }
+    }
+
+    public record AbortCommand(String operatorId, AbortReason reason, Instant abortedAt) {
+        public AbortCommand {
+            requireText(operatorId, "AI 예약 복구 작업 실행을 중단한 운영자 식별자가 필요합니다.");
+            Objects.requireNonNull(reason, "AI 예약 복구 작업 실행 중단 사유가 필요합니다.");
+            Objects.requireNonNull(abortedAt, "AI 예약 복구 작업 실행 중단 시각이 필요합니다.");
+        }
+    }
+
+    public record AbortSelection(RunningReport report, WorkRun selected, AbortCommand command) {
+        public AbortSelection {
+            Objects.requireNonNull(report, "오래된 AI 예약 복구 작업 실행 조회 결과가 필요합니다.");
+            Objects.requireNonNull(selected, "중단할 AI 예약 복구 작업 실행이 필요합니다.");
+            Objects.requireNonNull(command, "AI 예약 복구 작업 실행 중단 명령이 필요합니다.");
+            if (!report.runs().contains(selected)) {
+                throw new IllegalArgumentException("조회 결과에 포함되지 않은 AI 예약 복구 작업 실행은 중단할 수 없습니다.");
+            }
+            if (command.abortedAt().isBefore(report.criteria().evaluatedAt())) {
+                throw new IllegalArgumentException("AI 예약 복구 작업 실행 중단은 운영 조회 시각보다 빠를 수 없습니다.");
+            }
+        }
+    }
+
+    public record AbortRecord(AbortReason reason, String operatorId, Instant abortedAt) {
+        public AbortRecord {
+            Objects.requireNonNull(reason, "AI 예약 복구 작업 실행 중단 사유가 필요합니다.");
+            requireText(operatorId, "AI 예약 복구 작업 실행을 중단한 운영자 식별자가 필요합니다.");
+            Objects.requireNonNull(abortedAt, "AI 예약 복구 작업 실행 중단 시각이 필요합니다.");
+        }
+    }
+
     public record WorkRun(
             String runId,
             String workerId,
             Criteria criteria,
             Status status,
             Optional<Instant> finishedAt,
-            Optional<Summary> summary
+            Optional<Summary> summary,
+            Optional<AbortRecord> abort
     ) {
         public WorkRun {
             requireText(runId, "AI 예약 복구 작업 실행 식별자가 필요합니다.");
@@ -293,6 +406,20 @@ public class AiReservationRecoveryWorkRunStore {
             Objects.requireNonNull(status, "AI 예약 복구 작업 실행 상태가 필요합니다.");
             Objects.requireNonNull(finishedAt, "AI 예약 복구 작업 종료 시각의 존재 여부가 필요합니다.");
             Objects.requireNonNull(summary, "AI 예약 복구 작업 실행 집계의 존재 여부가 필요합니다.");
+            Objects.requireNonNull(abort, "AI 예약 복구 작업 실행 중단 기록의 존재 여부가 필요합니다.");
+            if (status == Status.RUNNING && (finishedAt.isPresent() || summary.isPresent() || abort.isPresent())) {
+                throw new IllegalArgumentException("실행 중인 AI 예약 복구 작업에는 종료 결과를 둘 수 없습니다.");
+            }
+            if (status == Status.COMPLETED && (finishedAt.isEmpty() || summary.isEmpty() || abort.isPresent())) {
+                throw new IllegalArgumentException("완료한 AI 예약 복구 작업에는 종료 시각과 집계만 있어야 합니다.");
+            }
+            if (status == Status.FAILED && (finishedAt.isEmpty() || summary.isPresent() || abort.isPresent())) {
+                throw new IllegalArgumentException("실패한 AI 예약 복구 작업에는 종료 시각만 있어야 합니다.");
+            }
+            if (status == Status.ABORTED && (finishedAt.isEmpty() || summary.isPresent() || abort.isEmpty()
+                    || !sameDatabaseInstant(finishedAt.orElseThrow(), abort.orElseThrow().abortedAt()))) {
+                throw new IllegalArgumentException("운영 중단한 AI 예약 복구 작업에는 일치하는 중단 기록이 필요합니다.");
+            }
         }
 
         private boolean matches(StartRequest request) {
@@ -302,6 +429,12 @@ public class AiReservationRecoveryWorkRunStore {
         private boolean matches(RunCompletion completion) {
             return finishedAt.filter(value -> sameDatabaseInstant(value, completion.finishedAt())).isPresent()
                     && summary.filter(value -> value.equals(completion.summary())).isPresent();
+        }
+
+        private boolean matches(AbortCommand command) {
+            return abort.filter(value -> value.reason() == command.reason()
+                    && value.operatorId().equals(command.operatorId())
+                    && sameDatabaseInstant(value.abortedAt(), command.abortedAt())).isPresent();
         }
     }
 
@@ -322,6 +455,13 @@ public class AiReservationRecoveryWorkRunStore {
     public record FailureOutcome(FailureDecision decision, Optional<WorkRun> run) {
         public FailureOutcome {
             Objects.requireNonNull(decision, "AI 예약 복구 작업 실패 기록 결과가 필요합니다.");
+            Objects.requireNonNull(run, "AI 예약 복구 작업 실행 기록의 존재 여부가 필요합니다.");
+        }
+    }
+
+    public record AbortOutcome(AbortDecision decision, Optional<WorkRun> run) {
+        public AbortOutcome {
+            Objects.requireNonNull(decision, "AI 예약 복구 작업 실행 중단 결과가 필요합니다.");
             Objects.requireNonNull(run, "AI 예약 복구 작업 실행 기록의 존재 여부가 필요합니다.");
         }
     }

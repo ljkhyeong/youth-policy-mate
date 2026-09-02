@@ -11,16 +11,19 @@
 | Flyway V5 작업 실행 중단 필드 | 오래된 실행의 운영 중단 사유·운영자와 `ABORTED` 상태 제약 저장 |
 | Flyway V6 `ai_reservation_recovery_work_run_attempts` | 작업 실행과 실제 생성한 예약별 복구 시도의 직접 연결 저장 |
 | Flyway V7 `ai_reservation_recovery_review_resumes` | 수동 검토 재개 대상·운영자·사유·예약 스냅샷과 시각 저장 |
+| Flyway V8 `ai_reservation_recovery_lease_renewals` | 활성 임대 갱신 대상·소유자와 이전/새 만료 시각 감사 저장 |
 | `AiReservationRecoveryStore.claim` | 지정한 미완료 예약의 확인 소유권 획득 |
 | `AiReservationRecoveryStore.claimNext` | 가장 오래된 획득 가능 예약을 잠금 대기 없이 선택 |
 | `AiReservationRecoveryStore.complete` | 소유자·임대 기간을 확인하고 확인 시도 완료 또는 만료 기록 |
 | `AiReservationRecoveryStore.history` | 예약별 복구 시도 순번 조회 |
+| `AiReservationRecoveryLeaseRenewalStore.renew` | 현재 소유자·시도 순번·기존 만료를 확인하고 활성 임대 연장 |
+| `AiReservationRecoveryLeaseRenewalStore.history` | 시도별 임대 갱신 감사 이력 조회 |
 
 같은 예약의 활성 시도는 하나만 저장한다. 만료 전에는 다른 작업자를 거절하고, 만료 뒤 새 작업자가 소유하면 이전 시도를 `EXPIRED`로 남긴다. 시도 ID와 완료 정보의 같은 재전달은 재생하며 내용이 다르면 충돌로 반환한다.
 
 `COMPLETED`는 작업자가 확인 절차를 마쳤다는 뜻이다. AI 결과·비용·무과금이 확인됐다는 뜻이 아니며 예약 상태를 자동으로 바꾸지 않는다. 시작·완료 당시 예약 단계를 함께 저장해 실제 상태 변화와 확인 결과를 구분한다.
 
-저장소의 일반 완료 메서드는 확인 이력만 기록한다. 복구 조정자 경로의 정산·해제·취소 메서드는 활성 시도 순번과 관찰한 예약 상태를 같은 트랜잭션에서 다시 확인한다. 일반 AI 실행 경로는 복구 임대를 사용하지 않는다. 임대 갱신과 자동 만료 배치는 없으며, 새 소유권 획득이나 늦은 완료가 도착할 때 만료를 기록한다. [수동 검토 재개](ai-reservation-recovery-review-resume.md)는 기존 결과를 수정하지 않고 운영자·사유와 확인한 예약 스냅샷을 별도 감사 기록에 남긴다. 후속 [재확인 정책](ai-reservation-recovery-retry-policy.md)은 주어진 일정·시도·재개 이력으로 다음 확인 가능 여부를 계산하고, [내부 운영 조회](ai-reservation-recovery-operations-query.md)는 오래된 대상·전체 이력·판단을 읽기 전용으로 묶는다. [작업 배정](ai-reservation-recovery-work-assignment.md)은 예약을 잠근 뒤 이 판단을 다시 계산하고 `Ready`일 때만 활성 시도를 만든다.
+저장소의 일반 완료 메서드는 확인 이력만 기록한다. 복구 조정자 경로의 정산·해제·취소 메서드는 활성 시도 순번과 관찰한 예약 상태를 같은 트랜잭션에서 다시 확인한다. 일반 AI 실행 경로는 복구 임대를 사용하지 않는다. [활성 임대 갱신](ai-reservation-recovery-lease-renewal.md)은 끝나기 전의 현재 임대만 같은 작업자가 연장하고 감사 이력을 별도로 남긴다. 자동 heartbeat와 자동 만료 배치는 없으며, 새 소유권 획득이나 늦은 완료가 도착할 때 만료를 기록한다. [수동 검토 재개](ai-reservation-recovery-review-resume.md)는 기존 결과를 수정하지 않고 운영자·사유와 확인한 예약 스냅샷을 별도 감사 기록에 남긴다. 후속 [재확인 정책](ai-reservation-recovery-retry-policy.md)은 주어진 일정·시도·재개 이력으로 다음 확인 가능 여부를 계산하고, [내부 운영 조회](ai-reservation-recovery-operations-query.md)는 오래된 대상·전체 이력·판단을 읽기 전용으로 묶는다. [작업 배정](ai-reservation-recovery-work-assignment.md)은 예약을 잠근 뒤 이 판단을 다시 계산하고 `Ready`일 때만 활성 시도를 만든다.
 
 ## 검사
 
@@ -31,7 +34,7 @@ npm run test:ai-recovery
 npm run check:backend
 ```
 
-`test:ai-recovery` 11건은 실제 PostgreSQL 18.6 Testcontainers에서 다음 경계를 확인한다.
+`test:ai-recovery` 16건은 실제 PostgreSQL 18.6 Testcontainers에서 다음 경계를 확인한다.
 
 - 직접 소유권 획득과 같은 요청 재생·시도 ID 충돌
 - 활성 임대의 다른 작업자 차단과 만료 뒤 다음 시도
@@ -44,15 +47,17 @@ npm run check:backend
 - 예약 스냅샷 변경과 최신 시도 펜싱
 - 서로 다른 재개 ID의 동시 요청 중 한 건만 저장
 - 허용되지 않은 재개 사유의 DB 제약
+- 활성 임대의 연속 갱신·재전달·충돌과 소유자·시도 순번·이전 만료 시각 펜싱
+- 종료 예약·완료 시도·끝난 임대 차단, 같은 스냅샷의 동시 갱신 한 건과 DB 시간 제약
 
-저장소 전용 11건, 복구 조정자 14건, 재확인 정책 11건, 내부 운영 조회·작업 배정·재개 연결 11건, 제한 목록·작업 실행 기록·운영 중단·시도 연결 18건과 전체 서버 334건이 실패·오류·건너뛰기 없이 통과했고 빌드도 성공했다. 전체 구성은 DB 없는 도메인 246건, 개발 API·계약 13건, PostgreSQL 예약·실행·복구·연결·운영 조회·수동 검토 재개·작업 배정·제한 목록·작업 실행 기록/운영 중단/실행-시도 연결/기본 차단 75건이다.
+저장소 전용 16건, 복구 조정자 15건, 재확인 정책 11건, 내부 운영 조회·작업 배정·재개 연결 11건, 제한 목록·작업 실행 기록·운영 중단·시도 연결 18건과 전체 서버 340건이 실패·오류·건너뛰기 없이 통과했고 빌드도 성공했다. 전체 구성은 DB 없는 도메인 246건, 개발 API·계약 13건, PostgreSQL 예약·실행·복구·임대 갱신·연결·운영 조회·수동 검토 재개·작업 배정·제한 목록·작업 실행 기록/운영 중단/실행-시도 연결/기본 차단 81건이다.
 
-검사 식별자·작업자·시각·금액은 인공 값이다. 실제 다중 서버, 프로세스 강제 종료, 네트워크·공급자 조회와 임대 갱신은 검사하지 않았다. 화면·API 계약은 변경하지 않았다.
+검사 식별자·작업자·시각·금액은 인공 값이다. 실제 다중 서버, 프로세스 강제 종료, 네트워크·공급자 조회와 자동 heartbeat는 검사하지 않았다. 화면·API 계약은 변경하지 않았고 Flyway V8까지 적용했다.
 
 ## 남은 작업
 
 - 실제 공급자 조회 결과와 결과 미확인·정산·무과금 전이 연결
 - 공급자 선정 뒤 실제 재확인 간격·최대 시도 횟수 확정과 스케줄러 연결
 - 내부 운영 조회를 인증·권한이 있는 관리자 API·화면과 수동 재개에 연결
-- 필요한 경우 활성 임대 갱신의 소유자·시각 펜싱 계약
+- 실제 작업자의 자동 heartbeat와 공급자 응답 시간에 맞춘 임대·갱신 주기
 - 후보 상태의 PostgreSQL 저장과 저장 직전 현재 정책 개정 재검사

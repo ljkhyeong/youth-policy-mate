@@ -97,7 +97,7 @@ PostgreSQL은 기존 볼륨이 있으면 초기 계정·DB를 다시 만들지 �
 
 ### 데이터와 종료
 
-DB 볼륨은 `youth-policy-mate_postgres_data`이다. PostgreSQL 18의 데이터 경로에 맞춰 컨테이너의 `/var/lib/postgresql`에 마운트했다. Flyway V1·V2는 AI 예산·요청 예약과 호출 이후 상태를, V3은 복구 시도를, V4·V5는 작업 실행과 운영 중단 정보를, V6는 작업 실행과 복구 시도 연결을, V7은 수동 검토 재개 감사를 만든다. 정책 원천·회원·알림 테이블은 아직 없다. Hibernate는 스키마를 자동 생성·수정하지 않는다.
+DB 볼륨은 `youth-policy-mate_postgres_data`이다. PostgreSQL 18의 데이터 경로에 맞춰 컨테이너의 `/var/lib/postgresql`에 마운트했다. Flyway V1·V2는 AI 예산·요청 예약과 호출 이후 상태를, V3은 복구 시도를, V4·V5는 작업 실행과 운영 중단 정보를, V6는 작업 실행과 복구 시도 연결을, V7은 수동 검토 재개 감사를, V8은 활성 임대 갱신 감사를 만든다. 정책 원천·회원·알림 테이블은 아직 없다. Hibernate는 스키마를 자동 생성·수정하지 않는다.
 
 웹과 서버는 실행 터미널에서 `Ctrl+C`로 종료한다. DB 컨테이너는 아래 명령으로 종료·제거하되 볼륨은 보존한다.
 
@@ -156,7 +156,9 @@ npm audit
 
 `test:ai-recovery-work`는 실제 PostgreSQL 18.6과 인공 복구 포트로 제한 목록 4건, 작업 실행 기록·시도 연결 9건, 오래된 실행 조회·운영 중단 5건, 총 18건을 실행한다. 보류·중단 후보 뒤의 준비된 후보, 조회 뒤 판단 변경, 조회 개수 제한, 후보 단위 외부 확인 실패 뒤 계속 실행, 실행 ID 재전달·충돌·동시 기동, 완료 집계·전체 실패, 운영 중단 감사 정보, 실행-시도 연결의 상태·작업자·유일성·외래 키 제약을 확인한다. Docker가 필요하며 실제 공급자·주기 스케줄러·운영 재확인 값 검증은 아니다. [AI 복구 제한 목록 실행](ai-reservation-recovery-work-runner.md)과 [작업 실행 기록](ai-reservation-recovery-work-runs.md)을 따른다.
 
-`test:ai-recovery-execution`은 실제 PostgreSQL 18.6과 인공 복구 포트로 조정자 14건을 실행한다. 기존 다음 예약 획득과 배정된 시도 실행, 트랜잭션 밖 확인, 정산·무과금·취소·청구 대기, 완료·교체·만료 임대와 변경·종료 예약의 펜싱을 확인한다. Docker가 필요하며 실제 공급자·주기 스케줄러 검증은 아니다. [인공 복구 조정자](policy-ai-recovery-execution.md)를 따른다.
+`test:ai-recovery`는 실제 PostgreSQL 18.6에서 복구 소유권·수동 검토 재개·활성 임대 갱신 16건을 실행한다. 획득·완료·만료, 재전달·충돌, 동시 작업자, 재개와 갱신 감사, 소유자·시도 순번·예약·시각 펜싱과 DB 제약을 확인한다. Docker가 필요하며 자동 heartbeat와 실제 공급자 확인 검증은 아니다. [AI 복구 저장소](ai-reservation-recovery.md), [수동 검토 재개](ai-reservation-recovery-review-resume.md), [활성 임대 갱신](ai-reservation-recovery-lease-renewal.md)을 따른다.
+
+`test:ai-recovery-execution`은 실제 PostgreSQL 18.6과 인공 복구 포트로 조정자 15건을 실행한다. 기존 다음 예약 획득과 배정된 시도 실행, 트랜잭션 밖 확인, 정산·무과금·취소·청구 대기, 완료·교체·만료 임대와 변경·종료 예약의 펜싱, 외부 확인 중 갱신된 임대의 결과 적용을 확인한다. Docker가 필요하며 실제 공급자·주기 스케줄러·자동 heartbeat 검증은 아니다. [인공 복구 조정자](policy-ai-recovery-execution.md)를 따른다.
 
 `test:ai-admission`은 사전 판단 14건만 실행한다. 후보 재사용, 신규·변경 개정·명시적 재시도, 예산 미설정·0원·기간, 예약액·소수 최대 비용·잔액 경계, 비용 미확인·만료·다른 요청의 비용을 확인한다. 실제 예약·정산·청구 차단은 없으며 [AI 사전 판단 구현](ai-request-admission.md)을 따른다.
 

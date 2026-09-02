@@ -77,6 +77,8 @@ Flyway V1·V2와 PostgreSQL 예약 저장소도 추가했습니다. 최초 예�
 
 [AI 예약 복구 수동 검토 재개](docs/development/ai-reservation-recovery-review-resume.md)는 `MANUAL_REVIEW_REQUIRED` 결과를 수정하지 않고 Flyway V7 감사 기록으로 운영자·재개 사유·확인한 예약 상태를 보존합니다. 예약과 최신 수동 검토 시도를 잠근 뒤 일치할 때만 재개하며, 재개 후에도 기존 간격과 최대 시도 횟수를 유지합니다. 순수 정책 11건·복구 저장소 11건·운영 조회와 배정 11건, 전체 서버 334건·빌드가 통과했습니다. 관리자 인증·권한·API·화면과 실제 공급자 확인은 아직 없습니다.
 
+[AI 예약 복구 활성 임대 갱신](docs/development/ai-reservation-recovery-lease-renewal.md)은 Flyway V8 감사 기록과 현재 시도의 만료 시각을 같은 트랜잭션에서 저장합니다. 시도 순번·소유자·기존 만료 시각이 모두 일치하고 임대가 끝나기 전일 때만 연장하며, 동시 갱신 한 건과 최초 만료 뒤·새 만료 전 결과 적용을 확인했습니다. 복구 저장소 16건·조정자 15건, 전체 서버 340건·빌드가 통과했습니다. 자동 heartbeat·실제 공급자별 임대 길이와 갱신 주기는 아직 없습니다.
+
 온통청년 API 인증키는 신청 후 승인 대기 중입니다. 인증된 성공 응답, 정책 조회·수집, 실제 정책을 연결한 자격 판정, 로그인·저장·알림 기능은 아직 구현하지 않았습니다. 서버 계산 연결은 개발용 인공 자료에 한정합니다. 조건 입력 검사는 신청 자격 판정이 아니며 실제 정책이나 가상 추천 결과를 표시하지 않습니다.
 
 발급 후 사용할 단건 응답 점검 명령 `npm run probe:ontong`을 준비했습니다. 인증키를 노출하지 않고 미검증 JSON 응답을 로컬에 보관하는 개발 도구이며, 운영 수집기나 실제 API 검증 완료를 뜻하지 않습니다.
@@ -135,6 +137,7 @@ Flyway V1·V2와 PostgreSQL 예약 저장소도 추가했습니다. 최초 예�
 - [AI 예약 복구 제한 목록 실행과 후보별 실패 격리](docs/development/ai-reservation-recovery-work-runner.md)
 - [AI 예약 복구 작업 실행 식별자·중복 기동·결과 집계](docs/development/ai-reservation-recovery-work-runs.md)
 - [AI 예약 복구 수동 검토 재개 감사와 펜싱](docs/development/ai-reservation-recovery-review-resume.md)
+- [AI 예약 복구 활성 임대 갱신 감사와 펜싱](docs/development/ai-reservation-recovery-lease-renewal.md)
 - [취업 조건 비교 범위와 추가 확인 설계](docs/design/employment-condition.md)
 - [소득 입력 의미와 구간 비교 설계](docs/design/income-condition.md)
 - [현재 작업 인계](HANDOFF.md)

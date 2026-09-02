@@ -97,7 +97,7 @@ PostgreSQL은 기존 볼륨이 있으면 초기 계정·DB를 다시 만들지 �
 
 ### 데이터와 종료
 
-DB 볼륨은 `youth-policy-mate_postgres_data`이다. PostgreSQL 18의 데이터 경로에 맞춰 컨테이너의 `/var/lib/postgresql`에 마운트했다. Flyway V1·V2는 AI 예산·요청 예약과 호출 이후 상태를, V3은 복구 시도를, V4·V5는 작업 실행과 운영 중단 정보를, V6는 작업 실행과 복구 시도 연결을 만든다. 정책 원천·회원·알림 테이블은 아직 없다. Hibernate는 스키마를 자동 생성·수정하지 않는다.
+DB 볼륨은 `youth-policy-mate_postgres_data`이다. PostgreSQL 18의 데이터 경로에 맞춰 컨테이너의 `/var/lib/postgresql`에 마운트했다. Flyway V1·V2는 AI 예산·요청 예약과 호출 이후 상태를, V3은 복구 시도를, V4·V5는 작업 실행과 운영 중단 정보를, V6는 작업 실행과 복구 시도 연결을, V7은 수동 검토 재개 감사를 만든다. 정책 원천·회원·알림 테이블은 아직 없다. Hibernate는 스키마를 자동 생성·수정하지 않는다.
 
 웹과 서버는 실행 터미널에서 `Ctrl+C`로 종료한다. DB 컨테이너는 아래 명령으로 종료·제거하되 볼륨은 보존한다.
 
@@ -144,15 +144,15 @@ npm audit
 
 `test:reminders`는 마감 알림 후보 날짜 테스트 17건을 실행한다. 월·연도·윤일 경계, 오늘 후보 구분·지난 날짜 제외, 후보 없음 사유와 개정 변경 후 계산을 확인한다. 인증키·DB·Docker 없이 실행하며 실제 예약·발송 검증은 아니다. [후보 날짜 구현](deadline-reminder-candidates.md)을 참고한다.
 
-`test:ingestion`은 수집 진행 12·AI 후보 12·실행·복구 결과 연결 8·사전 판단 14·예약 상태 13·복구 재확인 정책 10건, 총 69건을 실행한다. 페이지·항목별 시도, 명시적 종료·부분 실패, 중단·재개·늦은 결과, AI 버전·재사용·실행·복구 응답의 현재 개정 재검사, 사전 비용, 예약·결과 미확인·정산 상태와 재확인 보류를 확인한다. 인증키·DB·Docker가 필요하지 않으며 실제 수집·DB 복구·후보 저장·자동 작업자·과금 차단 검증은 아니다.
+`test:ingestion`은 수집 진행 12·AI 후보 12·실행·복구 결과 연결 8·사전 판단 14·예약 상태 13·복구 재확인 정책 11건, 총 70건을 실행한다. 페이지·항목별 시도, 명시적 종료·부분 실패, 중단·재개·늦은 결과, AI 버전·재사용·실행·복구 응답의 현재 개정 재검사, 사전 비용, 예약·결과 미확인·정산 상태와 수동 검토 재개 후 간격·최대 횟수를 확인한다. 인증키·DB·Docker가 필요하지 않으며 실제 수집·DB 복구·후보 저장·자동 작업자·과금 차단 검증은 아니다.
 
 `test:ai-candidates`는 AI 후보 모델 12건만 실행한다. 현재 개정·원본·생성 방식·요청 순번 검사, 같은 내용 재사용·A→B→A, 늦은 응답·재전달·충돌과 실패·한도 보류의 기존 후보 유지를 확인한다. 인증키·AI·DB 없이 인공 참조 값으로 검사하며 실제 본문 정확성·비용 차단 검증은 아니다. [AI 후보 구현](policy-ai-candidates.md)을 따른다.
 
 `test:ai-candidate-projection`은 실행·복구 결과 연결 8건만 실행한다. 확인한 응답만 현재 정책·최신 요청과 다시 비교하고 결과 미확인·미실행·청구 전용 복구·미적용 복구를 생략하는지 확인한다. 인증키·AI·DB 없이 실행하며 실제 후보 저장·자동 공개 검증은 아니다. [AI 결과 후보 연결](policy-ai-candidate-projection.md)을 따른다.
 
-`test:ai-recovery-policy`는 복구 재확인 순수 정책 10건만 실행한다. 첫 시도, 활성 임대와 재확인 간격, 확인 완료·실패, 수동 검토, 완료·만료를 포함한 최대 횟수와 종료 예약을 확인한다. 고정 운영값·자동 작업자·DB 대상 선택 검증은 아니며 [AI 복구 재확인 정책](ai-reservation-recovery-retry-policy.md)을 따른다.
+`test:ai-recovery-policy`는 복구 재확인 순수 정책 11건만 실행한다. 첫 시도, 활성 임대와 재확인 간격, 확인 완료·실패, 수동 검토와 명시적 재개, 완료·만료를 포함한 최대 횟수와 종료 예약을 확인한다. 고정 운영값·자동 작업자·DB 대상 선택 검증은 아니며 [AI 복구 재확인 정책](ai-reservation-recovery-retry-policy.md)을 따른다.
 
-`test:ai-recovery-operations`는 실제 PostgreSQL 18.6에서 내부 운영 조회 5건과 작업 배정 5건, 총 10건을 실행한다. 오래된 미완료 예약 컷오프·정렬·최대 조회 수, 전체 이력 기반 판단, 조회 뒤 수동 검토 재확인, 보류 후보 미배정, 동시 배정 한 건, 동일 요청 재전달을 확인한다. Docker가 필요하며 관리자 API·화면·권한과 실제 공급자 확인 검증은 아니다. [AI 복구 내부 운영 조회](ai-reservation-recovery-operations-query.md)와 [작업 배정](ai-reservation-recovery-work-assignment.md)을 따른다.
+`test:ai-recovery-operations`는 실제 PostgreSQL 18.6에서 내부 운영 조회 5건, 작업 배정 5건과 수동 검토 재개 연결 1건, 총 11건을 실행한다. 오래된 미완료 예약 컷오프·정렬·최대 조회 수, 전체 이력 기반 판단, 조회 뒤 수동 검토 재확인, 재개 이력과 다음 배정, 보류 후보 미배정, 동시 배정 한 건, 동일 요청 재전달을 확인한다. Docker가 필요하며 관리자 API·화면·권한과 실제 공급자 확인 검증은 아니다. [AI 복구 내부 운영 조회](ai-reservation-recovery-operations-query.md), [수동 검토 재개](ai-reservation-recovery-review-resume.md)와 [작업 배정](ai-reservation-recovery-work-assignment.md)을 따른다.
 
 `test:ai-recovery-work`는 실제 PostgreSQL 18.6과 인공 복구 포트로 제한 목록 4건, 작업 실행 기록·시도 연결 9건, 오래된 실행 조회·운영 중단 5건, 총 18건을 실행한다. 보류·중단 후보 뒤의 준비된 후보, 조회 뒤 판단 변경, 조회 개수 제한, 후보 단위 외부 확인 실패 뒤 계속 실행, 실행 ID 재전달·충돌·동시 기동, 완료 집계·전체 실패, 운영 중단 감사 정보, 실행-시도 연결의 상태·작업자·유일성·외래 키 제약을 확인한다. Docker가 필요하며 실제 공급자·주기 스케줄러·운영 재확인 값 검증은 아니다. [AI 복구 제한 목록 실행](ai-reservation-recovery-work-runner.md)과 [작업 실행 기록](ai-reservation-recovery-work-runs.md)을 따른다.
 

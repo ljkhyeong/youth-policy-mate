@@ -153,6 +153,8 @@ npm audit
 
 `test:ai-recovery-operations`는 실제 PostgreSQL 18.6에서 내부 운영 조회 5건과 작업 배정 5건, 총 10건을 실행한다. 오래된 미완료 예약 컷오프·정렬·최대 조회 수, 전체 이력 기반 판단, 조회 뒤 수동 검토 재확인, 보류 후보 미배정, 동시 배정 한 건, 동일 요청 재전달을 확인한다. Docker가 필요하며 관리자 API·화면·권한, 후보 자동 순회와 실제 공급자 확인 검증은 아니다. [AI 복구 내부 운영 조회](ai-reservation-recovery-operations-query.md)와 [작업 배정](ai-reservation-recovery-work-assignment.md)을 따른다.
 
+`test:ai-recovery-execution`은 실제 PostgreSQL 18.6과 인공 복구 포트로 조정자 14건을 실행한다. 기존 다음 예약 획득과 배정된 시도 실행, 트랜잭션 밖 확인, 정산·무과금·취소·청구 대기, 완료·교체·만료 임대와 변경·종료 예약의 펜싱을 확인한다. Docker가 필요하며 실제 공급자·자동 순회·스케줄러 검증은 아니다. [인공 복구 조정자](policy-ai-recovery-execution.md)를 따른다.
+
 `test:ai-admission`은 사전 판단 14건만 실행한다. 후보 재사용, 신규·변경 개정·명시적 재시도, 예산 미설정·0원·기간, 예약액·소수 최대 비용·잔액 경계, 비용 미확인·만료·다른 요청의 비용을 확인한다. 실제 예약·정산·청구 차단은 없으며 [AI 사전 판단 구현](ai-request-admission.md)을 따른다.
 
 `test:ai-reservations`는 예약 상태 13건만 실행한다. 최대 비용 예약, 재전달·충돌, 외부 호출·결과 미확인, 정산·호출 전 취소·무과금 확인과 예약 초과 비용을 검사한다. 메모리 상태 전이이며 실제 PostgreSQL 동시성이나 공급자 청구 검증은 아니다. [AI 예약 상태 구현](ai-budget-reservation-lifecycle.md)을 따른다.

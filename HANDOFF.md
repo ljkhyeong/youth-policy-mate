@@ -54,6 +54,8 @@
 
 이번에는 [AI 예약 복구 작업 배정](docs/development/ai-reservation-recovery-work-assignment.md)을 추가했다. 운영 조회 결과에 포함된 `Ready` 후보만 받고, 예약 행을 잠근 뒤 현재 예약과 전체 복구 이력으로 재확인 정책을 다시 계산해 여전히 준비된 경우에만 활성 임대를 만든다. 조회 뒤 기록된 수동 검토와 활성 임대를 반영하고, 동일 요청 재전달과 같은 후보의 동시 배정 한 건을 실제 PostgreSQL에서 확인했다. 운영 조회·배정 10건과 전체 서버 306건이 실패·오류·건너뛰기 없이 통과했다. 배정된 시도의 복구 조정자 실행, 후보 자동 순회·스케줄러·공급자 연동과 화면·API·Flyway 변경은 없다.
 
+이번에는 배정된 `ReadyClaimed`를 기존 [AI 예약 인공 복구 조정자](docs/development/policy-ai-recovery-execution.md)의 `recoverAssigned` 입력으로 연결했다. 조정자는 DB에서 같은 시도를 다시 읽어 완료·교체된 배정이면 외부 확인을 시작하지 않고, 활성 시도면 현재 예약을 읽어 트랜잭션 밖 인공 확인과 기존 펜싱 적용을 수행한다. 배정 뒤 예약이 종료됐다면 공급자 확인 없이 시도를 수동 검토로 마친다. 조정자 14건과 전체 서버 310건이 실패·오류·건너뛰기 없이 통과했다. 후보 자동 순회·스케줄러·실제 공급자와 화면·API·Flyway 변경은 없다.
+
 2026-08-30에 온통청년의 현재 API 명세, 코드 정의서와 공개 정책 사례 2건을 조사했다. 사용자는 인증키를 신청했고 승인 대기 중이다. 인증키를 사용한 성공 응답은 아직 확인하지 못했다. 키 없는 요청의 HTTP 400 HTML 응답을 정상 정책 응답으로 취급하지 않는다.
 
 ## 실행 가능한 구성
@@ -70,7 +72,7 @@
 - `backend/`: Java 25·Spring Boot·Spring MVC·JPA·Flyway·Spring Modulith core. 기본 모드는 GET `/actuator/health`만 허용하고 기본 로그인 계정을 생성하지 않는다.
 - `backend/src/main/java/kr/youthpolicymate/devpreview/`: `preview`에서만 두 고정 예시 API·명세의 GET과 `/api/dev/eligibility-trial`의 질문 GET·인공 계산 POST를 추가 허용한다. 이 계산 경로만 CSRF 검사에서 제외하며 다른 경로·메서드 차단은 유지한다. `npm run dev:preview-api`로 루프백 8081에서 실행하며 DB는 사용하지 않는다. 기본 모드의 세 컨트롤러 미등록·403 차단을 실제 DB 통합 검사와 함께 확인했다.
 - `npm run generate:api`: 실제 서버 OpenAPI 응답을 `api/openapi.preview.json`에 내보내고 `frontend/src/generated/preview-api.d.ts`를 생성한다. `npm run check:api-types`와 서버 계약 테스트로 일치를 검사한다. 생성 파일은 직접 수정하지 않는다.
-- `npm run test:preview-api`: 마감 API 4개·자격 API 3개·인공 답변 재판정 5개·공통 명세 1개, 총 13개. 이번 전체 서버 빌드에서 DB 없는 도메인 245개와 PostgreSQL 예약·실행·복구·연결·운영 조회·작업 배정/기본 차단 48개도 함께 실행해 총 306개가 통과했다.
+- `npm run test:preview-api`: 마감 API 4개·자격 API 3개·인공 답변 재판정 5개·공통 명세 1개, 총 13개. 이번 전체 서버 빌드에서 DB 없는 도메인 245개와 PostgreSQL 예약·실행·복구·연결·운영 조회·작업 배정/기본 차단 52개도 함께 실행해 총 310개가 통과했다.
 - `backend/src/main/java/kr/youthpolicymate/policy/`: 확인된 날짜·시각 기간의 모집 상태와 근거를 제공한다. `Clock`을 한 번 읽고 서울 날짜를 계산하며 개발 API에만 연결했다. 복수·혼합·충돌 기간의 원문 해석, 실제 정책·저장·예약·발송 연결은 아직 없다.
 - 같은 패키지의 `PolicyObservation`·`PolicyRevisionState`: 원본 참조·비교 방식 버전/내용 해시·내부 순번으로 적용 여부와 다음 상태를 계산한다. 수집 실패에도 기존 정상 개정·확인 시각을 보존한다. API·모집·자격·DB에 연결하지 않은 독립적인 순수 모델이다.
 - `backend/src/main/java/kr/youthpolicymate/ingestion/`: `CollectionPosition`·`CollectionAttempt`·`CollectionRun`이 페이지·항목별 진행·시도 이력·재처리 위치를 계산한다. 정책 모듈의 원본 참조 값만 사용하며 개정 적용을 호출하지 않는다. 외부 요청·DB·스케줄러와 연결하지 않았다.
@@ -81,10 +83,10 @@
 - 같은 패키지의 `AiBudgetReservationStore`·`AiBudgetReservationLifecycleStore`: PostgreSQL 최신 잔액 재검사·요청별 최초 예약과 호출 이후 멱등 상태 전이를 나눠 처리한다. 외부 호출은 수행하지 않으며 미완료 조회는 작업자 소유권을 획득하지 않는다.
 - 같은 패키지의 `PolicyAiExecutionPort`·`PolicyAiExecutionCoordinator`: 공급자 독립 실행 결과를 분류하고 예약→호출 기록→트랜잭션 밖 실행→결과 상태 전이를 조율한다. 실제 공급자 빈은 없고 인공 실행기로만 검증했다.
 - 같은 패키지의 `AiReservationRecoveryStore`: 미완료 예약의 확인 작업자 임대·만료·시도 이력을 PostgreSQL에 저장한다.
-- 같은 패키지의 `PolicyAiRecoveryPort`·`PolicyAiRecoveryCoordinator`·`PolicyAiRecoveryApplier`: 트랜잭션 밖 인공 확인과 활성 시도·예약 관찰 버전 펜싱, 예약 상태 변경·시도 완료의 원자적 적용을 담당한다. 실제 공급자 어댑터와 자동 작업자는 없다.
+- 같은 패키지의 `PolicyAiRecoveryPort`·`PolicyAiRecoveryCoordinator`·`PolicyAiRecoveryApplier`: 호환용 다음 예약 획득 또는 배정된 활성 시도의 DB 재확인, 트랜잭션 밖 인공 확인과 예약 관찰 버전 펜싱, 예약 상태 변경·시도 완료의 원자적 적용을 담당한다. 실제 공급자 어댑터와 자동 순회·스케줄러는 없다.
 - 같은 패키지의 `AiReservationRecoveryRetryPolicy`: 주어진 최대 시도 횟수·간격과 예약·복구 이력으로 다음 확인 가능 시각, 보류·자동 중단 사유를 계산한다. 고정 운영값과 DB 변경·작업자 실행은 없다.
 - 같은 패키지의 `AiReservationRecoveryOperationsQuery`: 호출 측 기준보다 오래된 미완료 예약, 정책·AI 요청 범위, 전체 복구 이력과 재확인 판단을 한 읽기 전용 PostgreSQL 스냅샷으로 반환한다. 임대·상태 변경과 관리자 노출은 없다.
-- 같은 패키지의 `AiReservationRecoveryWorkAssigner`·`AiReservationRecoveryStore.claimIfReady`: 운영 조회의 `Ready` 후보를 받고 예약 잠금 뒤 현재 상태와 전체 이력으로 다시 판단해 활성 임대를 만든다. 기존 복구 조정자 실행과 후보 자동 순회에는 아직 연결하지 않았다.
+- 같은 패키지의 `AiReservationRecoveryWorkAssigner`·`AiReservationRecoveryStore.claimIfReady`: 운영 조회의 `Ready` 후보를 받고 예약 잠금 뒤 현재 상태와 전체 이력으로 다시 판단해 활성 임대를 만든다. 배정 결과는 복구 조정자의 `recoverAssigned`로 실행하며 후보 자동 순회에는 아직 연결하지 않았다.
 - `RecruitmentSchedule.confirmedDeadlineOnSeoul()`: 확인된 마감의 서울 날짜를 제공한다. 날짜형은 날짜 그대로, 시각형은 마감 순간의 서울 날짜를 제공하며 원본 기간을 지우지 않는다.
 - `backend/src/main/java/kr/youthpolicymate/schedule/DeadlineReminderCandidates`: 기존 모집 상태와 시계 기준을 사용해 후보 날짜를 계산한다. 지난 날짜는 제외, 오늘 후보는 발송 시각 확인 필요로 표시한다. 빈 목록은 마감일 미확인·모집 마감·남은 후보 없음으로 구분하며 실제 예약 객체가 아니다.
 - `backend/src/main/java/kr/youthpolicymate/eligibility/`: 순수 Java 판정 결과·근거 모델. 정책 검토 미완료·조건 미해석을 먼저 보류하고 명확한 불충족·사용자 정보 누락·전체 충족을 구분한다. 개발용 인공 자료 API·화면에만 연결했고 원문 해석·실제 입력 연결은 없다.
@@ -103,13 +105,13 @@
 - `npm run test:ai-reservation-db`: PostgreSQL 예약·상태 전이 12건. Flyway V1·V2, 예약·예산 동시 갱신, 중복·최신 잔액·한도·동시 요청, 호출·미확인·정산·취소·무과금 해제와 DB 제약을 확인한다. Docker가 필요하다.
 - `npm run test:ai-execution`: PostgreSQL과 인공 실행기 7건. 트랜잭션 밖 실행, 정산·미확인·청구 대기·무과금, 예약 거절·재전달·예외·다른 요청 응답의 금액 보존을 확인한다. Docker가 필요하다.
 - `npm run test:ai-recovery`: PostgreSQL 복구 소유권 7건. 직접·다음 대상 획득, 동시 작업자, 재전달·충돌, 임대 만료, 완료 이력과 종료 예약 차단을 확인한다. Docker가 필요하다.
-- `npm run test:ai-recovery-execution`: PostgreSQL과 인공 복구 포트 10건. 트랜잭션 밖 확인, 응답과 청구 대기·정산·무과금·취소, 교체·만료된 임대와 변경된 예약의 결과 차단, 실패·수동 검토·재전달을 확인한다. Docker가 필요하다.
+- `npm run test:ai-recovery-execution`: PostgreSQL과 인공 복구 포트 14건. 기존 다음 예약 획득과 배정된 시도 실행, 트랜잭션 밖 확인, 응답과 청구 대기·정산·무과금·취소, 완료·교체·만료 임대와 변경·종료 예약의 결과 차단을 확인한다. Docker가 필요하다.
 - `npm run test:ai-recovery-policy`: 복구 재확인 순수 정책 10건. 첫 시도·활성 임대·재확인 간격, 확인 완료·실패, 수동 검토, 완료·만료를 포함한 최대 횟수와 종료 예약을 확인한다. 인증키·DB·Docker가 필요하지 않다.
 - `npm run test:ai-recovery-operations`: PostgreSQL 내부 운영 조회 5건과 작업 배정 5건, 총 10건. 오래된 예약 컷오프·정렬·제한, 전체 이력 기반 판단, 조회 뒤 수동 검토 재확인, 보류 후보 미배정, 동시 배정 한 건과 동일 요청 재전달을 확인한다. Docker가 필요하다.
 - `npm run test:reminders`: 후보 날짜 17건. D-7·D-3·D-1의 달력 날짜, 미래·오늘·지난 날짜, 빈 후보 사유와 개정 변경 후 계산을 확인한다. [후보 날짜 구현](docs/development/deadline-reminder-candidates.md)에 미구현 예약·발송 범위를 함께 정리했다.
 - `compose.yaml`: 프로젝트 전용 PostgreSQL 18.6. 호스트 연결은 `127.0.0.1:55432`로 제한한다.
 - Flyway V1은 AI 예산·요청 예약 테이블, V2는 호출 이후 상태 열·제약·미완료 조회 인덱스, V3는 미완료 예약 복구 시도 이력을 만든다. 정책 원천·회원·일정·알림 테이블은 아직 없다.
-- 빌드와 PostgreSQL 예약·실행·복구·연결·운영 조회·작업 배정/기본 차단 테스트 48개가 통과했다. 전체 서버 306건이며 로컬 서버의 상태 응답 200과 차단 경로 403, 시작 화면은 앞선 작업에서 확인했다.
+- 빌드와 PostgreSQL 예약·실행·복구·연결·운영 조회·작업 배정/기본 차단 테스트 52개가 통과했다. 전체 서버 310건이며 로컬 서버의 상태 응답 200과 차단 경로 403, 시작 화면은 앞선 작업에서 확인했다.
 - 구체적인 버전, 실행·검증 명령과 알려진 경고는 [로컬 개발 안내](docs/development/local-development.md)를 따른다.
 - `scripts/ontong-api-probe.mjs`: 인증키 발급 후 목록·상세·지역 필터 응답을 1회씩 확보하는 개발용 점검 명령. `npm run probe:ontong`으로 실행한다. 결과는 Git에서 제외한 로컬 파일에 미검증 상태로 보관하며 DB에 적재하지 않는다.
 - `npm run check:tools`의 인공 응답 테스트 7개와 키 누락 시 요청 전 종료를 확인했다. 실제 온통청년 API를 호출하거나 성공 계약을 확인한 것은 아니다.
@@ -135,6 +137,7 @@
 - 복구 재확인 간격·최대 횟수와 자동 중단 경계: [AI 복구 재확인 정책](docs/development/ai-reservation-recovery-retry-policy.md)
 - 오래된 미완료 예약·전체 복구 이력·재확인 판단의 읽기 경계: [AI 복구 내부 운영 조회](docs/development/ai-reservation-recovery-operations-query.md)
 - 조회 후보의 잠금 후 재확인과 활성 임대 생성: [AI 복구 작업 배정](docs/development/ai-reservation-recovery-work-assignment.md)
+- 배정된 활성 시도의 트랜잭션 밖 인공 확인과 적용 펜싱: [AI 복구 조정자](docs/development/policy-ai-recovery-execution.md)
 - 후보 재사용·신규 요청·명시적 재시도와 비용 확인: [AI 사전 판단 설계](docs/design/ai-request-admission.md)
 - 예산·비용 입력과 실제 예약·과금 차단의 경계: [AI 사전 판단 모델](docs/development/ai-request-admission.md)
 - 요청별 예약·결과 미확인·정산과 실제 저장 조건: [AI 예약 상태 설계](docs/design/ai-budget-reservation-lifecycle.md)
@@ -174,7 +177,8 @@
 - 복구 재확인 간격·최대 시도 횟수·보류와 자동 중단 사유를 계산하는 순수 정책도 구현했다. 공급자별 실제 값과 자동 작업자 연결은 아직 없다.
 - 오래된 미완료 예약과 전체 복구 이력에 재확인 정책을 적용하는 내부 운영 조회도 구현했다. 실제 관리 화면·API는 인증과 운영 방식을 정한 뒤 연결한다.
 - 운영 조회의 `Ready` 후보를 예약 잠금 뒤 다시 판단하고 한 작업자에게 배정하는 경계도 구현했다. 조회 뒤 바뀐 이력과 동시 배정을 반영하지만 후보 목록 자동 순회와 실제 복구 실행은 아직 없다.
-- 다음 독립 작업 후보는 배정된 활성 시도를 기존 복구 조정자의 트랜잭션 밖 인공 확인 입력으로 연결하는 것이다. 실제 공급자 조회·운영 일정·고정 재확인 값은 공급자 선정 전까지 넣지 않는다.
+- 배정된 활성 시도를 DB에서 다시 확인하고 기존 복구 조정자의 트랜잭션 밖 인공 확인과 펜싱 적용으로 연결했다. 완료·교체된 배정과 종료 예약은 공급자 확인 전에 처리한다.
+- 다음 독립 작업 후보는 중단·보류된 오래된 후보가 뒤의 `Ready` 후보를 막지 않도록 제한된 목록 순회 계약을 만드는 것이다. 실제 공급자 조회·운영 일정·고정 재확인 값은 공급자 선정 전까지 넣지 않는다.
 - 질문 조회와 재판정 실패 후 재시도 복구를 확인했다. 키보드 전용 전체 흐름은 도구의 Tab·Enter 입력이 반영되지 않아 미확인이다.
 - CI를 원격에 푸시할 때 첫 GitHub 실행과 캐시·테스트 보고서를 확인한다. 이번 작업에서 푸시나 브랜치 보호 변경은 하지 않았다.
 
@@ -195,6 +199,6 @@
 
 - 운영비 상한은 월 3만 원이며 운영 장비·클라우드는 사용자 요청으로 나중에 정한다.
 - AI·이메일 공급자와 실제 호출 한도, 개인정보 보관·삭제 및 배포 준비는 PRD의 공개 전 확인 사항이다.
-- 현재 검증 범위는 개발 환경·DB 연결·접근 차단, 비회원 입력·인공 예시 표시, 서버의 조건 비교·모집·후보 계산, 개발용 자격·마감 API와 생성 계약·화면 연결·실패 복구, 내부 개정 적용 판단·수집 진행·AI 후보 버전·사전 비용·메모리 예약 상태, PostgreSQL 예약·내부 상태 전이·인공 실행·복구 소유권·펜싱·읽기 전용 운영 조회·작업 배정, 실행·복구 응답의 현재 후보 재검사다. 실제 수집·정책 원본 저장·AI 외부 연동·후보 DB 저장·공급자 청구 확인·소셜 인증·알림 예약·발송·과금 차단 검증으로 확대해서 보고하지 않는다.
+- 현재 검증 범위는 개발 환경·DB 연결·접근 차단, 비회원 입력·인공 예시 표시, 서버의 조건 비교·모집·후보 계산, 개발용 자격·마감 API와 생성 계약·화면 연결·실패 복구, 내부 개정 적용 판단·수집 진행·AI 후보 버전·사전 비용·메모리 예약 상태, PostgreSQL 예약·내부 상태 전이·인공 실행·복구 소유권·펜싱·읽기 전용 운영 조회·작업 배정·배정 실행, 실행·복구 응답의 현재 후보 재검사다. 실제 수집·정책 원본 저장·AI 외부 연동·후보 DB 저장·공급자 청구 확인·소셜 인증·알림 예약·발송·과금 차단 검증으로 확대해서 보고하지 않는다.
 - CI 워크플로는 작성했지만 GitHub 실행은 아직 확인하지 않았다. 배포·운영 인증 설정은 없다. 로컬 DB 계정과 비밀번호를 운영 환경에 재사용하지 않는다.
 - 이 작업에서 스킬 원본은 `skills/`에 보관한다. 사용자 스킬 폴더의 링크 상태는 설치 위치에서 직접 확인한다.

@@ -1,7 +1,6 @@
 package kr.youthpolicymate.ingestion;
 
 import kr.youthpolicymate.ingestion.AiBudgetReservationLifecycleStore.Snapshot;
-import kr.youthpolicymate.ingestion.AiBudgetReservationState.Phase;
 import kr.youthpolicymate.ingestion.AiReservationRecoveryReviewStore.ResumeRecord;
 import kr.youthpolicymate.ingestion.AiReservationRecoveryStore.Attempt;
 import kr.youthpolicymate.ingestion.AiReservationRecoveryStore.RecoveryResult;
@@ -36,7 +35,7 @@ public final class AiReservationRecoveryRetryPolicy {
         List<Attempt> attempts = validateHistory(reservation.reservationId(), history);
         Map<String, ResumeRecord> resumesByAttempt = validateReviewResumes(
                 reservation.reservationId(), attempts, reviewResumes);
-        if (isTerminal(reservation.phase())) {
+        if (reservation.phase().isTerminal()) {
             return new Stopped(StopReason.RESERVATION_TERMINAL, attempts.size());
         }
         if (attempts.isEmpty()) {
@@ -134,10 +133,6 @@ public final class AiReservationRecoveryRetryPolicy {
 
     private static Instant laterOf(Instant left, Instant right) {
         return left.isAfter(right) ? left : right;
-    }
-
-    private static boolean isTerminal(Phase phase) {
-        return phase == Phase.SETTLED || phase == Phase.CANCELLED || phase == Phase.RELEASED_NO_CHARGE;
     }
 
     public record Schedule(int maximumAttempts, List<Duration> retryDelays) {

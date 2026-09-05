@@ -1,5 +1,8 @@
 package kr.youthpolicymate.ingestion;
 
+import static kr.youthpolicymate.ingestion.AiDatabaseTime.dbTime;
+import static kr.youthpolicymate.ingestion.AiDatabaseTime.sameDatabaseInstant;
+
 import kr.youthpolicymate.ingestion.AiBudgetReservationState.Phase;
 import kr.youthpolicymate.ingestion.AiReservationRecoveryStore.Status;
 import org.springframework.context.annotation.Profile;
@@ -11,8 +14,6 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.Instant;
 import java.time.OffsetDateTime;
-import java.time.ZoneOffset;
-import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
@@ -59,7 +60,7 @@ public class AiReservationRecoveryLeaseRenewalStore {
         if (attempt.status() != Status.ACTIVE) {
             return outcome(RenewalDecision.ATTEMPT_NOT_ACTIVE, Optional.empty());
         }
-        if (isTerminal(reservation.phase())) {
+        if (reservation.phase().isTerminal()) {
             return outcome(RenewalDecision.RESERVATION_TERMINAL, Optional.empty());
         }
         if (command.renewedAt().isBefore(attempt.claimedAt())) {
@@ -205,10 +206,6 @@ public class AiReservationRecoveryLeaseRenewalStore {
                 instant(resultSet, "renewed_lease_until"));
     }
 
-    private static boolean isTerminal(Phase phase) {
-        return phase == Phase.SETTLED || phase == Phase.CANCELLED || phase == Phase.RELEASED_NO_CHARGE;
-    }
-
     private static RenewalOutcome outcome(RenewalDecision decision, Optional<RenewalRecord> record) {
         return new RenewalOutcome(decision, record);
     }
@@ -221,16 +218,8 @@ public class AiReservationRecoveryLeaseRenewalStore {
         if (value == null || value.isBlank()) throw new IllegalArgumentException(message);
     }
 
-    private static boolean sameDatabaseInstant(Instant left, Instant right) {
-        return left.truncatedTo(ChronoUnit.MICROS).equals(right.truncatedTo(ChronoUnit.MICROS));
-    }
-
     private static Instant instant(ResultSet resultSet, String column) throws SQLException {
         return resultSet.getObject(column, OffsetDateTime.class).toInstant();
-    }
-
-    private static OffsetDateTime dbTime(Instant instant) {
-        return instant.truncatedTo(ChronoUnit.MICROS).atOffset(ZoneOffset.UTC);
     }
 
     public enum RenewalDecision {

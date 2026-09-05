@@ -1,5 +1,8 @@
 package kr.youthpolicymate.ingestion;
 
+import static kr.youthpolicymate.ingestion.AiDatabaseTime.dbTime;
+import static kr.youthpolicymate.ingestion.AiDatabaseTime.sameDatabaseInstant;
+
 import kr.youthpolicymate.ingestion.AiBudgetReservationState.Phase;
 import kr.youthpolicymate.ingestion.AiReservationRecoveryStore.RecoveryResult;
 import kr.youthpolicymate.ingestion.AiReservationRecoveryStore.Status;
@@ -12,8 +15,6 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.Instant;
 import java.time.OffsetDateTime;
-import java.time.ZoneOffset;
-import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
@@ -44,7 +45,7 @@ public class AiReservationRecoveryReviewStore {
             return outcome(ResumeDecision.RESERVATION_NOT_FOUND, Optional.empty());
         }
         ReservationRow reservation = foundReservation.orElseThrow();
-        if (isTerminal(reservation.phase())) {
+        if (reservation.phase().isTerminal()) {
             return outcome(ResumeDecision.RESERVATION_TERMINAL, Optional.empty());
         }
         if (reservation.phase() != command.observedPhase()
@@ -206,10 +207,6 @@ public class AiReservationRecoveryReviewStore {
         return result == null ? Optional.empty() : Optional.of(RecoveryResult.valueOf(result));
     }
 
-    private static boolean isTerminal(Phase phase) {
-        return phase == Phase.SETTLED || phase == Phase.CANCELLED || phase == Phase.RELEASED_NO_CHARGE;
-    }
-
     private static ResumeOutcome outcome(ResumeDecision decision, Optional<ResumeRecord> record) {
         return new ResumeOutcome(decision, record);
     }
@@ -222,10 +219,6 @@ public class AiReservationRecoveryReviewStore {
         if (value == null || value.isBlank()) throw new IllegalArgumentException(message);
     }
 
-    private static boolean sameDatabaseInstant(Instant left, Instant right) {
-        return left.truncatedTo(ChronoUnit.MICROS).equals(right.truncatedTo(ChronoUnit.MICROS));
-    }
-
     private static Instant instant(ResultSet resultSet, String column) throws SQLException {
         return resultSet.getObject(column, OffsetDateTime.class).toInstant();
     }
@@ -233,10 +226,6 @@ public class AiReservationRecoveryReviewStore {
     private static Optional<Instant> nullableInstant(ResultSet resultSet, String column) throws SQLException {
         OffsetDateTime value = resultSet.getObject(column, OffsetDateTime.class);
         return value == null ? Optional.empty() : Optional.of(value.toInstant());
-    }
-
-    private static OffsetDateTime dbTime(Instant instant) {
-        return instant.truncatedTo(ChronoUnit.MICROS).atOffset(ZoneOffset.UTC);
     }
 
     public enum ResumeDecision {
@@ -302,7 +291,7 @@ public class AiReservationRecoveryReviewStore {
             Objects.requireNonNull(observedPhase, "수동 검토 재개 시 확인한 예약 단계가 필요합니다.");
             Objects.requireNonNull(observedUpdatedAt, "수동 검토 재개 시 확인한 예약 갱신 시각이 필요합니다.");
             Objects.requireNonNull(resumedAt, "수동 검토 재개 시각이 필요합니다.");
-            if (isTerminal(observedPhase)) {
+            if (observedPhase.isTerminal()) {
                 throw new IllegalArgumentException("종료된 AI 요청 예약은 수동 검토 재개 기록으로 만들 수 없습니다.");
             }
             if (resumedAt.isBefore(observedUpdatedAt)) {

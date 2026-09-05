@@ -1,5 +1,8 @@
 package kr.youthpolicymate.ingestion;
 
+import static kr.youthpolicymate.ingestion.AiDatabaseTime.dbTime;
+import static kr.youthpolicymate.ingestion.AiDatabaseTime.sameDatabaseInstant;
+
 import kr.youthpolicymate.ingestion.AiRequestBudget.Balance;
 import kr.youthpolicymate.ingestion.AiRequestBudget.CostCeiling;
 import kr.youthpolicymate.ingestion.PolicyAiRequestAdmission.ReservationRequired;
@@ -15,8 +18,6 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.Instant;
 import java.time.OffsetDateTime;
-import java.time.ZoneOffset;
-import java.time.temporal.ChronoUnit;
 import java.util.Objects;
 import java.util.Optional;
 
@@ -198,10 +199,6 @@ public class AiBudgetReservationStore {
         return resultSet.getObject(column, OffsetDateTime.class).toInstant();
     }
 
-    private static OffsetDateTime dbTime(Instant instant) {
-        return instant.truncatedTo(ChronoUnit.MICROS).atOffset(ZoneOffset.UTC);
-    }
-
     private static boolean sameBalance(Balance actual, Balance expected) {
         return actual.budgetId().equals(expected.budgetId())
                 && sameDatabaseInstant(actual.startsAt(), expected.startsAt())
@@ -212,9 +209,6 @@ public class AiBudgetReservationStore {
     }
 
     private static boolean sameMoney(BigDecimal left, BigDecimal right) { return left.compareTo(right) == 0; }
-    private static boolean sameDatabaseInstant(Instant left, Instant right) {
-        return left.truncatedTo(ChronoUnit.MICROS).equals(right.truncatedTo(ChronoUnit.MICROS));
-    }
     private static Attempt attempt(Decision decision, Balance balance) {
         return new Attempt(decision, Optional.of(balance));
     }

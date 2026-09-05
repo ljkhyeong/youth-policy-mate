@@ -1,5 +1,8 @@
 package kr.youthpolicymate.ingestion;
 
+import static kr.youthpolicymate.ingestion.AiDatabaseTime.dbTime;
+import static kr.youthpolicymate.ingestion.AiDatabaseTime.sameDatabaseInstant;
+
 import kr.youthpolicymate.ingestion.AiBudgetReservationState.ChargeConfirmation;
 import kr.youthpolicymate.ingestion.AiBudgetReservationState.Cancellation;
 import kr.youthpolicymate.ingestion.AiBudgetReservationState.Dispatch;
@@ -18,8 +21,6 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.Instant;
 import java.time.OffsetDateTime;
-import java.time.ZoneOffset;
-import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
@@ -89,7 +90,7 @@ public class AiBudgetReservationLifecycleStore {
             return unchanged(sameUncertainty(current.uncertain().orElseThrow(), uncertain)
                     ? Decision.REPLAYED : Decision.OUTCOME_ALREADY_UNKNOWN, current);
         }
-        return unchanged(isTerminal(current.phase()) ? Decision.TERMINAL_CONFLICT : Decision.INVALID_STATE, current);
+        return unchanged(current.phase().isTerminal() ? Decision.TERMINAL_CONFLICT : Decision.INVALID_STATE, current);
     }
 
     @Transactional
@@ -120,7 +121,7 @@ public class AiBudgetReservationLifecycleStore {
                     && sameMoney(current.actualWon().orElseThrow(), confirmation.actualWon())
                     ? Decision.REPLAYED : Decision.TERMINAL_CONFLICT, current);
         }
-        if (isTerminal(current.phase())) return unchanged(Decision.TERMINAL_CONFLICT, current);
+        if (current.phase().isTerminal()) return unchanged(Decision.TERMINAL_CONFLICT, current);
         if (current.dispatch().isEmpty()) return unchanged(Decision.INVALID_STATE, current);
         requireNotBefore(confirmation.confirmedAt(), lastActivityAt(current),
                 "청구 확인은 현재 예약 상태보다 빠를 수 없습니다.");
@@ -173,7 +174,7 @@ public class AiBudgetReservationLifecycleStore {
                     ? Decision.REPLAYED : Decision.TERMINAL_CONFLICT, current);
         }
         if (current.phase() != Phase.HELD) {
-            return unchanged(isTerminal(current.phase()) ? Decision.TERMINAL_CONFLICT : Decision.INVALID_STATE, current);
+            return unchanged(current.phase().isTerminal() ? Decision.TERMINAL_CONFLICT : Decision.INVALID_STATE, current);
         }
         requireNotBefore(cancellation.cancelledAt(), current.reservedAt(), "호출 전 취소는 예약보다 빠를 수 없습니다.");
         if (rows.budget().reservedWon().compareTo(current.maximumWon()) < 0) {
@@ -216,7 +217,7 @@ public class AiBudgetReservationLifecycleStore {
             return unchanged(sameCompletion(current, confirmation.confirmationId(), confirmation.confirmedAt())
                     ? Decision.REPLAYED : Decision.TERMINAL_CONFLICT, current);
         }
-        if (isTerminal(current.phase())) return unchanged(Decision.TERMINAL_CONFLICT, current);
+        if (current.phase().isTerminal()) return unchanged(Decision.TERMINAL_CONFLICT, current);
         if (current.dispatch().isEmpty()) return unchanged(Decision.INVALID_STATE, current);
         requireNotBefore(confirmation.confirmedAt(), lastActivityAt(current),
                 "무과금 확인은 현재 예약 상태보다 빠를 수 없습니다.");
@@ -425,10 +426,6 @@ public class AiBudgetReservationLifecycleStore {
                 && current.completedAt().filter(stored -> sameDatabaseInstant(stored, at)).isPresent();
     }
 
-    private static boolean isTerminal(Phase phase) {
-        return phase == Phase.SETTLED || phase == Phase.CANCELLED || phase == Phase.RELEASED_NO_CHARGE;
-    }
-
     private static void requireNotBefore(Instant actual, Instant minimum, String message) {
         if (actual.isBefore(minimum)) throw new IllegalArgumentException(message);
     }
@@ -444,18 +441,12 @@ public class AiBudgetReservationLifecycleStore {
     }
 
     private static boolean sameMoney(BigDecimal left, BigDecimal right) { return left.compareTo(right) == 0; }
-    private static boolean sameDatabaseInstant(Instant left, Instant right) {
-        return left.truncatedTo(ChronoUnit.MICROS).equals(right.truncatedTo(ChronoUnit.MICROS));
-    }
     private static Instant instant(ResultSet resultSet, String column) throws SQLException {
         return resultSet.getObject(column, OffsetDateTime.class).toInstant();
     }
     private static Optional<Instant> nullableInstant(ResultSet resultSet, String column) throws SQLException {
         var value = resultSet.getObject(column, OffsetDateTime.class);
         return value == null ? Optional.empty() : Optional.of(value.toInstant());
-    }
-    private static OffsetDateTime dbTime(Instant instant) {
-        return instant.truncatedTo(ChronoUnit.MICROS).atOffset(ZoneOffset.UTC);
     }
 
     public enum Decision {

@@ -1,5 +1,8 @@
 package kr.youthpolicymate.ingestion;
 
+import static kr.youthpolicymate.ingestion.AiDatabaseTime.dbTime;
+import static kr.youthpolicymate.ingestion.AiDatabaseTime.sameDatabaseInstant;
+
 import kr.youthpolicymate.ingestion.AiBudgetReservationLifecycleStore.Snapshot;
 import kr.youthpolicymate.ingestion.AiBudgetReservationState.Phase;
 import kr.youthpolicymate.ingestion.AiReservationRecoveryRetryPolicy.Decision;
@@ -14,8 +17,6 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.Instant;
 import java.time.OffsetDateTime;
-import java.time.ZoneOffset;
-import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
@@ -276,7 +277,7 @@ public class AiReservationRecoveryStore {
     }
 
     private ClaimOutcome claimLocked(ReservationRow reservation, Lease lease) {
-        if (isTerminal(reservation.phase())) {
+        if (reservation.phase().isTerminal()) {
             return claimOutcome(ClaimDecision.RESERVATION_TERMINAL, Optional.empty());
         }
         if (lease.claimedAt().isBefore(reservation.updatedAt())) {
@@ -427,10 +428,6 @@ public class AiReservationRecoveryStore {
                 Phase.valueOf(resultSet.getString("phase")), instant(resultSet, "updated_at"));
     }
 
-    private static boolean isTerminal(Phase phase) {
-        return phase == Phase.SETTLED || phase == Phase.CANCELLED || phase == Phase.RELEASED_NO_CHARGE;
-    }
-
     private static ClaimOutcome claimOutcome(ClaimDecision decision, Optional<Attempt> attempt) {
         return new ClaimOutcome(decision, attempt);
     }
@@ -447,18 +444,12 @@ public class AiReservationRecoveryStore {
         if (value == null || value.isBlank()) throw new IllegalArgumentException(message);
     }
 
-    private static boolean sameDatabaseInstant(Instant left, Instant right) {
-        return left.truncatedTo(ChronoUnit.MICROS).equals(right.truncatedTo(ChronoUnit.MICROS));
-    }
     private static Instant instant(ResultSet resultSet, String column) throws SQLException {
         return resultSet.getObject(column, OffsetDateTime.class).toInstant();
     }
     private static Optional<Instant> nullableInstant(ResultSet resultSet, String column) throws SQLException {
         var value = resultSet.getObject(column, OffsetDateTime.class);
         return value == null ? Optional.empty() : Optional.of(value.toInstant());
-    }
-    private static OffsetDateTime dbTime(Instant instant) {
-        return instant.truncatedTo(ChronoUnit.MICROS).atOffset(ZoneOffset.UTC);
     }
 
     public enum ClaimDecision {

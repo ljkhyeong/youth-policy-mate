@@ -1,5 +1,7 @@
 package kr.youthpolicymate.ingestion;
 
+import static kr.youthpolicymate.ingestion.AiDatabaseTime.dbTime;
+
 import kr.youthpolicymate.ingestion.AiBudgetReservationLifecycleStore.Snapshot;
 import kr.youthpolicymate.ingestion.AiBudgetReservationState.Dispatch;
 import kr.youthpolicymate.ingestion.AiBudgetReservationState.Phase;
@@ -22,8 +24,6 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.Instant;
 import java.time.OffsetDateTime;
-import java.time.ZoneOffset;
-import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -162,10 +162,6 @@ public class AiReservationRecoveryOperationsQuery {
     private static Optional<Instant> nullableInstant(ResultSet resultSet, String column) throws SQLException {
         var value = resultSet.getObject(column, OffsetDateTime.class);
         return value == null ? Optional.empty() : Optional.of(value.toInstant());
-    }
-
-    private static OffsetDateTime dbTime(Instant instant) {
-        return instant.truncatedTo(ChronoUnit.MICROS).atOffset(ZoneOffset.UTC);
     }
 
     private static void requireText(String value, String message) {

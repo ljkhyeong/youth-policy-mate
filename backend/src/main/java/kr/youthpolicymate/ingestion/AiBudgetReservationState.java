@@ -211,7 +211,13 @@ public final class AiBudgetReservationState {
 
     public record Transition(Decision decision, AiBudgetReservationState state) {}
 
-    public enum Phase { HELD, DISPATCHED, OUTCOME_UNKNOWN, SETTLED, CANCELLED, RELEASED_NO_CHARGE }
+    public enum Phase {
+        HELD, DISPATCHED, OUTCOME_UNKNOWN, SETTLED, CANCELLED, RELEASED_NO_CHARGE;
+
+        public boolean isTerminal() {
+            return this == SETTLED || this == CANCELLED || this == RELEASED_NO_CHARGE;
+        }
+    }
 
     public record ReservationHold(String reservationId, Request request, String pricingVersion,
                                   BigDecimal maximumWon, Instant reservedAt) {

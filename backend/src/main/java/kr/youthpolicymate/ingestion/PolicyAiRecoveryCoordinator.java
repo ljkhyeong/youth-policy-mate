@@ -1,7 +1,6 @@
 package kr.youthpolicymate.ingestion;
 
 import kr.youthpolicymate.ingestion.AiBudgetReservationLifecycleStore.Snapshot;
-import kr.youthpolicymate.ingestion.AiBudgetReservationState.Phase;
 import kr.youthpolicymate.ingestion.AiReservationRecoveryStore.Attempt;
 import kr.youthpolicymate.ingestion.AiReservationRecoveryStore.ClaimDecision;
 import kr.youthpolicymate.ingestion.AiReservationRecoveryStore.ClaimOutcome;
@@ -90,7 +89,7 @@ public final class PolicyAiRecoveryCoordinator {
 
         var inspection = new Inspection(reservation.orElseThrow(), attempt);
         Outcome outcome;
-        if (isTerminal(inspection.reservation().phase())) {
+        if (inspection.reservation().phase().isTerminal()) {
             outcome = ReviewRequired.INSTANCE;
         } else if (heartbeat.isEmpty()) {
             outcome = Objects.requireNonNull(
@@ -105,10 +104,6 @@ public final class PolicyAiRecoveryCoordinator {
         validateResponseTiming(inspection, outcome);
         Application application = applier.apply(attempt, inspection.reservation(), outcome, clock.instant());
         return new Recovered(claim, inspection, outcome, application);
-    }
-
-    private static boolean isTerminal(Phase phase) {
-        return phase == Phase.SETTLED || phase == Phase.CANCELLED || phase == Phase.RELEASED_NO_CHARGE;
     }
 
     private static void validateResponseTiming(Inspection inspection, Outcome outcome) {

@@ -8,11 +8,13 @@
 |---|---|
 | `PolicyAiRecoveryHeartbeat` | 외부 확인 전에 heartbeat를 예약하고 확인이 끝나면 취소하며, 갱신 결과를 다음 실행 여부로 분류 |
 | `HeartbeatPlan` | 호출 측이 정한 heartbeat 주기와 갱신 뒤 유지할 임대 길이 보유 |
-| `HeartbeatScheduler` | 실제 반복 실행 방식 분리. `ScheduledExecutorService` 어댑터와 결정적인 테스트용 스케줄러 제공 |
+| `HeartbeatScheduler` | 반복 실행 방식 분리. 외부 실행기용 어댑터와 테스트용 스케줄러 제공 |
+| `PolicyAiRecoveryHeartbeatScheduler` | 반복 실행기 소유, 종료 중 새 예약 차단·기존 확인 대기·기한 초과 결과 차단 |
+| `PolicyAiRecoveryHeartbeatConfiguration` | 명시적 설정으로 관리형 실행기·heartbeat 생성, 컨텍스트 종료와 저장소 정리 순서 연결 |
 | `AiReservationRecoveryLeaseRenewalStore` | 현재 시도·순번·소유자·만료 시각을 다시 확인하고 짧은 트랜잭션으로 갱신 |
 | `PolicyAiRecoveryCoordinator` | heartbeat 완료 결과만 기존 응답 검사와 상태 적용으로 전달하고, 거절 결과는 `HeartbeatStopped`로 반환 |
 
-기존 생성자는 heartbeat 없이 실행하는 호환 경로로 유지한다. 자동 작업자는 `PolicyAiRecoveryHeartbeat`를 전달한 조정자를 사용해야 하며, 반복 실행기의 생성·종료도 호출 측이 소유한다.
+기존 생성자는 heartbeat 없이 실행하는 호환 경로로 유지한다. 자동 작업자는 `PolicyAiRecoveryHeartbeat`를 전달한 조정자를 사용해야 한다. Spring 연결을 활성화하면 관리형 실행기가 반복 작업의 생성·종료를 맡는다. 기존 `HeartbeatScheduler.scheduled`는 외부 실행기를 소유하지 않는 호환 어댑터이며 이 문서의 관리형 종료 보장은 적용하지 않는다.
 
 ## 실행 순서
 
@@ -34,25 +36,56 @@
 
 `HeartbeatStopped`는 Flyway V9부터 [작업 실행 완료 집계](ai-reservation-recovery-work-runs.md)의 `heartbeat_stopped_count`에 별도로 저장한다. 조정자 미시작·후보 예외 수에 중복 포함하지 않는다. 과거 완료 기록의 NULL은 별도 집계 없음으로 유지하며 0건으로 해석하지 않는다. heartbeat 저장 예외는 기존 후보 실패로 남는다. 실제 공급자별 중단 사유 통계나 운영 화면은 아직 없다.
 
+## 종료 대기와 늦은 응답
+
+1. 컨텍스트의 종료 이벤트에서 `beginShutdown()`으로 새 heartbeat 예약을 막는다. 이미 등록된 확인의 갱신은 유지한다.
+2. Spring이 실행기 빈을 정리할 때 `close()`가 남은 종료 대기 시간 동안 확인 완료를 기다린다. 갱신 저장소와 DB 의존성은 그 뒤에 정리한다.
+3. 확인이 끝나면 기존 heartbeat 취소와 진행 중 갱신 정리를 마친 뒤 `verifyCompletion()`으로 종료 기한 전에 완료했는지 확인한다. 이 결과와 종료 처리는 같은 등록 상태에서 순서를 정한다.
+4. 기한이 지났거나 종료 대기가 인터럽트되면 남은 반복 작업을 취소한다. 이후 응답은 `RejectedExecutionException`으로 거절하고 예약·예산에 적용하지 않는다. 원래 외부 확인이 예외로 끝났으면 해당 예외를 그대로 전달한다.
+
+종료 대기는 `System.nanoTime()`의 경과 시간으로 계산한다. `close()`를 다시 호출해도 최초 기한을 늘리지 않는다. `shutdown-grace=PT0S`는 즉시 대기를 끝내는 명시적 설정이며 운영 기본값은 아니다. 종료 중 새 예약이 거절되면 외부 확인 포트는 호출하지 않는다.
+
+종료 취소는 실행 중인 외부 확인·DB 갱신을 강제 인터럽트하지 않는다. 이미 시작한 갱신이 끝나거나 DB 의존성 종료 때문에 실패할 수 있다. 실행기는 남은 시간까지만 스레드 종료를 기다리고, `isTerminated()`가 거짓이면 아직 실행 중인 갱신이 남았을 수 있다. 스레드는 daemon으로 만들지만 이를 외부 호출 취소나 프로세스의 정상 종료 보장으로 해석하지 않는다.
+
+종료 대기는 외부 확인과 그 heartbeat까지만 추적한다. 조정자의 후속 DB 반영까지 완료를 기다리는 기능은 아니므로 실제 작업자를 연결할 때에는 조정자 실행 전체가 끝나기 전 DB가 정리되지 않도록 종료 순서를 추가로 맞춰야 한다.
+
+종료 관련 거절은 제한 목록의 기존 후보 실패 집계에 포함한다. 임대 갱신 결과가 거절된 `HeartbeatStopped`와는 다른 경우다. 예약액 해제·복구 시도 완료·실행 기록의 운영 중단을 임의로 수행하지 않는다. 기한 안에 확인이 끝났더라도 최종 반영은 기존 예약·임대 펜싱을 다시 통과해야 한다.
+
+## 활성화 설정
+
+기본 설정은 비활성화다. `preview`에서는 활성화 값을 주어도 생성하지 않는다. 그 밖의 프로필에서 다음 설정을 모두 제공하면 관리형 실행기와 heartbeat 빈을 만든다. 실제 복구 목록을 주기 실행하는 작업자나 공급자 어댑터가 생기는 것은 아니다.
+
+| 설정 | 필수 조건 |
+|---|---|
+| `app.ai-recovery.heartbeat.enabled` | `true`로 명시해야 생성 |
+| `app.ai-recovery.heartbeat.threads` | 1 이상의 실행 스레드 수 |
+| `app.ai-recovery.heartbeat.shutdown-grace` | 0 이상의 종료 대기 시간 |
+| `app.ai-recovery.heartbeat.interval` | 양수 heartbeat 주기 |
+| `app.ai-recovery.heartbeat.lease-duration` | heartbeat 주기보다 긴 임대 길이 |
+
+시간은 ISO-8601 Duration으로 지정할 수 있다. 누락·잘못된 설정은 시작 실패로 처리하고 공급자별 운영값을 추정해 채우지 않는다. 실행기 스레드는 실제 heartbeat 등록 시 생성되며, 단순 활성화가 정책 수집이나 AI 호출을 시작하지 않는다.
+
 ## 검사
 
 저장소 루트에서 실행한다.
 
 ```sh
+npm run test:ai-recovery-heartbeat
 npm run test:ai-recovery-execution
 npm run test:ai-recovery-work
 npm run check:backend
 ```
 
-- 복구 조정자 16건: 외부 확인 전 heartbeat 예약, 갱신 성공 뒤 최초 만료 이후 정산, heartbeat 취소, 만료 시 갱신 거절과 결과 폐기 포함
+- 종료 실행기·Spring 설정 6건: 종료 중 갱신 유지·신규 차단·기한 초과·인터럽트·기본/preview 차단·설정 오류·정리 순서
+- 복구 조정자 18건: 외부 확인 전 heartbeat 예약, 갱신 성공 뒤 최초 만료 이후 정산, heartbeat 취소, 만료 시 갱신 거절과 결과 폐기, 종료 대기 안/밖 청구의 실제 DB 반영 여부 포함
 - 제한 목록·작업 실행 기록 21건: heartbeat 중단 별도 집계·재전달·기존 V8 기록 마이그레이션 포함
-- 전체 백엔드 344건: 실패·오류·건너뛰기 없이 통과
+- 전체 백엔드 352건: 실패·오류·건너뛰기 없이 통과
 
-전체 구성은 DB 없는 도메인 246건, 개발 API·계약 13건, PostgreSQL 예약·실행·복구·heartbeat·운영 조회·기본 차단 85건이다. 화면·HTTP API는 변경하지 않았고, 작업 실행 집계는 Flyway V9로 확장했다.
+전체 구성은 DB 없는 도메인 246건·종료 실행기와 설정 6건, 개발 API·계약 13건, PostgreSQL 예약·실행·복구·heartbeat·운영 조회·기본 차단 87건이다. 이번 작업은 화면·HTTP API·Flyway 스키마를 변경하지 않았다. 최초 설정 검사 1건은 대기 시간이 0일 때 스레드까지 즉시 종료됐다고 가정해 실패했다. 응답 적용 차단과 저장소 정리 순서를 확인하도록 수정한 뒤 전용·전체 검사가 통과했다.
 
 ## 남은 작업
 
 - 실제 공급자 상태 조회 어댑터와 자동 작업자에서 heartbeat 포함 조정자 생성
 - 공급자 응답 시간과 운영 주기를 확인한 임대 길이·heartbeat 주기 결정
-- 실제 반복 실행기의 애플리케이션 생명주기 연결과 정상 종료 확인
+- 실제 작업자에 관리형 heartbeat 빈 주입과 작업자·공급자·DB 종료 순서의 운영 검증
 - 공급자별 외부 호출 취소 가능 여부·청구 영향 확인

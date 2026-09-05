@@ -43,7 +43,7 @@ class AiReservationRecoveryWorkRunOperationsTest {
     private static final Instant NOW = Instant.parse("2026-09-02T02:00:00Z");
     private static final Schedule SCHEDULE = new Schedule(
             3, List.of(Duration.ofSeconds(5), Duration.ofSeconds(20)));
-    private static final Summary EMPTY_SUMMARY = new Summary(0, 0, 0, 0, 0, 0);
+    private static final Summary EMPTY_SUMMARY = new Summary(0, 0, 0, 0, 0, 0, 0);
 
     @Container
     @ServiceConnection

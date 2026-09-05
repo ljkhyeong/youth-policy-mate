@@ -44,6 +44,16 @@ test("상세 정책번호와 지역 필터를 명세의 요청 이름으로 전�
   assert.equal(capture.reviewStatus, "UNVERIFIED");
 });
 
+test("작은 표본은 최대 10건만 요청하고 범위를 벗어나면 요청 전에 거절한다", async () => {
+  await probeOntong({ apiKey, pageSize: 10 }, async (url) => {
+    assert.equal(url.searchParams.get("pageSize"), "10");
+    return Response.json({ synthetic: true });
+  });
+  for (const pageSize of [0, 11, 1.5, NaN]) {
+    await assert.rejects(probeOntong({ apiKey, pageSize }, async () => assert.fail("외부 요청이 발생하면 안 된다")), /1부터 10/);
+  }
+});
+
 test("HTTP 오류와 HTML 응답은 본문을 드러내지 않고 중단한다", async () => {
   for (const status of [400, 200]) {
     await assert.rejects(probeOntong({ apiKey }, async () => new Response(`<html>${apiKey}</html>`, { status })), (error) => {

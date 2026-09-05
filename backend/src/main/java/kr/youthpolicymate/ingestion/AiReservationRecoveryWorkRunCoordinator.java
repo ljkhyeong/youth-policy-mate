@@ -58,23 +58,24 @@ public final class AiReservationRecoveryWorkRunCoordinator {
         int recoveryFinished = 0;
         int recoveryNotStarted = 0;
         int recoveryFailed = 0;
+        int heartbeatStopped = 0;
         for (var candidate : batch.candidates()) {
             if (candidate instanceof SkippedByReport) {
                 reportSkipped++;
             } else if (candidate instanceof AssignmentNotClaimed) {
                 assignmentNotClaimed++;
             } else if (candidate instanceof RecoveryFinished finished) {
-                if (finished.recovery() instanceof PolicyAiRecoveryCoordinator.Recovered) {
-                    recoveryFinished++;
-                } else {
-                    recoveryNotStarted++;
+                switch (finished.recovery()) {
+                    case PolicyAiRecoveryCoordinator.Recovered ignored -> recoveryFinished++;
+                    case PolicyAiRecoveryCoordinator.NotStarted ignored -> recoveryNotStarted++;
+                    case PolicyAiRecoveryCoordinator.HeartbeatStopped ignored -> heartbeatStopped++;
                 }
             } else if (candidate instanceof RecoveryFailed) {
                 recoveryFailed++;
             }
         }
         return new Summary(batch.candidates().size(), reportSkipped, assignmentNotClaimed,
-                recoveryFinished, recoveryNotStarted, recoveryFailed);
+                recoveryFinished, recoveryNotStarted, recoveryFailed, heartbeatStopped);
     }
 
     public sealed interface Execution permits NotStarted, Finished, Failed {}

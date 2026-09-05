@@ -10,7 +10,7 @@ const OUTPUT_DIRECTORY = fileURLToPath(new URL("../.local/ontong-api/", import.m
 
 class ProbeError extends Error {}
 
-export async function probeOntong({ apiKey, policyNumber, region }, fetchResponse = fetch) {
+export async function probeOntong({ apiKey, policyNumber, region, pageSize = 1 }, fetchResponse = fetch) {
   if (!apiKey?.trim()) {
     throw new ProbeError("ONTONG_API_KEY가 없습니다. 발급된 키를 로컬 .env에 설정하세요.");
   }
@@ -20,8 +20,11 @@ export async function probeOntong({ apiKey, policyNumber, region }, fetchRespons
   if (policyNumber !== undefined && !policyNumber.trim()) {
     throw new ProbeError("--policy-number에는 확인할 정책번호를 입력하세요.");
   }
+  if (!Number.isInteger(pageSize) || pageSize < 1 || pageSize > 10) {
+    throw new ProbeError("--page-size에는 1부터 10까지의 정수를 입력하세요.");
+  }
 
-  const parameters = { pageNum: "1", pageSize: "1", pageType: policyNumber ? "2" : "1", rtnType: "json" };
+  const parameters = { pageNum: "1", pageSize: String(pageSize), pageType: policyNumber ? "2" : "1", rtnType: "json" };
   if (policyNumber) parameters.plcyNo = policyNumber;
   if (region) parameters.zipCd = region;
   const url = new URL(ENDPOINT);
@@ -93,6 +96,7 @@ async function main() {
       options: {
         "policy-number": { type: "string" },
         region: { type: "string" },
+        "page-size": { type: "string" },
         help: { type: "boolean" },
       },
     }));
@@ -102,7 +106,7 @@ async function main() {
     return;
   }
   if (values.help) {
-    console.log("목록 1건: npm run probe:ontong\n상세 1건: npm run probe:ontong -- --policy-number 정책번호\n지역 목록 1건: npm run probe:ontong -- --region 11000\n인증키는 인수가 아닌 로컬 .env의 ONTONG_API_KEY로 설정하세요.");
+    console.log("목록 1건: npm run probe:ontong\n상세 1건: npm run probe:ontong -- --policy-number 정책번호\n서울 표본 최대 10건: npm run probe:ontong -- --region 11000 --page-size 10\n인증키는 인수가 아닌 로컬 .env의 ONTONG_API_KEY로 설정하세요.");
     return;
   }
 
@@ -111,6 +115,7 @@ async function main() {
       apiKey: process.env.ONTONG_API_KEY,
       policyNumber: values["policy-number"],
       region: values.region,
+      pageSize: values["page-size"] === undefined ? 1 : Number(values["page-size"]),
     });
     const filename = await saveCapture(capture);
     console.log(`미검증 JSON 응답 저장: ${filename}\n정상 정책 응답 여부와 필드 구조는 파일 내용을 확인해야 합니다.`);

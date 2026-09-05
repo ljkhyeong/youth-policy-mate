@@ -39,7 +39,7 @@ export function PageState({ kind, title, description, actions, headingAs: Headin
 }
 
 export function LoadingState({ headingAs = "h2" }: { headingAs?: "h1" | "h2" }) {
-  return <PageState kind="loading" headingAs={headingAs} title="화면을 불러오고 있어요." description="잠시만 기다려주세요. 불러오기가 끝나면 화면이 바뀝니다." />;
+  return <PageState kind="loading" headingAs={headingAs} title="화면을 불러오고 있어요." description="잠시만 기다려주세요." />;
 }
 
 export function LoadErrorState({ onRetry, headingAs = "h2", headingRef }: {
@@ -51,7 +51,7 @@ export function LoadErrorState({ onRetry, headingAs = "h2", headingRef }: {
     <PageState
       kind="error" headingAs={headingAs} headingRef={headingRef}
       title="화면을 불러오지 못했어요."
-      description="다시 불러오기를 눌러주세요. 문제가 계속되면 잠시 후 다시 이용해주세요. 저장하지 않은 입력 내용은 사라질 수 있어요."
+      description="다시 시도해주세요. 저장하지 않은 입력 내용은 사라질 수 있어요."
       actions={<>
         <button type="button" className="button-primary" onClick={onRetry}>다시 불러오기</button>
         <Link href="/" className="button-secondary">홈으로</Link>

@@ -9,7 +9,7 @@
 
 서버 계산과 화면을 연결하면서 날짜·정확한 시각·시간대·null·후보 상태를 보존해야 한다. 서버의 이름 있는 DTO와 컨트롤러를 계약의 관리 기준으로 삼고, springdoc-openapi로 OpenAPI 3.1을 만든 뒤 openapi-typescript로 TypeScript 타입을 생성한다. 생성 파일은 Git에 보관하되 손으로 수정하지 않는다.
 
-온통청년 성공 응답은 아직 없으므로 첫 적용은 개발 전용 인공 자료에 한정한다. 이 계약을 실제 원천 DTO나 공개 정책 API 확정으로 취급하지 않는다.
+최초 적용 당시 온통청년 성공 응답이 없어 개발 전용 인공 자료에 한정했다. 이 계약을 실제 원천 DTO나 공개 정책 API 확정으로 취급하지 않는다.
 
 | 대상 | 관리 방식 |
 |---|---|
@@ -47,3 +47,9 @@ Swagger UI·MCP 노출·범용 API 클라이언트·실서비스 오류 응답 �
 ## 확인한 도구
 
 2026-08-31 기준 springdoc-openapi 3.1.0과 openapi-typescript 7.13.0을 고정했다. Spring Boot 4 지원과 Swagger UI 없는 명세 모듈은 [springdoc 공식 문서](https://springdoc.org/), 타입 생성·검사는 [openapi-typescript CLI 문서](https://openapi-ts.dev/cli)를 확인했다. 프로젝트에서 실제 생성·직렬화·빌드도 통과했다.
+
+## 공개 정책 API 적용 — 2026-09-05
+
+같은 생성 방식을 공개 목록·상세에도 적용했다. `api/openapi.policy.json`과 `frontend/src/generated/policy-api.d.ts`를 생성하며 `npm run generate:api`가 개발·공개 계약을 함께 갱신한다. 공개 계약 생성에는 PostgreSQL 테스트 컨테이너가 필요하다. 생성용 명세 경로는 테스트 설정에서만 허용하며 기본 서버의 OpenAPI 비활성화는 유지한다.
+
+공개 조회는 기본 서버의 `/api/v1/policies`와 `/api/v1/policies/{policyNumber}` GET으로 제공한다. Next.js 서버가 `POLICY_API_BASE_URL`(기본 `http://127.0.0.1:8080`)로 조회하며 브라우저에는 온통청년 인증키를 전달하지 않는다. [구체적인 계약·오류·저장 범위](../development/policy-catalog.md)를 따른다.

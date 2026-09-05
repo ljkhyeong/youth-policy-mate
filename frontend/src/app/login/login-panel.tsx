@@ -1,0 +1,30 @@
+"use client";
+import Link from "next/link";
+import { useEffect, useState } from "react";
+import { memberApi, type MemberSession } from "@/features/member/member-api";
+
+export function LoginPanel() {
+  const [session, setSession] = useState<MemberSession | null>(null);
+  const [error, setError] = useState("");
+  useEffect(() => {
+    const controller = new AbortController();
+    memberApi<MemberSession>("session", { signal: controller.signal }).then(result => {
+      if (controller.signal.aborted) return;
+      setSession(result);
+      if (new URLSearchParams(window.location.search).has("error")) setError("로그인을 완료하지 못했어요. 다시 시도하거나 정책을 둘러보세요.");
+    }).catch(() => {
+      if (!controller.signal.aborted) setError("로그인 정보를 불러오지 못했어요. 잠시 후 다시 시도해주세요.");
+    });
+    return () => controller.abort();
+  }, []);
+  return <section className="member-panel">
+    {error && <p role="alert" className="field-error">{error}</p>}
+    {!session && !error && <p role="status">로그인 방법을 확인하고 있어요.</p>}
+    {session?.authenticated ? <Link className="button-primary" href="/my">내 정책으로 이동</Link> : <>
+      {session?.providers.map(provider => <a key={provider.id} className="button-primary button-block" href={provider.url}>{provider.name}로 로그인</a>)}
+      {session?.providers.length === 0 && <div className="availability-note"><div><strong>로그인 기능을 준비 중이에요</strong><p>지금은 로그인 없이 정책 검색과 조건 확인을 이용할 수 있어요.</p></div></div>}
+      <p className="data-retention-note">로그인만으로 입력 조건이나 정책을 자동 저장하지 않아요. 저장할 내용을 확인한 뒤 직접 저장해주세요.</p>
+    </>}
+    <Link className="text-link" href="/policies">로그인 없이 정책 둘러보기</Link>
+  </section>;
+}

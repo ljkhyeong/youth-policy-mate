@@ -8,6 +8,10 @@ group = 'kr.youthpolicymate'
 version = '0.0.1-SNAPSHOT'
 description = '청년정책메이트 백엔드'
 
+springBoot {
+    mainClass = 'kr.youthpolicymate.YouthPolicyMateApplication'
+}
+
 java {
     toolchain {
         languageVersion = JavaLanguageVersion.of(25)
@@ -25,6 +29,10 @@ dependencyManagement {
 }
 
 dependencies {
+    implementation 'org.springframework.boot:spring-boot-starter-mail'
+    implementation 'org.springframework.boot:spring-boot-starter-security-oauth2-client'
+    implementation 'org.springframework.boot:spring-boot-starter-session-jdbc'
+    implementation 'org.springframework.boot:spring-boot-starter-batch-jdbc'
     implementation 'org.springframework.boot:spring-boot-starter-actuator'
     implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
     implementation 'org.springframework.boot:spring-boot-starter-flyway'
@@ -47,6 +55,35 @@ dependencies {
 tasks.named('test') {
     useJUnitPlatform()
     systemProperty 'preview.contract.path', rootProject.file('../api/openapi.preview.json').absolutePath
+    systemProperty 'policy.contract.path', rootProject.file('../api/openapi.policy.json').absolutePath
+}
+
+tasks.register('importPolicyCapture', JavaExec) {
+    description = '확인한 온통청년 목록 캡처 최대 10건을 로컬 DB에 적재한다.'
+    group = 'application'
+    classpath = sourceSets.main.runtimeClasspath
+    mainClass = 'kr.youthpolicymate.ingestion.PolicyCaptureImport'
+    workingDir = rootProject.file('..')
+}
+
+tasks.register('collectPolicyPage', JavaExec) {
+    description = '서울 필터의 한 페이지를 수집하거나 저장 원본 재처리·이력을 조회한다.'
+    group = 'application'
+    classpath = sourceSets.main.runtimeClasspath
+    mainClass = 'kr.youthpolicymate.ingestion.OntongCollectionCommand'
+    workingDir = rootProject.file('..')
+}
+
+tasks.register('exportPolicyOpenApi', Test) {
+    description = '공개 정책 컨트롤러의 실제 OpenAPI 응답을 계약 파일로 생성한다.'
+    group = 'documentation'
+    testClassesDirs = sourceSets.test.output.classesDirs
+    classpath = sourceSets.test.runtimeClasspath
+    useJUnitPlatform()
+    filter { includeTestsMatching 'kr.youthpolicymate.policy.catalog.PolicyCatalogTest.matchesGeneratedContract' }
+    systemProperty 'policy.contract.path', rootProject.file('../api/openapi.policy.json').absolutePath
+    systemProperty 'policy.contract.update', 'true'
+    outputs.upToDateWhen { false }
 }
 
 tasks.register('exportPreviewOpenApi', Test) {

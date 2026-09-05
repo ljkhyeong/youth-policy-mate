@@ -1,6 +1,9 @@
 "use client";
 
-import { useEffect, useRef, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from "react";
+import { PolicyCheckResults } from "./policy-check-results";
+import { ConditionMemberControls } from "@/features/member/condition-member-controls";
+import type { BasicConditions } from "@/features/member/member-api";
 import {
   EMPTY_CONDITION_DRAFT, EMPLOYMENT_OPTIONS, SEOUL_DISTRICTS, validateConditionDraft,
   type ConditionDraft, type ConditionDraftErrors,
@@ -11,6 +14,13 @@ export function ConditionForm({ today }: { today: string }) {
   const [errors, setErrors] = useState<ConditionDraftErrors>({});
   const [confirmed, setConfirmed] = useState(false);
   const [notice, setNotice] = useState("");
+  const [showResults, setShowResults] = useState(false);
+  const suggestedOnce = useRef(false);
+  const suggestBirthDate = useCallback((birthDate: string) => {
+    if (suggestedOnce.current) return;
+    suggestedOnce.current = true;
+    setDraft(previous => previous.birthDate ? previous : { ...previous, birthDate });
+  }, []);
   const formRef = useRef<HTMLFormElement>(null);
   const summaryRef = useRef<HTMLHeadingElement>(null);
 
@@ -38,6 +48,7 @@ export function ConditionForm({ today }: { today: string }) {
   }
 
   function edit() {
+    setShowResults(false);
     setConfirmed(false);
     requestAnimationFrame(() => formRef.current?.querySelector<HTMLInputElement>("#birthDate")?.focus());
   }
@@ -50,6 +61,8 @@ export function ConditionForm({ today }: { today: string }) {
   }
 
   const employmentLabel = EMPLOYMENT_OPTIONS.find(({ value }) => value === draft.employmentStatus)?.label;
+  const input = useMemo(() => ({ ...draft, employmentStatus: draft.employmentStatus as BasicConditions["employmentStatus"] }), [draft]);
+  function loadSaved(value: ConditionDraft) { setDraft(value); setErrors({}); edit(); }
 
   return (
     <section className="condition-panel" aria-label="내 조건 입력과 확인">
@@ -78,18 +91,22 @@ export function ConditionForm({ today }: { today: string }) {
           <div className="availability-note">
             <span aria-hidden="true">i</span>
             <div>
-              <p>정책 추천은 준비 중이에요</p>
-              <p>실제 데이터가 연결되기 전에는 신청 가능 여부나 추천 목록을 표시하지 않아요.</p>
+              <p>정책별 신청 조건을 확인하세요</p>
+              <p>확인 버튼을 누르면 입력 내용을 전송해 이번 확인에만 사용해요. 확인할 수 없는 조건은 ‘추가 확인 필요’로 표시해요.</p>
             </div>
           </div>
-          <p className="data-retention-note">입력 내용은 저장되지 않으며 새로고침하면 사라져요.</p>
+          <p className="data-retention-note">새로고침하면 입력 내용이 지워져요. 로그인 후 저장 버튼을 눌러 보관할 수 있어요.</p>
           <div className="form-actions">
-            <button type="button" className="button-primary button-block" onClick={edit}>입력 내용 수정하기</button>
+            <button type="button" className="button-primary button-block" onClick={() => setShowResults(true)}>이 조건으로 정책 확인하기</button>
+            <button type="button" className="button-secondary button-block" onClick={edit}>입력 내용 수정하기</button>
             <button type="button" className="text-button" onClick={reset}>입력 내용 모두 지우기</button>
           </div>
+          <ConditionMemberControls input={input} onLoad={loadSaved} />
+          {showResults && <PolicyCheckResults input={input} />}
         </div>
       ) : (
         <form ref={formRef} onSubmit={submit} noValidate method="post" autoComplete="off">
+          <ConditionMemberControls onLoad={loadSaved} onSuggestBirthDate={suggestBirthDate} />
           <div className="form-heading">
             <h2>기본 조건</h2>
             <p>세 항목을 입력한 뒤 한 번 더 확인할 수 있어요.</p>

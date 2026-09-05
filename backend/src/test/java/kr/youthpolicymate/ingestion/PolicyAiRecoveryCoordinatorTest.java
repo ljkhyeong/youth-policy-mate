@@ -41,6 +41,8 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
@@ -58,6 +60,7 @@ import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
+import java.util.concurrent.RejectedExecutionException;
 
 import static org.assertj.core.api.Assertions.*;
 
@@ -190,6 +193,40 @@ class PolicyAiRecoveryCoordinatorTest {
         });
         assertThat(leaseRenewalStore.history("attempt-a")).isEmpty();
         assertThat(scheduler.cancelled()).isTrue();
+    }
+
+    @ParameterizedTest
+    @ValueSource(booleans = {false, true})
+    @DisplayName("종료 대기 안에 끝난 청구 확인만 정산하고 기한 뒤의 결과는 예약에 반영하지 않는다")
+    void appliesChargeOnlyWhenInspectionFinishesWithinShutdownGrace(boolean deadlinePassed) {
+        reserve("budget-a", "reservation-a", 10, "10");
+        lifecycleStore.dispatch("reservation-a", new Dispatch("dispatch-a", NOW.plusSeconds(1)));
+        try (var scheduler = new PolicyAiRecoveryHeartbeatScheduler(
+                1, deadlinePassed ? Duration.ZERO : Duration.ofSeconds(5))) {
+            var heartbeat = new PolicyAiRecoveryHeartbeat(
+                    leaseRenewalStore, scheduler, Clock.fixed(NOW.plusSeconds(4), ZoneOffset.UTC),
+                    new HeartbeatPlan(Duration.ofSeconds(2), Duration.ofSeconds(7)));
+            PolicyAiRecoveryPort port = inspection -> {
+                assertThat(TransactionSynchronizationManager.isActualTransactionActive()).isFalse();
+                if (deadlinePassed) scheduler.close();
+                else scheduler.beginShutdown();
+                return new ChargeFound(new ChargeConfirmation("charge-a", NOW.plusSeconds(3), money("7")));
+            };
+            var coordinator = coordinator(port, NOW.plusSeconds(5), heartbeat);
+            var lease = lease("attempt-a", "worker-a", NOW.plusSeconds(2), NOW.plusSeconds(30));
+
+            if (deadlinePassed) {
+                assertThatThrownBy(() -> coordinator.recoverNext(lease)).isInstanceOf(RejectedExecutionException.class);
+                assertThat(lifecycleStore.find("reservation-a").orElseThrow().phase()).isEqualTo(Phase.DISPATCHED);
+                assertThat(budgetAmounts("budget-a")).isEqualTo(new BudgetAmounts(money("0"), money("10")));
+                assertThat(recoveryStore.findAttempt("attempt-a").orElseThrow().status()).isEqualTo(Status.ACTIVE);
+            } else {
+                assertThat(coordinator.recoverNext(lease)).isInstanceOf(PolicyAiRecoveryCoordinator.Recovered.class);
+                assertThat(lifecycleStore.find("reservation-a").orElseThrow().phase()).isEqualTo(Phase.SETTLED);
+                assertThat(budgetAmounts("budget-a")).isEqualTo(new BudgetAmounts(money("7"), money("0")));
+                assertThat(recoveryStore.findAttempt("attempt-a").orElseThrow().status()).isEqualTo(Status.COMPLETED);
+            }
+        }
     }
 
     @Test

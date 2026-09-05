@@ -1,5 +1,7 @@
 # 수집 실행·실패·재처리 위치
 
+2026-09-05 후속 구현: [한 페이지 수집과 저장 원본 재처리](../development/limited-policy-collection.md)에 실제 API·PostgreSQL·Spring Batch를 연결했다. 아래는 기존 순수 진행 모델의 설계이며 현재 수집 명령의 전체 구현 범위를 뜻하지 않는다.
+
 ## 1. 범위
 
 - 제품 기준은 [PRD 6절](../PRD/0001_product-baseline/spec.md), 실행 책임은 [ADR-0001](../ADR/0001_기술스택과_책임_분리.md)을 따른다.

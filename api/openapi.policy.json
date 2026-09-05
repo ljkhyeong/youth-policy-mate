@@ -1,0 +1,1671 @@
+{
+  "openapi" : "3.1.0",
+  "info" : {
+    "title" : "OpenAPI definition",
+    "version" : "v0"
+  },
+  "servers" : [ {
+    "url" : "http://localhost",
+    "description" : "Generated server url"
+  } ],
+  "paths" : {
+    "/api/v1/logout" : {
+      "post" : {
+        "operationId" : "logoutMember",
+        "parameters" : [ {
+          "description" : "GET /api/v1/session에서 받은 csrfToken",
+          "in" : "header",
+          "name" : "X-CSRF-TOKEN",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "204" : {
+            "description" : "로그아웃 완료"
+          },
+          "401" : {
+            "description" : "로그인 필요"
+          },
+          "403" : {
+            "description" : "권한 또는 CSRF 토큰 확인 필요"
+          }
+        },
+        "security" : [ {
+          "memberSession" : [ ]
+        } ],
+        "summary" : "현재 세션 로그아웃"
+      }
+    },
+    "/api/v1/me/conditions" : {
+      "delete" : {
+        "operationId" : "clearMemberConditions",
+        "parameters" : [ {
+          "description" : "GET /api/v1/session에서 받은 csrfToken",
+          "in" : "header",
+          "name" : "X-CSRF-TOKEN",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "204" : {
+            "description" : "No Content"
+          },
+          "401" : {
+            "description" : "로그인 필요"
+          },
+          "403" : {
+            "description" : "권한 또는 CSRF 토큰 확인 필요"
+          }
+        },
+        "security" : [ {
+          "memberSession" : [ ]
+        } ],
+        "summary" : "내 저장 조건 삭제",
+        "tags" : [ "member-controller" ]
+      },
+      "get" : {
+        "operationId" : "getMemberConditions",
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/MemberConditions"
+                }
+              }
+            },
+            "description" : "OK"
+          },
+          "401" : {
+            "description" : "로그인 필요"
+          },
+          "403" : {
+            "description" : "권한 또는 CSRF 토큰 확인 필요"
+          }
+        },
+        "security" : [ {
+          "memberSession" : [ ]
+        } ],
+        "summary" : "내가 저장한 기본 조건 조회",
+        "tags" : [ "member-controller" ]
+      },
+      "put" : {
+        "operationId" : "saveMemberConditions",
+        "parameters" : [ {
+          "description" : "GET /api/v1/session에서 받은 csrfToken",
+          "in" : "header",
+          "name" : "X-CSRF-TOKEN",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/BasicConditions"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "204" : {
+            "description" : "No Content"
+          },
+          "401" : {
+            "description" : "로그인 필요"
+          },
+          "403" : {
+            "description" : "권한 또는 CSRF 토큰 확인 필요"
+          }
+        },
+        "security" : [ {
+          "memberSession" : [ ]
+        } ],
+        "summary" : "확인한 내 기본 조건 저장",
+        "tags" : [ "member-controller" ]
+      }
+    },
+    "/api/v1/me/email-settings" : {
+      "delete" : {
+        "operationId" : "deleteMemberEmailAddress",
+        "parameters" : [ {
+          "description" : "GET /api/v1/session에서 받은 csrfToken",
+          "in" : "header",
+          "name" : "X-CSRF-TOKEN",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "204" : {
+            "description" : "No Content"
+          },
+          "400" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PolicyApiError"
+                }
+              }
+            },
+            "description" : "입력 또는 확인 코드 오류"
+          },
+          "401" : {
+            "description" : "로그인 필요"
+          },
+          "403" : {
+            "description" : "권한 또는 CSRF 토큰 확인 필요"
+          },
+          "409" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PolicyApiError"
+                }
+              }
+            },
+            "description" : "이메일 확인 필요"
+          },
+          "429" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PolicyApiError"
+                }
+              }
+            },
+            "description" : "확인 메일 요청 횟수 초과"
+          },
+          "503" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PolicyApiError"
+                }
+              }
+            },
+            "description" : "이메일 설정 또는 저장소 사용 불가"
+          }
+        },
+        "security" : [ {
+          "memberSession" : [ ]
+        } ],
+        "summary" : "내 이메일 주소와 미발송 요청 삭제",
+        "tags" : [ "member-email-controller" ]
+      },
+      "get" : {
+        "operationId" : "getMemberEmailSettings",
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/MemberEmailSettings"
+                }
+              }
+            },
+            "description" : "OK"
+          },
+          "400" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PolicyApiError"
+                }
+              }
+            },
+            "description" : "입력 또는 확인 코드 오류"
+          },
+          "401" : {
+            "description" : "로그인 필요"
+          },
+          "403" : {
+            "description" : "권한 또는 CSRF 토큰 확인 필요"
+          },
+          "409" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PolicyApiError"
+                }
+              }
+            },
+            "description" : "이메일 확인 필요"
+          },
+          "429" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PolicyApiError"
+                }
+              }
+            },
+            "description" : "확인 메일 요청 횟수 초과"
+          },
+          "503" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PolicyApiError"
+                }
+              }
+            },
+            "description" : "이메일 설정 또는 저장소 사용 불가"
+          }
+        },
+        "security" : [ {
+          "memberSession" : [ ]
+        } ],
+        "summary" : "내 이메일 확인과 수신 설정 조회",
+        "tags" : [ "member-email-controller" ]
+      },
+      "put" : {
+        "operationId" : "changeMemberEmailConsent",
+        "parameters" : [ {
+          "description" : "GET /api/v1/session에서 받은 csrfToken",
+          "in" : "header",
+          "name" : "X-CSRF-TOKEN",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/MemberEmailConsent"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "204" : {
+            "description" : "No Content"
+          },
+          "400" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PolicyApiError"
+                }
+              }
+            },
+            "description" : "입력 또는 확인 코드 오류"
+          },
+          "401" : {
+            "description" : "로그인 필요"
+          },
+          "403" : {
+            "description" : "권한 또는 CSRF 토큰 확인 필요"
+          },
+          "409" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PolicyApiError"
+                }
+              }
+            },
+            "description" : "이메일 확인 필요"
+          },
+          "429" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PolicyApiError"
+                }
+              }
+            },
+            "description" : "확인 메일 요청 횟수 초과"
+          },
+          "503" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PolicyApiError"
+                }
+              }
+            },
+            "description" : "이메일 설정 또는 저장소 사용 불가"
+          }
+        },
+        "security" : [ {
+          "memberSession" : [ ]
+        } ],
+        "summary" : "이메일 알림 별도 수신 동의 또는 해제",
+        "tags" : [ "member-email-controller" ]
+      }
+    },
+    "/api/v1/me/email-verification" : {
+      "post" : {
+        "operationId" : "requestMemberEmailVerification",
+        "parameters" : [ {
+          "description" : "GET /api/v1/session에서 받은 csrfToken",
+          "in" : "header",
+          "name" : "X-CSRF-TOKEN",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/MemberEmailAddress"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "204" : {
+            "description" : "No Content"
+          },
+          "400" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PolicyApiError"
+                }
+              }
+            },
+            "description" : "입력 또는 확인 코드 오류"
+          },
+          "401" : {
+            "description" : "로그인 필요"
+          },
+          "403" : {
+            "description" : "권한 또는 CSRF 토큰 확인 필요"
+          },
+          "409" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PolicyApiError"
+                }
+              }
+            },
+            "description" : "이메일 확인 필요"
+          },
+          "429" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PolicyApiError"
+                }
+              }
+            },
+            "description" : "확인 메일 요청 횟수 초과"
+          },
+          "503" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PolicyApiError"
+                }
+              }
+            },
+            "description" : "이메일 설정 또는 저장소 사용 불가"
+          }
+        },
+        "security" : [ {
+          "memberSession" : [ ]
+        } ],
+        "summary" : "이메일 확인 코드 요청",
+        "tags" : [ "member-email-controller" ]
+      }
+    },
+    "/api/v1/me/email-verification/confirm" : {
+      "post" : {
+        "operationId" : "confirmMemberEmailVerification",
+        "parameters" : [ {
+          "description" : "GET /api/v1/session에서 받은 csrfToken",
+          "in" : "header",
+          "name" : "X-CSRF-TOKEN",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/MemberEmailCode"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "204" : {
+            "description" : "No Content"
+          },
+          "400" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PolicyApiError"
+                }
+              }
+            },
+            "description" : "입력 또는 확인 코드 오류"
+          },
+          "401" : {
+            "description" : "로그인 필요"
+          },
+          "403" : {
+            "description" : "권한 또는 CSRF 토큰 확인 필요"
+          },
+          "409" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PolicyApiError"
+                }
+              }
+            },
+            "description" : "이메일 확인 필요"
+          },
+          "429" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PolicyApiError"
+                }
+              }
+            },
+            "description" : "확인 메일 요청 횟수 초과"
+          },
+          "503" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PolicyApiError"
+                }
+              }
+            },
+            "description" : "이메일 설정 또는 저장소 사용 불가"
+          }
+        },
+        "security" : [ {
+          "memberSession" : [ ]
+        } ],
+        "summary" : "이메일 확인 코드 비교",
+        "tags" : [ "member-email-controller" ]
+      }
+    },
+    "/api/v1/me/notifications" : {
+      "get" : {
+        "operationId" : "listMemberNotifications",
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/MemberNotificationList"
+                }
+              }
+            },
+            "description" : "OK"
+          },
+          "401" : {
+            "description" : "로그인 필요"
+          },
+          "403" : {
+            "description" : "권한 또는 CSRF 토큰 확인 필요"
+          }
+        },
+        "security" : [ {
+          "memberSession" : [ ]
+        } ],
+        "summary" : "내 서비스 내 알림 조회",
+        "tags" : [ "member-controller" ]
+      }
+    },
+    "/api/v1/me/notifications/{id}/read" : {
+      "post" : {
+        "operationId" : "readMemberNotification",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        }, {
+          "description" : "GET /api/v1/session에서 받은 csrfToken",
+          "in" : "header",
+          "name" : "X-CSRF-TOKEN",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "204" : {
+            "description" : "No Content"
+          },
+          "401" : {
+            "description" : "로그인 필요"
+          },
+          "403" : {
+            "description" : "권한 또는 CSRF 토큰 확인 필요"
+          }
+        },
+        "security" : [ {
+          "memberSession" : [ ]
+        } ],
+        "summary" : "내 알림 읽음 처리",
+        "tags" : [ "member-controller" ]
+      }
+    },
+    "/api/v1/me/policies" : {
+      "get" : {
+        "operationId" : "listSavedPolicies",
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/SavedPolicyList"
+                }
+              }
+            },
+            "description" : "OK"
+          },
+          "401" : {
+            "description" : "로그인 필요"
+          },
+          "403" : {
+            "description" : "권한 또는 CSRF 토큰 확인 필요"
+          }
+        },
+        "security" : [ {
+          "memberSession" : [ ]
+        } ],
+        "summary" : "내 관심 정책과 최신 마감 일정 조회",
+        "tags" : [ "member-controller" ]
+      }
+    },
+    "/api/v1/me/policies/{number}" : {
+      "delete" : {
+        "operationId" : "removeSavedPolicy",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "number",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "description" : "GET /api/v1/session에서 받은 csrfToken",
+          "in" : "header",
+          "name" : "X-CSRF-TOKEN",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "204" : {
+            "description" : "No Content"
+          },
+          "401" : {
+            "description" : "로그인 필요"
+          },
+          "403" : {
+            "description" : "권한 또는 CSRF 토큰 확인 필요"
+          }
+        },
+        "security" : [ {
+          "memberSession" : [ ]
+        } ],
+        "summary" : "내 관심 정책 해제와 미발송 알림 취소",
+        "tags" : [ "member-controller" ]
+      },
+      "put" : {
+        "operationId" : "savePolicy",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "number",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "description" : "GET /api/v1/session에서 받은 csrfToken",
+          "in" : "header",
+          "name" : "X-CSRF-TOKEN",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "204" : {
+            "description" : "No Content"
+          },
+          "401" : {
+            "description" : "로그인 필요"
+          },
+          "403" : {
+            "description" : "권한 또는 CSRF 토큰 확인 필요"
+          }
+        },
+        "security" : [ {
+          "memberSession" : [ ]
+        } ],
+        "summary" : "내 관심 정책 저장과 마감 알림 예약",
+        "tags" : [ "member-controller" ]
+      }
+    },
+    "/api/v1/policies" : {
+      "get" : {
+        "operationId" : "listPolicies",
+        "parameters" : [ {
+          "in" : "query",
+          "name" : "q",
+          "required" : false,
+          "schema" : {
+            "type" : "string",
+            "default" : "",
+            "maxLength" : 80,
+            "minLength" : 0
+          }
+        }, {
+          "in" : "query",
+          "name" : "page",
+          "required" : false,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int32",
+            "default" : 1,
+            "maximum" : 1000,
+            "minimum" : 1
+          }
+        }, {
+          "in" : "query",
+          "name" : "pageSize",
+          "required" : false,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int32",
+            "default" : 20,
+            "maximum" : 50,
+            "minimum" : 1
+          }
+        }, {
+          "in" : "query",
+          "name" : "questionsOnly",
+          "required" : false,
+          "schema" : {
+            "type" : "boolean",
+            "default" : false
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PolicyListResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          },
+          "400" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PolicyApiError"
+                }
+              }
+            },
+            "description" : "Bad Request"
+          },
+          "503" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PolicyApiError"
+                }
+              }
+            },
+            "description" : "정책 저장소 조회 실패"
+          }
+        },
+        "summary" : "저장된 정책 검색과 현재 공통요건 질문이 있는 정책 필터",
+        "tags" : [ "policy-catalog-controller" ]
+      }
+    },
+    "/api/v1/policies/checks" : {
+      "post" : {
+        "operationId" : "checkPolicyConditions",
+        "parameters" : [ {
+          "in" : "query",
+          "name" : "page",
+          "required" : false,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int32",
+            "default" : 1,
+            "maximum" : 1000,
+            "minimum" : 1
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/BasicConditions"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PolicyCheckResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          },
+          "400" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PolicyApiError"
+                }
+              }
+            },
+            "description" : "Bad Request"
+          },
+          "503" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PolicyApiError"
+                }
+              }
+            },
+            "description" : "정책 저장소 조회 실패"
+          }
+        },
+        "summary" : "기본 조건으로 실제 정책의 확인할 요건과 원문 조회. 조건은 저장하지 않음",
+        "tags" : [ "policy-catalog-controller" ]
+      }
+    },
+    "/api/v1/policies/{number}/evaluation" : {
+      "post" : {
+        "operationId" : "evaluatePolicyAnswers",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "number",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/PolicyEvaluationRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PolicyEvaluation"
+                }
+              }
+            },
+            "description" : "OK"
+          },
+          "400" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PolicyApiError"
+                }
+              }
+            },
+            "description" : "질문·답변 형식 오류"
+          },
+          "404" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PolicyApiError"
+                }
+              }
+            },
+            "description" : "정책 없음"
+          },
+          "409" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PolicyApiError"
+                }
+              }
+            },
+            "description" : "정책 개정 또는 질문 변경"
+          },
+          "503" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PolicyApiError"
+                }
+              }
+            },
+            "description" : "정책 저장소 조회 실패"
+          }
+        },
+        "summary" : "추가 답변으로 확인한 공통요건 비교. 답변은 저장하지 않음",
+        "tags" : [ "policy-question-controller" ]
+      }
+    },
+    "/api/v1/policies/{number}/questions" : {
+      "get" : {
+        "operationId" : "getPolicyQuestions",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "number",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PolicyQuestionnaire"
+                }
+              }
+            },
+            "description" : "OK"
+          },
+          "404" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PolicyApiError"
+                }
+              }
+            },
+            "description" : "정책 없음"
+          },
+          "503" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PolicyApiError"
+                }
+              }
+            },
+            "description" : "정책 저장소 조회 실패"
+          }
+        },
+        "summary" : "현재 정책 개정에서 검토한 추가 질문 조회",
+        "tags" : [ "policy-question-controller" ]
+      }
+    },
+    "/api/v1/policies/{policyNumber}" : {
+      "get" : {
+        "operationId" : "getPolicy",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "policyNumber",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PolicyDetailResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          },
+          "404" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PolicyApiError"
+                }
+              }
+            },
+            "description" : "Not Found"
+          },
+          "503" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PolicyApiError"
+                }
+              }
+            },
+            "description" : "정책 저장소 조회 실패"
+          }
+        },
+        "summary" : "정책 상세와 원문 출처 조회",
+        "tags" : [ "policy-catalog-controller" ]
+      }
+    },
+    "/api/v1/session" : {
+      "get" : {
+        "operationId" : "getMemberSession",
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/MemberSession"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "summary" : "로그인 상태·설정된 로그인 제공자·CSRF 토큰 조회",
+        "tags" : [ "member-controller" ]
+      }
+    }
+  },
+  "components" : {
+    "schemas" : {
+      "BasicConditions" : {
+        "type" : "object",
+        "properties" : {
+          "birthDate" : {
+            "type" : "string",
+            "format" : "date"
+          },
+          "district" : {
+            "type" : "string",
+            "maxLength" : 10,
+            "minLength" : 0
+          },
+          "employmentStatus" : {
+            "type" : "string",
+            "enum" : [ "EMPLOYED", "SELF_EMPLOYED", "NOT_EMPLOYED", "FREELANCER", "DAY_WORKER", "ENTREPRENEUR", "SHORT_TERM_WORKER", "FARMER", "OTHER" ]
+          }
+        },
+        "required" : [ "birthDate", "district", "employmentStatus" ]
+      },
+      "LoginProvider" : {
+        "type" : "object",
+        "properties" : {
+          "id" : {
+            "type" : "string"
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "url" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "id", "name", "url" ]
+      },
+      "MemberConditions" : {
+        "type" : "object",
+        "properties" : {
+          "conditions" : {
+            "anyOf" : [ {
+              "$ref" : "#/components/schemas/BasicConditions"
+            }, {
+              "type" : "null"
+            } ]
+          }
+        },
+        "required" : [ "conditions" ]
+      },
+      "MemberEmailAddress" : {
+        "type" : "object",
+        "properties" : {
+          "address" : {
+            "type" : "string",
+            "maxLength" : 254,
+            "minLength" : 0
+          }
+        },
+        "required" : [ "address" ]
+      },
+      "MemberEmailCode" : {
+        "type" : "object",
+        "properties" : {
+          "code" : {
+            "type" : "string",
+            "maxLength" : 100,
+            "minLength" : 0
+          }
+        },
+        "required" : [ "code" ]
+      },
+      "MemberEmailConsent" : {
+        "type" : "object",
+        "properties" : {
+          "enabled" : {
+            "type" : "boolean"
+          }
+        },
+        "required" : [ "enabled" ]
+      },
+      "MemberEmailSettings" : {
+        "type" : "object",
+        "properties" : {
+          "address" : {
+            "type" : [ "string", "null" ]
+          },
+          "addressRegistered" : {
+            "type" : "boolean"
+          },
+          "available" : {
+            "type" : "boolean"
+          },
+          "enabled" : {
+            "type" : "boolean"
+          },
+          "verificationDelivery" : {
+            "type" : [ "string", "null" ],
+            "enum" : [ "PENDING", "SENDING", "SENT", "FAILED", "UNKNOWN", "CANCELED", null ]
+          },
+          "verificationExpiresAt" : {
+            "type" : [ "string", "null" ],
+            "format" : "date-time"
+          },
+          "verified" : {
+            "type" : "boolean"
+          }
+        },
+        "required" : [ "address", "addressRegistered", "available", "enabled", "verificationDelivery", "verificationExpiresAt", "verified" ]
+      },
+      "MemberNotification" : {
+        "type" : "object",
+        "properties" : {
+          "createdAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "id" : {
+            "type" : "string"
+          },
+          "message" : {
+            "type" : "string"
+          },
+          "policyNumber" : {
+            "type" : "string"
+          },
+          "read" : {
+            "type" : "boolean"
+          },
+          "title" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "createdAt", "id", "message", "policyNumber", "read", "title" ]
+      },
+      "MemberNotificationList" : {
+        "type" : "object",
+        "properties" : {
+          "items" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/MemberNotification"
+            }
+          }
+        },
+        "required" : [ "items" ]
+      },
+      "MemberSession" : {
+        "type" : "object",
+        "properties" : {
+          "authenticated" : {
+            "type" : "boolean"
+          },
+          "csrfToken" : {
+            "type" : "string"
+          },
+          "displayName" : {
+            "type" : "string"
+          },
+          "providers" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/LoginProvider"
+            }
+          },
+          "suggestedBirthDate" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "authenticated", "csrfToken", "displayName", "providers", "suggestedBirthDate" ]
+      },
+      "PolicyAnswer" : {
+        "type" : "object",
+        "properties" : {
+          "questionId" : {
+            "type" : "string",
+            "maxLength" : 60,
+            "minLength" : 0
+          },
+          "value" : {
+            "type" : "string",
+            "maxLength" : 40,
+            "minLength" : 0
+          }
+        },
+        "required" : [ "questionId", "value" ]
+      },
+      "PolicyAnswerOption" : {
+        "type" : "object",
+        "properties" : {
+          "label" : {
+            "type" : "string"
+          },
+          "value" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "label", "value" ]
+      },
+      "PolicyApiError" : {
+        "type" : "object",
+        "properties" : {
+          "code" : {
+            "type" : "string"
+          },
+          "message" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "code", "message" ]
+      },
+      "PolicyCheckItem" : {
+        "type" : "object",
+        "properties" : {
+          "applicationPeriod" : {
+            "type" : "string"
+          },
+          "checks" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/PolicyConditionCheck"
+            }
+          },
+          "collectedAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "explanation" : {
+            "type" : "string"
+          },
+          "policyNumber" : {
+            "type" : "string"
+          },
+          "questionnaireAvailable" : {
+            "type" : "boolean",
+            "description" : "현재 원문·적용 시점에 맞는 공통요건 질문 제공 여부. 자격·모집 상태와 무관"
+          },
+          "revision" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "sourceUrl" : {
+            "type" : "string"
+          },
+          "status" : {
+            "type" : "string",
+            "enum" : [ "ELIGIBLE", "NEEDS_REVIEW", "INELIGIBLE" ]
+          },
+          "title" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "applicationPeriod", "checks", "collectedAt", "explanation", "policyNumber", "questionnaireAvailable", "revision", "sourceUrl", "status", "title" ]
+      },
+      "PolicyCheckResponse" : {
+        "type" : "object",
+        "properties" : {
+          "evaluatedAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "hasNext" : {
+            "type" : "boolean"
+          },
+          "items" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/PolicyCheckItem"
+            }
+          },
+          "page" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "total" : {
+            "type" : "integer",
+            "format" : "int64"
+          }
+        },
+        "required" : [ "evaluatedAt", "hasNext", "items", "page", "total" ]
+      },
+      "PolicyConditionCheck" : {
+        "type" : "object",
+        "properties" : {
+          "evidence" : {
+            "type" : "string"
+          },
+          "explanation" : {
+            "type" : "string"
+          },
+          "label" : {
+            "type" : "string"
+          },
+          "providedValue" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "evidence", "explanation", "label", "providedValue" ]
+      },
+      "PolicyContent" : {
+        "type" : "object",
+        "properties" : {
+          "applicationPeriod" : {
+            "type" : "string"
+          },
+          "category" : {
+            "type" : "string"
+          },
+          "description" : {
+            "type" : "string"
+          },
+          "links" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/PolicyOfficialLink"
+            }
+          },
+          "organization" : {
+            "type" : "string"
+          },
+          "regionCodes" : {
+            "type" : "array",
+            "items" : {
+              "type" : "string"
+            }
+          },
+          "sections" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/PolicyTextSection"
+            }
+          },
+          "sourceModifiedAtText" : {
+            "type" : "string",
+            "description" : "시간대가 확정되지 않은 원천 수정 일시 원문"
+          },
+          "title" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "applicationPeriod", "category", "description", "links", "organization", "regionCodes", "sections", "sourceModifiedAtText", "title" ]
+      },
+      "PolicyDeadline" : {
+        "type" : "object",
+        "properties" : {
+          "date" : {
+            "type" : [ "string", "null" ],
+            "format" : "date"
+          },
+          "note" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "date", "note" ]
+      },
+      "PolicyDetailResponse" : {
+        "type" : "object",
+        "properties" : {
+          "collectedAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "content" : {
+            "$ref" : "#/components/schemas/PolicyContent"
+          },
+          "policyNumber" : {
+            "type" : "string"
+          },
+          "revision" : {
+            "type" : "integer",
+            "format" : "int64",
+            "description" : "서비스 내부 적용 개정 번호"
+          },
+          "sourceUrl" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "collectedAt", "content", "policyNumber", "revision", "sourceUrl" ]
+      },
+      "PolicyEvaluatedCheck" : {
+        "type" : "object",
+        "properties" : {
+          "evidence" : {
+            "type" : "string"
+          },
+          "explanation" : {
+            "type" : "string"
+          },
+          "label" : {
+            "type" : "string"
+          },
+          "outcome" : {
+            "type" : "string",
+            "enum" : [ "MET", "NOT_MET", "UNKNOWN" ]
+          },
+          "providedValue" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "evidence", "explanation", "label", "outcome", "providedValue" ]
+      },
+      "PolicyEvaluation" : {
+        "type" : "object",
+        "properties" : {
+          "checks" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/PolicyEvaluatedCheck"
+            }
+          },
+          "commonCriteriaStatus" : {
+            "type" : "string",
+            "enum" : [ "ELIGIBLE", "NEEDS_REVIEW", "INELIGIBLE" ]
+          },
+          "evaluatedAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "explanation" : {
+            "type" : "string"
+          },
+          "policyNumber" : {
+            "type" : "string"
+          },
+          "remainingChecks" : {
+            "type" : "array",
+            "items" : {
+              "type" : "string"
+            }
+          },
+          "revision" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "ruleVersion" : {
+            "type" : "string"
+          },
+          "scope" : {
+            "type" : "string"
+          },
+          "sourceUrl" : {
+            "type" : "string"
+          },
+          "status" : {
+            "type" : "string",
+            "enum" : [ "ELIGIBLE", "NEEDS_REVIEW", "INELIGIBLE" ]
+          }
+        },
+        "required" : [ "checks", "commonCriteriaStatus", "evaluatedAt", "explanation", "policyNumber", "remainingChecks", "revision", "ruleVersion", "scope", "sourceUrl", "status" ]
+      },
+      "PolicyEvaluationRequest" : {
+        "type" : "object",
+        "properties" : {
+          "answers" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/PolicyAnswer"
+            },
+            "maxItems" : 10,
+            "minItems" : 0
+          },
+          "revision" : {
+            "type" : "integer",
+            "format" : "int64",
+            "minimum" : 0
+          },
+          "ruleVersion" : {
+            "type" : "string",
+            "maxLength" : 80,
+            "minLength" : 0
+          }
+        },
+        "required" : [ "answers", "revision", "ruleVersion" ]
+      },
+      "PolicyListResponse" : {
+        "type" : "object",
+        "properties" : {
+          "hasNext" : {
+            "type" : "boolean"
+          },
+          "items" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/PolicySummary"
+            }
+          },
+          "page" : {
+            "type" : "integer",
+            "format" : "int32",
+            "description" : "1부터 시작하는 페이지"
+          },
+          "pageSize" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "total" : {
+            "type" : "integer",
+            "format" : "int64"
+          }
+        },
+        "required" : [ "hasNext", "items", "page", "pageSize", "total" ]
+      },
+      "PolicyOfficialLink" : {
+        "type" : "object",
+        "properties" : {
+          "label" : {
+            "type" : "string"
+          },
+          "url" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "label", "url" ]
+      },
+      "PolicyQuestion" : {
+        "type" : "object",
+        "properties" : {
+          "help" : {
+            "type" : "string"
+          },
+          "id" : {
+            "type" : "string"
+          },
+          "label" : {
+            "type" : "string"
+          },
+          "options" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/PolicyAnswerOption"
+            }
+          }
+        },
+        "required" : [ "help", "id", "label", "options" ]
+      },
+      "PolicyQuestionnaire" : {
+        "type" : "object",
+        "properties" : {
+          "available" : {
+            "type" : "boolean"
+          },
+          "policyNumber" : {
+            "type" : "string"
+          },
+          "questions" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/PolicyQuestion"
+            }
+          },
+          "reason" : {
+            "type" : "string"
+          },
+          "revision" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "ruleVersion" : {
+            "type" : "string"
+          },
+          "scope" : {
+            "type" : "string"
+          },
+          "sourceUrl" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "available", "policyNumber", "questions", "reason", "revision", "ruleVersion", "scope", "sourceUrl" ]
+      },
+      "PolicySummary" : {
+        "type" : "object",
+        "properties" : {
+          "applicationPeriod" : {
+            "type" : "string"
+          },
+          "category" : {
+            "type" : "string"
+          },
+          "collectedAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "description" : {
+            "type" : "string"
+          },
+          "organization" : {
+            "type" : "string"
+          },
+          "policyNumber" : {
+            "type" : "string"
+          },
+          "questionnaireAvailable" : {
+            "type" : "boolean",
+            "description" : "현재 원문·적용 시점에 맞는 공통요건 질문 제공 여부. 자격·모집 상태와 무관"
+          },
+          "title" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "applicationPeriod", "category", "collectedAt", "description", "organization", "policyNumber", "questionnaireAvailable", "title" ]
+      },
+      "PolicyTextSection" : {
+        "type" : "object",
+        "properties" : {
+          "text" : {
+            "type" : "string"
+          },
+          "title" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "text", "title" ]
+      },
+      "SavedPolicy" : {
+        "type" : "object",
+        "properties" : {
+          "applicationPeriod" : {
+            "type" : "string"
+          },
+          "currentRevision" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "deadline" : {
+            "$ref" : "#/components/schemas/PolicyDeadline"
+          },
+          "policyNumber" : {
+            "type" : "string"
+          },
+          "savedAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "savedRevision" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "title" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "applicationPeriod", "currentRevision", "deadline", "policyNumber", "savedAt", "savedRevision", "title" ]
+      },
+      "SavedPolicyList" : {
+        "type" : "object",
+        "properties" : {
+          "items" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/SavedPolicy"
+            }
+          }
+        },
+        "required" : [ "items" ]
+      }
+    },
+    "securitySchemes" : {
+      "memberSession" : {
+        "description" : "카카오·네이버 로그인 후 발급하는 서버 세션",
+        "in" : "cookie",
+        "name" : "YPM_SESSION",
+        "type" : "apiKey"
+      }
+    }
+  }
+}

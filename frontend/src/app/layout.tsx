@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import { AccountTransitions } from "@/features/member/account-transitions";
 
 export const metadata: Metadata = {
   title: "청년정책메이트",
@@ -10,7 +11,7 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="ko">
-      <body>{children}</body>
+      <body><AccountTransitions />{children}</body>
     </html>
   );
 }

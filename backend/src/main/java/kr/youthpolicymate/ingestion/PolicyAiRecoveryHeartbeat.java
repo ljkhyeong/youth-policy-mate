@@ -52,6 +52,7 @@ public final class PolicyAiRecoveryHeartbeat {
             }
             cancellation.cancel();
         }
+        cancellation.verifyCompletion();
 
         synchronized (state) {
             if (state.failure != null) throw state.failure;
@@ -141,6 +142,9 @@ public final class PolicyAiRecoveryHeartbeat {
     @FunctionalInterface
     public interface Cancellation {
         void cancel();
+
+        // 관리형 실행기는 취소와 종료 기한 중 먼저 확정된 상태로 응답 적용 가능 여부를 확인한다.
+        default void verifyCompletion() {}
     }
 
     private static final class HeartbeatState {

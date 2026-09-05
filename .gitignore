@@ -13,3 +13,4 @@ node_modules/
 *.log
 frontend/next-env.d.ts
 /.local/ontong-api/
+/.local/verification/

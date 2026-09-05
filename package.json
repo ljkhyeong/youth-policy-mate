@@ -6,6 +6,10 @@
     "node": ">=24 <27"
   },
   "scripts": {
+    "verify": "node scripts/verify.mjs",
+    "compile:backend": "./backend/gradlew -p backend classes testClasses --no-daemon",
+    "package:backend": "./backend/gradlew -p backend bootJar --no-daemon",
+    "test:policy-questions": "./backend/gradlew -p backend test --tests 'kr.youthpolicymate.policy.catalog.*RulesTest' --no-daemon",
     "dev:web": "npm run dev --workspace frontend",
     "dev:backend": "./backend/gradlew -p backend bootRun --no-daemon --args='--spring.profiles.active=local'",
     "dev:preview-api": "./backend/gradlew -p backend bootRun --no-daemon --args='--spring.profiles.active=preview'",
@@ -37,7 +41,7 @@
     "test:ai-recovery-work": "./backend/gradlew -p backend test --tests 'kr.youthpolicymate.ingestion.AiReservationRecoveryWork*Test' --no-daemon",
     "test:reminders": "./backend/gradlew -p backend test --tests 'kr.youthpolicymate.schedule.*' --no-daemon",
     "check:backend": "./backend/gradlew -p backend build --no-daemon",
-    "check:tools": "node --test scripts/ontong-api-probe.test.mjs",
+    "check:tools": "node --test scripts/*.test.mjs",
     "probe:ontong": "node --env-file-if-exists=.env scripts/ontong-api-probe.mjs",
     "db:up": "docker compose up -d --wait postgres",
     "db:down": "docker compose down"

@@ -69,7 +69,7 @@ public final class AiReservationRecoveryRetryPolicy {
     private static List<Attempt> validateHistory(String reservationId, List<Attempt> history) {
         List<Attempt> attempts = List.copyOf(history);
         for (int index = 0; index < attempts.size(); index++) {
-            Attempt attempt = Objects.requireNonNull(attempts.get(index), "AI 예약 복구 시도 이력에 빈 값이 있습니다.");
+            Attempt attempt = attempts.get(index);
             long expectedNumber = index + 1L;
             if (!reservationId.equals(attempt.reservationId())) {
                 throw new IllegalArgumentException("현재 예약과 복구 시도 이력의 예약 식별자가 다릅니다.");
@@ -92,7 +92,6 @@ public final class AiReservationRecoveryRetryPolicy {
 
         Map<String, ResumeRecord> resumesByAttempt = new HashMap<>();
         for (ResumeRecord resume : List.copyOf(reviewResumes)) {
-            Objects.requireNonNull(resume, "AI 예약 복구 수동 검토 재개 이력에 빈 값이 있습니다.");
             if (!reservationId.equals(resume.reservationId())) {
                 throw new IllegalArgumentException("현재 예약과 수동 검토 재개 이력의 예약 식별자가 다릅니다.");
             }
@@ -151,7 +150,7 @@ public final class AiReservationRecoveryRetryPolicy {
             if (retryDelays.size() != maximumAttempts - 1) {
                 throw new IllegalArgumentException("재확인 간격은 최대 시도 횟수보다 하나 적어야 합니다.");
             }
-            if (retryDelays.stream().anyMatch(delay -> delay == null || delay.isZero() || delay.isNegative())) {
+            if (retryDelays.stream().anyMatch(delay -> delay.isZero() || delay.isNegative())) {
                 throw new IllegalArgumentException("AI 예약 복구 재확인 간격은 0보다 길어야 합니다.");
             }
         }

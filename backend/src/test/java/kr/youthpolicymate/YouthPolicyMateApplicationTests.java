@@ -54,6 +54,14 @@ class YouthPolicyMateApplicationTests {
     }
 
     @Test
+    @DisplayName("OAuth 키가 없는 환경도 실행하고 로그인 제공자는 빈 목록으로 반환한다")
+    void startsWithoutLoginProviders() throws Exception {
+        mockMvc.perform(get("/api/v1/session")).andExpect(status().isOk())
+                .andExpect(jsonPath("$.authenticated").value(false))
+                .andExpect(jsonPath("$.providers").isEmpty());
+    }
+
+    @Test
     @DisplayName("공개 정책 조회 외의 개발·관리 경로는 허용하지 않는다")
     void deniesOtherPaths() throws Exception {
         assertThat(applicationContext.getBeansOfType(ReminderPreviewController.class)).isEmpty();

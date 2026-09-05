@@ -12,8 +12,6 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.Objects;
 import java.util.UUID;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
 
 // 외부 확인과 별개로 짧은 임대 갱신만 예약하고, 갱신 실패 뒤의 확인 결과는 적용 경계로 넘기지 않는다.
 public final class PolicyAiRecoveryHeartbeat {
@@ -125,18 +123,6 @@ public final class PolicyAiRecoveryHeartbeat {
     @FunctionalInterface
     public interface HeartbeatScheduler {
         Cancellation schedule(Duration initialDelay, Duration delay, Runnable heartbeat);
-
-        static HeartbeatScheduler scheduled(ScheduledExecutorService executor) {
-            Objects.requireNonNull(executor, "AI 예약 복구 heartbeat 실행기가 필요합니다.");
-            return (initialDelay, delay, heartbeat) -> {
-                Objects.requireNonNull(initialDelay, "AI 예약 복구 heartbeat 최초 대기 시간이 필요합니다.");
-                Objects.requireNonNull(delay, "AI 예약 복구 heartbeat 반복 주기가 필요합니다.");
-                Objects.requireNonNull(heartbeat, "AI 예약 복구 heartbeat 작업이 필요합니다.");
-                var future = executor.scheduleWithFixedDelay(
-                        heartbeat, initialDelay.toNanos(), delay.toNanos(), TimeUnit.NANOSECONDS);
-                return () -> future.cancel(false);
-            };
-        }
     }
 
     @FunctionalInterface

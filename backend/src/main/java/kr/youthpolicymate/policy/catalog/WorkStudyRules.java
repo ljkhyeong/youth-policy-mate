@@ -5,7 +5,6 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
-import java.util.stream.Collectors;
 
 import static kr.youthpolicymate.eligibility.ConditionAssessment.Outcome.*;
 import static kr.youthpolicymate.policy.catalog.PolicyQuestions.*;
@@ -36,12 +35,7 @@ public final class WorkStudyRules {
     }
 
     public static Evaluation evaluate(long revision, Request input, Instant now) {
-        var allowed = QUESTIONS.stream().collect(Collectors.toMap(Question::id, q -> q.options().stream().map(Option::value).toList()));
-        var values = new java.util.HashMap<String, String>();
-        for (var answer : input.answers()) {
-            if (answer == null || !allowed.containsKey(answer.questionId()) || !allowed.get(answer.questionId()).contains(answer.value())
-                    || values.putIfAbsent(answer.questionId(), answer.value()) != null) throw new IllegalArgumentException("질문과 답변을 다시 확인해주세요.");
-        }
+        var values = validatedAnswers(QUESTIONS, input.answers());
         var checks = List.of(
                 yesNo("대한민국 국적", values.get("nationality"), "지원 대상은 대한민국 국적 보유자예요."),
                 yesNo("지원 대상 대학의 학적", values.get("enrollment"), "지원 대상 대학의 재학생과 입학예정자를 확인해요."),

@@ -11,6 +11,7 @@ import org.springframework.http.CacheControl;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.core.user.OAuth2User;
+import org.springframework.security.oauth2.client.registration.InMemoryClientRegistrationRepository;
 import org.springframework.security.web.csrf.CsrfToken;
 import org.springframework.web.bind.annotation.*;
 
@@ -23,9 +24,9 @@ import java.util.UUID;
 @RequestMapping("/api/v1")
 public class MemberController {
     private final MemberPolicyStore store;
-    private final ObjectProvider<MemberConfiguration.Registrations> registrations;
+    private final ObjectProvider<InMemoryClientRegistrationRepository> registrations;
     private final Environment environment;
-    public MemberController(MemberPolicyStore store, ObjectProvider<MemberConfiguration.Registrations> registrations, Environment environment) {
+    public MemberController(MemberPolicyStore store, ObjectProvider<InMemoryClientRegistrationRepository> registrations, Environment environment) {
         this.store = store; this.registrations = registrations; this.environment = environment;
     }
 

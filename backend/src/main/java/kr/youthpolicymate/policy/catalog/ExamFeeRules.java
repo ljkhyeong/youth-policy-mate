@@ -4,10 +4,8 @@ import kr.youthpolicymate.eligibility.*;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Optional;
-import java.util.stream.Collectors;
 import static kr.youthpolicymate.eligibility.ConditionAssessment.Outcome.*;
 import static kr.youthpolicymate.policy.catalog.PolicyQuestions.*;
 
@@ -39,12 +37,7 @@ public final class ExamFeeRules {
     }
     public static Evaluation evaluate(long revision, Request input, Instant now) {
         if (!appliesAt(now)) throw new IllegalArgumentException("검토한 2026년 지원 기준만 사용할 수 있습니다.");
-        var allowed = QUESTIONS.stream().collect(Collectors.toMap(Question::id, q -> q.options().stream().map(Option::value).toList()));
-        var values = new HashMap<String, String>();
-        for (var answer : input.answers()) {
-            if (answer == null || !allowed.containsKey(answer.questionId()) || !allowed.get(answer.questionId()).contains(answer.value())
-                    || values.putIfAbsent(answer.questionId(), answer.value()) != null) throw new IllegalArgumentException("질문과 답변을 다시 확인해주세요.");
-        }
+        var values = validatedAnswers(QUESTIONS, input.answers());
         var birth = values.get("birthRange"); var exam = values.get("exam"); var uses = values.get("remainingUses");
         var checks = List.of(
                 check("birthRange", "공식 출생일 기준", birth, "ON_OR_AFTER_1991_01_01".equals(birth) ? MET : "BEFORE_1991_01_01".equals(birth) ? NOT_MET : UNKNOWN,

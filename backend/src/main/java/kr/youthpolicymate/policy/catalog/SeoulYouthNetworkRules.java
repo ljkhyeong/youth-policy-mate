@@ -4,10 +4,8 @@ import kr.youthpolicymate.eligibility.*;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Optional;
-import java.util.stream.Collectors;
 import static kr.youthpolicymate.eligibility.ConditionAssessment.Outcome.*;
 import static kr.youthpolicymate.policy.catalog.PolicyQuestions.*;
 
@@ -53,12 +51,7 @@ public final class SeoulYouthNetworkRules {
     }
     public static Evaluation evaluate(long revision, Request input, Instant now) {
         if (!appliesAt(now)) throw new IllegalArgumentException("검토한 2026년 하반기 모집 기준만 사용할 수 있습니다.");
-        var allowed = QUESTIONS.stream().collect(Collectors.toMap(Question::id, q -> q.options().stream().map(Option::value).toList()));
-        var values = new HashMap<String, String>();
-        for (var answer : input.answers()) {
-            if (answer == null || !allowed.containsKey(answer.questionId()) || !allowed.get(answer.questionId()).contains(answer.value())
-                    || values.putIfAbsent(answer.questionId(), answer.value()) != null) throw new IllegalArgumentException("질문과 답변을 다시 확인해주세요.");
-        }
+        var values = validatedAnswers(QUESTIONS, input.answers());
         var birth = values.getOrDefault("birthRange", "UNKNOWN");
         var connection = values.getOrDefault("seoulConnection", "UNKNOWN");
         var terms = values.get("consecutiveTerms");

@@ -26,7 +26,7 @@ public class MemberEmailController {
         return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(store.settings(MemberController.member(user)));
     }
     @PostMapping("/email-verification") @ResponseStatus(HttpStatus.NO_CONTENT) @Operation(operationId = "requestMemberEmailVerification", summary = "이메일 확인 코드 요청")
-    void request(@AuthenticationPrincipal OAuth2User user, @Valid @RequestBody Address input) { store.request(MemberController.member(user), input.address()); }
+    void request(@AuthenticationPrincipal OAuth2User user, @Valid @RequestBody MemberEmailAddress input) { store.request(MemberController.member(user), input.address()); }
     @PostMapping("/email-verification/confirm") @ResponseStatus(HttpStatus.NO_CONTENT) @Operation(operationId = "confirmMemberEmailVerification", summary = "이메일 확인 코드 비교")
     void confirm(@AuthenticationPrincipal OAuth2User user, @Valid @RequestBody Code input) {
         if (!store.confirm(MemberController.member(user), input.code()))
@@ -36,8 +36,6 @@ public class MemberEmailController {
     void consent(@AuthenticationPrincipal OAuth2User user, @Valid @RequestBody Consent input) { store.consent(MemberController.member(user), input.enabled()); }
     @DeleteMapping("/email-settings") @ResponseStatus(HttpStatus.NO_CONTENT) @Operation(operationId = "deleteMemberEmailAddress", summary = "내 이메일 주소와 미발송 요청 삭제")
     void remove(@AuthenticationPrincipal OAuth2User user) { store.remove(MemberController.member(user)); }
-    @Schema(name = "MemberEmailAddress", requiredProperties = {"address"})
-    public record Address(@NotNull @Size(max = 254) String address) {}
     @Schema(name = "MemberEmailCode", requiredProperties = {"code"})
     public record Code(@NotNull @Size(max = 100) String code) {}
     @Schema(name = "MemberEmailConsent", requiredProperties = {"enabled"})

@@ -10,8 +10,24 @@ import kr.youthpolicymate.eligibility.ConditionAssessment;
 import kr.youthpolicymate.eligibility.EligibilityStatus;
 import java.time.Instant;
 import java.util.List;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 public final class PolicyQuestions {
+    static Map<String, String> validatedAnswers(List<Question> questions, List<Answer> answers) {
+        var allowed = questions.stream().collect(Collectors.toMap(Question::id,
+                question -> question.options().stream().map(Option::value).toList()));
+        var values = new HashMap<String, String>();
+        for (var answer : answers) {
+            if (answer == null || !allowed.containsKey(answer.questionId()) || !allowed.get(answer.questionId()).contains(answer.value())
+                    || values.putIfAbsent(answer.questionId(), answer.value()) != null) {
+                throw new IllegalArgumentException("질문과 답변을 다시 확인해주세요.");
+            }
+        }
+        return values;
+    }
+
     @Schema(name = "PolicyQuestionnaire", requiredProperties = {"policyNumber", "revision", "ruleVersion", "available", "scope", "reason", "sourceUrl", "questions"})
     public record Questionnaire(String policyNumber, long revision, String ruleVersion, boolean available, String scope,
                                 String reason, String sourceUrl, List<Question> questions) {}

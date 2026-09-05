@@ -2,6 +2,7 @@ package kr.youthpolicymate.member;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import io.swagger.v3.oas.annotations.media.Schema;
+import jakarta.validation.Validator;
 import org.springframework.context.annotation.Profile;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Service;
@@ -20,11 +21,9 @@ public class MemberEmailStore {
     private final EmailCrypto crypto;
     private final MemberEmailSender sender;
     private final Clock clock;
-    public MemberEmailStore(JdbcClient jdbc, EmailCrypto crypto, MemberEmailSender sender, Clock clock) {
-        this.jdbc = jdbc; this.crypto = crypto; this.sender = sender; this.clock = clock;
-    }
-    static boolean validAddress(String value) {
-        return value != null && value.length() <= 254 && value.matches("[A-Za-z0-9.!#$%&'*+/=?^_`{|}~-]+@[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?(?:\\.[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?)+");
+    private final Validator validator;
+    public MemberEmailStore(JdbcClient jdbc, EmailCrypto crypto, MemberEmailSender sender, Clock clock, Validator validator) {
+        this.jdbc = jdbc; this.crypto = crypto; this.sender = sender; this.clock = clock; this.validator = validator;
     }
     void lock(UUID member) {
         if (jdbc.sql("SELECT id FROM members WHERE id = :id FOR UPDATE").param("id", member).query(UUID.class).optional().isEmpty())
@@ -52,7 +51,7 @@ public class MemberEmailStore {
     @Transactional
     public void request(UUID member, String address) {
         requireAvailable();
-        if (!validAddress(address)) throw new IllegalArgumentException();
+        if (!validator.validateValue(MemberEmailAddress.class, "address", address).isEmpty()) throw new IllegalArgumentException();
         lock(member);
         Instant now = clock.instant();
         var recent = jdbc.sql("SELECT created_at FROM member_email_outbox WHERE member_id = :member AND kind = 'VERIFICATION' AND created_at > :since ORDER BY created_at DESC")

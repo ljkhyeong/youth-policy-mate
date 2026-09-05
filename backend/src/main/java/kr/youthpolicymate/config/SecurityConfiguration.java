@@ -8,7 +8,7 @@ import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.provisioning.InMemoryUserDetailsManager;
 import org.springframework.security.web.SecurityFilterChain;
-import kr.youthpolicymate.member.MemberConfiguration;
+import org.springframework.security.oauth2.client.registration.InMemoryClientRegistrationRepository;
 import kr.youthpolicymate.member.SocialMemberService;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.core.env.Environment;
@@ -21,7 +21,7 @@ class SecurityConfiguration {
 
     @Bean
     SecurityFilterChain securityFilterChain(HttpSecurity http, Environment env,
-            ObjectProvider<MemberConfiguration.Registrations> registrations, ObjectProvider<SocialMemberService> social,
+            ObjectProvider<InMemoryClientRegistrationRepository> registrations, ObjectProvider<SocialMemberService> social,
             ObjectProvider<OAuth2AuthorizedClientService> authorizedClients) throws Exception {
         http
                 .csrf(csrf -> csrf.ignoringRequestMatchers("/api/v1/policies/checks", "/api/v1/policies/*/evaluation"))
@@ -45,7 +45,7 @@ class SecurityConfiguration {
                 .logout(logout -> logout.logoutUrl("/api/v1/logout").invalidateHttpSession(true)
                         .deleteCookies("YPM_SESSION").logoutSuccessHandler((request, response, authentication) -> response.setStatus(204)));
         var configured = registrations.getIfAvailable();
-        if (configured != null && configured.enabled()) {
+        if (configured != null && configured.iterator().hasNext()) {
             var frontend = env.getProperty("APP_FRONTEND_URL", "http://127.0.0.1:3000");
             http.oauth2Login(login -> login.userInfoEndpoint(info -> info.userService(social.getObject()))
                     .successHandler((request, response, authentication) -> {

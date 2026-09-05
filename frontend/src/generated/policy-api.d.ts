@@ -284,6 +284,7 @@ export interface components {
             readonly conditions: components["schemas"]["BasicConditions"] | null;
         };
         readonly MemberEmailAddress: {
+            /** Format: email */
             readonly address: string;
         };
         readonly MemberEmailCode: {

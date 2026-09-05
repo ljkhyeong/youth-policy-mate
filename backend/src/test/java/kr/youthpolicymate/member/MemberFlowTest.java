@@ -43,6 +43,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @Testcontainers
 @SpringBootTest(properties = {"app.reminders.enabled=false", "app.email.enabled=false",
+        "KAKAO_CLIENT_ID=test-kakao", "KAKAO_CLIENT_SECRET=test-secret",
+        "NAVER_CLIENT_ID=test-naver", "NAVER_CLIENT_SECRET=test-secret",
         "app.email.encryption-key=AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="})
 @AutoConfigureMockMvc
 class MemberFlowTest {
@@ -87,6 +89,20 @@ class MemberFlowTest {
         second = identities.login("naver", "101", "둘째 회원");
         time("2026-09-04T15:00:00Z");
         when(emailSender.available()).thenReturn(true);
+    }
+
+    @Test
+    @DisplayName("설정한 카카오·네이버 순서로 로그인 제공자를 반환하고 OAuth 인증 주소로 이동한다")
+    void exposesConfiguredLoginProviders() throws Exception {
+        mvc.perform(get("/api/v1/session")).andExpect(status().isOk())
+                .andExpect(jsonPath("$.authenticated").value(false))
+                .andExpect(jsonPath("$.providers.length()").value(2))
+                .andExpect(jsonPath("$.providers[0].id").value("kakao"))
+                .andExpect(jsonPath("$.providers[1].id").value("naver"));
+        mvc.perform(get("/oauth2/authorization/kakao")).andExpect(status().is3xxRedirection())
+                .andExpect(header().string("Location", org.hamcrest.Matchers.startsWith("https://kauth.kakao.com/oauth/authorize?")));
+        mvc.perform(get("/oauth2/authorization/naver")).andExpect(status().is3xxRedirection())
+                .andExpect(header().string("Location", org.hamcrest.Matchers.startsWith("https://nid.naver.com/oauth2.0/authorize?")));
     }
 
     @Test
@@ -236,6 +252,21 @@ class MemberFlowTest {
         assertThat(jdbc.sql("SELECT address_cipher FROM member_email_settings WHERE member_id = :member").param("member", first).query(String.class).single())
                 .doesNotContain("first@example.test");
         assertThat(jdbc.sql("SELECT count(*) FROM member_email_outbox WHERE code_cipher IS NOT NULL").query(Long.class).single()).isZero();
+    }
+
+    @Test
+    @DisplayName("이메일 주소 제약은 HTTP와 서비스 호출에 같게 적용하고 잘못된 주소는 저장하지 않는다")
+    void validatesEmailAddresses() throws Exception {
+        for (String address : java.util.Arrays.asList(null, "", " ", "not-an-address", ".first@example.test",
+                "first..last@example.test", "x".repeat(255) + "@example.test")) {
+            mvc.perform(post("/api/v1/me/email-verification").with(oauth2Login().oauth2User(user(first)))
+                    .with(csrf()).contentType("application/json").content(mapper.writeValueAsString(new MemberEmailAddress(address))))
+                    .andExpect(status().isBadRequest()).andExpect(jsonPath("$.code").value("INVALID_MEMBER_INPUT"));
+            assertThatIllegalArgumentException().isThrownBy(() -> emails.request(first, address));
+        }
+        assertThat(count("member_email_outbox")).isZero();
+        emails.request(first, "first.last+tag@example.test");
+        assertThat(emails.settings(first).address()).isEqualTo("first.last+tag@example.test");
     }
 
     @Test

@@ -1058,6 +1058,7 @@
         "properties" : {
           "address" : {
             "type" : "string",
+            "format" : "email",
             "maxLength" : 254,
             "minLength" : 0
           }

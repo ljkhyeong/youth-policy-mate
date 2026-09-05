@@ -27,6 +27,7 @@
     "test:ai-execution": "./backend/gradlew -p backend test --tests 'kr.youthpolicymate.ingestion.PolicyAiExecutionCoordinatorTest' --no-daemon",
     "test:ai-recovery": "./backend/gradlew -p backend test --tests 'kr.youthpolicymate.ingestion.AiReservationRecoveryStoreTest' --no-daemon",
     "test:ai-recovery-execution": "./backend/gradlew -p backend test --tests 'kr.youthpolicymate.ingestion.PolicyAiRecoveryCoordinatorTest' --no-daemon",
+    "test:ai-recovery-heartbeat": "./backend/gradlew -p backend test --tests 'kr.youthpolicymate.ingestion.PolicyAiRecoveryHeartbeat*Test' --no-daemon",
     "test:ai-recovery-policy": "./backend/gradlew -p backend test --tests 'kr.youthpolicymate.ingestion.AiReservationRecoveryRetryPolicyTest' --no-daemon",
     "test:ai-recovery-operations": "./backend/gradlew -p backend test --tests 'kr.youthpolicymate.ingestion.AiReservationRecoveryOperationsQueryTest' --no-daemon",
     "test:ai-recovery-work": "./backend/gradlew -p backend test --tests 'kr.youthpolicymate.ingestion.AiReservationRecoveryWork*Test' --no-daemon",

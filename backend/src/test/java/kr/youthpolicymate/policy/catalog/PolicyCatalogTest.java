@@ -49,6 +49,7 @@ class PolicyCatalogTest {
     @Autowired JdbcClient jdbc;
     @Autowired ObjectMapper mapper;
     @Autowired MockMvc mvc;
+    @org.springframework.test.context.bean.override.mockito.MockitoBean java.time.Clock clock;
     private OntongPolicyCapture parser;
     private ObjectNode item;
     private static final Instant AT = Instant.parse("2026-09-05T01:00:00Z");
@@ -56,6 +57,7 @@ class PolicyCatalogTest {
 
     @BeforeEach
     void prepare() throws Exception {
+        org.mockito.Mockito.when(clock.instant()).thenReturn(AT);
         jdbc.sql("DELETE FROM policy_revisions").update();
         jdbc.sql("DELETE FROM policy_source_snapshots").update();
         jdbc.sql("DELETE FROM policies").update();
@@ -197,6 +199,55 @@ class PolicyCatalogTest {
                 "{\"revision\":1,\"ruleVersion\":\"v1\",\"answers\":[{\"questionId\":\"\",\"value\":\"YES\"}]}")) {
             mvc.perform(post(path + "/evaluation").contentType("application/json").content(json)).andExpect(status().isBadRequest());
         }
+    }
+
+    @Test
+    @DisplayName("응시료 규칙은 검토한 정책에만 연결하고 국가근로 질문과 다른 답변을 비교한다")
+    void evaluatesReviewedExamFee() throws Exception {
+        // 정책 내용은 인공 자료다. 해시 등록·개정 검사·규칙 연결만 검증한다.
+        item.put("plcyNo", ExamFeeRules.NUMBER);
+        var normalized = parser.item(item);
+        store.importPolicy(normalized.number(), normalized.content(), normalized.rawPolicy(), AT, "exam-reviewed", ExamFeeRules.CONTENT_HASH);
+        String path = "/api/v1/policies/" + ExamFeeRules.NUMBER;
+        mvc.perform(get(path + "/questions")).andExpect(status().isOk())
+                .andExpect(header().string("Cache-Control", "no-store"))
+                .andExpect(jsonPath("$.available").value(true)).andExpect(jsonPath("$.questions.length()").value(3))
+                .andExpect(jsonPath("$.questions[0].id").value("birthRange"));
+        var input = new PolicyQuestions.Request(1, ExamFeeRules.VERSION, List.of(
+                new PolicyQuestions.Answer("birthRange", "ON_OR_AFTER_1991_01_01"),
+                new PolicyQuestions.Answer("exam", "HRDK_TECHNICAL"), new PolicyQuestions.Answer("remainingUses", "ONE")));
+        mvc.perform(post(path + "/evaluation").contentType("application/json").content(mapper.writeValueAsString(input)))
+                .andExpect(status().isOk()).andExpect(header().string("Cache-Control", "no-store"))
+                .andExpect(jsonPath("$.policyNumber").value(ExamFeeRules.NUMBER))
+                .andExpect(jsonPath("$.ruleVersion").value(ExamFeeRules.VERSION))
+                .andExpect(jsonPath("$.commonCriteriaStatus").value("ELIGIBLE"))
+                .andExpect(jsonPath("$.status").value("NEEDS_REVIEW"));
+        var otherRule = new PolicyQuestions.Request(1, WorkStudyRules.VERSION, input.answers());
+        mvc.perform(post(path + "/evaluation").contentType("application/json").content(mapper.writeValueAsString(otherRule))).andExpect(status().isConflict());
+        var otherAnswer = new PolicyQuestions.Request(1, ExamFeeRules.VERSION, List.of(new PolicyQuestions.Answer("nationality", "YES")));
+        mvc.perform(post(path + "/evaluation").contentType("application/json").content(mapper.writeValueAsString(otherAnswer))).andExpect(status().isBadRequest());
+        store.importPolicy(normalized.number(), normalized.content(), normalized.rawPolicy(), AT.plusSeconds(1), "exam-updated", "changed-content");
+        mvc.perform(get(path + "/questions")).andExpect(status().isOk()).andExpect(jsonPath("$.available").value(false));
+        mvc.perform(post(path + "/evaluation").contentType("application/json").content(mapper.writeValueAsString(input))).andExpect(status().isConflict());
+    }
+
+    @Test
+    @DisplayName("서울 기준 새해가 되면 이전 연도의 응시료 질문과 제출을 중단한다")
+    void stopsExamFeeQuestionsAcrossYearBoundary() throws Exception {
+        item.put("plcyNo", ExamFeeRules.NUMBER);
+        var normalized = parser.item(item);
+        store.importPolicy(normalized.number(), normalized.content(), normalized.rawPolicy(), AT, "exam-reviewed", ExamFeeRules.CONTENT_HASH);
+        String path = "/api/v1/policies/" + ExamFeeRules.NUMBER;
+        org.mockito.Mockito.when(clock.instant()).thenReturn(Instant.parse("2026-12-31T14:59:59Z"));
+        mvc.perform(get(path + "/questions")).andExpect(status().isOk()).andExpect(jsonPath("$.available").value(true));
+        // 비교 시각을 한 번만 읽는다. 질문 검사와 결과가 자정 양쪽으로 나뉘지 않아야 한다.
+        org.mockito.Mockito.when(clock.instant()).thenReturn(Instant.parse("2026-12-31T14:59:59Z"), Instant.parse("2026-12-31T15:00:00Z"));
+        String body = mapper.writeValueAsString(new PolicyQuestions.Request(1, ExamFeeRules.VERSION, List.of()));
+        mvc.perform(post(path + "/evaluation").contentType("application/json").content(body)).andExpect(status().isOk())
+                .andExpect(jsonPath("$.evaluatedAt").value("2026-12-31T14:59:59Z"));
+        mvc.perform(get(path + "/questions")).andExpect(status().isOk()).andExpect(jsonPath("$.available").value(false))
+                .andExpect(jsonPath("$.reason").value(org.hamcrest.Matchers.containsString("현재 연도")));
+        mvc.perform(post(path + "/evaluation").contentType("application/json").content(body)).andExpect(status().isConflict());
     }
 
     private PolicyCatalogStore.ImportResult save(String captureHash, Instant at) {

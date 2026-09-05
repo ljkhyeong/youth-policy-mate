@@ -169,7 +169,7 @@ export interface paths {
             readonly path?: never;
             readonly cookie?: never;
         };
-        /** 저장된 정책 목록과 제목·설명 검색 */
+        /** 저장된 정책 검색과 현재 공통요건 질문이 있는 정책 필터 */
         readonly get: operations["listPolicies"];
         readonly put?: never;
         readonly post?: never;
@@ -341,6 +341,8 @@ export interface components {
             readonly collectedAt: string;
             readonly explanation: string;
             readonly policyNumber: string;
+            /** @description 현재 원문·적용 시점에 맞는 공통요건 질문 제공 여부. 자격·모집 상태와 무관 */
+            readonly questionnaireAvailable: boolean;
             /** Format: int64 */
             readonly revision: number;
             readonly sourceUrl: string;
@@ -466,6 +468,8 @@ export interface components {
             readonly description: string;
             readonly organization: string;
             readonly policyNumber: string;
+            /** @description 현재 원문·적용 시점에 맞는 공통요건 질문 제공 여부. 자격·모집 상태와 무관 */
+            readonly questionnaireAvailable: boolean;
             readonly title: string;
         };
         readonly PolicyTextSection: {
@@ -1190,6 +1194,7 @@ export interface operations {
                 readonly q?: string;
                 readonly page?: number;
                 readonly pageSize?: number;
+                readonly questionsOnly?: boolean;
             };
             readonly header?: never;
             readonly path?: never;

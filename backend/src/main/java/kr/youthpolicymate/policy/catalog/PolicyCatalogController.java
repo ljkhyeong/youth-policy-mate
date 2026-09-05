@@ -21,7 +21,10 @@ import org.springframework.web.bind.annotation.RestController;
 public class PolicyCatalogController {
     private final PolicyCatalogStore store;
     private final PolicyCheckService checks;
-    public PolicyCatalogController(PolicyCatalogStore store, PolicyCheckService checks) { this.store = store; this.checks = checks; }
+    private final java.time.Clock clock;
+    public PolicyCatalogController(PolicyCatalogStore store, PolicyCheckService checks, java.time.Clock clock) {
+        this.store = store; this.checks = checks; this.clock = clock;
+    }
 
     @org.springframework.web.bind.annotation.PostMapping(value = "/checks", consumes = "application/json")
     @Operation(operationId = "checkPolicyConditions", summary = "기본 조건으로 실제 정책의 확인할 요건과 원문 조회. 조건은 저장하지 않음")
@@ -34,13 +37,14 @@ public class PolicyCatalogController {
     }
 
     @GetMapping
-    @Operation(operationId = "listPolicies", summary = "저장된 정책 목록과 제목·설명 검색")
+    @Operation(operationId = "listPolicies", summary = "저장된 정책 검색과 현재 공통요건 질문이 있는 정책 필터")
     @ApiResponse(responseCode = "200", content = @Content(schema = @Schema(implementation = PolicyListResponse.class)))
     @ApiResponse(responseCode = "400", content = @Content(schema = @Schema(implementation = PolicyApiError.class)))
     public PolicyListResponse list(@RequestParam(defaultValue = "") @Size(max = 80) String q,
                                    @RequestParam(defaultValue = "1") @Min(1) @Max(1000) int page,
-                                   @RequestParam(defaultValue = "20") @Min(1) @Max(50) int pageSize) {
-        return store.list(q.strip(), page, pageSize);
+                                   @RequestParam(defaultValue = "20") @Min(1) @Max(50) int pageSize,
+                                   @RequestParam(defaultValue = "false") boolean questionsOnly) {
+        return store.list(q.strip(), page, pageSize, questionsOnly, clock.instant());
     }
 
     @GetMapping("/{policyNumber}")

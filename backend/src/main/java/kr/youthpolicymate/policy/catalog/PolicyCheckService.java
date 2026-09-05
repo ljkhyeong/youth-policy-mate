@@ -25,7 +25,7 @@ public class PolicyCheckService {
     public PolicyCheckResponse check(BasicConditions input, int page) {
         var now = clock.instant();
         input.validate(LocalDate.ofInstant(now, ZoneId.of("Asia/Seoul")));
-        var policies = store.list("", page, 20);
+        var policies = store.list("", page, 20, false, now);
         var items = new ArrayList<PolicyCheckResponse.Item>();
         for (var summary : policies.items()) {
             var policy = store.find(summary.policyNumber()).orElseThrow(PolicyNotFoundException::new);
@@ -49,7 +49,7 @@ public class PolicyCheckService {
                     "실제 정책의 기준일과 필수 조건·예외가 판정 규칙으로 확인되지 않았습니다.", evidence))), List.of());
             items.add(new PolicyCheckResponse.Item(policy.policyNumber(), policy.revision(), policy.content().title(), decision.status(),
                     "신청 자격을 확정할 수 없어요. 아래 원문과 추가 확인할 항목을 살펴보세요.",
-                    policy.content().applicationPeriod(), policy.sourceUrl(), policy.collectedAt(), checks));
+                    policy.content().applicationPeriod(), policy.sourceUrl(), policy.collectedAt(), checks, summary.questionnaireAvailable()));
         }
         return new PolicyCheckResponse(items, page, policies.total(), policies.hasNext(), now);
     }

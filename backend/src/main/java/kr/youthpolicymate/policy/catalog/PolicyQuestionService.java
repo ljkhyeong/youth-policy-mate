@@ -21,11 +21,15 @@ public class PolicyQuestionService {
     private PolicyQuestions.Questionnaire questionsAt(String number, Instant now) {
         var policy = store.find(number).orElseThrow(PolicyNotFoundException::new);
         var hash = store.contentHash(number);
-        if (WorkStudyRules.NUMBER.equals(number) && WorkStudyRules.CONTENT_HASH.equals(hash)) {
-            return WorkStudyRules.questionnaire(policy.revision());
+        var reviewedHash = ReviewedPolicyQuestions.contentHashesAt(now).get(number);
+        if (reviewedHash != null && reviewedHash.equals(hash)) {
+            return switch (number) {
+                case WorkStudyRules.NUMBER -> WorkStudyRules.questionnaire(policy.revision());
+                case ExamFeeRules.NUMBER -> ExamFeeRules.questionnaire(policy.revision());
+                default -> throw new IllegalStateException("등록한 정책의 질문 구현이 필요합니다.");
+            };
         }
         if (ExamFeeRules.NUMBER.equals(number) && ExamFeeRules.CONTENT_HASH.equals(hash)) {
-            if (ExamFeeRules.appliesAt(now)) return ExamFeeRules.questionnaire(policy.revision());
             return new PolicyQuestions.Questionnaire(number, policy.revision(), "", false, ExamFeeRules.SCOPE,
                     "2026년 지원 기준만 검토했어요. 현재 연도에 적용할 기준은 공식 안내에서 다시 확인해주세요.", ExamFeeRules.SOURCE, List.of());
         }

@@ -137,6 +137,7 @@ class PolicyCatalogTest {
     @Test
     @DisplayName("잘못된 검색은 400으로 거절하고 쓰기·관리·개발 경로는 계속 차단한다")
     void rejectsInvalidAndPrivateRequests() throws Exception {
+        mvc.perform(get("/api/v1/policies").param("questionsOnly", "invalid")).andExpect(status().isBadRequest());
         mvc.perform(get("/api/v1/policies").param("page", "0")).andExpect(status().isBadRequest());
         mvc.perform(get("/api/v1/policies").param("q", "가".repeat(81))).andExpect(status().isBadRequest());
         mvc.perform(post("/api/v1/policies").with(csrf())).andExpect(status().isForbidden());
@@ -150,6 +151,10 @@ class PolicyCatalogTest {
         var response = mvc.perform(get("/contract/policy")).andExpect(status().isOk()).andReturn();
         var actual = mapper.readTree(response.getResponse().getContentAsByteArray());
         assertThat(actual.path("paths").size()).isEqualTo(15);
+        assertThat(actual.at("/components/schemas/PolicySummary/required").valueStream().map(value -> value.asString()))
+                .contains("questionnaireAvailable");
+        assertThat(actual.at("/components/schemas/PolicyCheckItem/required").valueStream().map(value -> value.asString()))
+                .contains("questionnaireAvailable");
         assertThat(actual.at("/components/schemas/MemberEmailSettings/properties/verificationDelivery/enum").valueStream().anyMatch(value -> value.isNull())).isTrue();
         assertThat(actual.at("/components/schemas/MemberConditions/properties/conditions/anyOf/1/type").asString()).isEqualTo("null");
         assertThat(actual.at("/paths/~1api~1v1~1session/get/parameters").isMissingNode()).isTrue();
@@ -186,6 +191,10 @@ class PolicyCatalogTest {
         }
         store.importPolicy(normalized.number(), normalized.content(), normalized.rawPolicy(), AT.plusSeconds(1), "changed", "changed-content");
         mvc.perform(get(path + "/questions")).andExpect(status().isOk()).andExpect(jsonPath("$.available").value(false));
+        mvc.perform(get("/api/v1/policies").param("questionsOnly", "true"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.total").value(0)).andExpect(jsonPath("$.items").isEmpty());
+        mvc.perform(get("/api/v1/policies")).andExpect(status().isOk())
+                .andExpect(jsonPath("$.items[0].questionnaireAvailable").value(false));
         mvc.perform(post(path + "/evaluation").contentType("application/json").content(mapper.writeValueAsString(request)))
                 .andExpect(status().isConflict());
     }
@@ -240,6 +249,8 @@ class PolicyCatalogTest {
         String path = "/api/v1/policies/" + ExamFeeRules.NUMBER;
         org.mockito.Mockito.when(clock.instant()).thenReturn(Instant.parse("2026-12-31T14:59:59Z"));
         mvc.perform(get(path + "/questions")).andExpect(status().isOk()).andExpect(jsonPath("$.available").value(true));
+        mvc.perform(get("/api/v1/policies").param("questionsOnly", "true"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.total").value(1));
         // 비교 시각을 한 번만 읽는다. 질문 검사와 결과가 자정 양쪽으로 나뉘지 않아야 한다.
         org.mockito.Mockito.when(clock.instant()).thenReturn(Instant.parse("2026-12-31T14:59:59Z"), Instant.parse("2026-12-31T15:00:00Z"));
         String body = mapper.writeValueAsString(new PolicyQuestions.Request(1, ExamFeeRules.VERSION, List.of()));
@@ -248,6 +259,61 @@ class PolicyCatalogTest {
         mvc.perform(get(path + "/questions")).andExpect(status().isOk()).andExpect(jsonPath("$.available").value(false))
                 .andExpect(jsonPath("$.reason").value(org.hamcrest.Matchers.containsString("현재 연도")));
         mvc.perform(post(path + "/evaluation").contentType("application/json").content(body)).andExpect(status().isConflict());
+        mvc.perform(get("/api/v1/policies").param("questionsOnly", "true"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.total").value(0));
+        mvc.perform(get("/api/v1/policies")).andExpect(status().isOk())
+                .andExpect(jsonPath("$.items[0].questionnaireAvailable").value(false));
+    }
+
+    @Test
+    @DisplayName("질문 필터는 검색·건수·페이지에 먼저 적용하고 전체 목록에도 제공 여부를 표시한다")
+    void filtersReviewedQuestionsBeforePagination() throws Exception {
+        save("unreviewed", AT.plusSeconds(5));
+        saveReviewed(WorkStudyRules.NUMBER, "국가근로 지원", WorkStudyRules.CONTENT_HASH);
+        saveReviewed(ExamFeeRules.NUMBER, "응시료 지원", ExamFeeRules.CONTENT_HASH);
+        mvc.perform(get("/api/v1/policies").param("pageSize", "1"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.total").value(3))
+                .andExpect(jsonPath("$.items[0].policyNumber").value(NUMBER))
+                .andExpect(jsonPath("$.items[0].questionnaireAvailable").value(false));
+        mvc.perform(get("/api/v1/policies").param("questionsOnly", "true").param("pageSize", "1"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.total").value(2)).andExpect(jsonPath("$.hasNext").value(true))
+                .andExpect(jsonPath("$.items[0].policyNumber").value(ExamFeeRules.NUMBER))
+                .andExpect(jsonPath("$.items[0].questionnaireAvailable").value(true));
+        mvc.perform(get("/api/v1/policies").param("questionsOnly", "true").param("pageSize", "1").param("page", "2"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.total").value(2)).andExpect(jsonPath("$.hasNext").value(false))
+                .andExpect(jsonPath("$.items[0].policyNumber").value(WorkStudyRules.NUMBER));
+        mvc.perform(get("/api/v1/policies").param("questionsOnly", "true").param("pageSize", "1").param("page", "3"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.total").value(2)).andExpect(jsonPath("$.items").isEmpty());
+        mvc.perform(get("/api/v1/policies").param("questionsOnly", "true").param("q", "국가근로"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.total").value(1))
+                .andExpect(jsonPath("$.items[0].policyNumber").value(WorkStudyRules.NUMBER));
+        mvc.perform(get("/api/v1/policies").param("questionsOnly", "true").param("q", "없는검색어"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.total").value(0)).andExpect(jsonPath("$.items").isEmpty());
+    }
+
+    @Test
+    @DisplayName("기본 조건 결과의 질문 제공 여부는 자격 상태와 분리하고 같은 비교 시각을 사용한다")
+    void exposesQuestionsInConditionChecks() throws Exception {
+        saveReviewed(ExamFeeRules.NUMBER, "응시료 지원", ExamFeeRules.CONTENT_HASH);
+        var input = new BasicConditions(java.time.LocalDate.of(2000, 1, 2), "강남구", BasicConditions.EmploymentStatus.NOT_EMPLOYED);
+        var body = mapper.writeValueAsString(input);
+        org.mockito.Mockito.when(clock.instant()).thenReturn(Instant.parse("2026-12-31T14:59:59Z"), Instant.parse("2026-12-31T15:00:00Z"));
+        mvc.perform(post("/api/v1/policies/checks").contentType("application/json").content(body))
+                .andExpect(status().isOk()).andExpect(header().string("Cache-Control", "no-store"))
+                .andExpect(jsonPath("$.evaluatedAt").value("2026-12-31T14:59:59Z"))
+                .andExpect(jsonPath("$.items[0].questionnaireAvailable").value(true))
+                .andExpect(jsonPath("$.items[0].status").value("NEEDS_REVIEW"));
+        mvc.perform(post("/api/v1/policies/checks").contentType("application/json").content(body))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.items[0].questionnaireAvailable").value(false))
+                .andExpect(jsonPath("$.items[0].status").value("NEEDS_REVIEW"));
+    }
+
+    private void saveReviewed(String number, String title, String hash) {
+        // 인공 본문과 검토 해시로 조회·질문 연결만 검사한다. 공식 조건의 정확성 검사가 아니다.
+        var source = item.deepCopy();
+        source.put("plcyNo", number).put("plcyNm", title);
+        var normalized = parser.item(source);
+        store.importPolicy(number, normalized.content(), normalized.rawPolicy(), AT, "reviewed-" + number, hash);
     }
 
     private PolicyCatalogStore.ImportResult save(String captureHash, Instant at) {

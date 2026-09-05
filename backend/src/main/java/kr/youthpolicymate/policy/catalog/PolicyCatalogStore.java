@@ -10,6 +10,8 @@ import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.Optional;
+import java.util.HashMap;
+import java.util.StringJoiner;
 
 @Repository
 @Profile("!preview")
@@ -81,19 +83,35 @@ public class PolicyCatalogStore {
         return changed ? ImportResult.APPLIED : ImportResult.UNCHANGED;
     }
 
-    @Transactional(readOnly = true)
-    public PolicyListResponse list(String query, int page, int pageSize) {
+    @Transactional(readOnly = true, isolation = org.springframework.transaction.annotation.Isolation.REPEATABLE_READ)
+    public PolicyListResponse list(String query, int page, int pageSize, boolean questionsOnly, Instant now) {
+        var reviewed = ReviewedPolicyQuestions.contentHashesAt(now);
+        var parameters = new HashMap<String, Object>();
+        parameters.put("query", query);
         // strpos는 검색어의 %·_를 패턴으로 해석하지 않고 바인딩한 문자열 그대로 검색한다.
         var where = " WHERE current_revision > 0 AND (:query = '' OR strpos(lower((content->>'title') || ' ' || (content->>'description')), lower(:query)) > 0)";
-        var total = jdbc.sql("SELECT count(*) FROM policies" + where).param("query", query).query(Long.class).single();
-        var items = jdbc.sql("SELECT policy_number, content, last_collected_at FROM policies" + where
+        if (questionsOnly) {
+            var alternatives = new StringJoiner(" OR ", "(", ")").setEmptyValue("FALSE");
+            int index = 0;
+            for (var entry : reviewed.entrySet()) {
+                alternatives.add("(policy_number = :number" + index + " AND content_hash = :hash" + index + ")");
+                parameters.put("number" + index, entry.getKey());
+                parameters.put("hash" + index, entry.getValue());
+                index++;
+            }
+            where += " AND " + alternatives;
+        }
+        var total = jdbc.sql("SELECT count(*) FROM policies" + where).params(parameters).query(Long.class).single();
+        var items = jdbc.sql("SELECT policy_number, content_hash, content, last_collected_at FROM policies" + where
                         + " ORDER BY last_collected_at DESC, policy_number LIMIT :limit OFFSET :offset")
-                .param("query", query).param("limit", pageSize).param("offset", (page - 1) * pageSize)
+                .params(parameters).param("limit", pageSize).param("offset", (page - 1) * pageSize)
                 .query((rs, row) -> {
                     var content = mapper.readValue(rs.getString("content"), PolicyContent.class);
                     return new PolicySummary(rs.getString("policy_number"), content.title(), content.description(),
                             content.category(), content.organization(), content.applicationPeriod(),
-                            rs.getObject("last_collected_at", OffsetDateTime.class).toInstant());
+                            rs.getObject("last_collected_at", OffsetDateTime.class).toInstant(),
+                            reviewed.containsKey(rs.getString("policy_number"))
+                                    && reviewed.get(rs.getString("policy_number")).equals(rs.getString("content_hash")));
                 }).list();
         return new PolicyListResponse(items, page, pageSize, total, (long) page * pageSize < total);
     }

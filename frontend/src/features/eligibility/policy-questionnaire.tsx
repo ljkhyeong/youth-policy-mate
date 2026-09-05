@@ -9,6 +9,10 @@ type Evaluation = components["schemas"]["PolicyEvaluation"];
 type EvaluationRequest = components["schemas"]["PolicyEvaluationRequest"];
 
 export function PolicyQuestionnaire({ policyNumber }: { policyNumber: string }) {
+  const sectionRef = useRef<HTMLElement>(null);
+  useEffect(() => {
+    if (window.location.hash === "#policy-questions") sectionRef.current?.focus({ preventScroll: true });
+  }, [policyNumber]);
   const [questions, setQuestions] = useState<Questionnaire | null>(null);
   const [error, setError] = useState("");
   const [attempt, setAttempt] = useState(0);
@@ -23,7 +27,7 @@ export function PolicyQuestionnaire({ policyNumber }: { policyNumber: string }) 
   function reload(policyChanged = false) {
     setQuestions(null); setError(""); setChanged(policyChanged); setAttempt(value => value + 1);
   }
-  return <section className="policy-questionnaire" aria-labelledby="policy-question-heading">
+  return <section ref={sectionRef} id="policy-questions" className="policy-questionnaire" aria-labelledby="policy-question-heading" tabIndex={-1}>
     <h2 id="policy-question-heading">내 조건으로 확인하기</h2>
     {changed && <p role="status" className="question-feedback">정책이나 질문이 바뀌었어요. 이전 답변을 지웠으니 최신 안내를 확인해주세요.</p>}
     {!questions && !error && <p role="status">확인할 수 있는 질문을 불러오는 중이에요.</p>}

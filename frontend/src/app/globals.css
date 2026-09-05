@@ -918,6 +918,12 @@ select {
   .policy-search { display: flex; gap: 8px; margin-top: 28px; }
   .policy-search input { min-width: 0; flex: 1; border: 1px solid #cfd5de; border-radius: 14px; background: white; padding: 14px 16px; font-size: 16px; }
   .policy-search .button-primary { flex-shrink: 0; }
+  .policy-filters { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 18px; }
+  .policy-filters a { display: inline-flex; align-items: center; min-height: 44px; padding: 8px 16px; border: 1px solid var(--app-line); border-radius: 24px; background: white; color: var(--app-muted); text-decoration: none; font-size: 14px; font-weight: 650; }
+  .policy-filters a[aria-current="page"] { background: var(--app-blue-dark); border-color: var(--app-blue-dark); color: white; }
+  .policy-question-badge { display: inline-block; margin-top: 12px; padding: 4px 10px; border-radius: 8px; background: #eef3ff; color: var(--app-blue-dark); font-size: 12px; font-weight: 650; }
+  .policy-card-actions { display: flex; flex-wrap: wrap; gap: 4px 20px; }
+  .policy-question-next { margin: 16px 0; padding: 0 16px 12px; border-left: 3px solid var(--app-blue-dark); background: #f7f9ff; }
   .policy-coverage { margin: 16px 0 26px; color: var(--app-muted); font-size: 13px; line-height: 1.75; }
   .policy-coverage a { color: var(--app-blue-dark); text-decoration: underline; text-underline-offset: 3px; }
   .policy-results-heading { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; font-size: 14px; }
@@ -988,7 +994,7 @@ select {
 @media (max-width: 600px) { .member-main { width: calc(100% - 32px); margin-top: 28px; } .member-panel { padding: 20px; } .member-toolbar { gap: 12px; } .member-tabs button { padding: 12px; flex: 1; } }
 
 @layer components {
-  .policy-questionnaire { margin-top: 24px; padding: clamp(18px, 4vw, 28px); border: 1px solid var(--app-line); border-radius: 20px; background: var(--app-surface); }
+  .policy-questionnaire { scroll-margin-top: 100px; margin-top: 24px; padding: clamp(18px, 4vw, 28px); border: 1px solid var(--app-line); border-radius: 20px; background: var(--app-surface); }
   .policy-questionnaire > h2 { margin: 0 0 14px; font-size: 20px; letter-spacing: -.04em; }
   .policy-questionnaire p { margin: 10px 0; font-size: 14px; line-height: 1.8; overflow-wrap: anywhere; }
   .policy-questionnaire .question-scope { font-weight: 700; }

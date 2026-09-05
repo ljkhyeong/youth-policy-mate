@@ -16,9 +16,13 @@ export function PolicyCard({ policy }: { policy: Summary }) {
   return <article className="policy-card">
     <div className="policy-eyebrow"><span>{policy.category || "청년 정책"}</span><span>{policy.organization || "온통청년 제공"}</span></div>
     <h2><Link href={`/policies/${policy.policyNumber}`}>{policy.title}</Link></h2>
+    {policy.questionnaireAvailable && <span className="policy-question-badge">공통요건 질문 있음</span>}
     <p className="policy-description">{policy.description || "자세한 지원 내용을 확인해보세요."}</p>
     <p className="policy-period"><strong>신청기간</strong><span>{policy.applicationPeriod}</span></p>
-    <Link href={`/policies/${policy.policyNumber}`} className="text-link" aria-label={`${policy.title} 상세 보기`}>상세 보기 <span aria-hidden="true">↗</span></Link>
+    <div className="policy-card-actions">
+      <Link href={`/policies/${policy.policyNumber}`} className="text-link" aria-label={`${policy.title} 상세 보기`}>상세 보기 <span aria-hidden="true">↗</span></Link>
+      {policy.questionnaireAvailable && <Link href={`/policies/${policy.policyNumber}#policy-questions`} className="text-link" aria-label={`${policy.title} 공통요건 확인하기`}>공통요건 확인하기 <span aria-hidden="true">→</span></Link>}
+    </div>
   </article>;
 }
 

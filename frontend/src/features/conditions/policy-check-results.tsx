@@ -30,6 +30,11 @@ export function PolicyCheckResults({ input }: { input: BasicConditions }) {
     {response?.items.map(policy => <article className="member-panel" key={`${policy.policyNumber}-${policy.revision}`}>
       <span className="review-label">추가 확인 필요</span><h3><Link href={`/policies/${policy.policyNumber}`}>{policy.title}</Link></h3>
       <p>{policy.explanation}</p><p className="policy-period">신청기간: {policy.applicationPeriod}</p>
+      {policy.questionnaireAvailable && <div className="policy-question-next">
+        <span className="policy-question-badge">공통요건 질문 있음</span>
+        <p>일부 공통요건은 추가 질문으로 비교할 수 있어요. 상세 화면에서 답변을 직접 선택해주세요.</p>
+        <Link href={`/policies/${policy.policyNumber}#policy-questions`} className="text-link" aria-label={`${policy.title} 공통요건 확인하기`}>공통요건 확인하기 →</Link>
+      </div>}
       <details><summary>확인할 항목과 원문 보기</summary><div className="policy-check-details">
         {policy.checks.map(check => <section key={check.label}><h4>{check.label}</h4><p className="field-help">입력: {check.providedValue}</p><p>{check.explanation}</p><blockquote>{check.evidence}</blockquote></section>)}
         <a href={policy.sourceUrl} target="_blank" rel="noopener noreferrer">공식 원문 확인 (새 창)</a>

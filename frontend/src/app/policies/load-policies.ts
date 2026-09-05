@@ -20,8 +20,9 @@ async function load<T>(path: string): Promise<Loaded<T>> {
   }
 }
 
-export function loadPolicies(query: string, page: number) {
+export function loadPolicies(query: string, page: number, questionsOnly = false) {
   const search = new URLSearchParams({ q: query, page: String(page), pageSize: "20" });
+  if (questionsOnly) search.set("questionsOnly", "true");
   return load<PolicyList>(`/api/v1/policies?${search}`);
 }
 

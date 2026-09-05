@@ -38,3 +38,14 @@
 - 실제 카카오·네이버 로그인과 외부 수신함 전달은 이번 검증 범위에 포함하지 않았다.
 
 표준 API의 동작은 [Spring Boot 이메일 설정](https://docs.spring.io/spring-boot/reference/io/email.html), [Spring Security OAuth 설정](https://docs.spring.io/spring-security/reference/servlet/oauth2/login/core.html), [Jakarta Email 제약](https://jakarta.ee/specifications/bean-validation/3.1/apidocs/jakarta/validation/constraints/email), [JDK List.copyOf](https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/util/List.html#copyOf(java.util.Collection))를 확인했다. OAuth Map 생성자의 빈 설정 지원은 로컬 Spring Security 7.1.1 바이트코드와 애플리케이션 테스트에서도 확인했다.
+
+## 추가 검토 — 아직 미적용
+
+`337b4cb` 기준으로 앞의 6개와 겹치지 않는 항목을 검토했다. 이번에는 표준 API 재구현보다 반복 조회와 같은 업무 코드의 중복이 주요 정리 대상이다.
+
+1. **조건 확인 목록의 반복 조회 — 우선 처리.** [PolicyCheckService.java](../../backend/src/main/java/kr/youthpolicymate/policy/catalog/PolicyCheckService.java) 28–32행은 목록 조회 뒤 정책별로 상세와 원문을 다시 조회한다. [PolicyCatalogStore.java](../../backend/src/main/java/kr/youthpolicymate/policy/catalog/PolicyCatalogStore.java)의 목록은 SELECT 2회, 상세·원문은 각각 1회다. 20건이면 코드상 `2 + 20 × 2 = 42`회이며 목록에서 읽은 content JSON도 상세 조회에서 다시 읽는다. 현재 개정·원문을 JOIN한 조건 확인용 목록 조회로 합치면 전체 개수와 페이지 데이터 조회 2회로 줄일 수 있다. 정렬·페이지·현재 개정 연결·읽기 일관성은 유지해야 한다. 실행 시간을 측정한 결과는 아니다.
+2. **고정 결과를 얻기 위한 판정 객체 생성 — 바로 정리 가능.** 같은 서비스 46–50행은 매번 `SourceEvidence`, `EvaluationBasis`, `PendingIssue`, `PolicyReview`, `EligibilityDecision`을 만든다. 하지만 미완료 검토와 빈 조건 목록을 넘기므로 `status()`는 항상 `NEEDS_REVIEW`다. 현재 이 안내 경로에서는 해당 상태를 직접 반환하면 된다. 응답의 조건별 원문·설명·정책 개정은 유지하고, 실제 조건을 비교하는 정책별 규칙의 판정 객체는 남긴다.
+3. **AI 예약 종료 상태 판단 6곳 — enum으로 이동.** `AiBudgetReservationLifecycleStore`, `AiReservationRecoveryLeaseRenewalStore`, `AiReservationRecoveryRetryPolicy`, `AiReservationRecoveryReviewStore`, `AiReservationRecoveryStore`, `PolicyAiRecoveryCoordinator`가 같은 세 상태를 OR로 비교한다. [AiBudgetReservationState.java](../../backend/src/main/java/kr/youthpolicymate/ingestion/AiBudgetReservationState.java) 214행의 `Phase`에 `isTerminal()`을 두면 변경 위치가 한곳이 된다. 상태 검사 자체를 없애는 작업은 아니다.
+4. **DB 시각 변환·비교 중복 — 수집 패키지 내부에서 공통화.** AI 저장소·운영 조회 7개 클래스가 `dbTime`을, 그중 6개가 `sameDatabaseInstant`를 각각 구현한다. 대표 위치는 [AiReservationRecoveryOperationsQuery.java](../../backend/src/main/java/kr/youthpolicymate/ingestion/AiReservationRecoveryOperationsQuery.java) 167행과 [AiReservationRecoveryWorkRunStore.java](../../backend/src/main/java/kr/youthpolicymate/ingestion/AiReservationRecoveryWorkRunStore.java) 273–278행이다. 마이크로초 단위 절삭·UTC 변환·시각 비교만 작은 공통 함수로 모을 수 있다. 정밀도 처리는 재전달·동시성 판단에 필요하므로 제거하지 않는다. 현재 마이크로초 절삭을 하지 않는 회원·정책 저장소까지 일괄 변경할 이유는 없다.
+
+이 추가 검토에서는 앱 코드를 수정하거나 테스트를 재실행하지 않았다. 변경 시 반복 조회는 페이지·현재 개정과 쿼리 수를, 판정 객체 제거는 기존 안내 응답을, AI 공통 함수는 기존 복구·재전달 테스트를 확인하면 된다.

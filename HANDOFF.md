@@ -7,6 +7,7 @@
 - 개발 브랜치의 누적 변경은 `39f78b5`에서 로컬 `main`에 병합했다. 원격 푸시는 하지 않았다.
 - 지시·스킬 정리는 `7c6ec51`에 커밋했다. `codex/verification-workflow`에서 기존 두 작업의 검증 기록을 검토하고 [검증 명령·결과 기록·재실행 기준](docs/development/verification-workflow.md)을 추가했다.
 - `codex/backend-api-review`에서 [Java·Spring API 활용과 중복 검증 정리](docs/development/backend-api-review.md) 6개 항목을 구현했다. SMTP 자동 설정·이메일 주소 공통 제약·OAuth 기본 저장소를 적용하고 중복 null 검사·미사용 팩터리·정책별 중복 답변 검증을 정리했다.
+- 같은 문서에 조건 확인 반복 조회·고정 결과용 판정 객체·AI 종료 상태 판단·DB 시각 처리의 추가 정리 대상 4개를 기록했다. 이 4개는 아직 구현하지 않았다.
 
 ## 구현·검증 범위
 

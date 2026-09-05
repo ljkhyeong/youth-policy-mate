@@ -35,7 +35,7 @@ public final class ExamFeeRules {
     public static boolean appliesAt(Instant now) { return now.atZone(ZoneId.of("Asia/Seoul")).getYear() == 2026; }
     public static Questionnaire questionnaire(long revision) {
         return new Questionnaire(NUMBER, revision, VERSION, true, SCOPE,
-                "출생일·시험 종류·남은 지원 횟수를 확인해요. 시험 응시자격과 예산 소진 여부와 할인 적용는 큐넷에서 확인해주세요.", SOURCE, QUESTIONS);
+                "출생일·시험 종류·남은 지원 횟수를 확인해요. 시험 응시자격, 예산 소진 여부, 할인 적용 여부는 큐넷에서 확인해주세요.", SOURCE, QUESTIONS);
     }
     public static Evaluation evaluate(long revision, Request input, Instant now) {
         if (!appliesAt(now)) throw new IllegalArgumentException("검토한 2026년 지원 기준만 사용할 수 있습니다.");
@@ -68,7 +68,7 @@ public final class ExamFeeRules {
         var whole = new EligibilityDecision(basis, PolicyReview.incomplete(remaining.stream()
                 .map(message -> new PolicyReview.PendingIssue(message, evidence)).toList()), conditions);
         return new Evaluation(NUMBER, revision, VERSION, whole.status(), common, SCOPE,
-                "출생일·시험 종류·남은 지원 횟수의 확인 결과예요. 시험 접수와 예산 소진 여부와 할인 적용는 별도로 확인해주세요.", remaining, SOURCE, now, checks);
+                "출생일·시험 종류·남은 지원 횟수의 확인 결과예요. 시험 접수, 예산 소진 여부, 할인 적용 여부는 별도로 확인해주세요.", remaining, SOURCE, now, checks);
     }
     private static Check check(String id, String label, String value, ConditionAssessment.Outcome outcome, String evidence) {
         var provided = QUESTIONS.stream().filter(q -> q.id().equals(id)).flatMap(q -> q.options().stream())

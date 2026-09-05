@@ -73,7 +73,7 @@ Flyway V1·V2와 PostgreSQL 예약 저장소도 추가했습니다. 최초 예�
 
 [AI 예약 복구 제한 목록 실행](docs/development/ai-reservation-recovery-work-runner.md)은 한 운영 조회의 `limit` 안에서 보류·중단 후보를 DB 변경 없이 건너뛰고 `Ready` 후보만 배정·실행합니다. 조회 뒤 상태가 바뀌어 미배정되거나 후보 하나의 외부 확인이 실패해도 다음 후보를 계속 처리합니다. 전용 PostgreSQL 4건과 전체 서버 314건·빌드가 통과했습니다. 실제 공급자·주기 스케줄러·고정 재확인 값은 아직 없습니다.
 
-[AI 예약 복구 작업 실행 기록](docs/development/ai-reservation-recovery-work-runs.md)은 실행 ID·작업자·조회 조건을 Flyway V4 테이블에 먼저 저장하고, Flyway V5로 오래된 실행의 명시적 운영 중단을 기록합니다. Flyway V6는 실행이 실제로 만든 예약별 복구 시도를 직접 연결하며, 종료 실행·다른 작업자·다른 실행 ID의 연결을 거절합니다. 제한 목록과 실행 기록·운영 중단·시도 연결 18건, 전체 서버 328건·빌드가 통과했습니다. 실제 공급자·주기 스케줄러·자동 중단과 관리자 API는 아직 없습니다.
+[AI 예약 복구 작업 실행 기록](docs/development/ai-reservation-recovery-work-runs.md)은 실행 ID·작업자·조회 조건을 Flyway V4 테이블에 먼저 저장하고, Flyway V5로 오래된 실행의 명시적 운영 중단을 기록합니다. Flyway V6는 실행이 실제로 만든 예약별 복구 시도를 직접 연결하며, 종료 실행·다른 작업자·다른 실행 ID의 연결을 거절합니다. V9는 heartbeat 중단을 별도로 집계하고 과거 기록은 별도 집계 없음을 보존합니다. 제한 목록과 실행 기록·운영 중단·시도 연결·heartbeat 집계 21건, 전체 서버 344건·빌드가 통과했습니다. 실제 공급자·주기 스케줄러·자동 중단과 관리자 API는 아직 없습니다.
 
 [AI 예약 복구 수동 검토 재개](docs/development/ai-reservation-recovery-review-resume.md)는 `MANUAL_REVIEW_REQUIRED` 결과를 수정하지 않고 Flyway V7 감사 기록으로 운영자·재개 사유·확인한 예약 상태를 보존합니다. 예약과 최신 수동 검토 시도를 잠근 뒤 일치할 때만 재개하며, 재개 후에도 기존 간격과 최대 시도 횟수를 유지합니다. 순수 정책 11건·복구 저장소 11건·운영 조회와 배정 11건, 전체 서버 334건·빌드가 통과했습니다. 관리자 인증·권한·API·화면과 실제 공급자 확인은 아직 없습니다.
 

@@ -430,6 +430,63 @@ class PolicyCatalogTest {
                 .andExpect(status().isOk()).andExpect(jsonPath("$.total").value(0));
     }
 
+    @Test
+    @DisplayName("서울청년정책네트워크 질문과 마감 안내를 제공하고 개정·규칙·원문 변경 시 이전 답변을 거절한다")
+    void providesReviewedSeoulYouthNetworkQuestions() throws Exception {
+        saveReviewed(SeoulYouthNetworkRules.NUMBER, "2026년 서울청년정책네트워크 하반기 모집", SeoulYouthNetworkRules.CONTENT_HASH);
+        var path = "/api/v1/policies/" + SeoulYouthNetworkRules.NUMBER;
+        mvc.perform(get(path + "/questions")).andExpect(status().isOk()).andExpect(header().string("Cache-Control", "no-store"))
+                .andExpect(jsonPath("$.available").value(true)).andExpect(jsonPath("$.questions.length()").value(4))
+                .andExpect(jsonPath("$.reason").value(org.hamcrest.Matchers.containsString("접수가 마감")))
+                .andExpect(jsonPath("$.ruleVersion").value(SeoulYouthNetworkRules.VERSION));
+        mvc.perform(get("/api/v1/policies").param("questionsOnly", "true").param("q", "서울청년정책네트워크"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.total").value(1))
+                .andExpect(jsonPath("$.items[0].questionnaireAvailable").value(true));
+        var request = new PolicyQuestions.Request(1, SeoulYouthNetworkRules.VERSION, List.of(new PolicyQuestions.Answer("birthRange", "BASE_RANGE"),
+                new PolicyQuestions.Answer("seoulConnection", "UNIVERSITY"), new PolicyQuestions.Answer("consecutiveTerms", "NOT_APPLICABLE"),
+                new PolicyQuestions.Answer("priorDisqualification", "NONE")));
+        var body = mapper.writeValueAsString(request);
+        mvc.perform(post(path + "/evaluation").contentType("application/json").content(body))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.commonCriteriaStatus").value("ELIGIBLE"))
+                .andExpect(jsonPath("$.status").value("NEEDS_REVIEW"))
+                .andExpect(jsonPath("$.explanation").value(org.hamcrest.Matchers.containsString("접수가 마감")));
+        for (var stale : List.of(new PolicyQuestions.Request(2, request.ruleVersion(), request.answers()),
+                new PolicyQuestions.Request(1, "seoul-network-2026-h1-v1", request.answers()))) {
+            mvc.perform(post(path + "/evaluation").contentType("application/json").content(mapper.writeValueAsString(stale)))
+                    .andExpect(status().isConflict());
+        }
+        mvc.perform(post(path + "/evaluation").contentType("application/json").content(mapper.writeValueAsString(
+                new PolicyQuestions.Request(1, request.ruleVersion(), List.of(new PolicyQuestions.Answer("birthRange", "ADULT"))))))
+                .andExpect(status().isBadRequest());
+        var current = store.find(SeoulYouthNetworkRules.NUMBER).orElseThrow();
+        store.importPolicy(SeoulYouthNetworkRules.NUMBER, current.content(), "{}", AT.plusSeconds(1), "changed-network", "changed-hash");
+        mvc.perform(get(path + "/questions")).andExpect(status().isOk()).andExpect(jsonPath("$.available").value(false));
+        mvc.perform(get("/api/v1/policies").param("questionsOnly", "true"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.total").value(0));
+        mvc.perform(post(path + "/evaluation").contentType("application/json").content(body))
+                .andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("POLICY_CHANGED"));
+    }
+
+    @Test
+    @DisplayName("서울 연말의 한 요청은 같은 연도로 비교하고 새해에는 이전 모집의 질문·목록 표시·제출을 중단한다")
+    void stopsSeoulYouthNetworkQuestionsAtYearBoundary() throws Exception {
+        saveReviewed(SeoulYouthNetworkRules.NUMBER, "서울청년정책네트워크", SeoulYouthNetworkRules.CONTENT_HASH);
+        var path = "/api/v1/policies/" + SeoulYouthNetworkRules.NUMBER;
+        var before = Instant.parse("2026-12-31T14:59:59Z");
+        org.mockito.Mockito.when(clock.instant()).thenReturn(before, Instant.parse("2026-12-31T15:00:00Z"));
+        var body = mapper.writeValueAsString(new PolicyQuestions.Request(1, SeoulYouthNetworkRules.VERSION, List.of()));
+        mvc.perform(post(path + "/evaluation").contentType("application/json").content(body))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.evaluatedAt").value(before.toString()));
+        mvc.perform(post(path + "/evaluation").contentType("application/json").content(body))
+                .andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("POLICY_CHANGED"));
+        mvc.perform(get(path + "/questions")).andExpect(status().isOk()).andExpect(jsonPath("$.available").value(false))
+                .andExpect(jsonPath("$.reason").value(org.hamcrest.Matchers.containsString("새 모집")));
+        mvc.perform(get("/api/v1/policies")).andExpect(status().isOk())
+                .andExpect(jsonPath("$.items[0].questionnaireAvailable").value(false));
+        mvc.perform(get("/api/v1/policies").param("questionsOnly", "true"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.total").value(0));
+    }
+
     private void saveReviewed(String number, String title, String hash) {
         // 인공 본문과 검토 해시로 조회·질문 연결만 검사한다. 공식 조건의 정확성 검사가 아니다.
         var source = item.deepCopy();

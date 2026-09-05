@@ -28,6 +28,7 @@ public class PolicyQuestionService {
                 case ExamFeeRules.NUMBER -> ExamFeeRules.questionnaire(policy.revision());
                 case KPassRules.NUMBER -> KPassRules.questionnaire(policy.revision(), now);
                 case YouthHousingSavingsRules.NUMBER -> YouthHousingSavingsRules.questionnaire(policy.revision());
+                case SeoulYouthNetworkRules.NUMBER -> SeoulYouthNetworkRules.questionnaire(policy.revision(), now);
                 default -> throw new IllegalStateException("등록한 정책의 질문 구현이 필요합니다.");
             };
         }
@@ -43,6 +44,10 @@ public class PolicyQuestionService {
             return new PolicyQuestions.Questionnaire(number, policy.revision(), "", false, YouthHousingSavingsRules.SCOPE,
                     "올해 가입 기준의 질문은 아직 제공하지 않아요. 공식 안내를 확인해주세요.", YouthHousingSavingsRules.SOURCE, List.of());
         }
+        if (SeoulYouthNetworkRules.NUMBER.equals(number) && SeoulYouthNetworkRules.CONTENT_HASH.equals(hash)) {
+            return new PolicyQuestions.Questionnaire(number, policy.revision(), "", false, SeoulYouthNetworkRules.SCOPE,
+                    "이 질문은 2026년 하반기 모집 기준이에요. 새 모집의 질문은 아직 제공하지 않아요.", SeoulYouthNetworkRules.SOURCE, List.of());
+        }
         return new PolicyQuestions.Questionnaire(number, policy.revision(), "", false, "신청 조건 확인",
                 "이 정책의 조건 확인 질문은 아직 제공하지 않아요. 공식 안내를 확인해주세요.", policy.sourceUrl(), List.of());
     }
@@ -56,6 +61,7 @@ public class PolicyQuestionService {
             case ExamFeeRules.NUMBER -> ExamFeeRules.evaluate(questions.revision(), request, now);
             case KPassRules.NUMBER -> KPassRules.evaluate(questions.revision(), request, now);
             case YouthHousingSavingsRules.NUMBER -> YouthHousingSavingsRules.evaluate(questions.revision(), request, now);
+            case SeoulYouthNetworkRules.NUMBER -> SeoulYouthNetworkRules.evaluate(questions.revision(), request, now);
             default -> throw new PolicyChangedException();
         };
     }

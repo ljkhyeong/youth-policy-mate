@@ -308,6 +308,73 @@ class PolicyCatalogTest {
                 .andExpect(jsonPath("$.items[0].status").value("NEEDS_REVIEW"));
     }
 
+    @Test
+    @DisplayName("검토한 K-패스 원문에 질문·목록 표시를 연결하고 내용이 바뀌면 이전 답변을 중단한다")
+    void providesReviewedKPassQuestions() throws Exception {
+        saveReviewed(KPassRules.NUMBER, "K-패스", KPassRules.CONTENT_HASH);
+        var path = "/api/v1/policies/" + KPassRules.NUMBER;
+        mvc.perform(get(path + "/questions")).andExpect(status().isOk()).andExpect(header().string("Cache-Control", "no-store"))
+                .andExpect(jsonPath("$.available").value(true)).andExpect(jsonPath("$.questions.length()").value(4))
+                .andExpect(jsonPath("$.ruleVersion").value("k-pass-2026-v1-2026-09"));
+        mvc.perform(get("/api/v1/policies").param("questionsOnly", "true").param("q", "K-패스"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.total").value(1))
+                .andExpect(jsonPath("$.items[0].questionnaireAvailable").value(true));
+        var request = new PolicyQuestions.Request(1, KPassRules.versionAt(AT), List.of(new PolicyQuestions.Answer("age", "ADULT"),
+                new PolicyQuestions.Answer("registration", "REGISTERED"), new PolicyQuestions.Answer("residence", "CONFIRMED"),
+                new PolicyQuestions.Answer("monthlyRides", "FIRST_MONTH_1_TO_14")));
+        var body = mapper.writeValueAsString(request);
+        mvc.perform(post(path + "/evaluation").contentType("application/json").content(body))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.commonCriteriaStatus").value("ELIGIBLE"))
+                .andExpect(jsonPath("$.status").value("NEEDS_REVIEW"));
+        mvc.perform(post(path + "/evaluation").contentType("application/json").content(mapper.writeValueAsString(
+                new PolicyQuestions.Request(2, request.ruleVersion(), request.answers())))).andExpect(status().isConflict());
+        mvc.perform(post(path + "/evaluation").contentType("application/json").content(mapper.writeValueAsString(
+                new PolicyQuestions.Request(1, request.ruleVersion(), List.of(new PolicyQuestions.Answer("monthlyRides", "TEN"))))))
+                .andExpect(status().isBadRequest());
+        var current = store.find(KPassRules.NUMBER).orElseThrow();
+        store.importPolicy(KPassRules.NUMBER, current.content(), "{}", AT.plusSeconds(1), "changed-k-pass", "changed-hash");
+        mvc.perform(get(path + "/questions")).andExpect(status().isOk()).andExpect(jsonPath("$.available").value(false));
+        mvc.perform(get("/api/v1/policies").param("questionsOnly", "true"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.total").value(0));
+        mvc.perform(post(path + "/evaluation").contentType("application/json").content(body))
+                .andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("POLICY_CHANGED"));
+    }
+
+    @Test
+    @DisplayName("서울 월말의 한 요청은 같은 달로 비교하고 다음 요청은 이전 월 답변을 거절한다")
+    void fencesKPassAnswersAtMonthBoundary() throws Exception {
+        saveReviewed(KPassRules.NUMBER, "K-패스", KPassRules.CONTENT_HASH);
+        var path = "/api/v1/policies/" + KPassRules.NUMBER;
+        var before = Instant.parse("2026-09-30T14:59:59Z");
+        var after = Instant.parse("2026-09-30T15:00:00Z");
+        org.mockito.Mockito.when(clock.instant()).thenReturn(before, after);
+        var body = mapper.writeValueAsString(new PolicyQuestions.Request(1, KPassRules.versionAt(before), List.of()));
+        mvc.perform(post(path + "/evaluation").contentType("application/json").content(body))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.evaluatedAt").value(before.toString()))
+                .andExpect(jsonPath("$.ruleVersion").value("k-pass-2026-v1-2026-09"));
+        mvc.perform(post(path + "/evaluation").contentType("application/json").content(body))
+                .andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("POLICY_CHANGED"));
+        mvc.perform(get(path + "/questions")).andExpect(status().isOk())
+                .andExpect(jsonPath("$.ruleVersion").value("k-pass-2026-v1-2026-10"))
+                .andExpect(jsonPath("$.scope").value(org.hamcrest.Matchers.startsWith("2026년 10월")));
+    }
+
+    @Test
+    @DisplayName("검토한 연도가 지나면 K-패스 질문·목록 표시와 이전 답변 제출을 중단한다")
+    void stopsKPassQuestionsAfterReviewedYear() throws Exception {
+        saveReviewed(KPassRules.NUMBER, "K-패스", KPassRules.CONTENT_HASH);
+        var path = "/api/v1/policies/" + KPassRules.NUMBER;
+        org.mockito.Mockito.when(clock.instant()).thenReturn(Instant.parse("2026-12-31T15:00:00Z"));
+        mvc.perform(get(path + "/questions")).andExpect(status().isOk()).andExpect(jsonPath("$.available").value(false))
+                .andExpect(jsonPath("$.reason").value(org.hamcrest.Matchers.containsString("현재 연도")));
+        mvc.perform(get("/api/v1/policies")).andExpect(status().isOk())
+                .andExpect(jsonPath("$.items[0].questionnaireAvailable").value(false));
+        mvc.perform(get("/api/v1/policies").param("questionsOnly", "true"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.total").value(0));
+        mvc.perform(post(path + "/evaluation").contentType("application/json").content(mapper.writeValueAsString(
+                new PolicyQuestions.Request(1, KPassRules.versionAt(AT), List.of())))).andExpect(status().isConflict());
+    }
+
     private void saveReviewed(String number, String title, String hash) {
         // 인공 본문과 검토 해시로 조회·질문 연결만 검사한다. 공식 조건의 정확성 검사가 아니다.
         var source = item.deepCopy();

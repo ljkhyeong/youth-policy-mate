@@ -43,6 +43,21 @@ describe("개인 API 중계", () => {
     expect(fetch).toHaveBeenCalledTimes(2);
   });
 
+  it("이메일 확인과 동의는 회원 경로로만 전달하고 확인 코드 조회는 허용하지 않는다", async () => {
+    const fetch = vi.fn().mockImplementation(() => Promise.resolve(new Response(null, { status: 204 })));
+    vi.stubGlobal("fetch", fetch);
+    await POST(new NextRequest(`${base}/api/member/email-verification/confirm`, { method: "POST", headers: {
+      origin: base, cookie: "YPM_SESSION=member", "X-CSRF-TOKEN": "confirmed", "Content-Type": "application/json",
+    }, body: JSON.stringify({ code: "12345678" }) }), context("email-verification/confirm"));
+    expect(fetch.mock.calls[0][0].pathname).toBe("/api/v1/me/email-verification/confirm");
+    expect(fetch.mock.calls[0][1].headers.Cookie).toBe("YPM_SESSION=member");
+    expect(fetch.mock.calls[0][1].headers["X-CSRF-TOKEN"]).toBe("confirmed");
+    expect((await GET(new NextRequest(`${base}/api/member/email-verification/confirm`), context("email-verification/confirm"))).status).toBe(404);
+    await PUT(new NextRequest(`${base}/api/member/email-settings`, { method: "PUT", headers: { origin: base }, body: '{"enabled":false}' }), context("email-settings"));
+    expect(fetch.mock.calls[1][0].pathname).toBe("/api/v1/me/email-settings");
+    expect(fetch).toHaveBeenCalledTimes(2);
+  });
+
   it("조건 확인에는 회원 쿠키를 전달하지 않고 개인정보를 포함한 큰 본문은 거절한다", async () => {
     const fetch = vi.fn().mockResolvedValue(Response.json({ items: [] })); vi.stubGlobal("fetch", fetch);
     await POST(new NextRequest(`${base}/api/member/checks?page=2`, { method: "POST", headers: { origin: base, cookie: "YPM_SESSION=private" }, body: "{}" }), context("checks"));

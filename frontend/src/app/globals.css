@@ -1014,3 +1014,12 @@ select {
   .question-remaining { font-size: 14px; line-height: 1.8; padding: 16px; border-radius: 12px; background: #fff7e7; color: #694f1d; }
   .question-remaining ul { padding-left: 18px; margin: 8px 0 0; }
 }
+
+.email-settings { margin-block-end: 1.25rem; }
+.email-settings fieldset { border: 0; padding: 0; margin: 1.25rem 0; display: grid; gap: .6rem; min-width: 0; }
+.email-settings label { font-weight: 650; }
+.email-settings input { width: 100%; min-width: 0; padding: .8rem 1rem; border: 1px solid var(--app-line); border-radius: .75rem; background: var(--app-surface); color: inherit; }
+.email-settings input:focus-visible { outline: 3px solid var(--app-blue); outline-offset: 2px; }
+.email-settings button { width: fit-content; max-width: 100%; }
+.email-current { padding-block: .8rem; overflow-wrap: anywhere; }
+.email-current .text-button { display: block; margin-top: .8rem; }

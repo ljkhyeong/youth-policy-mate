@@ -40,6 +40,59 @@ export interface paths {
         readonly patch?: never;
         readonly trace?: never;
     };
+    readonly "/api/v1/me/email-settings": {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header?: never;
+            readonly path?: never;
+            readonly cookie?: never;
+        };
+        /** 내 이메일 확인과 수신 설정 조회 */
+        readonly get: operations["getMemberEmailSettings"];
+        /** 이메일 알림 별도 수신 동의 또는 해제 */
+        readonly put: operations["changeMemberEmailConsent"];
+        readonly post?: never;
+        /** 내 이메일 주소와 미발송 요청 삭제 */
+        readonly delete: operations["deleteMemberEmailAddress"];
+        readonly options?: never;
+        readonly head?: never;
+        readonly patch?: never;
+        readonly trace?: never;
+    };
+    readonly "/api/v1/me/email-verification": {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header?: never;
+            readonly path?: never;
+            readonly cookie?: never;
+        };
+        readonly get?: never;
+        readonly put?: never;
+        /** 이메일 확인 코드 요청 */
+        readonly post: operations["requestMemberEmailVerification"];
+        readonly delete?: never;
+        readonly options?: never;
+        readonly head?: never;
+        readonly patch?: never;
+        readonly trace?: never;
+    };
+    readonly "/api/v1/me/email-verification/confirm": {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header?: never;
+            readonly path?: never;
+            readonly cookie?: never;
+        };
+        readonly get?: never;
+        readonly put?: never;
+        /** 이메일 확인 코드 비교 */
+        readonly post: operations["confirmMemberEmailVerification"];
+        readonly delete?: never;
+        readonly options?: never;
+        readonly head?: never;
+        readonly patch?: never;
+        readonly trace?: never;
+    };
     readonly "/api/v1/me/notifications": {
         readonly parameters: {
             readonly query?: never;
@@ -229,6 +282,26 @@ export interface components {
         };
         readonly MemberConditions: {
             readonly conditions: components["schemas"]["BasicConditions"] | null;
+        };
+        readonly MemberEmailAddress: {
+            readonly address: string;
+        };
+        readonly MemberEmailCode: {
+            readonly code: string;
+        };
+        readonly MemberEmailConsent: {
+            readonly enabled: boolean;
+        };
+        readonly MemberEmailSettings: {
+            readonly address: string | null;
+            readonly addressRegistered: boolean;
+            readonly available: boolean;
+            readonly enabled: boolean;
+            /** @enum {string|null} */
+            readonly verificationDelivery: "PENDING" | "SENDING" | "SENT" | "FAILED" | "UNKNOWN" | "CANCELED" | null;
+            /** Format: date-time */
+            readonly verificationExpiresAt: string | null;
+            readonly verified: boolean;
         };
         readonly MemberNotification: {
             /** Format: date-time */
@@ -563,6 +636,372 @@ export interface operations {
                     readonly [name: string]: unknown;
                 };
                 content?: never;
+            };
+        };
+    };
+    readonly getMemberEmailSettings: {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header?: never;
+            readonly path?: never;
+            readonly cookie?: never;
+        };
+        readonly requestBody?: never;
+        readonly responses: {
+            /** @description OK */
+            readonly 200: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "*/*": components["schemas"]["MemberEmailSettings"];
+                };
+            };
+            /** @description 입력 또는 확인 코드 오류 */
+            readonly 400: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["PolicyApiError"];
+                };
+            };
+            /** @description 로그인 필요 */
+            readonly 401: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 권한 또는 CSRF 토큰 확인 필요 */
+            readonly 403: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 이메일 확인 필요 */
+            readonly 409: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["PolicyApiError"];
+                };
+            };
+            /** @description 확인 메일 요청 횟수 초과 */
+            readonly 429: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["PolicyApiError"];
+                };
+            };
+            /** @description 이메일 설정 또는 저장소 사용 불가 */
+            readonly 503: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["PolicyApiError"];
+                };
+            };
+        };
+    };
+    readonly changeMemberEmailConsent: {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header: {
+                /** @description GET /api/v1/session에서 받은 csrfToken */
+                readonly "X-CSRF-TOKEN": string;
+            };
+            readonly path?: never;
+            readonly cookie?: never;
+        };
+        readonly requestBody: {
+            readonly content: {
+                readonly "application/json": components["schemas"]["MemberEmailConsent"];
+            };
+        };
+        readonly responses: {
+            /** @description No Content */
+            readonly 204: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 입력 또는 확인 코드 오류 */
+            readonly 400: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["PolicyApiError"];
+                };
+            };
+            /** @description 로그인 필요 */
+            readonly 401: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 권한 또는 CSRF 토큰 확인 필요 */
+            readonly 403: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 이메일 확인 필요 */
+            readonly 409: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["PolicyApiError"];
+                };
+            };
+            /** @description 확인 메일 요청 횟수 초과 */
+            readonly 429: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["PolicyApiError"];
+                };
+            };
+            /** @description 이메일 설정 또는 저장소 사용 불가 */
+            readonly 503: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["PolicyApiError"];
+                };
+            };
+        };
+    };
+    readonly deleteMemberEmailAddress: {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header: {
+                /** @description GET /api/v1/session에서 받은 csrfToken */
+                readonly "X-CSRF-TOKEN": string;
+            };
+            readonly path?: never;
+            readonly cookie?: never;
+        };
+        readonly requestBody?: never;
+        readonly responses: {
+            /** @description No Content */
+            readonly 204: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 입력 또는 확인 코드 오류 */
+            readonly 400: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["PolicyApiError"];
+                };
+            };
+            /** @description 로그인 필요 */
+            readonly 401: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 권한 또는 CSRF 토큰 확인 필요 */
+            readonly 403: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 이메일 확인 필요 */
+            readonly 409: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["PolicyApiError"];
+                };
+            };
+            /** @description 확인 메일 요청 횟수 초과 */
+            readonly 429: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["PolicyApiError"];
+                };
+            };
+            /** @description 이메일 설정 또는 저장소 사용 불가 */
+            readonly 503: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["PolicyApiError"];
+                };
+            };
+        };
+    };
+    readonly requestMemberEmailVerification: {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header: {
+                /** @description GET /api/v1/session에서 받은 csrfToken */
+                readonly "X-CSRF-TOKEN": string;
+            };
+            readonly path?: never;
+            readonly cookie?: never;
+        };
+        readonly requestBody: {
+            readonly content: {
+                readonly "application/json": components["schemas"]["MemberEmailAddress"];
+            };
+        };
+        readonly responses: {
+            /** @description No Content */
+            readonly 204: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 입력 또는 확인 코드 오류 */
+            readonly 400: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["PolicyApiError"];
+                };
+            };
+            /** @description 로그인 필요 */
+            readonly 401: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 권한 또는 CSRF 토큰 확인 필요 */
+            readonly 403: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 이메일 확인 필요 */
+            readonly 409: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["PolicyApiError"];
+                };
+            };
+            /** @description 확인 메일 요청 횟수 초과 */
+            readonly 429: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["PolicyApiError"];
+                };
+            };
+            /** @description 이메일 설정 또는 저장소 사용 불가 */
+            readonly 503: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["PolicyApiError"];
+                };
+            };
+        };
+    };
+    readonly confirmMemberEmailVerification: {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header: {
+                /** @description GET /api/v1/session에서 받은 csrfToken */
+                readonly "X-CSRF-TOKEN": string;
+            };
+            readonly path?: never;
+            readonly cookie?: never;
+        };
+        readonly requestBody: {
+            readonly content: {
+                readonly "application/json": components["schemas"]["MemberEmailCode"];
+            };
+        };
+        readonly responses: {
+            /** @description No Content */
+            readonly 204: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 입력 또는 확인 코드 오류 */
+            readonly 400: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["PolicyApiError"];
+                };
+            };
+            /** @description 로그인 필요 */
+            readonly 401: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 권한 또는 CSRF 토큰 확인 필요 */
+            readonly 403: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 이메일 확인 필요 */
+            readonly 409: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["PolicyApiError"];
+                };
+            };
+            /** @description 확인 메일 요청 횟수 초과 */
+            readonly 429: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["PolicyApiError"];
+                };
+            };
+            /** @description 이메일 설정 또는 저장소 사용 불가 */
+            readonly 503: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["PolicyApiError"];
+                };
             };
         };
     };

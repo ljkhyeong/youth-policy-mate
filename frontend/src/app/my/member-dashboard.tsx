@@ -2,6 +2,7 @@
 import { announceAccountChange } from "@/features/member/account-transitions";
 
 import Link from "next/link";
+import { MemberEmailSettings } from "@/features/member/member-email-settings";
 import { useEffect, useState } from "react";
 import { memberApi, type MemberSession, type SavedPolicies, type Notifications } from "@/features/member/member-api";
 
@@ -69,6 +70,7 @@ export function MemberDashboard() {
         <button className="text-button" type="button" disabled={busy} onClick={() => mutate(`policies/${policy.policyNumber}`, "DELETE")}>관심 정책 해제</button>
       </article>)}
     </div>}
+    {session?.authenticated && tab === "notifications" && <MemberEmailSettings csrf={session.csrfToken} />}
     {notifications && tab === "notifications" && <div className="member-list">
       {notifications.items.length === 0 && <section className="member-panel"><h2>도착한 알림이 없어요</h2><p>저장한 정책의 내용 변경과 마감 안내가 이곳에 표시돼요.</p></section>}
       {notifications.items.map(notification => <article className="member-panel" key={notification.id} data-read={notification.read}>

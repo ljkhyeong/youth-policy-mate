@@ -17,6 +17,8 @@ async function handle(request: NextRequest, context: { params: Promise<{ path: s
     || (path === "conditions" && ["GET", "PUT", "DELETE"].includes(method))
     || (path === "policies" && method === "GET")
     || (/^policies\/[0-9]{1,100}$/.test(path) && ["PUT", "DELETE"].includes(method))
+    || (path === "email-settings" && ["GET", "PUT", "DELETE"].includes(method))
+    || (["email-verification", "email-verification/confirm"].includes(path) && method === "POST")
     || (path === "notifications" && method === "GET")
     || (/^notifications\/[0-9a-f-]{36}\/read$/.test(path) && method === "POST");
   if (!allowed) return Response.json({ message: "지원하지 않는 요청이에요." }, { status: 404 });

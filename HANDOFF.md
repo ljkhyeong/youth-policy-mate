@@ -6,7 +6,7 @@
 
 - 개발 브랜치의 누적 변경은 `39f78b5`에서 로컬 `main`에 병합했다. 원격 푸시는 하지 않았다.
 - 지시·스킬 정리는 `7c6ec51`에 커밋했다. `codex/verification-workflow`에서 기존 두 작업의 검증 기록을 검토하고 [검증 명령·결과 기록·재실행 기준](docs/development/verification-workflow.md)을 추가했다.
-- `codex/backend-api-review`에서 [Java·Spring API 활용과 중복 검증](docs/development/backend-api-review.md)을 검토했다. SMTP·이메일 형식·OAuth 저장소·중복 null 검사·미사용 팩터리·정책 답변 검증 6개 정리 대상을 기록했다. 앱 코드 리팩터링은 아직 적용하지 않았다.
+- `codex/backend-api-review`에서 [Java·Spring API 활용과 중복 검증 정리](docs/development/backend-api-review.md) 6개 항목을 구현했다. SMTP 자동 설정·이메일 주소 공통 제약·OAuth 기본 저장소를 적용하고 중복 null 검사·미사용 팩터리·정책별 중복 답변 검증을 정리했다.
 
 ## 구현·검증 범위
 
@@ -15,8 +15,8 @@
 - 회원 기능: OAuth 로그인 코드, 관심 정책 저장·해제, 일정·서비스 내 알림을 연결했다. 실제 카카오·네이버 로그인은 미검증이다. [회원 기능](docs/development/member-policy-flow.md)
 - 이메일: 주소 확인·동의·암호화 저장·Outbox·SMTP 어댑터를 구현했다. 실제 공급자·발신 도메인은 미정이며 외부 수신함 전달은 미검증이다. [이메일 구현과 설정](docs/development/member-email-reminders.md)
 - AI: 후보 개정 검사·비용 예약·DB 복구 흐름은 내부 모델과 테스트용 공급자로 검증했다. 실제 AI 호출·청구·운영 작업자는 미연결이다. [AI 요청 판단](docs/development/ai-request-admission.md)·[복구 실행](docs/development/ai-reservation-recovery-work-runs.md)
-- 최근 앱 검증: 서버 전체 448건·빌드·OpenAPI 계약 일치를 통과했다. 정책 질문의 브라우저 동작·모바일·데스크톱·키보드 이동도 확인했다. 상세 결과는 [최근 개발 기록](docs/development/seoul-youth-network-questions.md)에 있다.
-- 검증 도구의 성공·실패·실행 중 변경 시나리오와 기존 도구 검사를 통과했다. 컴파일·패키징 명령의 Gradle 실행 계획에 테스트 실행이 없음을 확인했다. `npm run verify -- status`에서 실행 기록을 확인한다. 앱 기능은 변경하지 않아 전체 앱 테스트를 재실행하지 않았다.
+- 최근 앱 검증: 표준 API 리팩터링 후 서버 전체 테스트·빌드, API 재생성과 생성 타입 일치, 웹 린트·타입 검사를 통과했다. [검증 결과](docs/development/backend-api-review.md)에 범위를 기록했다. 정책 질문의 브라우저·키보드 검증은 [이전 개발 기록](docs/development/seoul-youth-network-questions.md)에 있다.
+- 검증 도구의 성공·실패·실행 중 변경 시나리오와 기존 도구 검사를 통과했다. 컴파일·패키징 명령의 Gradle 실행 계획에 테스트 실행이 없음을 확인했다. `npm run verify -- status`에서 실행 기록을 확인한다. 검증 도구를 정리할 당시에는 앱 기능을 변경하지 않아 전체 앱 테스트를 재실행하지 않았다.
 
 ## 남은 작업
 

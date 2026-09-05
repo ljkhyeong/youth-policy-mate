@@ -8,13 +8,13 @@
 |---|---|
 | `PolicyAiRecoveryHeartbeat` | 외부 확인 전에 heartbeat를 예약하고 확인이 끝나면 취소하며, 갱신 결과를 다음 실행 여부로 분류 |
 | `HeartbeatPlan` | 호출 측이 정한 heartbeat 주기와 갱신 뒤 유지할 임대 길이 보유 |
-| `HeartbeatScheduler` | 반복 실행 방식 분리. 외부 실행기용 어댑터와 테스트용 스케줄러 제공 |
+| `HeartbeatScheduler` | 관리형 실행기와 테스트용 스케줄러가 구현하는 반복 실행 계약 |
 | `PolicyAiRecoveryHeartbeatScheduler` | 반복 실행기 소유, 종료 중 새 예약 차단·기존 확인 대기·기한 초과 결과 차단 |
 | `PolicyAiRecoveryHeartbeatConfiguration` | 명시적 설정으로 관리형 실행기·heartbeat 생성, 컨텍스트 종료와 저장소 정리 순서 연결 |
 | `AiReservationRecoveryLeaseRenewalStore` | 현재 시도·순번·소유자·만료 시각을 다시 확인하고 짧은 트랜잭션으로 갱신 |
 | `PolicyAiRecoveryCoordinator` | heartbeat 완료 결과만 기존 응답 검사와 상태 적용으로 전달하고, 거절 결과는 `HeartbeatStopped`로 반환 |
 
-기존 생성자는 heartbeat 없이 실행하는 호환 경로로 유지한다. 자동 작업자는 `PolicyAiRecoveryHeartbeat`를 전달한 조정자를 사용해야 한다. Spring 연결을 활성화하면 관리형 실행기가 반복 작업의 생성·종료를 맡는다. 기존 `HeartbeatScheduler.scheduled`는 외부 실행기를 소유하지 않는 호환 어댑터이며 이 문서의 관리형 종료 보장은 적용하지 않는다.
+기존 생성자는 heartbeat 없이 실행하는 호환 경로로 유지한다. 자동 작업자는 `PolicyAiRecoveryHeartbeat`를 전달한 조정자를 사용해야 한다. Spring 연결을 활성화하면 관리형 실행기가 반복 작업의 생성·종료를 맡는다.
 
 ## 실행 순서
 

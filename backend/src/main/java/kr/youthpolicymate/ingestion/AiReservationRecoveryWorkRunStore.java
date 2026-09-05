@@ -82,6 +82,8 @@ public class AiReservationRecoveryWorkRunStore {
         }
 
         Summary summary = completion.summary();
+        int heartbeatStoppedCount = summary.heartbeatStoppedCount().orElseThrow(() ->
+                new IllegalArgumentException("새 AI 예약 복구 완료 집계에는 heartbeat 중단 수가 필요합니다."));
         int updated = jdbcClient.sql("""
                 update ai_reservation_recovery_work_runs
                 set status = 'COMPLETED', finished_at = :finishedAt,
@@ -91,6 +93,7 @@ public class AiReservationRecoveryWorkRunStore {
                     recovery_finished_count = :recoveryFinishedCount,
                     recovery_not_started_count = :recoveryNotStartedCount,
                     recovery_failed_count = :recoveryFailedCount,
+                    heartbeat_stopped_count = :heartbeatStoppedCount,
                     updated_at = :finishedAt
                 where run_id = :runId and status = 'RUNNING'
                 """)
@@ -101,6 +104,7 @@ public class AiReservationRecoveryWorkRunStore {
                 .param("recoveryFinishedCount", summary.recoveryFinishedCount())
                 .param("recoveryNotStartedCount", summary.recoveryNotStartedCount())
                 .param("recoveryFailedCount", summary.recoveryFailedCount())
+                .param("heartbeatStoppedCount", heartbeatStoppedCount)
                 .param("runId", completion.runId())
                 .update();
         requireSingleUpdate(updated);
@@ -214,7 +218,7 @@ public class AiReservationRecoveryWorkRunStore {
                        stale_at_or_before, evaluated_at, candidate_limit,
                        status, finished_at, scanned_count, report_skipped_count,
                        assignment_not_claimed_count, recovery_finished_count,
-                       recovery_not_started_count, recovery_failed_count,
+                       recovery_not_started_count, recovery_failed_count, heartbeat_stopped_count,
                        abort_reason, aborted_by
                 from ai_reservation_recovery_work_runs
                 """;
@@ -234,7 +238,8 @@ public class AiReservationRecoveryWorkRunStore {
                         resultSet.getInt("assignment_not_claimed_count"),
                         resultSet.getInt("recovery_finished_count"),
                         resultSet.getInt("recovery_not_started_count"),
-                        resultSet.getInt("recovery_failed_count")))
+                        resultSet.getInt("recovery_failed_count"),
+                        Optional.ofNullable(resultSet.getObject("heartbeat_stopped_count", Integer.class))))
                 : Optional.empty();
         Optional<AbortRecord> abort = status == Status.ABORTED
                 ? Optional.of(new AbortRecord(
@@ -304,15 +309,27 @@ public class AiReservationRecoveryWorkRunStore {
             int assignmentNotClaimedCount,
             int recoveryFinishedCount,
             int recoveryNotStartedCount,
-            int recoveryFailedCount
+            int recoveryFailedCount,
+            Optional<Integer> heartbeatStoppedCount
     ) {
+        public Summary(int scannedCount, int reportSkippedCount, int assignmentNotClaimedCount,
+                       int recoveryFinishedCount, int recoveryNotStartedCount, int recoveryFailedCount,
+                       int heartbeatStoppedCount) {
+            this(scannedCount, reportSkippedCount, assignmentNotClaimedCount,
+                    recoveryFinishedCount, recoveryNotStartedCount, recoveryFailedCount,
+                    Optional.of(heartbeatStoppedCount));
+        }
+
         public Summary {
+            Objects.requireNonNull(heartbeatStoppedCount, "AI 예약 복구 heartbeat 집계 여부가 필요합니다.");
             if (scannedCount < 0 || reportSkippedCount < 0 || assignmentNotClaimedCount < 0
-                    || recoveryFinishedCount < 0 || recoveryNotStartedCount < 0 || recoveryFailedCount < 0) {
+                    || recoveryFinishedCount < 0 || recoveryNotStartedCount < 0 || recoveryFailedCount < 0
+                    || heartbeatStoppedCount.orElse(0) < 0) {
                 throw new IllegalArgumentException("AI 예약 복구 작업 실행 집계는 음수일 수 없습니다.");
             }
-            if (scannedCount != reportSkippedCount + assignmentNotClaimedCount
-                    + recoveryFinishedCount + recoveryNotStartedCount + recoveryFailedCount) {
+            if (scannedCount != (long) reportSkippedCount + assignmentNotClaimedCount
+                    + recoveryFinishedCount + recoveryNotStartedCount + recoveryFailedCount
+                    + heartbeatStoppedCount.orElse(0)) {
                 throw new IllegalArgumentException("AI 예약 복구 작업 실행 후보 수와 결과 집계가 다릅니다.");
             }
         }

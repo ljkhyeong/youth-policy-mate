@@ -11,6 +11,8 @@ import kr.youthpolicymate.ingestion.AiReservationRecoveryWorkRunCoordinator.Fail
 import kr.youthpolicymate.ingestion.AiReservationRecoveryWorkRunCoordinator.Finished;
 import kr.youthpolicymate.ingestion.AiReservationRecoveryWorkRunCoordinator.NotStarted;
 import kr.youthpolicymate.ingestion.AiReservationRecoveryWorkRunStore.FailureDecision;
+import kr.youthpolicymate.ingestion.AiReservationRecoveryWorkRunStore.CompletionDecision;
+import kr.youthpolicymate.ingestion.AiReservationRecoveryWorkRunStore.RunCompletion;
 import kr.youthpolicymate.ingestion.AiReservationRecoveryWorkRunStore.StartDecision;
 import kr.youthpolicymate.ingestion.AiReservationRecoveryWorkRunStore.StartRequest;
 import kr.youthpolicymate.ingestion.AiReservationRecoveryWorkRunStore.Status;
@@ -18,6 +20,8 @@ import kr.youthpolicymate.ingestion.AiReservationRecoveryWorkRunStore.Summary;
 import kr.youthpolicymate.ingestion.PolicyAiRecoveryPort.CheckFailed;
 import kr.youthpolicymate.ingestion.PolicyAiRecoveryPort.Inspection;
 import kr.youthpolicymate.ingestion.PolicyAiRecoveryPort.Outcome;
+import kr.youthpolicymate.ingestion.PolicyAiRecoveryHeartbeat.HeartbeatPlan;
+import kr.youthpolicymate.ingestion.PolicyAiRecoveryHeartbeat.HeartbeatScheduler;
 import kr.youthpolicymate.ingestion.PolicyAiRequestAdmission.ReservationRequired;
 import kr.youthpolicymate.ingestion.PolicyAiResult.Kind;
 import kr.youthpolicymate.ingestion.PolicyAiResult.Request;
@@ -26,6 +30,7 @@ import kr.youthpolicymate.policy.PolicyObservation.ContentFingerprint;
 import kr.youthpolicymate.policy.PolicyObservation.Readable;
 import kr.youthpolicymate.policy.PolicyObservation.SnapshotReference;
 import kr.youthpolicymate.policy.PolicyRevisionState;
+import org.flywaydb.core.Flyway;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -35,6 +40,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.jdbc.core.simple.JdbcClient;
+import org.springframework.jdbc.datasource.DriverManagerDataSource;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.postgresql.PostgreSQLContainer;
@@ -47,6 +53,7 @@ import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
+import java.util.Optional;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
@@ -74,6 +81,7 @@ class AiReservationRecoveryWorkRunCoordinatorTest {
     @Autowired AiReservationRecoveryWorkAssigner workAssigner;
     @Autowired PolicyAiRecoveryApplier applier;
     @Autowired AiReservationRecoveryWorkRunStore runStore;
+    @Autowired AiReservationRecoveryLeaseRenewalStore leaseRenewalStore;
 
     @BeforeEach
     void setUp() {
@@ -107,7 +115,7 @@ class AiReservationRecoveryWorkRunCoordinatorTest {
             assertThat(run.workerId()).isEqualTo("worker-a");
             assertThat(run.criteria()).isEqualTo(criteria());
             assertThat(run.status()).isEqualTo(Status.COMPLETED);
-            assertThat(run.summary()).contains(new Summary(3, 1, 0, 1, 0, 1));
+            assertThat(run.summary()).contains(new Summary(3, 1, 0, 1, 0, 1, 0));
             assertThat(run.finishedAt()).contains(at(7));
         });
         assertThat(recoveryStore.historyForWorkRun("run-a"))
@@ -133,10 +141,133 @@ class AiReservationRecoveryWorkRunCoordinatorTest {
         assertThat(first).isInstanceOf(Finished.class);
         assertThat(replay).isInstanceOfSatisfying(NotStarted.class, stopped -> {
             assertThat(stopped.start().decision()).isEqualTo(StartDecision.REPLAYED);
-            assertThat(stopped.start().run().summary()).contains(new Summary(1, 0, 0, 1, 0, 0));
+            assertThat(stopped.start().run().summary()).contains(new Summary(1, 0, 0, 1, 0, 0, 0));
         });
         assertThat(port.calls()).isOne();
         assertThat(recoveryStore.history("a-ready")).hasSize(1);
+    }
+
+    @Test
+    @DisplayName("heartbeat 중단을 따로 저장하고 다음 후보를 처리하며 재전달 때 집계를 보존한다")
+    void persistsHeartbeatStopSeparatelyAndContinuesBatch() {
+        reserve("a-heartbeat-stopped", at(0));
+        reserve("b-finished", at(0));
+        var scheduler = new ControlledHeartbeatScheduler();
+        var heartbeat = new PolicyAiRecoveryHeartbeat(
+                leaseRenewalStore, scheduler, Clock.fixed(at(7), ZoneOffset.UTC),
+                new HeartbeatPlan(Duration.ofSeconds(2), Duration.ofSeconds(7)));
+        var calls = new AtomicInteger();
+        PolicyAiRecoveryPort port = inspection -> {
+            calls.incrementAndGet();
+            if (inspection.reservation().reservationId().equals("a-heartbeat-stopped")) {
+                scheduler.runOnce();
+            }
+            return CheckFailed.INSTANCE;
+        };
+        var recoveryCoordinator = new PolicyAiRecoveryCoordinator(
+                recoveryStore, lifecycleStore, applier, port, Clock.fixed(at(8), ZoneOffset.UTC), heartbeat);
+        var coordinator = new AiReservationRecoveryWorkRunCoordinator(runStore,
+                new AiReservationRecoveryWorkRunner(operationsQuery, workAssigner, recoveryCoordinator),
+                Clock.fixed(at(9), ZoneOffset.UTC));
+        var request = request("run-heartbeat", "worker-a");
+
+        var execution = coordinator.run(request, candidate -> {
+            String reservationId = candidate.reservation().reservationId();
+            return lease("attempt-" + reservationId, at(5),
+                    reservationId.equals("a-heartbeat-stopped") ? at(7) : at(20));
+        });
+
+        assertThat(execution).isInstanceOfSatisfying(Finished.class, finished -> {
+            assertThat(finished.completion().decision()).isEqualTo(CompletionDecision.COMPLETED);
+            assertThat(finished.batch().candidates().getFirst())
+                    .isInstanceOfSatisfying(AiReservationRecoveryWorkRunner.RecoveryFinished.class, result ->
+                            assertThat(result.recovery()).isInstanceOf(PolicyAiRecoveryCoordinator.HeartbeatStopped.class));
+        });
+        var summary = new Summary(2, 0, 0, 1, 0, 0, 1);
+        assertThat(runStore.find("run-heartbeat").orElseThrow().summary()).contains(summary);
+        assertThat(recoveryStore.historyForWorkRun("run-heartbeat"))
+                .extracting(AiReservationRecoveryStore.Attempt::attemptId)
+                .containsExactly("attempt-a-heartbeat-stopped", "attempt-b-finished");
+        assertThat(recoveryStore.findAttempt("attempt-a-heartbeat-stopped").orElseThrow().status())
+                .isEqualTo(AiReservationRecoveryStore.Status.ACTIVE);
+
+        assertThat(coordinator.run(request, candidate -> {
+            throw new AssertionError("완료 실행의 임대를 다시 만들면 안 됩니다.");
+        })).isInstanceOfSatisfying(NotStarted.class, replay -> {
+            assertThat(replay.start().decision()).isEqualTo(StartDecision.REPLAYED);
+            assertThat(replay.start().run().summary()).contains(summary);
+        });
+        assertThat(calls.get()).isEqualTo(2);
+        assertThat(runStore.complete(new RunCompletion("run-heartbeat", "worker-a", at(9), summary)).decision())
+                .isEqualTo(CompletionDecision.REPLAYED);
+        assertThat(runStore.complete(new RunCompletion("run-heartbeat", "worker-a", at(9),
+                new Summary(2, 0, 0, 1, 1, 0, 0))).decision())
+                .isEqualTo(CompletionDecision.COMPLETION_CONFLICT);
+    }
+
+    @Test
+    @DisplayName("V8 기록을 V9로 옮겨도 과거 heartbeat 집계 없음과 기존 실행 상태를 보존한다")
+    void migratesLegacyRunsWithoutInventingHeartbeatCounts() {
+        String schema = "heartbeat_summary_migration";
+        var flyway = Flyway.configure()
+                .dataSource(postgres.getJdbcUrl(), postgres.getUsername(), postgres.getPassword())
+                .schemas(schema);
+        try {
+            flyway.target("8").load().migrate();
+            String schemaUrl = postgres.getJdbcUrl()
+                    + (postgres.getJdbcUrl().contains("?") ? "&" : "?") + "currentSchema=" + schema;
+            var legacyJdbc = JdbcClient.create(new DriverManagerDataSource(
+                    schemaUrl, postgres.getUsername(), postgres.getPassword()));
+            for (String runId : List.of("legacy-completed", "legacy-running", "legacy-failed", "legacy-aborted")) {
+                legacyJdbc.sql("""
+                        insert into ai_reservation_recovery_work_runs (
+                            run_id, worker_id, maximum_attempts, retry_delays,
+                            stale_at_or_before, evaluated_at, candidate_limit, status, created_at, updated_at
+                        ) values (:runId, 'worker-a', 3, 'PT5S,PT20S', :staleAt, :evaluatedAt,
+                            10, 'RUNNING', :evaluatedAt, :evaluatedAt)
+                        """).param("runId", runId).param("staleAt", dbTime(at(0)))
+                        .param("evaluatedAt", dbTime(at(5))).update();
+            }
+            legacyJdbc.sql("""
+                    update ai_reservation_recovery_work_runs
+                    set status = 'COMPLETED', finished_at = :finishedAt,
+                        scanned_count = 1, report_skipped_count = 0, assignment_not_claimed_count = 0,
+                        recovery_finished_count = 0, recovery_not_started_count = 1, recovery_failed_count = 0
+                    where run_id = 'legacy-completed'
+                    """).param("finishedAt", dbTime(at(7))).update();
+            legacyJdbc.sql("""
+                    update ai_reservation_recovery_work_runs set status = 'FAILED', finished_at = :finishedAt
+                    where run_id = 'legacy-failed'
+                    """).param("finishedAt", dbTime(at(7))).update();
+            legacyJdbc.sql("""
+                    update ai_reservation_recovery_work_runs set status = 'ABORTED', finished_at = :finishedAt,
+                        abort_reason = 'OPERATOR_DECISION', aborted_by = 'operator-a'
+                    where run_id = 'legacy-aborted'
+                    """).param("finishedAt", dbTime(at(7))).update();
+
+            flyway.target("latest").load().migrate();
+
+            var legacyStore = new AiReservationRecoveryWorkRunStore(legacyJdbc);
+            var replay = legacyStore.start(request("legacy-completed", "worker-a"));
+            assertThat(replay.decision()).isEqualTo(StartDecision.REPLAYED);
+            var legacySummary = new Summary(1, 0, 0, 0, 1, 0, Optional.empty());
+            assertThat(replay.run().summary()).contains(legacySummary);
+            assertThat(legacyStore.find("legacy-running").orElseThrow().status()).isEqualTo(Status.RUNNING);
+            assertThat(legacyStore.find("legacy-failed").orElseThrow().status()).isEqualTo(Status.FAILED);
+            assertThat(legacyStore.find("legacy-aborted").orElseThrow().abort().orElseThrow().operatorId())
+                    .isEqualTo("operator-a");
+            assertThat(legacyJdbc.sql("select count(*) from ai_reservation_recovery_work_runs "
+                    + "where heartbeat_stopped_count is null").query(Integer.class).single()).isEqualTo(4);
+            assertThatThrownBy(() -> legacyStore.complete(new RunCompletion(
+                    "legacy-running", "worker-a", at(7), legacySummary)))
+                    .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("heartbeat 중단 수");
+            assertThat(legacyStore.find("legacy-running").orElseThrow().status()).isEqualTo(Status.RUNNING);
+            assertThat(legacyStore.complete(new RunCompletion("legacy-running", "worker-a", at(7),
+                    new Summary(0, 0, 0, 0, 0, 0, 0))).run().orElseThrow().summary().orElseThrow()
+                    .heartbeatStoppedCount()).contains(0);
+        } finally {
+            jdbcClient.sql("drop schema if exists heartbeat_summary_migration cascade").update();
+        }
     }
 
     @Test
@@ -274,12 +405,34 @@ class AiReservationRecoveryWorkRunCoordinatorTest {
                 set status = 'COMPLETED', finished_at = :finishedAt,
                     scanned_count = 2, report_skipped_count = 1,
                     assignment_not_claimed_count = 0, recovery_finished_count = 0,
-                    recovery_not_started_count = 0, recovery_failed_count = 0
+                    recovery_not_started_count = 0, recovery_failed_count = 0,
+                    heartbeat_stopped_count = 0
                 where run_id = 'run-invalid'
                 """).param("finishedAt", dbTime(at(7))).update())
                 .isInstanceOf(DataIntegrityViolationException.class);
         assertThat(runStore.find("run-invalid")).hasValueSatisfying(run ->
                 assertThat(run.status()).isEqualTo(Status.RUNNING));
+    }
+
+    @Test
+    @DisplayName("heartbeat 집계는 완료에만 저장하고 음수와 이중 집계를 거절한다")
+    void rejectsHeartbeatCountsOutsideCompletedRunsAndInvalidTotals() {
+        runStore.start(request("run-heartbeat-constraints", "worker-a"));
+        assertThatThrownBy(() -> jdbcClient.sql("""
+                update ai_reservation_recovery_work_runs set heartbeat_stopped_count = 0
+                where run_id = 'run-heartbeat-constraints'
+                """).update()).isInstanceOf(DataIntegrityViolationException.class);
+        runStore.complete(new RunCompletion("run-heartbeat-constraints", "worker-a", at(7),
+                new Summary(1, 0, 0, 0, 0, 0, 1)));
+        assertThatThrownBy(() -> jdbcClient.sql("""
+                update ai_reservation_recovery_work_runs
+                set heartbeat_stopped_count = -1, recovery_not_started_count = 2
+                where run_id = 'run-heartbeat-constraints'
+                """).update()).isInstanceOf(DataIntegrityViolationException.class);
+        assertThatThrownBy(() -> jdbcClient.sql("""
+                update ai_reservation_recovery_work_runs set recovery_not_started_count = 1
+                where run_id = 'run-heartbeat-constraints'
+                """).update()).isInstanceOf(DataIntegrityViolationException.class);
     }
 
     @Test
@@ -395,6 +548,20 @@ class AiReservationRecoveryWorkRunCoordinatorTest {
 
         private int calls() {
             return calls.get();
+        }
+    }
+
+    private static final class ControlledHeartbeatScheduler implements HeartbeatScheduler {
+        private Runnable heartbeat;
+
+        @Override
+        public PolicyAiRecoveryHeartbeat.Cancellation schedule(Duration initialDelay, Duration delay, Runnable heartbeat) {
+            this.heartbeat = heartbeat;
+            return () -> this.heartbeat = null;
+        }
+
+        private void runOnce() {
+            heartbeat.run();
         }
     }
 

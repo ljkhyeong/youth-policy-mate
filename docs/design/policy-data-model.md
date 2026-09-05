@@ -20,7 +20,7 @@
 
 위 표의 각 행을 무조건 별도 테이블·서비스로 만들지는 않는다. 첫 구현에서는 실제 조회·변경 책임에 필요한 구조만 만든다. 회원, 관심 정책, 알림 Outbox의 상세 DDL은 이번 초안의 범위 밖이다.
 
-페이지·항목의 시도, 부분 실패와 재처리 위치는 [수집 실행 진행 설계](collection-run-progress.md)와 [내부 모델 구현](../development/collection-run-progress.md)을 따른다. 메모리 상태의 변경을 검증했으며 실행 이력 DB·실제 수집·재시작 복구는 아직 없다.
+페이지·항목의 시도, 부분 실패와 재처리 위치는 [수집 실행 진행 설계](collection-run-progress.md)와 [내부 모델 구현](../development/collection-run-progress.md)을 따른다. 2026-09-05에는 별도 [한 페이지 수집](../development/limited-policy-collection.md)에서 실제 API·DB 원본·항목 이력·Spring Batch 실행을 연결했다. 저장 원본을 별도 프로세스로 재처리할 수 있으며 자동 회수·정기 실행·전체 페이지 순회는 아직 없다.
 
 AI 파생 결과의 개정·원본·생성 방식·요청 순번은 [AI 후보 설계](policy-ai-candidates.md)와 [내부 모델 구현](../development/policy-ai-candidates.md)을 따른다. 후보 참조의 수용·재사용만 확인하며 실제 AI 호출·본문 검증·자격 규칙 승격·저장은 아직 없다.
 

@@ -37,9 +37,9 @@ export default function HomePage() {
           <span className="status-dot" aria-hidden="true" />
           <div>
             <p className="status-label">현재 이용 범위</p>
-            <h2 id="status-title">정책 데이터 연결을 준비하고 있어요</h2>
-            <p>지금은 조건 입력과 확인까지 이용할 수 있어요. 추천·저장·마감 알림은 실제 정책 데이터가 연결된 뒤 제공할게요.</p>
-            <a className="text-link" href="https://www.youthcenter.go.kr/">온통청년에서 정책 확인하기</a>
+            <h2 id="status-title">지원 내용을 먼저 살펴보세요</h2>
+            <p>온통청년에서 확인한 일부 정책의 검색과 상세 안내를 제공해요. 내 조건에 따른 추천·저장·마감 알림은 준비 중이에요.</p>
+            <Link className="text-link" href="/policies">정책 찾아보기 →</Link>
           </div>
         </aside>
       </main>

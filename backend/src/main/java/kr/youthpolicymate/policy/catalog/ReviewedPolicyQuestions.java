@@ -13,6 +13,7 @@ final class ReviewedPolicyQuestions {
         hashes.put(WorkStudyRules.NUMBER, WorkStudyRules.CONTENT_HASH);
         if (ExamFeeRules.appliesAt(now)) hashes.put(ExamFeeRules.NUMBER, ExamFeeRules.CONTENT_HASH);
         if (KPassRules.appliesAt(now)) hashes.put(KPassRules.NUMBER, KPassRules.CONTENT_HASH);
+        if (YouthHousingSavingsRules.appliesAt(now)) hashes.put(YouthHousingSavingsRules.NUMBER, YouthHousingSavingsRules.CONTENT_HASH);
         return hashes;
     }
 }

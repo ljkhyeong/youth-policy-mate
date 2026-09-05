@@ -375,6 +375,61 @@ class PolicyCatalogTest {
                 new PolicyQuestions.Request(1, KPassRules.versionAt(AT), List.of())))).andExpect(status().isConflict());
     }
 
+    @Test
+    @DisplayName("청년주택드림청약통장 질문·목록 표시를 연결하고 개정·규칙·원문 변경 시 이전 답변을 거절한다")
+    void providesReviewedYouthHousingSavingsQuestions() throws Exception {
+        saveReviewed(YouthHousingSavingsRules.NUMBER, "청년주택드림청약통장", YouthHousingSavingsRules.CONTENT_HASH);
+        var path = "/api/v1/policies/" + YouthHousingSavingsRules.NUMBER;
+        mvc.perform(get(path + "/questions")).andExpect(status().isOk()).andExpect(header().string("Cache-Control", "no-store"))
+                .andExpect(jsonPath("$.available").value(true)).andExpect(jsonPath("$.questions.length()").value(4))
+                .andExpect(jsonPath("$.ruleVersion").value(YouthHousingSavingsRules.VERSION));
+        mvc.perform(get("/api/v1/policies").param("questionsOnly", "true").param("q", "청년주택드림"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.total").value(1))
+                .andExpect(jsonPath("$.items[0].questionnaireAvailable").value(true));
+        var request = new PolicyQuestions.Request(1, YouthHousingSavingsRules.VERSION, List.of(new PolicyQuestions.Answer("age", "AGE_19_TO_34"),
+                new PolicyQuestions.Answer("homeOwnership", "NO_HOME"), new PolicyQuestions.Answer("incomeBasis", "PREVIOUS_YEAR"),
+                new PolicyQuestions.Answer("incomeAmount", "UP_TO_50M")));
+        var body = mapper.writeValueAsString(request);
+        mvc.perform(post(path + "/evaluation").contentType("application/json").content(body))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.commonCriteriaStatus").value("ELIGIBLE"))
+                .andExpect(jsonPath("$.status").value("NEEDS_REVIEW")).andExpect(jsonPath("$.checks.length()").value(3));
+        for (var stale : List.of(new PolicyQuestions.Request(2, request.ruleVersion(), request.answers()),
+                new PolicyQuestions.Request(1, "youth-housing-2026-v0", request.answers()))) {
+            mvc.perform(post(path + "/evaluation").contentType("application/json").content(mapper.writeValueAsString(stale)))
+                    .andExpect(status().isConflict());
+        }
+        mvc.perform(post(path + "/evaluation").contentType("application/json").content(mapper.writeValueAsString(
+                new PolicyQuestions.Request(1, request.ruleVersion(), List.of(new PolicyQuestions.Answer("incomeAmount", "ZERO"))))))
+                .andExpect(status().isBadRequest());
+        var current = store.find(YouthHousingSavingsRules.NUMBER).orElseThrow();
+        store.importPolicy(YouthHousingSavingsRules.NUMBER, current.content(), "{}", AT.plusSeconds(1), "changed-housing", "changed-hash");
+        mvc.perform(get(path + "/questions")).andExpect(status().isOk()).andExpect(jsonPath("$.available").value(false));
+        mvc.perform(get("/api/v1/policies").param("questionsOnly", "true"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.total").value(0));
+        mvc.perform(post(path + "/evaluation").contentType("application/json").content(body))
+                .andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("POLICY_CHANGED"));
+    }
+
+    @Test
+    @DisplayName("서울 연말의 한 요청은 같은 연도로 비교하고 새해에는 가입 질문·목록 표시·제출을 중단한다")
+    void stopsYouthHousingSavingsQuestionsAtYearBoundary() throws Exception {
+        saveReviewed(YouthHousingSavingsRules.NUMBER, "청년주택드림청약통장", YouthHousingSavingsRules.CONTENT_HASH);
+        var path = "/api/v1/policies/" + YouthHousingSavingsRules.NUMBER;
+        var before = Instant.parse("2026-12-31T14:59:59Z");
+        org.mockito.Mockito.when(clock.instant()).thenReturn(before, Instant.parse("2026-12-31T15:00:00Z"));
+        var body = mapper.writeValueAsString(new PolicyQuestions.Request(1, YouthHousingSavingsRules.VERSION, List.of()));
+        mvc.perform(post(path + "/evaluation").contentType("application/json").content(body))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.evaluatedAt").value(before.toString()));
+        mvc.perform(post(path + "/evaluation").contentType("application/json").content(body))
+                .andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("POLICY_CHANGED"));
+        mvc.perform(get(path + "/questions")).andExpect(status().isOk()).andExpect(jsonPath("$.available").value(false))
+                .andExpect(jsonPath("$.reason").value(org.hamcrest.Matchers.containsString("올해")));
+        mvc.perform(get("/api/v1/policies")).andExpect(status().isOk())
+                .andExpect(jsonPath("$.items[0].questionnaireAvailable").value(false));
+        mvc.perform(get("/api/v1/policies").param("questionsOnly", "true"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.total").value(0));
+    }
+
     private void saveReviewed(String number, String title, String hash) {
         // 인공 본문과 검토 해시로 조회·질문 연결만 검사한다. 공식 조건의 정확성 검사가 아니다.
         var source = item.deepCopy();

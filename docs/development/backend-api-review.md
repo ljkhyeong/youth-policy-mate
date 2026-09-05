@@ -29,7 +29,7 @@
 - 정책별 자격·예외·안내 문구와 미응답의 추가 확인 처리는 바꾸지 않았다. 동적 선택지 검증은 `@Valid`만으로 대체하지 않았다.
 - JDK HttpClient·Cipher·Mac을 사용하는 수집·암호화 코드와 인증키가 포함된 응답 저장 차단은 정리 대상에서 제외했다.
 
-## 검증 결과
+## 검증 결과 — 첫 6개 항목
 
 - `npm run generate:api`: OpenAPI·TypeScript 생성 통과.
 - `npm run verify -- check:backend`: 서버 전체 453건, 실패·오류·건너뜀 0, 빌드 통과. 공통 메일·보안 설정 변경을 포함해 한 번 실행했다.
@@ -39,13 +39,27 @@
 
 표준 API의 동작은 [Spring Boot 이메일 설정](https://docs.spring.io/spring-boot/reference/io/email.html), [Spring Security OAuth 설정](https://docs.spring.io/spring-security/reference/servlet/oauth2/login/core.html), [Jakarta Email 제약](https://jakarta.ee/specifications/bean-validation/3.1/apidocs/jakarta/validation/constraints/email), [JDK List.copyOf](https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/util/List.html#copyOf(java.util.Collection))를 확인했다. OAuth Map 생성자의 빈 설정 지원은 로컬 Spring Security 7.1.1 바이트코드와 애플리케이션 테스트에서도 확인했다.
 
-## 추가 검토 — 아직 미적용
+## 추가 정리 — 2026-09-06 적용
 
-`337b4cb` 기준으로 앞의 6개와 겹치지 않는 항목을 검토했다. 이번에는 표준 API 재구현보다 반복 조회와 같은 업무 코드의 중복이 주요 정리 대상이다.
+`d3ace4e`에서 검토한 추가 4개 항목을 구현했다.
 
-1. **조건 확인 목록의 반복 조회 — 우선 처리.** [PolicyCheckService.java](../../backend/src/main/java/kr/youthpolicymate/policy/catalog/PolicyCheckService.java) 28–32행은 목록 조회 뒤 정책별로 상세와 원문을 다시 조회한다. [PolicyCatalogStore.java](../../backend/src/main/java/kr/youthpolicymate/policy/catalog/PolicyCatalogStore.java)의 목록은 SELECT 2회, 상세·원문은 각각 1회다. 20건이면 코드상 `2 + 20 × 2 = 42`회이며 목록에서 읽은 content JSON도 상세 조회에서 다시 읽는다. 현재 개정·원문을 JOIN한 조건 확인용 목록 조회로 합치면 전체 개수와 페이지 데이터 조회 2회로 줄일 수 있다. 정렬·페이지·현재 개정 연결·읽기 일관성은 유지해야 한다. 실행 시간을 측정한 결과는 아니다.
-2. **고정 결과를 얻기 위한 판정 객체 생성 — 바로 정리 가능.** 같은 서비스 46–50행은 매번 `SourceEvidence`, `EvaluationBasis`, `PendingIssue`, `PolicyReview`, `EligibilityDecision`을 만든다. 하지만 미완료 검토와 빈 조건 목록을 넘기므로 `status()`는 항상 `NEEDS_REVIEW`다. 현재 이 안내 경로에서는 해당 상태를 직접 반환하면 된다. 응답의 조건별 원문·설명·정책 개정은 유지하고, 실제 조건을 비교하는 정책별 규칙의 판정 객체는 남긴다.
-3. **AI 예약 종료 상태 판단 6곳 — enum으로 이동.** `AiBudgetReservationLifecycleStore`, `AiReservationRecoveryLeaseRenewalStore`, `AiReservationRecoveryRetryPolicy`, `AiReservationRecoveryReviewStore`, `AiReservationRecoveryStore`, `PolicyAiRecoveryCoordinator`가 같은 세 상태를 OR로 비교한다. [AiBudgetReservationState.java](../../backend/src/main/java/kr/youthpolicymate/ingestion/AiBudgetReservationState.java) 214행의 `Phase`에 `isTerminal()`을 두면 변경 위치가 한곳이 된다. 상태 검사 자체를 없애는 작업은 아니다.
-4. **DB 시각 변환·비교 중복 — 수집 패키지 내부에서 공통화.** AI 저장소·운영 조회 7개 클래스가 `dbTime`을, 그중 6개가 `sameDatabaseInstant`를 각각 구현한다. 대표 위치는 [AiReservationRecoveryOperationsQuery.java](../../backend/src/main/java/kr/youthpolicymate/ingestion/AiReservationRecoveryOperationsQuery.java) 167행과 [AiReservationRecoveryWorkRunStore.java](../../backend/src/main/java/kr/youthpolicymate/ingestion/AiReservationRecoveryWorkRunStore.java) 273–278행이다. 마이크로초 단위 절삭·UTC 변환·시각 비교만 작은 공통 함수로 모을 수 있다. 정밀도 처리는 재전달·동시성 판단에 필요하므로 제거하지 않는다. 현재 마이크로초 절삭을 하지 않는 회원·정책 저장소까지 일괄 변경할 이유는 없다.
+| 대상 | 적용 내용 |
+|---|---|
+| [조건 확인 조회](../../backend/src/main/java/kr/youthpolicymate/policy/catalog/PolicyCatalogStore.java) | `listForCheck`에서 정책·현재 개정·원문을 JOIN한다. 20건에 SELECT 42회를 호출하던 흐름을 개수·페이지 조회 2회로 줄였다. 페이지 계산은 Spring Data의 `Page`·`PageRequest`를 사용한다. |
+| [고정 상태용 객체](../../backend/src/main/java/kr/youthpolicymate/policy/catalog/PolicyCheckService.java) | 항상 같은 값을 얻던 판정 객체 생성을 제거하고 `NEEDS_REVIEW`를 직접 반환한다. 응답의 원문·설명·정책 개정과 실제 정책별 판정 규칙은 유지한다. |
+| [AI 종료 상태](../../backend/src/main/java/kr/youthpolicymate/ingestion/AiBudgetReservationState.java) | 6개 클래스의 같은 상태 비교를 `Phase.isTerminal()`로 모았다. 종료 상태의 종류와 상태 전이 조건은 그대로다. |
+| [DB 시각 처리](../../backend/src/main/java/kr/youthpolicymate/ingestion/AiDatabaseTime.java) | 7곳의 변환과 6곳의 비교 함수를 수집 패키지 내부의 `AiDatabaseTime`으로 모았다. 마이크로초 절삭·UTC 변환·시각 비교 방식은 그대로다. |
 
-이 추가 검토에서는 앱 코드를 수정하거나 테스트를 재실행하지 않았다. 변경 시 반복 조회는 페이지·현재 개정과 쿼리 수를, 판정 객체 제거는 기존 안내 응답을, AI 공통 함수는 기존 복구·재전달 테스트를 확인하면 된다.
+정책 목록의 정렬·페이지·질문 제공 여부와 읽기 일관성을 유지했다. LEFT JOIN 결과에서 현재 개정의 원문이 없으면 기존처럼 오류로 처리하며 정책을 조용히 제외하지 않는다. JSON 본문을 목록과 상세에서 두 번 읽던 처리도 한 번으로 줄었다. 변경 전 42회는 호출 코드로 계산했고, 변경 후 2회는 PostgreSQL 통합 테스트에서 `JdbcClient.sql` 호출 횟수로 확인했다. 응답 시간 개선율을 측정한 것은 아니다.
+
+관련 테스트 188건이 실패·오류·건너뜀 없이 통과했다. 21개 정책과 과거·현재 개정의 원문을 저장한 테스트에서 첫 페이지·마지막 페이지·빈 페이지 각각의 조회 2회, 정렬, 전체 개수, 최신 원문을 확인했다. 기존 API 계약 일치·회원 흐름·AI 예약·복구·재전달 테스트도 함께 통과했다.
+
+실행 명령은 다음과 같다. 공통 설정·프런트엔드·외부 API 계약은 변경하지 않아 전체 서버·웹 검사를 반복하지 않았다.
+
+```sh
+npm run verify -- test:ai-recovery-policy -- \
+  --tests 'kr.youthpolicymate.ingestion.Ai*Test' \
+  --tests 'kr.youthpolicymate.ingestion.PolicyAi*Test' \
+  --tests 'kr.youthpolicymate.policy.catalog.PolicyCatalogTest' \
+  --tests 'kr.youthpolicymate.member.MemberFlowTest'
+```

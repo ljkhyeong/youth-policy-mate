@@ -1,0 +1,295 @@
+{
+  "openapi" : "3.1.0",
+  "info" : {
+    "title" : "OpenAPI definition",
+    "version" : "v0"
+  },
+  "servers" : [ {
+    "url" : "http://localhost",
+    "description" : "Generated server url"
+  } ],
+  "paths" : {
+    "/api/v1/policies" : {
+      "get" : {
+        "operationId" : "listPolicies",
+        "parameters" : [ {
+          "in" : "query",
+          "name" : "q",
+          "required" : false,
+          "schema" : {
+            "type" : "string",
+            "default" : "",
+            "maxLength" : 80,
+            "minLength" : 0
+          }
+        }, {
+          "in" : "query",
+          "name" : "page",
+          "required" : false,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int32",
+            "default" : 1,
+            "maximum" : 1000,
+            "minimum" : 1
+          }
+        }, {
+          "in" : "query",
+          "name" : "pageSize",
+          "required" : false,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int32",
+            "default" : 20,
+            "maximum" : 50,
+            "minimum" : 1
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PolicyListResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          },
+          "400" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PolicyApiError"
+                }
+              }
+            },
+            "description" : "Bad Request"
+          },
+          "503" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PolicyApiError"
+                }
+              }
+            },
+            "description" : "정책 저장소 조회 실패"
+          }
+        },
+        "summary" : "저장된 정책 목록과 제목·설명 검색",
+        "tags" : [ "policy-catalog-controller" ]
+      }
+    },
+    "/api/v1/policies/{policyNumber}" : {
+      "get" : {
+        "operationId" : "getPolicy",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "policyNumber",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PolicyDetailResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          },
+          "404" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PolicyApiError"
+                }
+              }
+            },
+            "description" : "Not Found"
+          },
+          "503" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PolicyApiError"
+                }
+              }
+            },
+            "description" : "정책 저장소 조회 실패"
+          }
+        },
+        "summary" : "정책 상세와 원문 출처 조회",
+        "tags" : [ "policy-catalog-controller" ]
+      }
+    }
+  },
+  "components" : {
+    "schemas" : {
+      "PolicyApiError" : {
+        "type" : "object",
+        "properties" : {
+          "code" : {
+            "type" : "string"
+          },
+          "message" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "code", "message" ]
+      },
+      "PolicyContent" : {
+        "type" : "object",
+        "properties" : {
+          "applicationPeriod" : {
+            "type" : "string"
+          },
+          "category" : {
+            "type" : "string"
+          },
+          "description" : {
+            "type" : "string"
+          },
+          "links" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/PolicyOfficialLink"
+            }
+          },
+          "organization" : {
+            "type" : "string"
+          },
+          "regionCodes" : {
+            "type" : "array",
+            "items" : {
+              "type" : "string"
+            }
+          },
+          "sections" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/PolicyTextSection"
+            }
+          },
+          "sourceModifiedAtText" : {
+            "type" : "string",
+            "description" : "시간대가 확정되지 않은 원천 수정 일시 원문"
+          },
+          "title" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "applicationPeriod", "category", "description", "links", "organization", "regionCodes", "sections", "sourceModifiedAtText", "title" ]
+      },
+      "PolicyDetailResponse" : {
+        "type" : "object",
+        "properties" : {
+          "collectedAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "content" : {
+            "$ref" : "#/components/schemas/PolicyContent"
+          },
+          "policyNumber" : {
+            "type" : "string"
+          },
+          "revision" : {
+            "type" : "integer",
+            "format" : "int64",
+            "description" : "서비스 내부 적용 개정 번호"
+          },
+          "sourceUrl" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "collectedAt", "content", "policyNumber", "revision", "sourceUrl" ]
+      },
+      "PolicyListResponse" : {
+        "type" : "object",
+        "properties" : {
+          "hasNext" : {
+            "type" : "boolean"
+          },
+          "items" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/PolicySummary"
+            }
+          },
+          "page" : {
+            "type" : "integer",
+            "format" : "int32",
+            "description" : "1부터 시작하는 페이지"
+          },
+          "pageSize" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "total" : {
+            "type" : "integer",
+            "format" : "int64"
+          }
+        },
+        "required" : [ "hasNext", "items", "page", "pageSize", "total" ]
+      },
+      "PolicyOfficialLink" : {
+        "type" : "object",
+        "properties" : {
+          "label" : {
+            "type" : "string"
+          },
+          "url" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "label", "url" ]
+      },
+      "PolicySummary" : {
+        "type" : "object",
+        "properties" : {
+          "applicationPeriod" : {
+            "type" : "string"
+          },
+          "category" : {
+            "type" : "string"
+          },
+          "collectedAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "description" : {
+            "type" : "string"
+          },
+          "organization" : {
+            "type" : "string"
+          },
+          "policyNumber" : {
+            "type" : "string"
+          },
+          "title" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "applicationPeriod", "category", "collectedAt", "description", "organization", "policyNumber", "title" ]
+      },
+      "PolicyTextSection" : {
+        "type" : "object",
+        "properties" : {
+          "text" : {
+            "type" : "string"
+          },
+          "title" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "text", "title" ]
+      }
+    }
+  }
+}

@@ -9,8 +9,8 @@
     "lint": "eslint .",
     "typecheck": "next typegen && tsc --noEmit",
     "test": "vitest run",
-    "generate:api-types": "openapi-typescript ../api/openapi.preview.json -o src/generated/preview-api.d.ts --immutable",
-    "check:api-types": "npm run generate:api-types -- --check"
+    "generate:api-types": "openapi-typescript ../api/openapi.preview.json -o src/generated/preview-api.d.ts --immutable && openapi-typescript ../api/openapi.policy.json -o src/generated/policy-api.d.ts --immutable",
+    "check:api-types": "openapi-typescript ../api/openapi.preview.json -o src/generated/preview-api.d.ts --immutable --check && openapi-typescript ../api/openapi.policy.json -o src/generated/policy-api.d.ts --immutable --check"
   },
   "dependencies": {
     "next": "16.3.3",

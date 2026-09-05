@@ -54,7 +54,7 @@ class YouthPolicyMateApplicationTests {
     }
 
     @Test
-    @DisplayName("상태 확인 이외의 경로는 허용하지 않는다")
+    @DisplayName("공개 정책 조회 외의 개발·관리 경로는 허용하지 않는다")
     void deniesOtherPaths() throws Exception {
         assertThat(applicationContext.getBeansOfType(ReminderPreviewController.class)).isEmpty();
         assertThat(applicationContext.getBeansOfType(EligibilityPreviewController.class)).isEmpty();

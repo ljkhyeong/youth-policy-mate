@@ -1,26 +1,30 @@
 # 프로젝트 작업 지침
 
-- 작업이 끝나면 변경 내용을 분류하고 한글로 커밋한다.
-- 커밋 메시지, PR 리뷰, 문서, 필요한 코드 주석은 실무에서 이해하기 쉬운 한글로 작성한다.
-- 의미가 불분명한 추상적인 표현은 사용하지 않는다.
-- 검증 코드는 변경 사항을 확인하는 데 필요한 범위로만 작성한다.
+## 작업과 응답
 
-## 작업 시작과 문서 기준
+- 사용자 요청과 대화에서 정한 범위까지 구현·검증·커밋을 마친다. 이미 승인한 작업과 통상적인 수정은 다시 확인받지 않는다.
+- 결과에 영향을 주는 핵심 정보가 부족하면 질문하되, 답변 없이 진행할 수 있는 작업은 계속한다. 명시적인 사용자 요청은 이 문서와 스킬의 작업 지침보다 우선한다.
+- 스킬 때문에 작업을 멈춰야 한다면 해당 파일과 지시를 인용하고 이유를 설명한다. 지침 해석만으로 승인 절차를 추가하지 않는다.
+- 응답·커밋 메시지·PR 리뷰·문서·테스트 설명·필요한 주석은 실무에서 쓰는 명확한 한글로 작성한다. 결과부터 간결하게 설명하고, 비교나 순서가 필요할 때 목록을 쓴다.
+- 변경에 필요한 검증만 수행한다. 통과한 검증은 새 변경·실패·해결하지 못한 문제가 있을 때만 확대하거나 반복한다. 단순 문구·문서 수정에 구현을 그대로 반복하는 테스트를 추가하지 않는다.
+- 작업이 끝나면 변경 내용을 분류해 한글로 커밋한다. 인증키·비밀값·실제 개인정보는 커밋이나 로그에 남기지 않는다.
 
-- `HANDOFF.md`에서 현재 작업을 확인하고 제품 동작은 `docs/PRD/0001_product-baseline/spec.md`, 기술 결정은 관련 `docs/ADR/` 문서를 기준으로 한다.
-- 구현 예정과 실제 구현 상태를 구분한다. 존재하지 않는 코드 경로·실행 명령을 현재 동작처럼 쓰지 않는다.
-- 제품 정책을 스킬이나 인계 문서에만 변경하지 않는다. 기준 문서를 먼저 수정하고 관련 요약을 맞춘다.
+## 문서 기준
+
+- 작업을 이어받을 때 [HANDOFF.md](HANDOFF.md)로 현재 상태를 확인한다. 이미 읽은 내용은 변경되었거나 다시 확인할 필요가 있을 때 읽는다.
+- 제품 동작은 [PRD](docs/PRD/0001_product-baseline/spec.md), 기술 결정은 관련 [ADR](docs/ADR/)을 필요한 부분만 확인한다. 정책을 바꾸면 기준 문서를 먼저 수정하고 관련 요약을 맞춘다.
+- 구현 예정과 실제 동작을 구분한다. 실행 명령·코드 경로·버전은 현재 저장소에서 확인한다. 인계 문서에는 현재 상태·남은 작업·제약을 남기고 과거 작업 기록은 누적하지 않는다.
 
 ## 전용 스킬
 
-전용 스킬 원본은 `skills/`에 있다. 요청과 맞는 스킬의 `SKILL.md`를 읽고 적용하며, 다른 프로젝트 전용 경로·명령·운영 정책을 그대로 사용하지 않는다.
+관리 원본은 `skills/`다. 요청에 맞는 스킬만 읽고, 다른 분야도 변경할 때 해당 스킬을 함께 적용한다. 각 스킬에는 공통 지시를 복사하지 않고 분야별 판단 기준을 둔다.
 
 | 작업 | 스킬 |
 |---|---|
-| PRD·ADR·문서 정리 | `skills/youth-policy-docs/SKILL.md` |
-| 공통 백엔드·인증·JPA/Flyway | `skills/youth-policy-backend/SKILL.md` |
-| API·OpenAPI·생성 타입 | `skills/youth-policy-api-contract/SKILL.md` |
-| Next.js 화면·개인 상태 | `skills/youth-policy-frontend/SKILL.md` |
-| 정책 수집·개정·AI 추출 | `skills/youth-policy-ingestion/SKILL.md` |
-| 자격 규칙·미확인·추천 근거 | `skills/youth-policy-eligibility/SKILL.md` |
-| 저장·마감·동의·알림 | `skills/youth-policy-reminders/SKILL.md` |
+| PRD·ADR·README·인계 문서 | [문서](skills/youth-policy-docs/SKILL.md) |
+| 공통 백엔드·인증·JPA/Flyway | [백엔드](skills/youth-policy-backend/SKILL.md) |
+| REST API·OpenAPI·생성 타입 | [API 계약](skills/youth-policy-api-contract/SKILL.md) |
+| Next.js 화면·개인 상태 | [프런트엔드](skills/youth-policy-frontend/SKILL.md) |
+| 정책 수집·개정·AI 추출 | [수집](skills/youth-policy-ingestion/SKILL.md) |
+| 자격 조건·미확인 처리·추천 근거 | [자격 판정](skills/youth-policy-eligibility/SKILL.md) |
+| 관심 정책·마감·수신 동의·알림 | [일정·알림](skills/youth-policy-reminders/SKILL.md) |

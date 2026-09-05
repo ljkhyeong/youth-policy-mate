@@ -123,7 +123,7 @@ Flyway V1·V2와 PostgreSQL 예약 저장소도 추가했습니다. 최초 예�
 - [ADR-0001: 기술 스택과 책임 분리](docs/ADR/0001_기술스택과_책임_분리.md)
 - [ADR-0002: 서버 DTO 기반 API 계약 생성](docs/ADR/0002_서버_DTO_기반_API_계약_생성.md)
 - [최초 제품 합의 기록](docs/alignments/seoul-mvp.html)
-- [전용 스킬과 재사용 출처](docs/development/skill-reuse.md)
+- [프로젝트 지시·스킬 관리](docs/development/skill-reuse.md)
 - [로컬 개발 환경과 검증 명령](docs/development/local-development.md)
 - [CI 구성과 검증 범위](docs/development/ci.md)
 - [모바일 우선 웹앱 인터페이스 기준](docs/design/webapp-interface.md)

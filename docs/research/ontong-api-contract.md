@@ -1,6 +1,7 @@
 # 온통청년 API 조사와 확인할 계약
 
 - 조사일: 2026-08-30
+- 공식 웹 명세 재확인: 2026-09-05. 실제 API 성공 응답은 계속 미확인
 - 상태: 공식 명세·코드 정의서·공개 정책 화면 확인. 인증키를 사용한 성공 응답은 미확인
 - 제품 기준: [PRD-0001](../PRD/0001_product-baseline/spec.md)
 - 설계 초안: [정책 수집·판정 데이터 구조](../design/policy-data-model.md)
@@ -8,6 +9,8 @@
 ## 1. 이번에 확인한 범위
 
 현재 청년정책 API는 `https://www.youthcenter.go.kr/go/ythip/getPlcy`다. 공식 제공목록에서 **청년정책API** 탭을 선택하면 요청·응답 표가 로딩된다. 페이지 초기 HTML과 검색 도구에 남아 있는 `/opi/youthPlcyList.do`, `openApiVlak`, `pageIndex`, `display` 예시를 현재 계약으로 사용하지 않는다. [공식 제공목록](https://www.youthcenter.go.kr/cmnFooter/openapiIntro/oaiDoc/48)
+
+2026-09-05에도 청년정책API 탭을 선택하면 현재 주소와 요청·응답 표가 로딩되는 것을 확인했다. `JSON 결과 보기`는 로그인 안내를 표시해 응답 예시를 확보하지 못했다. 로컬 환경에도 인증키가 없어 실제 API 요청은 하지 않았다. 코드 정의서 파일과 아래 공개 정책 두 건은 이번에 다시 조사하지 않았다.
 
 확인 수준을 다음과 같이 구분한다.
 

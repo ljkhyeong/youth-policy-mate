@@ -63,3 +63,19 @@ npm run verify -- test:ai-recovery-policy -- \
   --tests 'kr.youthpolicymate.policy.catalog.PolicyCatalogTest' \
   --tests 'kr.youthpolicymate.member.MemberFlowTest'
 ```
+
+## 추가 검토 — 2026-09-06, 미적용
+
+`96b1bc6`에서 기존 10개 항목을 제외하고 호출 경로와 설계 문서를 확인했다. 조회 개선 2개와 설계 정리 후보 1개가 남아 있다.
+
+| 우선순위 | 대상과 현재 문제 | 정리 방향 |
+|---|---|---|
+| 높음 | [관심 정책 목록](../../backend/src/main/java/kr/youthpolicymate/member/MemberPolicyStore.java)의 `saved → refresh`는 정책마다 잠금·상세·저장 개정을 따로 조회한다. 변경이 없는 20건에도 SELECT 63회가 필요하고 본문을 갱신 확인과 목록 표시에서 각각 변환한다. | 저장 개정·현재 개정·표시 필드를 묶어 조회하고, 개정이 달라진 정책만 원문을 읽어 일정과 알림을 갱신한다. 회원 잠금, 정책 번호순 잠금, 최신 개정 확인은 유지한다. |
+| 중간 | [질문 조회](../../backend/src/main/java/kr/youthpolicymate/policy/catalog/PolicyQuestionService.java)의 `questionsAt`은 `find`와 `contentHash`로 같은 정책을 두 번 읽는다. 전체 본문·수집 시각을 변환하지만 실제로는 개정·해시·출처 주소만 쓴다. 답변 평가도 같은 경로를 호출한다. | 개정·해시를 한 번에 읽는 내부 조회 결과를 사용한다. 출처 주소는 기존 형식으로 만들고, 미존재·미공개 정책 거절과 질문 제공 기간·해시 검사를 유지한다. SELECT를 2회에서 1회로 줄일 수 있다. |
+| 낮음·설계 검토 | [AI 예약 상태 모델](../../backend/src/main/java/kr/youthpolicymate/ingestion/AiBudgetReservationState.java)의 `open`과 인스턴스 상태 전이는 전용 테스트에서만 실행된다. [예약 저장소](../../backend/src/main/java/kr/youthpolicymate/ingestion/AiBudgetReservationStore.java)와 [후속 상태 저장소](../../backend/src/main/java/kr/youthpolicymate/ingestion/AiBudgetReservationLifecycleStore.java)가 예약·정산 규칙을 별도로 구현한다. | 현재 설계가 순수 모델과 DB 구현을 모두 명시하므로 삭제 전에 기준을 정리한다. DB 구현을 기준으로 테스트 범위를 대조한 뒤 미사용 상태 엔진을 제거하거나, 실제로 공유할 전이 규칙을 분리하는 방향을 검토한다. 운영 코드가 쓰는 `Phase`·이벤트 값 타입은 보존한다. |
+
+관심 정책 SELECT 수는 변경이 없는 N건에서 회원 잠금 1회 + 정책 번호 목록 1회 + 정책별 3회 + 최종 목록 1회, 즉 `3N + 3`으로 계산했다. 코드의 호출 횟수이며 실행 시간이나 부하를 측정한 결과는 아니다. 개선 후 조회 횟수는 구현과 통합 테스트에서 확인해야 한다.
+
+짧은 `requireText` 같은 검증 함수를 전부 공통화하는 작업은 제외했다. 새 공통 계층을 추가할 만큼 이득이 크지 않다. DB 잠금 뒤 상태 확인과 발송 직전 동의·개정 확인도 유지 대상이다.
+
+이번에는 코드·테스트·설정 변경 없이 검토 내용과 인계 문서만 수정했다. `npm run verify -- status`에서 최근 관련 검사 이후 문서 2개만 달라진 것을 확인했으며 앱 테스트는 반복하지 않았다.

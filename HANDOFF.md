@@ -8,6 +8,7 @@
 - 지시·스킬 정리는 `7c6ec51`에 커밋했다. `codex/verification-workflow`에서 기존 두 작업의 검증 기록을 검토하고 [검증 명령·결과 기록·재실행 기준](docs/development/verification-workflow.md)을 추가했다.
 - `codex/backend-api-review`에서 [Java·Spring API 활용과 중복 검증 정리](docs/development/backend-api-review.md) 6개 항목을 구현했다. SMTP 자동 설정·이메일 주소 공통 제약·OAuth 기본 저장소를 적용하고 중복 null 검사·미사용 팩터리·정책별 중복 답변 검증을 정리했다.
 - 추가 정리 대상 4개도 구현했다. 조건 확인은 SELECT 2회로 조회하고 고정 상태용 판정 객체를 제거했다. AI 종료 상태는 `Phase.isTerminal()`, DB 시각 변환·비교는 `AiDatabaseTime`으로 모았다.
+- `96b1bc6` 기준 추가 검토에서 관심 정책 목록의 반복 조회와 질문 조회의 중복 읽기, 테스트 전용 AI 예약 상태 엔진을 확인했다. [미적용 검토](docs/development/backend-api-review.md#추가-검토--2026-09-06-미적용)에 개선 순서와 유지 조건을 기록했다. 문서만 수정했고 `npm run verify -- status`에서 최근 관련 검사 이후 앱 코드 변경이 없음을 확인해 테스트를 반복하지 않았다.
 
 ## 구현·검증 범위
 

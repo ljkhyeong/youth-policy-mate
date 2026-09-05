@@ -45,7 +45,7 @@ public final class OntongCollectionCommand {
         application.setAdditionalProfiles("local", "collection");
         application.setWebApplicationType(WebApplicationType.NONE);
         int exitCode = 0;
-        try (var context = application.run("--spring.config.import=optional:file:.env[.properties]", "--app.ontong.schedule.enabled=false", "--app.reminders.enabled=false")) {
+        try (var context = application.run("--spring.config.import=optional:file:.env[.properties]", "--app.ontong.schedule.enabled=false", "--app.reminders.enabled=false", "--app.email.enabled=false")) {
             var store = context.getBean(OntongCollectionStore.class);
             if (!mode.equals("status")) {
                 System.out.println("정책 수집 실행 ID: " + runId);

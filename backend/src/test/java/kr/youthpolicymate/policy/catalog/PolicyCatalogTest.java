@@ -147,7 +147,8 @@ class PolicyCatalogTest {
     void matchesGeneratedContract() throws Exception {
         var response = mvc.perform(get("/contract/policy")).andExpect(status().isOk()).andReturn();
         var actual = mapper.readTree(response.getResponse().getContentAsByteArray());
-        assertThat(actual.path("paths").size()).isEqualTo(12);
+        assertThat(actual.path("paths").size()).isEqualTo(15);
+        assertThat(actual.at("/components/schemas/MemberEmailSettings/properties/verificationDelivery/enum").valueStream().anyMatch(value -> value.isNull())).isTrue();
         assertThat(actual.at("/components/schemas/MemberConditions/properties/conditions/anyOf/1/type").asString()).isEqualTo("null");
         assertThat(actual.at("/paths/~1api~1v1~1session/get/parameters").isMissingNode()).isTrue();
         var path = Path.of(System.getProperty("policy.contract.path"));

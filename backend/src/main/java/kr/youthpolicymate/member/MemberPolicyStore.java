@@ -92,6 +92,10 @@ public class MemberPolicyStore {
         jdbc.sql("DELETE FROM saved_policies WHERE member_id = :member AND policy_number = :number").param("member", member).param("number", number).update();
     }
     private void cancel(UUID member, String number) {
+        jdbc.sql("""
+                UPDATE member_email_outbox o SET state = 'CANCELED' FROM member_notifications n
+                WHERE o.notification_id = n.id AND o.member_id = :member AND n.policy_number = :number AND o.state = 'PENDING'
+                """).param("member", member).param("number", number).update();
         jdbc.sql("UPDATE policy_reminders SET state = 'CANCELED' WHERE member_id = :member AND policy_number = :number AND state = 'PENDING'")
                 .param("member", member).param("number", number).update();
     }
@@ -150,11 +154,21 @@ public class MemberPolicyStore {
         }
     }
     private void notify(UUID member, String number, UUID generation, long revision, String kind, String title, String message) {
-        jdbc.sql("""
+        UUID notification = UUID.randomUUID();
+        int inserted = jdbc.sql("""
                 INSERT INTO member_notifications(id, member_id, policy_number, generation, policy_revision, kind, title, message)
                 VALUES (:id,:member,:number,:generation,:revision,:kind,:title,:message) ON CONFLICT DO NOTHING
-                """).param("id",UUID.randomUUID()).param("member",member).param("number",number).param("generation",generation)
+                """).param("id",notification).param("member",member).param("number",number).param("generation",generation)
                 .param("revision",revision).param("kind",kind).param("title",title).param("message",message).update();
+        if (inserted == 0) return;
+        var expires = kind.startsWith("DEADLINE_") ? today().plusDays(1).atStartOfDay(ZoneId.of("Asia/Seoul")).toOffsetDateTime() : null;
+        jdbc.sql("""
+                INSERT INTO member_email_outbox(id, member_id, settings_version, kind, notification_id, state, created_at, expires_at)
+                SELECT :id, member_id, version, 'POLICY', :notification, 'PENDING', :now, :expires
+                FROM member_email_settings WHERE member_id = :member AND enabled AND verified_at IS NOT NULL
+                ON CONFLICT DO NOTHING
+                """).param("id", UUID.randomUUID()).param("member", member).param("notification", notification)
+                .param("now", MemberEmailStore.at(clock.instant())).param("expires", expires).update();
     }
     public MemberResponses.Notifications notifications(UUID member) {
         return new MemberResponses.Notifications(jdbc.sql("SELECT * FROM member_notifications WHERE member_id = :member ORDER BY created_at DESC LIMIT 100")

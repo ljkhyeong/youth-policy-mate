@@ -31,6 +31,14 @@ springdoc:
     enabled: false
 
 app:
+  email:
+    enabled: ${EMAIL_ENABLED:false}
+    encryption-key: ${EMAIL_ENCRYPTION_KEY:}
+    host: ${EMAIL_SMTP_HOST:}
+    port: ${EMAIL_SMTP_PORT:587}
+    username: ${EMAIL_SMTP_USERNAME:}
+    password: ${EMAIL_SMTP_PASSWORD:}
+    from: ${EMAIL_FROM:}
   ontong:
     schedule:
       enabled: ${ONTONG_COLLECTION_SCHEDULE_ENABLED:false}

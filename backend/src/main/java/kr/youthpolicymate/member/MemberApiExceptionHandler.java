@@ -6,8 +6,13 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
-@RestControllerAdvice(assignableTypes = MemberController.class)
+@RestControllerAdvice(assignableTypes = {MemberController.class, MemberEmailController.class})
 public class MemberApiExceptionHandler {
+    @ExceptionHandler(MemberEmailStore.EmailException.class)
+    ResponseEntity<PolicyApiError> email(MemberEmailStore.EmailException failure) {
+        return ResponseEntity.status(failure.status).cacheControl(org.springframework.http.CacheControl.noStore())
+                .body(new PolicyApiError(failure.code, failure.getMessage()));
+    }
     @ExceptionHandler({IllegalArgumentException.class, org.springframework.web.bind.MethodArgumentNotValidException.class,
             org.springframework.http.converter.HttpMessageNotReadableException.class,
             org.springframework.web.method.annotation.MethodArgumentTypeMismatchException.class})

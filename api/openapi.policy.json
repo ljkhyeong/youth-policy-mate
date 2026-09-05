@@ -132,6 +132,380 @@
         "tags" : [ "member-controller" ]
       }
     },
+    "/api/v1/me/email-settings" : {
+      "delete" : {
+        "operationId" : "deleteMemberEmailAddress",
+        "parameters" : [ {
+          "description" : "GET /api/v1/session에서 받은 csrfToken",
+          "in" : "header",
+          "name" : "X-CSRF-TOKEN",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "204" : {
+            "description" : "No Content"
+          },
+          "400" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PolicyApiError"
+                }
+              }
+            },
+            "description" : "입력 또는 확인 코드 오류"
+          },
+          "401" : {
+            "description" : "로그인 필요"
+          },
+          "403" : {
+            "description" : "권한 또는 CSRF 토큰 확인 필요"
+          },
+          "409" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PolicyApiError"
+                }
+              }
+            },
+            "description" : "이메일 확인 필요"
+          },
+          "429" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PolicyApiError"
+                }
+              }
+            },
+            "description" : "확인 메일 요청 횟수 초과"
+          },
+          "503" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PolicyApiError"
+                }
+              }
+            },
+            "description" : "이메일 설정 또는 저장소 사용 불가"
+          }
+        },
+        "security" : [ {
+          "memberSession" : [ ]
+        } ],
+        "summary" : "내 이메일 주소와 미발송 요청 삭제",
+        "tags" : [ "member-email-controller" ]
+      },
+      "get" : {
+        "operationId" : "getMemberEmailSettings",
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/MemberEmailSettings"
+                }
+              }
+            },
+            "description" : "OK"
+          },
+          "400" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PolicyApiError"
+                }
+              }
+            },
+            "description" : "입력 또는 확인 코드 오류"
+          },
+          "401" : {
+            "description" : "로그인 필요"
+          },
+          "403" : {
+            "description" : "권한 또는 CSRF 토큰 확인 필요"
+          },
+          "409" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PolicyApiError"
+                }
+              }
+            },
+            "description" : "이메일 확인 필요"
+          },
+          "429" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PolicyApiError"
+                }
+              }
+            },
+            "description" : "확인 메일 요청 횟수 초과"
+          },
+          "503" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PolicyApiError"
+                }
+              }
+            },
+            "description" : "이메일 설정 또는 저장소 사용 불가"
+          }
+        },
+        "security" : [ {
+          "memberSession" : [ ]
+        } ],
+        "summary" : "내 이메일 확인과 수신 설정 조회",
+        "tags" : [ "member-email-controller" ]
+      },
+      "put" : {
+        "operationId" : "changeMemberEmailConsent",
+        "parameters" : [ {
+          "description" : "GET /api/v1/session에서 받은 csrfToken",
+          "in" : "header",
+          "name" : "X-CSRF-TOKEN",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/MemberEmailConsent"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "204" : {
+            "description" : "No Content"
+          },
+          "400" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PolicyApiError"
+                }
+              }
+            },
+            "description" : "입력 또는 확인 코드 오류"
+          },
+          "401" : {
+            "description" : "로그인 필요"
+          },
+          "403" : {
+            "description" : "권한 또는 CSRF 토큰 확인 필요"
+          },
+          "409" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PolicyApiError"
+                }
+              }
+            },
+            "description" : "이메일 확인 필요"
+          },
+          "429" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PolicyApiError"
+                }
+              }
+            },
+            "description" : "확인 메일 요청 횟수 초과"
+          },
+          "503" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PolicyApiError"
+                }
+              }
+            },
+            "description" : "이메일 설정 또는 저장소 사용 불가"
+          }
+        },
+        "security" : [ {
+          "memberSession" : [ ]
+        } ],
+        "summary" : "이메일 알림 별도 수신 동의 또는 해제",
+        "tags" : [ "member-email-controller" ]
+      }
+    },
+    "/api/v1/me/email-verification" : {
+      "post" : {
+        "operationId" : "requestMemberEmailVerification",
+        "parameters" : [ {
+          "description" : "GET /api/v1/session에서 받은 csrfToken",
+          "in" : "header",
+          "name" : "X-CSRF-TOKEN",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/MemberEmailAddress"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "204" : {
+            "description" : "No Content"
+          },
+          "400" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PolicyApiError"
+                }
+              }
+            },
+            "description" : "입력 또는 확인 코드 오류"
+          },
+          "401" : {
+            "description" : "로그인 필요"
+          },
+          "403" : {
+            "description" : "권한 또는 CSRF 토큰 확인 필요"
+          },
+          "409" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PolicyApiError"
+                }
+              }
+            },
+            "description" : "이메일 확인 필요"
+          },
+          "429" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PolicyApiError"
+                }
+              }
+            },
+            "description" : "확인 메일 요청 횟수 초과"
+          },
+          "503" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PolicyApiError"
+                }
+              }
+            },
+            "description" : "이메일 설정 또는 저장소 사용 불가"
+          }
+        },
+        "security" : [ {
+          "memberSession" : [ ]
+        } ],
+        "summary" : "이메일 확인 코드 요청",
+        "tags" : [ "member-email-controller" ]
+      }
+    },
+    "/api/v1/me/email-verification/confirm" : {
+      "post" : {
+        "operationId" : "confirmMemberEmailVerification",
+        "parameters" : [ {
+          "description" : "GET /api/v1/session에서 받은 csrfToken",
+          "in" : "header",
+          "name" : "X-CSRF-TOKEN",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/MemberEmailCode"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "204" : {
+            "description" : "No Content"
+          },
+          "400" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PolicyApiError"
+                }
+              }
+            },
+            "description" : "입력 또는 확인 코드 오류"
+          },
+          "401" : {
+            "description" : "로그인 필요"
+          },
+          "403" : {
+            "description" : "권한 또는 CSRF 토큰 확인 필요"
+          },
+          "409" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PolicyApiError"
+                }
+              }
+            },
+            "description" : "이메일 확인 필요"
+          },
+          "429" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PolicyApiError"
+                }
+              }
+            },
+            "description" : "확인 메일 요청 횟수 초과"
+          },
+          "503" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PolicyApiError"
+                }
+              }
+            },
+            "description" : "이메일 설정 또는 저장소 사용 불가"
+          }
+        },
+        "security" : [ {
+          "memberSession" : [ ]
+        } ],
+        "summary" : "이메일 확인 코드 비교",
+        "tags" : [ "member-email-controller" ]
+      }
+    },
     "/api/v1/me/notifications" : {
       "get" : {
         "operationId" : "listMemberNotifications",
@@ -670,6 +1044,66 @@
           }
         },
         "required" : [ "conditions" ]
+      },
+      "MemberEmailAddress" : {
+        "type" : "object",
+        "properties" : {
+          "address" : {
+            "type" : "string",
+            "maxLength" : 254,
+            "minLength" : 0
+          }
+        },
+        "required" : [ "address" ]
+      },
+      "MemberEmailCode" : {
+        "type" : "object",
+        "properties" : {
+          "code" : {
+            "type" : "string",
+            "maxLength" : 100,
+            "minLength" : 0
+          }
+        },
+        "required" : [ "code" ]
+      },
+      "MemberEmailConsent" : {
+        "type" : "object",
+        "properties" : {
+          "enabled" : {
+            "type" : "boolean"
+          }
+        },
+        "required" : [ "enabled" ]
+      },
+      "MemberEmailSettings" : {
+        "type" : "object",
+        "properties" : {
+          "address" : {
+            "type" : [ "string", "null" ]
+          },
+          "addressRegistered" : {
+            "type" : "boolean"
+          },
+          "available" : {
+            "type" : "boolean"
+          },
+          "enabled" : {
+            "type" : "boolean"
+          },
+          "verificationDelivery" : {
+            "type" : [ "string", "null" ],
+            "enum" : [ "PENDING", "SENDING", "SENT", "FAILED", "UNKNOWN", "CANCELED", null ]
+          },
+          "verificationExpiresAt" : {
+            "type" : [ "string", "null" ],
+            "format" : "date-time"
+          },
+          "verified" : {
+            "type" : "boolean"
+          }
+        },
+        "required" : [ "address", "addressRegistered", "available", "enabled", "verificationDelivery", "verificationExpiresAt", "verified" ]
       },
       "MemberNotification" : {
         "type" : "object",

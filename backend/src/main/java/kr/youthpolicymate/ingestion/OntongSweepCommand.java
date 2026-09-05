@@ -33,7 +33,7 @@ public final class OntongSweepCommand {
         application.setWebApplicationType(WebApplicationType.NONE);
         int exitCode = 0;
         try (var context = application.run("--spring.config.import=optional:file:.env[.properties]",
-                "--app.ontong.schedule.enabled=false", "--app.reminders.enabled=false")) {
+                "--app.ontong.schedule.enabled=false", "--app.reminders.enabled=false", "--app.email.enabled=false")) {
             var store = context.getBean(OntongSweepStore.class);
             if (args[0].equals("range")) { id = store.create(first, last); System.out.println("정책 범위 실행 ID: " + id); }
             if (args[0].equals("range-resume")) store.resume(id);

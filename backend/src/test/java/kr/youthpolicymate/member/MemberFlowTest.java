@@ -42,7 +42,8 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @Testcontainers
-@SpringBootTest(properties = "app.reminders.enabled=false")
+@SpringBootTest(properties = {"app.reminders.enabled=false", "app.email.enabled=false",
+        "app.email.encryption-key=AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="})
 @AutoConfigureMockMvc
 class MemberFlowTest {
     @Container @ServiceConnection
@@ -55,6 +56,10 @@ class MemberFlowTest {
     @Autowired MockMvc mvc;
     @Autowired PlatformTransactionManager transactions;
     @MockitoBean Clock clock;
+    @MockitoBean MemberEmailSender emailSender;
+    @Autowired MemberEmailStore emails;
+    @Autowired MemberEmailDelivery emailDelivery;
+    @Autowired EmailCrypto crypto;
     private ObjectNode raw;
     private UUID first;
     private UUID second;
@@ -81,6 +86,7 @@ class MemberFlowTest {
         first = identities.login("kakao", "101", "첫 회원");
         second = identities.login("naver", "101", "둘째 회원");
         time("2026-09-04T15:00:00Z");
+        when(emailSender.available()).thenReturn(true);
     }
 
     @Test
@@ -205,6 +211,160 @@ class MemberFlowTest {
         assertThat(count("saved_policies")).isZero();
         assertThat(count("policy_reminders")).isZero();
     }
+
+    @Test
+    @DisplayName("주소 확인과 수신 동의는 별개이며 동의 이전 알림을 소급 발송하지 않는다")
+    void verifiesThenOptsInWithoutBackfill() {
+        members.save(first, NUMBER);
+        emails.request(first, "first@example.test");
+        String code = pendingCode(first);
+        assertThat(emails.settings(first).verified()).isFalse();
+        assertThat(emails.confirm(second, code)).isFalse();
+        assertThat(emails.confirm(first, code)).isTrue();
+        assertThat(emails.settings(first).verified()).isTrue();
+        assertThat(emails.settings(first).enabled()).isFalse();
+        members.deliver(first);
+        emails.consent(first, true);
+        assertThat(policyMailIds()).isEmpty();
+        time("2026-09-08T15:00:00Z"); members.deliver(first); members.deliver(first);
+        assertThat(policyMailIds()).hasSize(1);
+        UUID mail = policyMailIds().getFirst(); emailDelivery.deliver(mail);
+        assertThat(mailState(mail)).isEqualTo("SENT");
+        var body = org.mockito.ArgumentCaptor.forClass(String.class);
+        org.mockito.Mockito.verify(emailSender).send(org.mockito.ArgumentMatchers.eq("first@example.test"), any(), body.capture());
+        assertThat(body.getValue()).contains("마감 3일 전", "/policies/" + NUMBER, "이메일 수신 해제:");
+        assertThat(jdbc.sql("SELECT address_cipher FROM member_email_settings WHERE member_id = :member").param("member", first).query(String.class).single())
+                .doesNotContain("first@example.test");
+        assertThat(jdbc.sql("SELECT count(*) FROM member_email_outbox WHERE code_cipher IS NOT NULL").query(Long.class).single()).isZero();
+    }
+
+    @Test
+    @DisplayName("확인 코드 실패 횟수는 오류 응답 뒤에도 남고 다섯 번 실패한 코드는 사용할 수 없다")
+    void commitsFailedCodeAttempts() throws Exception {
+        emails.request(first, "first@example.test"); String code = pendingCode(first);
+        String wrong = code.equals("00000000") ? "11111111" : "00000000";
+        for (int i = 0; i < 5; i++) mvc.perform(post("/api/v1/me/email-verification/confirm")
+                .with(oauth2Login().oauth2User(user(first))).with(csrf()).contentType("application/json")
+                .content("{\"code\":\"" + wrong + "\"}"))
+                .andExpect(status().isBadRequest()).andExpect(jsonPath("$.code").value("EMAIL_CODE_INVALID"));
+        assertThat(jdbc.sql("SELECT attempts FROM member_email_settings WHERE member_id = :member").param("member", first).query(Integer.class).single()).isEqualTo(5);
+        assertThat(emails.confirm(first, code)).isFalse();
+        assertThat(emails.settings(first).verificationExpiresAt()).isNull();
+    }
+
+    @Test
+    @DisplayName("확인 코드는 만료 순간부터 거절하고 재요청 간격과 시간당 제한은 주소 삭제 뒤에도 유지한다")
+    void expiresAndLimitsRequests() {
+        emails.request(first, "first@example.test"); String old = pendingCode(first);
+        assertThatThrownBy(() -> emails.request(first, "second@example.test")).isInstanceOf(MemberEmailStore.EmailException.class);
+        time("2026-09-04T15:10:00Z"); assertThat(emails.confirm(first, old)).isFalse();
+        emails.request(first, "second@example.test");
+        assertThat(emails.confirm(first, old)).isFalse();
+        assertThat(emails.settings(first).address()).isEqualTo("second@example.test");
+        time("2026-09-04T15:11:00Z"); emails.request(first, "third@example.test");
+        emails.remove(first); time("2026-09-04T15:12:00Z");
+        assertThatThrownBy(() -> emails.request(first, "fourth@example.test")).isInstanceOf(MemberEmailStore.EmailException.class);
+        assertThat(emails.settings(first).addressRegistered()).isFalse();
+    }
+
+    @Test
+    @DisplayName("이메일 API는 계정과 CSRF를 확인하며 미설정 상태에서도 수신 해제와 삭제가 가능하다")
+    void protectsEmailOwnershipAndDisabledSettings() throws Exception {
+        mvc.perform(get("/api/v1/me/email-settings")).andExpect(status().isUnauthorized());
+        mvc.perform(post("/api/v1/me/email-verification").with(oauth2Login().oauth2User(user(first)))
+                .contentType("application/json").content("{\"address\":\"first@example.test\"}")).andExpect(status().isForbidden());
+        mvc.perform(put("/api/v1/me/email-settings").with(oauth2Login().oauth2User(user(first))).with(csrf())
+                .contentType("application/json").content("{\"enabled\":true}"))
+                .andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("EMAIL_NOT_VERIFIED"));
+        verifiedEmail(); emails.consent(first, true);
+        mvc.perform(get("/api/v1/me/email-settings").with(oauth2Login().oauth2User(user(second))))
+                .andExpect(status().isOk()).andExpect(header().string("Cache-Control", "no-store"))
+                .andExpect(jsonPath("$.addressRegistered").value(false)).andExpect(content().json("{\"address\":null}"));
+        when(emailSender.available()).thenReturn(false);
+        emails.consent(first, false); emails.remove(first);
+        assertThat(emails.settings(first).available()).isFalse();
+        assertThatThrownBy(() -> emails.request(first, "first@example.test")).isInstanceOf(MemberEmailStore.EmailException.class);
+    }
+
+    @Test
+    @DisplayName("동시 발송은 한 번만 배정하고 외부 전송은 DB 트랜잭션 밖에서 실행한다")
+    void claimsEmailOnceOutsideTransaction() throws Exception {
+        emails.request(first, "first@example.test");
+        UUID id = jdbc.sql("SELECT id FROM member_email_outbox WHERE member_id = :member").param("member", first).query(UUID.class).single();
+        doAnswer(call -> {
+            assertThat(org.springframework.transaction.support.TransactionSynchronizationManager.isActualTransactionActive()).isFalse();
+            assertThat(call.getArgument(0, String.class)).isEqualTo("first@example.test");
+            assertThat(call.getArgument(2, String.class)).contains("확인 코드:");
+            return null;
+        }).when(emailSender).send(any(), any(), any());
+        try (var pool = Executors.newFixedThreadPool(2)) {
+            var a = pool.submit(() -> emailDelivery.deliver(id)); var b = pool.submit(() -> emailDelivery.deliver(id));
+            a.get(10, TimeUnit.SECONDS); b.get(10, TimeUnit.SECONDS);
+        }
+        org.mockito.Mockito.verify(emailSender, org.mockito.Mockito.times(1)).send(any(), any(), any());
+        assertThat(mailState(id)).isEqualTo("SENT");
+        assertThat(emails.settings(first).verificationDelivery()).isEqualTo("SENT");
+        new TransactionTemplate(transactions).executeWithoutResult(tx ->
+                assertThatThrownBy(() -> emailDelivery.deliver(id)).isInstanceOf(IllegalStateException.class));
+    }
+
+    @Test
+    @DisplayName("결과 미확인과 중단된 발송은 다시 보내지 않고 암호화한 코드도 지운다")
+    void doesNotRetryUnknownDelivery() {
+        emails.request(first, "first@example.test");
+        org.mockito.Mockito.doThrow(new org.springframework.mail.MailSendException("인공 전송 중단")).when(emailSender).send(any(), any(), any());
+        emailDelivery.deliverPending(); emailDelivery.deliverPending();
+        assertThat(emails.settings(first).verificationDelivery()).isEqualTo("UNKNOWN");
+        org.mockito.Mockito.verify(emailSender, org.mockito.Mockito.times(1)).send(any(), any(), any());
+        time("2026-09-04T15:01:00Z"); emails.request(first, "first@example.test");
+        jdbc.sql("UPDATE member_email_outbox SET state = 'SENDING', started_at = :now WHERE state = 'PENDING'")
+                .param("now", MemberEmailStore.at(clock.instant())).update();
+        time("2026-09-04T15:04:00Z"); emailDelivery.deliverPending();
+        assertThat(jdbc.sql("SELECT count(*) FROM member_email_outbox WHERE state = 'UNKNOWN'").query(Long.class).single()).isEqualTo(2);
+        assertThat(jdbc.sql("SELECT count(*) FROM member_email_outbox WHERE code_cipher IS NOT NULL").query(Long.class).single()).isZero();
+    }
+
+    @Test
+    @DisplayName("수신 해제·주소 변경·저장 해제·개정 변경은 이전 미발송 정책 메일을 취소한다")
+    void cancelsPolicyEmailBeforeDispatch() {
+        verifiedEmail(); emails.consent(first, true); members.save(first, NUMBER); members.deliver(first);
+        UUID original = policyMailIds().getFirst();
+        emails.consent(first, false); emails.consent(first, true); emailDelivery.deliver(original);
+        assertThat(mailState(original)).isEqualTo("CANCELED");
+        raw.put("plcySprtCn", "변경 안내 1"); importPolicy(); members.refresh(first);
+        UUID change = pendingPolicyMail(); members.remove(first, NUMBER); emailDelivery.deliver(change);
+        assertThat(mailState(change)).isEqualTo("CANCELED");
+        members.save(first, NUMBER); raw.put("plcySprtCn", "변경 안내 2"); importPolicy(); members.refresh(first);
+        UUID stale = pendingPolicyMail(); raw.put("plcySprtCn", "변경 안내 3"); importPolicy(); emailDelivery.deliver(stale);
+        assertThat(mailState(stale)).isEqualTo("CANCELED");
+        UUID current = pendingPolicyMail(); time("2026-09-04T15:01:00Z"); emails.request(first, "new@example.test"); emailDelivery.deliver(current);
+        assertThat(mailState(current)).isEqualTo("CANCELED");
+        assertThat(emails.settings(first).verified()).isFalse(); assertThat(emails.settings(first).enabled()).isFalse();
+        org.mockito.Mockito.verify(emailSender, org.mockito.Mockito.never()).send(any(), any(), any());
+    }
+
+    @Test
+    @DisplayName("서비스 내 알림과 이메일 요청은 함께 롤백하고 지난 서울 날짜의 마감 메일은 보내지 않는다")
+    void rollsBackEmailAndSkipsExpiredDeadline() {
+        verifiedEmail(); emails.consent(first, true); members.save(first, NUMBER);
+        new TransactionTemplate(transactions).executeWithoutResult(tx -> { members.deliver(first); tx.setRollbackOnly(); });
+        assertThat(members.notifications(first).items()).isEmpty(); assertThat(policyMailIds()).isEmpty();
+        members.deliver(first); UUID id = policyMailIds().getFirst();
+        time("2026-09-05T15:00:00Z"); emailDelivery.deliver(id);
+        assertThat(mailState(id)).isEqualTo("CANCELED");
+        org.mockito.Mockito.verify(emailSender, org.mockito.Mockito.never()).send(any(), any(), any());
+    }
+
+    private void verifiedEmail() {
+        emails.request(first, "first@example.test"); assertThat(emails.confirm(first, pendingCode(first))).isTrue();
+    }
+    private String pendingCode(UUID member) {
+        return jdbc.sql("SELECT settings_version, code_cipher FROM member_email_outbox WHERE member_id = :member AND state = 'PENDING' AND kind = 'VERIFICATION'")
+                .param("member", member).query((rs, row) -> crypto.decrypt(MemberEmailStore.context(member, rs.getObject(1, UUID.class), "code"), rs.getString(2))).single();
+    }
+    private List<UUID> policyMailIds() { return jdbc.sql("SELECT id FROM member_email_outbox WHERE kind = 'POLICY'").query(UUID.class).list(); }
+    private UUID pendingPolicyMail() { return jdbc.sql("SELECT id FROM member_email_outbox WHERE kind = 'POLICY' AND state = 'PENDING'").query(UUID.class).single(); }
+    private String mailState(UUID id) { return jdbc.sql("SELECT state FROM member_email_outbox WHERE id = :id").param("id", id).query(String.class).single(); }
 
     private void importPolicy() {
         var item = new OntongPolicyCapture(mapper).item(raw);

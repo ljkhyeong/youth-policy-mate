@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-export function SiteShell({ children, active }: { children: React.ReactNode; active?: "home" | "policies" | "conditions" }) {
+export function SiteShell({ children, active }: { children: React.ReactNode; active?: "home" | "policies" | "conditions" | "my" }) {
   return (
     <div className="app-shell">
       <a className="skip-link" href="#main-content">본문으로 이동</a>
@@ -14,6 +14,7 @@ export function SiteShell({ children, active }: { children: React.ReactNode; act
             <NavLink href="/" active={active === "home"} icon="home">홈</NavLink>
             <NavLink href="/policies" active={active === "policies"} icon="search">정책 찾기</NavLink>
             <NavLink href="/conditions" active={active === "conditions"} icon="person">내 조건</NavLink>
+            <NavLink href="/my" active={active === "my"} icon="saved">내 정책</NavLink>
           </nav>
         </div>
       </header>
@@ -25,6 +26,7 @@ export function SiteShell({ children, active }: { children: React.ReactNode; act
         <NavLink href="/" active={active === "home"} icon="home">홈</NavLink>
         <NavLink href="/policies" active={active === "policies"} icon="search">정책 찾기</NavLink>
         <NavLink href="/conditions" active={active === "conditions"} icon="person">내 조건</NavLink>
+        <NavLink href="/my" active={active === "my"} icon="saved">내 정책</NavLink>
       </nav>
     </div>
   );
@@ -33,7 +35,7 @@ export function SiteShell({ children, active }: { children: React.ReactNode; act
 function NavLink({ href, active, icon, children }: {
   href: string;
   active: boolean;
-  icon: "home" | "person" | "search";
+  icon: "home" | "person" | "search" | "saved";
   children: React.ReactNode;
 }) {
   return (
@@ -44,7 +46,8 @@ function NavLink({ href, active, icon, children }: {
   );
 }
 
-function NavIcon({ name }: { name: "home" | "person" | "search" }) {
+function NavIcon({ name }: { name: "home" | "person" | "search" | "saved" }) {
+  if (name === "saved") return <svg className="nav-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none"><path d="M6 4h12v17l-6-4-6 4V4Z" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" /></svg>;
   if (name === "search") return <svg className="nav-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none"><circle cx="10.5" cy="10.5" r="6.5" stroke="currentColor" strokeWidth="1.8" /><path d="m15.5 15.5 4.5 4.5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" /></svg>;
   if (name === "home") {
     return (

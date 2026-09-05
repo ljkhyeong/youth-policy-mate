@@ -955,3 +955,34 @@ select {
 
 @media (min-width: 640px) { .policies-main { padding-top: 52px; padding-bottom: 80px; } }
 @media (max-width: 420px) { .policy-card { padding: 20px; } .policy-official-links { flex-direction: column; } }
+
+/* 내 정책과 조건 확인은 기존 한 열 입력 흐름과 같은 간격을 사용한다. */
+.member-main { width: min(100% - 40px, 880px); margin: 48px auto 64px; }
+.member-main > header { margin-bottom: 32px; }
+.member-main h1 { font-size: clamp(28px, 5vw, 40px); font-weight: 750; letter-spacing: -.04em; }
+.member-main > header > p:last-child { color: var(--app-muted); margin-top: 12px; }
+.member-panel { padding: 24px; margin: 16px 0; background: #fff; border: 1px solid var(--app-line); border-radius: 20px; }
+.member-panel h2, .member-panel h3 { font-size: 20px; font-weight: 750; line-height: 1.5; margin: 8px 0 12px; }
+.member-panel h2 a, .member-panel h3 a { color: var(--app-text); }
+.member-panel > p { margin: 10px 0; line-height: 1.7; }
+.member-panel .button-primary { margin-top: 12px; }
+.member-toolbar, .member-save-panel { display: flex; align-items: center; flex-wrap: wrap; gap: 16px; margin: 24px 0; }
+.member-save-panel > p { flex-basis: 100%; font-size: 14px; color: var(--app-muted); }
+.member-toolbar strong { margin-right: auto; }
+.member-tabs { display: flex; gap: 8px; margin: 24px 0; border-bottom: 1px solid var(--app-line); }
+.member-tabs button { padding: 14px 18px; font-weight: 650; cursor: pointer; }
+.member-tabs button[aria-current] { color: var(--app-blue-dark); border-bottom: 3px solid var(--app-blue); }
+.member-deadline { font-weight: 750; color: var(--app-blue-dark); }
+.member-change, .review-label { color: #8b5209; background: #fff4dc; border-radius: 8px; padding: 6px 10px; font-size: 14px; }
+.member-panel[data-read="true"] { background: #f8fafc; }
+.policy-check-results { margin-top: 36px; padding-top: 28px; border-top: 1px solid var(--app-line); text-align: left; }
+.policy-check-results > h2 { font-size: 24px; font-weight: 750; }
+.policy-check-results > p { margin: 12px 0; line-height: 1.7; }
+.policy-check-results summary { cursor: pointer; padding: 14px 0; font-weight: 650; }
+.policy-check-details section { margin: 20px 0; }
+.policy-check-details h4 { font-weight: 750; margin: 8px 0; }
+.policy-check-details p { margin: 8px 0; }
+.policy-check-details blockquote { white-space: pre-wrap; overflow-wrap: anywhere; border-left: 3px solid #cbd5e1; padding: 12px; margin-top: 12px; background: #f8fafc; line-height: 1.8; font-size: 14px; max-height: 320px; overflow-y: auto; }
+.condition-member-controls { padding: 18px 0; border-block: 1px solid var(--app-line); margin: 12px 0 24px; text-align: left; }
+.mobile-tabbar { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+@media (max-width: 600px) { .member-main { width: calc(100% - 32px); margin-top: 28px; } .member-panel { padding: 20px; } .member-toolbar { gap: 12px; } .member-tabs button { padding: 12px; flex: 1; } }

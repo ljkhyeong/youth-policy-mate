@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { components } from "@/generated/policy-api";
+import { PolicyQuestionnaire } from "@/features/eligibility/policy-questionnaire";
 import { SavePolicyButton } from "@/features/member/save-policy-button";
 
 type Summary = components["schemas"]["PolicySummary"];
@@ -31,6 +32,7 @@ export function PolicyArticle({ policy }: { policy: Detail }) {
       <div className="policy-date-panel"><p>신청기간 · 원문 안내</p><strong>{content.applicationPeriod}</strong></div>
     </header>
     <SavePolicyButton key={policy.policyNumber} policyNumber={policy.policyNumber} />
+    <PolicyQuestionnaire key={`${policy.policyNumber}-${policy.revision}`} policyNumber={policy.policyNumber} />
     <aside className="policy-notice">
       <strong>신청 자격은 추가 확인이 필요해요</strong>
       <p>아래는 정책 원문에 담긴 안내예요. 아직 내 조건과 비교한 결과가 아니므로, 상세 조건과 예외를 공식 안내에서 확인해주세요.</p>

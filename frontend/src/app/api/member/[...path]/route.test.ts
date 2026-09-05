@@ -28,6 +28,21 @@ describe("개인 API 중계", () => {
     expect(response.headers.get("set-cookie")).toContain("YPM_SESSION=new");
   });
 
+  it("정책 질문과 비교 요청은 정해진 공개 경로로만 보내며 회원 정보를 양방향에서 제외한다", async () => {
+    const fetch = vi.fn().mockImplementation(() => Promise.resolve(Response.json({}, { headers: { "Set-Cookie": "YPM_SESSION=unexpected" } })));
+    vi.stubGlobal("fetch", fetch);
+    const question = await GET(new NextRequest(`${base}/api/member/policy-questions/123`, { headers: { cookie: "YPM_SESSION=private" } }), context("policy-questions/123"));
+    expect(fetch.mock.calls[0][0].pathname).toBe("/api/v1/policies/123/questions");
+    expect(fetch.mock.calls[0][1].headers.Cookie).toBeUndefined();
+    expect(question.headers.get("set-cookie")).toBeNull();
+    await POST(new NextRequest(`${base}/api/member/policy-evaluation/123`, { method: "POST", headers: { origin: base, cookie: "YPM_SESSION=private", "X-CSRF-TOKEN": "private" }, body: "{}" }), context("policy-evaluation/123"));
+    expect(fetch.mock.calls[1][0].pathname).toBe("/api/v1/policies/123/evaluation");
+    expect(fetch.mock.calls[1][1].headers).toEqual({ Accept: "application/json", "Content-Type": "application/json" });
+    expect((await GET(new NextRequest(`${base}/api/member/policy-evaluation/123`), context("policy-evaluation/123"))).status).toBe(404);
+    expect((await POST(new NextRequest(`${base}/api/member/policy-evaluation/123`, { method: "POST" }), context("policy-evaluation/123"))).status).toBe(403);
+    expect(fetch).toHaveBeenCalledTimes(2);
+  });
+
   it("조건 확인에는 회원 쿠키를 전달하지 않고 개인정보를 포함한 큰 본문은 거절한다", async () => {
     const fetch = vi.fn().mockResolvedValue(Response.json({ items: [] })); vi.stubGlobal("fetch", fetch);
     await POST(new NextRequest(`${base}/api/member/checks?page=2`, { method: "POST", headers: { origin: base, cookie: "YPM_SESSION=private" }, body: "{}" }), context("checks"));

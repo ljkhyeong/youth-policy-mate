@@ -38,7 +38,7 @@ export default function HomePage() {
           <div>
             <p className="status-label">현재 이용 범위</p>
             <h2 id="status-title">지원 내용을 먼저 살펴보세요</h2>
-            <p>온통청년에서 확인한 일부 정책의 검색과 상세 안내를 제공해요. 내 조건에 따른 추천·저장·마감 알림은 준비 중이에요.</p>
+            <p>정책 원문과 일부 정책의 추가 질문을 확인할 수 있어요. 로그인하면 관심 정책과 마감 일정·서비스 내 알림을 관리해요.</p>
             <Link className="text-link" href="/policies">정책 찾아보기 →</Link>
           </div>
         </aside>

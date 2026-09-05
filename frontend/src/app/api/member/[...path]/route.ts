@@ -6,9 +6,14 @@ export const dynamic = "force-dynamic";
 async function handle(request: NextRequest, context: { params: Promise<{ path: string[] }> }) {
   const path = (await context.params).path.join("/");
   const method = request.method;
+  const question = /^policy-questions\/([0-9]{1,100})$/.exec(path);
+  const evaluation = /^policy-evaluation\/([0-9]{1,100})$/.exec(path);
+  const anonymous = path === "checks" || Boolean(question || evaluation);
   const allowed = (path === "session" && method === "GET")
     || (path === "logout" && method === "POST")
     || (path === "checks" && method === "POST")
+    || (Boolean(question) && method === "GET")
+    || (Boolean(evaluation) && method === "POST")
     || (path === "conditions" && ["GET", "PUT", "DELETE"].includes(method))
     || (path === "policies" && method === "GET")
     || (/^policies\/[0-9]{1,100}$/.test(path) && ["PUT", "DELETE"].includes(method))
@@ -36,20 +41,21 @@ async function handle(request: NextRequest, context: { params: Promise<{ path: s
       if (length) { const bytes = new Uint8Array(length); let offset = 0; for (const chunk of chunks) { bytes.set(chunk, offset); offset += chunk.length; } body = new TextDecoder().decode(bytes); }
     }
     const base = process.env.POLICY_API_BASE_URL || "http://127.0.0.1:8080";
-    const apiPath = path === "checks" ? "/api/v1/policies/checks" : ["session", "logout"].includes(path) ? `/api/v1/${path}` : `/api/v1/me/${path}`;
+    const apiPath = question ? `/api/v1/policies/${question[1]}/questions`
+      : evaluation ? `/api/v1/policies/${evaluation[1]}/evaluation` : path === "checks" ? "/api/v1/policies/checks" : ["session", "logout"].includes(path) ? `/api/v1/${path}` : `/api/v1/me/${path}`;
     const url = new URL(apiPath, base);
     if (path === "checks") url.searchParams.set("page", request.nextUrl.searchParams.get("page") || "1");
     const headers: Record<string, string> = { Accept: "application/json" };
     if (body) headers["Content-Type"] = "application/json";
     const cookie = request.headers.get("cookie")?.split(";").map(value => value.trim()).find(value => value.startsWith("YPM_SESSION="));
-    if (cookie && cookie.length < 1024 && path !== "checks") headers.Cookie = cookie;
+    if (cookie && cookie.length < 1024 && !anonymous) headers.Cookie = cookie;
     const csrf = request.headers.get("x-csrf-token");
-    if (csrf && csrf.length < 512) headers["X-CSRF-TOKEN"] = csrf;
+    if (csrf && csrf.length < 512 && !anonymous) headers["X-CSRF-TOKEN"] = csrf;
     const response = await fetch(url, { method, headers, body, cache: "no-store", redirect: "error", signal: AbortSignal.timeout(8000) });
     const resultHeaders = new Headers({ "Cache-Control": "no-store" });
     const contentType = response.headers.get("content-type");
     if (contentType) resultHeaders.set("Content-Type", contentType);
-    for (const value of response.headers.getSetCookie()) resultHeaders.append("Set-Cookie", value);
+    if (!anonymous) for (const value of response.headers.getSetCookie()) resultHeaders.append("Set-Cookie", value);
     return new Response(response.body, { status: response.status, headers: resultHeaders });
   } catch { return Response.json({ message: "서버에 잠시 연결할 수 없어요. 다시 시도해주세요." }, { status: 503, headers: { "Cache-Control": "no-store" } }); }
 }

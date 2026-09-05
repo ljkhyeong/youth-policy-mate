@@ -7,6 +7,22 @@ import static org.assertj.core.api.Assertions.*;
 
 class PolicyDeadlineTest {
     @Test
+    @DisplayName("마감 날짜가 없으면 상시·접수 종료·미확인 사유를 구분해 안내한다")
+    void explainsMissingDeadline() {
+        var raw = JsonMapper.builder().build().createObjectNode();
+        for (var code : new String[]{"0057002", "0057003", "unknown", ""}) {
+            raw.put("aplyPrdSeCd", code);
+            var deadline = PolicyDeadline.from(raw);
+            assertThat(deadline.date()).isNull();
+            assertThat(deadline.note()).contains(switch (code) {
+                case "0057002" -> "상시 접수";
+                case "0057003" -> "접수가 끝났어요";
+                default -> "마감일을 확인할 수 없어";
+            });
+        }
+    }
+
+    @Test
     @DisplayName("확인된 단일 구간의 종료는 시각을 만들지 않은 날짜로 제공한다")
     void preservesDate() {
         var raw = JsonMapper.builder().build().createObjectNode().put("aplyPrdSeCd", "0057001").put("aplyYmd", "20260901 ~ 20260912");

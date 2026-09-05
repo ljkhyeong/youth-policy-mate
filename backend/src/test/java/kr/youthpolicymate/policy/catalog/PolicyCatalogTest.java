@@ -257,7 +257,7 @@ class PolicyCatalogTest {
         mvc.perform(post(path + "/evaluation").contentType("application/json").content(body)).andExpect(status().isOk())
                 .andExpect(jsonPath("$.evaluatedAt").value("2026-12-31T14:59:59Z"));
         mvc.perform(get(path + "/questions")).andExpect(status().isOk()).andExpect(jsonPath("$.available").value(false))
-                .andExpect(jsonPath("$.reason").value(org.hamcrest.Matchers.containsString("현재 연도")));
+                .andExpect(jsonPath("$.reason").value(org.hamcrest.Matchers.containsString("올해")));
         mvc.perform(post(path + "/evaluation").contentType("application/json").content(body)).andExpect(status().isConflict());
         mvc.perform(get("/api/v1/policies").param("questionsOnly", "true"))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.total").value(0));
@@ -366,7 +366,7 @@ class PolicyCatalogTest {
         var path = "/api/v1/policies/" + KPassRules.NUMBER;
         org.mockito.Mockito.when(clock.instant()).thenReturn(Instant.parse("2026-12-31T15:00:00Z"));
         mvc.perform(get(path + "/questions")).andExpect(status().isOk()).andExpect(jsonPath("$.available").value(false))
-                .andExpect(jsonPath("$.reason").value(org.hamcrest.Matchers.containsString("현재 연도")));
+                .andExpect(jsonPath("$.reason").value(org.hamcrest.Matchers.containsString("올해")));
         mvc.perform(get("/api/v1/policies")).andExpect(status().isOk())
                 .andExpect(jsonPath("$.items[0].questionnaireAvailable").value(false));
         mvc.perform(get("/api/v1/policies").param("questionsOnly", "true"))

@@ -17,7 +17,7 @@ public final class ExamFeeRules {
     public static final String CONTENT_HASH = "7d7880c52f4f696225afd12d0871c41bf155ab568dd7b72f3d34b7f76b800d56";
     public static final String VERSION = "exam-fee-2026-v1";
     public static final String SOURCE = "https://hrdc.hrdkorea.or.kr/hrdc/196105";
-    public static final String SCOPE = "2026년 청년 국가기술자격 응시료 지원 공통요건";
+    public static final String SCOPE = "2026년 청년 국가기술자격 응시료 지원 조건";
     private static final List<Question> QUESTIONS = List.of(
             new Question("birthRange", "출생일이 어느 범위에 해당하나요?",
                     "오늘의 만 나이 대신 2026년 공식 안내의 출생일 기준을 사용해요. 생년월일 전체는 입력하지 않아요.",
@@ -35,7 +35,7 @@ public final class ExamFeeRules {
     public static boolean appliesAt(Instant now) { return now.atZone(ZoneId.of("Asia/Seoul")).getYear() == 2026; }
     public static Questionnaire questionnaire(long revision) {
         return new Questionnaire(NUMBER, revision, VERSION, true, SCOPE,
-                "출생일 범위·대상 시험·남은 횟수만 비교해요. 시험 자체의 응시자격과 현재 예산·할인 적용은 큐넷에서 확인해주세요.", SOURCE, QUESTIONS);
+                "출생일·시험 종류·남은 지원 횟수를 확인해요. 시험 응시자격과 예산 소진 여부와 할인 적용는 큐넷에서 확인해주세요.", SOURCE, QUESTIONS);
     }
     public static Evaluation evaluate(long revision, Request input, Instant now) {
         if (!appliesAt(now)) throw new IllegalArgumentException("검토한 2026년 지원 기준만 사용할 수 있습니다.");
@@ -48,7 +48,7 @@ public final class ExamFeeRules {
         var birth = values.get("birthRange"); var exam = values.get("exam"); var uses = values.get("remainingUses");
         var checks = List.of(
                 check("birthRange", "공식 출생일 기준", birth, "ON_OR_AFTER_1991_01_01".equals(birth) ? MET : "BEFORE_1991_01_01".equals(birth) ? NOT_MET : UNKNOWN,
-                        "2026년 안내의 대상 출생일은 1991년 1월 1일부터예요. 오늘의 만 나이나 서비스 대상 연령으로 바꾸지 않아요."),
+                        "2026년 지원 대상은 1991년 1월 1일 이후 출생자예요."),
                 check("exam", "시험 종류와 시행기관", exam, "HRDK_TECHNICAL".equals(exam) ? MET : "OTHER".equals(exam) ? NOT_MET : UNKNOWN,
                         "이 지원은 한국산업인력공단이 시행하는 국가기술자격시험의 응시료에 적용돼요."),
                 check("remainingUses", "2026년 남은 지원 횟수", uses, List.of("ONE", "TWO", "THREE").contains(uses == null ? "" : uses) ? MET : "ZERO".equals(uses) ? NOT_MET : UNKNOWN,
@@ -68,15 +68,15 @@ public final class ExamFeeRules {
         var whole = new EligibilityDecision(basis, PolicyReview.incomplete(remaining.stream()
                 .map(message -> new PolicyReview.PendingIssue(message, evidence)).toList()), conditions);
         return new Evaluation(NUMBER, revision, VERSION, whole.status(), common, SCOPE,
-                "확인한 지원 공통요건의 비교 결과예요. 실제 시험 접수와 예산·결제 적용은 아직 확인하지 않았어요.", remaining, SOURCE, now, checks);
+                "출생일·시험 종류·남은 지원 횟수의 확인 결과예요. 시험 접수와 예산 소진 여부와 할인 적용는 별도로 확인해주세요.", remaining, SOURCE, now, checks);
     }
     private static Check check(String id, String label, String value, ConditionAssessment.Outcome outcome, String evidence) {
         var provided = QUESTIONS.stream().filter(q -> q.id().equals(id)).flatMap(q -> q.options().stream())
                 .filter(option -> option.value().equals(value)).map(Option::label).findFirst().orElse("미응답");
-        String explanation = outcome == MET ? "입력한 답변이 이 공통요건에 해당해요. 공식 기관의 조회·증빙 확인 결과는 아니에요."
-                : outcome == NOT_MET ? "입력한 답변은 이 공통요건을 충족하지 않아요."
-                : "RESTORING".equals(value) ? "취소한 횟수가 복구됐는지 확인한 뒤 다시 비교해주세요. 복구 중이라는 답변을 남은 횟수로 계산하지 않아요."
-                : "이 항목을 확인해야 해요. 미응답이나 모름을 충족·불충족으로 바꾸지 않아요.";
+        String explanation = outcome == MET ? "입력한 답변은 이 조건을 충족해요."
+                : outcome == NOT_MET ? "입력한 답변은 이 조건을 충족하지 않아요."
+                : "RESTORING".equals(value) ? "큐넷에서 지원 횟수가 복구됐는지 확인한 뒤 다시 답해주세요."
+                : "이 항목을 확인한 뒤 다시 답해주세요.";
         return new Check(label, provided, outcome, explanation, evidence);
     }
 }

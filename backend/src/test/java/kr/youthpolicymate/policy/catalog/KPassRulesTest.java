@@ -20,8 +20,8 @@ class KPassRulesTest {
         assertThat(result.checks()).extracting(Check::outcome).containsOnly(MET);
         assertThat(result.scope()).startsWith("2026년 9월");
         assertThat(result.ruleVersion()).isEqualTo("k-pass-2026-v1-2026-09");
-        assertThat(result.checks().getFirst().evidence()).contains("만 19세 이상", "기본 가입 대상을 좁히지");
-        assertThat(result.remainingChecks()).anyMatch(s -> s.contains("환급률이나 금액으로 계산하지"));
+        assertThat(result.checks().getFirst().evidence()).contains("만 19세 이상", "만 35세 이상도 가입", "청년 환급률은 만 19~34세");
+        assertThat(result.remainingChecks()).anyMatch(s -> s.contains("환급률과 금액은 K-패스에서 확인"));
         assertThat(result.remainingChecks()).anyMatch(s -> s.contains("KTX·SRT"));
     }
 
@@ -29,13 +29,13 @@ class KPassRulesTest {
     void appliesFirstMonthExceptionOnlyToPositiveRides() {
         var first = evaluate("ADULT", "REGISTERED", "CONFIRMED", "FIRST_MONTH_1_TO_14");
         assertThat(first.commonCriteriaStatus()).isEqualTo(ELIGIBLE);
-        assertThat(first.checks().getLast().explanation()).contains("첫 달", "예외", "다음 달");
+        assertThat(first.checks().getLast().explanation()).contains("첫 달", "15회 미만도 인정", "다음 달");
         for (var rides : List.of("LATER_MONTH_1_TO_14", "ZERO")) {
             var result = evaluate("ADULT", "REGISTERED", "CONFIRMED", rides);
             assertThat(result.checks()).extracting(Check::outcome).containsExactly(MET, MET, MET, NOT_MET);
             assertThat(result.commonCriteriaStatus()).isEqualTo(INELIGIBLE);
             assertThat(result.status()).isEqualTo(NEEDS_REVIEW);
-            assertThat(result.checks().getLast().explanation()).contains("최종 미지급 확정은 아니에요");
+            assertThat(result.checks().getLast().explanation()).contains("월말까지 이용 내역이 늘면 결과가 달라질 수 있어요");
         }
     }
 
@@ -44,7 +44,7 @@ class KPassRulesTest {
         var result = evaluate("ADULT", "REGISTERED", "PENDING", "PENDING");
         assertThat(result.checks()).extracting(Check::outcome).containsExactly(MET, MET, UNKNOWN, UNKNOWN);
         assertThat(result.commonCriteriaStatus()).isEqualTo(NEEDS_REVIEW);
-        assertThat(result.checks().getLast().explanation()).contains("0회로 계산하지");
+        assertThat(result.checks().getLast().explanation()).contains("이용내역 반영이 끝나면 다시 답해주세요");
         assertThat(evaluate("UNKNOWN", "UNKNOWN", "UNKNOWN", "UNKNOWN").checks()).extracting(Check::outcome).containsOnly(UNKNOWN);
         assertThat(KPassRules.evaluate(1, new Request(1, KPassRules.versionAt(NOW), List.of()), NOW).checks()).extracting(Check::outcome).containsOnly(UNKNOWN);
     }

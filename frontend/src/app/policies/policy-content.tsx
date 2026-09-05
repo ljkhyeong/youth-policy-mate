@@ -16,12 +16,12 @@ export function PolicyCard({ policy }: { policy: Summary }) {
   return <article className="policy-card">
     <div className="policy-eyebrow"><span>{policy.category || "청년 정책"}</span><span>{policy.organization || "온통청년 제공"}</span></div>
     <h2><Link href={`/policies/${policy.policyNumber}`}>{policy.title}</Link></h2>
-    {policy.questionnaireAvailable && <span className="policy-question-badge">공통요건 질문 있음</span>}
+    {policy.questionnaireAvailable && <span className="policy-question-badge">조건 확인 질문 있음</span>}
     <p className="policy-description">{policy.description || "자세한 지원 내용을 확인해보세요."}</p>
     <p className="policy-period"><strong>신청기간</strong><span>{policy.applicationPeriod}</span></p>
     <div className="policy-card-actions">
       <Link href={`/policies/${policy.policyNumber}`} className="text-link" aria-label={`${policy.title} 상세 보기`}>상세 보기 <span aria-hidden="true">↗</span></Link>
-      {policy.questionnaireAvailable && <Link href={`/policies/${policy.policyNumber}#policy-questions`} className="text-link" aria-label={`${policy.title} 공통요건 확인하기`}>공통요건 확인하기 <span aria-hidden="true">→</span></Link>}
+      {policy.questionnaireAvailable && <Link href={`/policies/${policy.policyNumber}#policy-questions`} className="text-link" aria-label={`${policy.title} 질문에 답하기`}>질문에 답하기 <span aria-hidden="true">→</span></Link>}
     </div>
   </article>;
 }
@@ -33,13 +33,13 @@ export function PolicyArticle({ policy }: { policy: Detail }) {
       <div className="policy-eyebrow"><span>{content.category || "청년 정책"}</span><span>{content.organization || "온통청년 제공"}</span></div>
       <h1>{content.title}</h1>
       <p className="policy-lead">{content.description}</p>
-      <div className="policy-date-panel"><p>신청기간 · 원문 안내</p><strong>{content.applicationPeriod}</strong></div>
+      <div className="policy-date-panel"><p>신청 기간</p><strong>{content.applicationPeriod}</strong></div>
     </header>
     <SavePolicyButton key={policy.policyNumber} policyNumber={policy.policyNumber} />
     <PolicyQuestionnaire key={`${policy.policyNumber}-${policy.revision}`} policyNumber={policy.policyNumber} />
     <aside className="policy-notice">
       <strong>신청 자격은 추가 확인이 필요해요</strong>
-      <p>아래는 정책 원문에 담긴 안내예요. 아직 내 조건과 비교한 결과가 아니므로, 상세 조건과 예외를 공식 안내에서 확인해주세요.</p>
+      <p>아래는 공식 정책 안내예요. 신청 조건과 예외를 확인해주세요.</p>
     </aside>
     <div className="policy-sections">
       {content.sections.map((section, index) => <section key={index}>
@@ -48,7 +48,7 @@ export function PolicyArticle({ policy }: { policy: Detail }) {
       <section>
         <h2>공식 안내 확인하기</h2>
         <div className="policy-official-links">
-          <a href={policy.sourceUrl} className="button-primary" target="_blank" rel="noopener noreferrer">온통청년 원문 보기 <span aria-hidden="true">↗</span><span className="sr-only"> (새 창)</span></a>
+          <a href={policy.sourceUrl} className="button-primary" target="_blank" rel="noopener noreferrer">온통청년에서 보기 <span aria-hidden="true">↗</span><span className="sr-only"> (새 창)</span></a>
           {content.links.map((link) => <a key={link.url} href={link.url} className="button-secondary" target="_blank" rel="noopener noreferrer">{link.label}<span className="sr-only"> (새 창)</span></a>)}
         </div>
       </section>
@@ -56,7 +56,7 @@ export function PolicyArticle({ policy }: { policy: Detail }) {
     <footer className="policy-source">
       <p>출처: 온통청년</p>
       <p>수집 시각: <time dateTime={policy.collectedAt}>{collectedTime(policy.collectedAt)}</time> (서울)</p>
-      {content.sourceModifiedAtText && <p>원문 수정 일시: {content.sourceModifiedAtText}</p>}
+      {content.sourceModifiedAtText && <p>온통청년 수정일: {content.sourceModifiedAtText}</p>}
       <p>수집 이후 내용이 달라질 수 있어요. 실제 신청은 공식 신청처에서 진행해주세요.</p>
     </footer>
   </article>;

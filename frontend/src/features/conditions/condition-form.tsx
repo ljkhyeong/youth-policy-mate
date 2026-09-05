@@ -91,11 +91,11 @@ export function ConditionForm({ today }: { today: string }) {
           <div className="availability-note">
             <span aria-hidden="true">i</span>
             <div>
-              <p>실제 정책의 조건을 확인해보세요</p>
-              <p>확인을 요청하면 입력 조건을 서버로 보내 이번 조회에만 사용해요. 기준일·예외를 확인하지 못한 정책은 추가 확인 필요로 표시해요.</p>
+              <p>정책별 신청 조건을 확인하세요</p>
+              <p>확인 버튼을 누르면 입력 내용을 전송해 이번 확인에만 사용해요. 확인할 수 없는 조건은 ‘추가 확인 필요’로 표시해요.</p>
             </div>
           </div>
-          <p className="data-retention-note">화면 입력은 새로고침하면 사라져요. 계정 저장은 아래 버튼으로 별도로 선택해요.</p>
+          <p className="data-retention-note">새로고침하면 입력 내용이 지워져요. 로그인 후 저장 버튼을 눌러 보관할 수 있어요.</p>
           <div className="form-actions">
             <button type="button" className="button-primary button-block" onClick={() => setShowResults(true)}>이 조건으로 정책 확인하기</button>
             <button type="button" className="button-secondary button-block" onClick={edit}>입력 내용 수정하기</button>

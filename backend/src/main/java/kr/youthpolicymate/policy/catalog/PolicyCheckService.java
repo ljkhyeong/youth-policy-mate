@@ -35,7 +35,7 @@ public class PolicyCheckService {
                             "연령을 계산할 정책 기준일과 제한·예외가 확인되지 않았어요.",
                             text(raw, "addAplyQlfcCndCn", "plcySprtCn")),
                     new PolicyCheckResponse.Check("거주", "서울특별시 " + input.district(),
-                            "정책의 지역 코드는 검색 범위예요. 주민등록·거주 기간·전입 조건은 원문에서 확인해야 해요.",
+                            "신청 가능한 거주지와 거주 기간·전입 조건은 공식 안내를 확인해주세요.",
                             text(raw, "addAplyQlfcCndCn", "plcyExplnCn")),
                     new PolicyCheckResponse.Check("취업·학력·소득", "기본 취업상태 입력됨",
                             "주된 취업상태 하나만으로 고용보험·재학·사업자등록·소득 요건을 확인할 수 없어요.",

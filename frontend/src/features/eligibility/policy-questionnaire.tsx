@@ -30,7 +30,7 @@ export function PolicyQuestionnaire({ policyNumber }: { policyNumber: string }) 
   return <section ref={sectionRef} id="policy-questions" className="policy-questionnaire" aria-labelledby="policy-question-heading" tabIndex={-1}>
     <h2 id="policy-question-heading">내 조건으로 확인하기</h2>
     {changed && <p role="status" className="question-feedback">정책이나 질문이 바뀌었어요. 이전 답변을 지웠으니 최신 안내를 확인해주세요.</p>}
-    {!questions && !error && <p role="status">확인할 수 있는 질문을 불러오는 중이에요.</p>}
+    {!questions && !error && <p role="status">질문을 불러오고 있어요.</p>}
     {error && <div role="alert"><p>{error}</p><button type="button" className="button-secondary" onClick={() => reload()}>질문 다시 불러오기</button></div>}
     {questions && (questions.available
       ? <QuestionForm key={`${attempt}-${questions.revision}-${questions.ruleVersion}`} questions={questions} onChanged={() => reload(true)} />
@@ -72,7 +72,7 @@ function QuestionForm({ questions, onChanged }: { questions: Questionnaire; onCh
     <p className="question-scope">{questions.scope}</p>
     <p>{questions.reason}</p>
     <p className="question-privacy">답변은 비교할 때만 서버에 보내며 저장하지 않아요. 새로고침하면 사라져요.</p>
-    {!started ? <button type="button" className="button-primary" onClick={() => setStarted(true)}>공통요건 확인하기</button> : <form onSubmit={event => { event.preventDefault(); void evaluate(); }}>
+    {!started ? <button type="button" className="button-primary" onClick={() => setStarted(true)}>질문에 답하기</button> : <form onSubmit={event => { event.preventDefault(); void evaluate(); }}>
       <p className="question-privacy">확인하지 못한 항목은 비워두거나 ‘모르겠어요’를 선택해도 괜찮아요.</p>
       <div className="policy-question-fields">
         {questions.questions.map((question, index) => <div className="policy-question-field" key={question.id}>
@@ -92,18 +92,19 @@ function QuestionForm({ questions, onChanged }: { questions: Questionnaire; onCh
       {error && <p role="alert" className="question-feedback">{error}</p>}
     </form>}
     {result && <div className="policy-question-result">
-      <h3 ref={resultHeading} tabIndex={-1}>공통요건 확인 결과</h3>
+      <h3 ref={resultHeading} tabIndex={-1}>조건 확인 결과</h3>
       <PolicyQuestionResult result={result} />
     </div>}
-    <a className="text-link" href={questions.sourceUrl} target="_blank" rel="noopener noreferrer">공통요건 공식 안내 <span aria-hidden="true">↗</span><span className="sr-only"> (새 창)</span></a>
+    <a className="text-link" href={questions.sourceUrl} target="_blank" rel="noopener noreferrer">신청 조건 공식 안내 <span aria-hidden="true">↗</span><span className="sr-only"> (새 창)</span></a>
   </>;
 }
 
 export function PolicyQuestionResult({ result }: { result: Evaluation }) {
-  const label = { ELIGIBLE: "확인한 공통요건 충족", INELIGIBLE: "공통요건 중 불충족", NEEDS_REVIEW: "답변 추가 확인" }[result.commonCriteriaStatus];
+  const label = { ELIGIBLE: "확인한 조건 충족", INELIGIBLE: "충족하지 않은 조건 있음", NEEDS_REVIEW: "추가 확인 필요" }[result.commonCriteriaStatus];
   const outcome = { MET: "충족", NOT_MET: "불충족", UNKNOWN: "추가 확인" };
   return <>
     <p className="question-result-label">{label}</p>
+    <p className="question-privacy">입력한 답변으로 확인한 결과예요. 공식 기관의 자격 심사 결과는 아니에요.</p>
     <p>{result.explanation}</p>
     <ul className="question-checks">{result.checks.map(check => <li key={check.label}>
       <div><strong>{check.label}</strong><span data-outcome={check.outcome}>{outcome[check.outcome]}</span></div>

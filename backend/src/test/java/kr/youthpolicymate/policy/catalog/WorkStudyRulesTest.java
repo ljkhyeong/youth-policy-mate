@@ -51,11 +51,11 @@ class WorkStudyRulesTest {
         assertThat(empty.checks()).extracting(Check::outcome).containsOnly(UNKNOWN);
     }
 
-    @Test @DisplayName("공식 적용 제외 확인 답변을 사용하되 서비스의 증빙 검증으로 표시하지 않는다")
+    @Test @DisplayName("적용 제외를 확인받았다는 답변에 따라 해당 기준을 제외한다")
     void usesConfirmedExceptionAnswer() {
         var result = evaluate("YES", "BELOW_70", "CONFIRMED", "ABOVE_9", "CONFIRMED");
         assertThat(result.commonCriteriaStatus()).isEqualTo(ELIGIBLE);
-        assertThat(result.checks().get(2).explanation()).contains("증빙을 검증한 것은 아니에요");
+        assertThat(result.checks().get(2).explanation()).contains("적용 제외를 확인받았다는 답변에 따라");
         assertThat(evaluate("NO", "AT_LEAST_70", "UNKNOWN", "UP_TO_9", "UNKNOWN").checks().getFirst().outcome()).isEqualTo(NOT_MET);
     }
 

@@ -39,9 +39,9 @@ describe("정책 목록의 공통요건 질문 탐색", () => {
   it("질문 필터의 빈 검색 결과를 자격 불충족으로 안내하지 않는다", async () => {
     vi.mocked(loadPolicies).mockResolvedValue({ status: "available", data: { items: [], page: 1, pageSize: 20, total: 0, hasNext: false } });
     const html = renderToStaticMarkup(await PoliciesPage({ searchParams: Promise.resolve({ questionsOnly: "true" }) }));
-    expect(html).toContain("내 조건이 불충족이라는 뜻은 아니에요");
+    expect(html).toContain("검색 조건에 맞는 질문 제공 정책이 없어요");
     expect(html).toContain("검색·필터 초기화");
-    expect(html).toContain("신청 자격 충족이나 접수 중이라는 뜻은 아니에요");
+    expect(html).toContain("최종 자격과 접수 기간은 별도로 확인해주세요");
   });
 
   it("목록이 줄어든 뒤의 빈 페이지에서는 검색과 필터를 유지해 처음으로 돌아간다", async () => {
@@ -49,6 +49,6 @@ describe("정책 목록의 공통요건 질문 탐색", () => {
     const html = renderToStaticMarkup(await PoliciesPage({ searchParams: Promise.resolve({ q: "시험", page: "2", questionsOnly: "true" }) }));
     expect(html).toContain("첫 페이지 보기");
     expect(html).toContain(`href="/policies?q=${encodeURIComponent("시험")}&amp;page=1&amp;questionsOnly=true"`);
-    expect(html).not.toContain("현재 검색 범위에 공통요건 질문이 있는 정책이 없어요");
+    expect(html).not.toContain("검색 조건에 맞는 질문 제공 정책이 없어요");
   });
 });

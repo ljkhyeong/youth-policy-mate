@@ -50,7 +50,7 @@ export function MemberDashboard() {
       window.location.replace("/");
     } catch { setError("로그아웃을 완료하지 못했어요. 다시 시도해주세요."); setBusy(false); }
   }
-  if (session && !session.authenticated) return <section className="member-panel"><h2>로그인하고 관심 정책을 저장하세요</h2><p>내 일정과 알림은 로그인한 계정에서만 확인할 수 있어요.</p><Link href="/login" className="button-primary">로그인하기</Link><Link href="/policies" className="text-link">공개 정책 둘러보기</Link></section>;
+  if (session && !session.authenticated) return <section className="member-panel"><h2>로그인하고 관심 정책을 저장하세요</h2><p>로그인하면 저장한 정책의 마감일과 알림을 볼 수 있어요.</p><Link href="/login" className="button-primary">로그인하기</Link><Link href="/policies" className="text-link">정책 둘러보기</Link></section>;
   return <>
     {error && <div className="member-panel" role="alert"><p>{error}</p><button className="button-secondary" onClick={reloadData}>다시 불러오기</button></div>}
     {!policies && !error && <p role="status">내 정책을 불러오고 있어요.</p>}
@@ -67,7 +67,7 @@ export function MemberDashboard() {
         <p>{policy.deadline.note}</p>
         {policy.savedRevision !== policy.currentRevision && <p className="member-change">저장한 뒤 정책 내용이 바뀌었어요. 최신 안내를 확인해주세요.</p>}
         {tab === "calendar" && policy.deadline.date && <p className="field-help">다가오는 마감 7·3·1일 전 서비스 내 알림을 예약해요. 지난 날짜의 알림은 보내지 않아요.</p>}
-        <button className="text-button" type="button" disabled={busy} onClick={() => mutate(`policies/${policy.policyNumber}`, "DELETE")}>관심 정책 해제</button>
+        <button className="text-button" type="button" disabled={busy} onClick={() => mutate(`policies/${policy.policyNumber}`, "DELETE")}>저장 취소</button>
       </article>)}
     </div>}
     {session?.authenticated && tab === "notifications" && <MemberEmailSettings csrf={session.csrfToken} />}
@@ -75,7 +75,7 @@ export function MemberDashboard() {
       {notifications.items.length === 0 && <section className="member-panel"><h2>도착한 알림이 없어요</h2><p>저장한 정책의 내용 변경과 마감 안내가 이곳에 표시돼요.</p></section>}
       {notifications.items.map(notification => <article className="member-panel" key={notification.id} data-read={notification.read}>
         <p className="page-label">{notification.read ? "읽은 알림" : "새 알림"}</p><h2><Link href={`/policies/${notification.policyNumber}`}>{notification.title}</Link></h2><p>{notification.message}</p>
-        {!notification.read && <button type="button" className="text-button" disabled={busy} onClick={() => mutate(`notifications/${notification.id}/read`, "POST")}>읽음 처리</button>}
+        {!notification.read && <button type="button" className="text-button" disabled={busy} onClick={() => mutate(`notifications/${notification.id}/read`, "POST")}>읽음으로 표시</button>}
       </article>)}
     </div>}
   </>;

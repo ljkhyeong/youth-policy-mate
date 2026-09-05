@@ -7,6 +7,11 @@ spring:
       ddl-auto: validate
   flyway:
     clean-disabled: true
+  batch:
+    job:
+      enabled: false
+    jdbc:
+      initialize-schema: never
 
 management:
   endpoints:

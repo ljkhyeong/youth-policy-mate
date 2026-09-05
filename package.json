@@ -11,6 +11,8 @@
     "dev:preview-api": "./backend/gradlew -p backend bootRun --no-daemon --args='--spring.profiles.active=preview'",
     "generate:api": "./backend/gradlew -p backend exportPreviewOpenApi exportPolicyOpenApi --no-daemon && npm run generate:api-types --workspace frontend",
     "import:policy": "./backend/gradlew -p backend importPolicyCapture --no-daemon",
+    "collect:policy": "./backend/gradlew -p backend collectPolicyPage --no-daemon",
+    "test:policy-collection": "./backend/gradlew -p backend test --tests 'kr.youthpolicymate.ingestion.Ontong*Test' --tests 'kr.youthpolicymate.policy.catalog.PolicyCatalogTest' --no-daemon",
     "test:policy-catalog": "./backend/gradlew -p backend test --tests 'kr.youthpolicymate.ingestion.OntongPolicyCaptureTest' --tests 'kr.youthpolicymate.policy.catalog.PolicyCatalogTest' --no-daemon",
     "check:api-types": "npm run check:api-types --workspace frontend",
     "test:preview-api": "./backend/gradlew -p backend test --tests 'kr.youthpolicymate.devpreview.*' --no-daemon",

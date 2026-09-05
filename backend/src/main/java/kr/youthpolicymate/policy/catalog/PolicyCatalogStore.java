@@ -22,20 +22,37 @@ public class PolicyCatalogStore {
     @Transactional
     public ImportResult importPolicy(String number, PolicyContent content, String rawPolicy,
                                      Instant capturedAt, String captureHash, String contentHash) {
+        return apply(number, content, rawPolicy, capturedAt, captureHash, contentHash, 0);
+    }
+
+    @Transactional
+    public ImportResult importCollectedPolicy(String number, PolicyContent content, String rawPolicy,
+                                              Instant capturedAt, String captureHash, String contentHash, long requestSequence) {
+        if (requestSequence <= 0) throw new IllegalArgumentException("수집 요청 순번이 필요합니다.");
+        return apply(number, content, rawPolicy, capturedAt, captureHash, contentHash, requestSequence);
+    }
+
+    private ImportResult apply(String number, PolicyContent content, String rawPolicy,
+                               Instant capturedAt, String captureHash, String contentHash, long requestSequence) {
         jdbc.sql("INSERT INTO policies(policy_number) VALUES (:number) ON CONFLICT DO NOTHING")
                 .param("number", number).update();
-        var current = jdbc.sql("SELECT current_revision, content_hash, last_collected_at FROM policies WHERE policy_number = :number FOR UPDATE")
+        var current = jdbc.sql("SELECT current_revision, content_hash, last_collected_at, last_request_sequence FROM policies WHERE policy_number = :number FOR UPDATE")
                 .param("number", number).query((rs, row) -> new Current(rs.getLong(1), rs.getString(2),
-                        rs.getObject(3, OffsetDateTime.class))).single();
+                        rs.getObject(3, OffsetDateTime.class), rs.getLong(4))).single();
         var snapshot = jdbc.sql("""
                 INSERT INTO policy_source_snapshots(policy_number, capture_hash, captured_at, raw_policy)
                 VALUES (:number, :hash, :at, CAST(:raw AS jsonb))
                 ON CONFLICT DO NOTHING RETURNING id
                 """).param("number", number).param("hash", captureHash)
                 .param("at", capturedAt.atOffset(ZoneOffset.UTC)).param("raw", rawPolicy).query(Long.class).optional();
-        if (snapshot.isEmpty() && contentHash.equals(current.hash())) return ImportResult.REPLAYED;
+        if (snapshot.isEmpty() && contentHash.equals(current.hash()) && requestSequence <= current.requestSequence()) {
+            return ImportResult.REPLAYED;
+        }
+        // 직접 수집을 시작한 정책은 요청 발급 순서로 비교한다. 순번 없는 과거 캡처는 덮어쓰지 않는다.
+        if (current.requestSequence() > 0 && (requestSequence < current.requestSequence()
+                || (requestSequence == current.requestSequence() && snapshot.isPresent()))) return ImportResult.STALE;
         // 로컬 캡처의 수신 시각 순서다. 원천 서버의 개정 순서를 보장하는 값으로 사용하지 않는다.
-        if (current.collectedAt() != null && (capturedAt.isBefore(current.collectedAt().toInstant())
+        if (current.requestSequence() == 0 && current.collectedAt() != null && (capturedAt.isBefore(current.collectedAt().toInstant())
                 || (capturedAt.equals(current.collectedAt().toInstant()) && snapshot.isPresent()))) return ImportResult.STALE;
         // 현재 캡처의 표시 규칙만 바뀐 경우 기존 원본을 참조하는 새 개정을 만든다.
         var snapshotId = snapshot.orElseGet(() -> jdbc.sql("SELECT id FROM policy_source_snapshots WHERE policy_number = :number AND capture_hash = :hash")
@@ -52,9 +69,10 @@ public class PolicyCatalogStore {
         }
         jdbc.sql("""
                 UPDATE policies SET current_revision = :revision, content_hash = :hash,
-                    content = CAST(:content AS jsonb), last_collected_at = :at WHERE policy_number = :number
+                    content = CAST(:content AS jsonb), last_collected_at = :at,
+                    last_request_sequence = :sequence WHERE policy_number = :number
                 """).param("number", number).param("revision", revision).param("hash", contentHash)
-                .param("content", json).param("at", capturedAt.atOffset(ZoneOffset.UTC)).update();
+                .param("content", json).param("at", capturedAt.atOffset(ZoneOffset.UTC)).param("sequence", requestSequence).update();
         return changed ? ImportResult.APPLIED : ImportResult.UNCHANGED;
     }
 
@@ -84,5 +102,5 @@ public class PolicyCatalogStore {
     }
 
     public enum ImportResult { APPLIED, UNCHANGED, REPLAYED, STALE }
-    private record Current(long revision, String hash, OffsetDateTime collectedAt) {}
+    private record Current(long revision, String hash, OffsetDateTime collectedAt, long requestSequence) {}
 }

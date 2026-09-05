@@ -29,6 +29,7 @@ dependencyManagement {
 }
 
 dependencies {
+    implementation 'org.springframework.boot:spring-boot-starter-batch-jdbc'
     implementation 'org.springframework.boot:spring-boot-starter-actuator'
     implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
     implementation 'org.springframework.boot:spring-boot-starter-flyway'
@@ -59,6 +60,14 @@ tasks.register('importPolicyCapture', JavaExec) {
     group = 'application'
     classpath = sourceSets.main.runtimeClasspath
     mainClass = 'kr.youthpolicymate.ingestion.PolicyCaptureImport'
+    workingDir = rootProject.file('..')
+}
+
+tasks.register('collectPolicyPage', JavaExec) {
+    description = '서울 필터의 한 페이지를 수집하거나 저장 원본 재처리·이력을 조회한다.'
+    group = 'application'
+    classpath = sourceSets.main.runtimeClasspath
+    mainClass = 'kr.youthpolicymate.ingestion.OntongCollectionCommand'
     workingDir = rootProject.file('..')
 }
 

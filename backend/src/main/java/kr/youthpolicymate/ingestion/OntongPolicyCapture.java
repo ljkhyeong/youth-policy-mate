@@ -34,17 +34,29 @@ public final class OntongPolicyCapture {
             }
             var raw = capture.path("response").path("rawBody");
             if (!raw.isString()) throw invalid();
-            var body = mapper.readTree(raw.asString());
-            var result = body.path("result");
-            var items = result.path("youthPolicyList");
-            if (!body.path("resultCode").isInt() || body.path("resultCode").asInt() != 200
-                    || !result.path("pagging").isObject() || !items.isArray() || items.size() > 10) throw invalid();
             var capturedAt = Instant.parse(capture.path("capturedAt").asString());
-            return new Parsed(capturedAt, hash(capturedAt + "\n" + raw.asString()), items.valueStream().toList());
+            return parseResponse(raw.asString(), capturedAt);
         } catch (RuntimeException exception) {
             // 원문·인증키·파싱 오류의 입력 내용을 로그로 전파하지 않는다.
             throw invalid();
         }
+    }
+
+    public Parsed parseResponse(String raw, Instant capturedAt) {
+        try {
+            var body = mapper.readTree(raw);
+            var result = body.path("result");
+            var items = result.path("youthPolicyList");
+            var paging = result.path("pagging");
+            if (!body.path("resultCode").isInt() || body.path("resultCode").asInt() != 200
+                    || !items.isArray() || items.size() > 10
+                    || !paging.path("pageNum").isInt() || paging.path("pageNum").asInt() < 1
+                    || !paging.path("pageSize").isInt() || paging.path("pageSize").asInt() < 1
+                    || paging.path("pageSize").asInt() > 10 || items.size() > paging.path("pageSize").asInt()
+                    || !paging.path("totCount").isIntegralNumber() || paging.path("totCount").asLong() < 0) throw invalid();
+            return new Parsed(capturedAt, hash(capturedAt + "\n" + raw), items.valueStream().toList(),
+                    paging.path("pageNum").asInt(), paging.path("pageSize").asInt(), paging.path("totCount").asLong());
+        } catch (RuntimeException exception) { throw invalid(); }
     }
 
     public Item item(JsonNode node) {
@@ -123,6 +135,6 @@ public final class OntongPolicyCapture {
         return new IllegalArgumentException("지원하는 정상 목록 캡처 또는 표시 가능한 승인 정책이 아닙니다.");
     }
 
-    public record Parsed(Instant capturedAt, String hash, List<JsonNode> items) {}
+    public record Parsed(Instant capturedAt, String hash, List<JsonNode> items, int page, int pageSize, long total) {}
     public record Item(String number, PolicyContent content, String rawPolicy, String contentHash) {}
 }

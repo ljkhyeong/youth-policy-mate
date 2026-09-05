@@ -101,6 +101,14 @@ public class PolicyCatalogStore {
                         rs.getObject("last_collected_at", OffsetDateTime.class).toInstant())).optional();
     }
 
+    public Optional<tools.jackson.databind.JsonNode> source(String number) {
+        return jdbc.sql("""
+                SELECT s.raw_policy FROM policies p
+                JOIN policy_revisions r ON r.policy_number = p.policy_number AND r.revision = p.current_revision
+                JOIN policy_source_snapshots s ON s.id = r.source_snapshot_id WHERE p.policy_number = :number
+                """).param("number", number).query((rs, row) -> mapper.readTree(rs.getString(1))).optional();
+    }
+
     public enum ImportResult { APPLIED, UNCHANGED, REPLAYED, STALE }
     private record Current(long revision, String hash, OffsetDateTime collectedAt, long requestSequence) {}
 }

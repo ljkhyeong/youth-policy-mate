@@ -14,9 +14,11 @@ class PolicyApiExceptionHandler {
         return ResponseEntity.status(404).body(new PolicyApiError("POLICY_NOT_FOUND", "정책을 찾을 수 없습니다."));
     }
 
-    @ExceptionHandler({HandlerMethodValidationException.class, MethodArgumentTypeMismatchException.class})
+    @ExceptionHandler({HandlerMethodValidationException.class, MethodArgumentTypeMismatchException.class,
+            org.springframework.web.bind.MethodArgumentNotValidException.class,
+            org.springframework.http.converter.HttpMessageNotReadableException.class, IllegalArgumentException.class})
     ResponseEntity<PolicyApiError> invalid() {
-        return ResponseEntity.badRequest().body(new PolicyApiError("INVALID_SEARCH", "검색어와 페이지 조건을 확인해주세요."));
+        return ResponseEntity.badRequest().body(new PolicyApiError("INVALID_SEARCH", "입력한 조건과 페이지를 확인해주세요."));
     }
 
     @ExceptionHandler(DataAccessException.class)

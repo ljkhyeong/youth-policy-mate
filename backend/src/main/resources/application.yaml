@@ -12,6 +12,10 @@ spring:
       enabled: false
     jdbc:
       initialize-schema: never
+  session:
+    timeout: 12h
+    jdbc:
+      initialize-schema: never
 
 management:
   endpoints:
@@ -25,3 +29,7 @@ management:
 springdoc:
   api-docs:
     enabled: false
+
+app:
+  reminders:
+    enabled: ${REMINDERS_ENABLED:false}

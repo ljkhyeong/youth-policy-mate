@@ -4,6 +4,111 @@
  */
 
 export interface paths {
+    readonly "/api/v1/logout": {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header?: never;
+            readonly path?: never;
+            readonly cookie?: never;
+        };
+        readonly get?: never;
+        readonly put?: never;
+        /** 현재 세션 로그아웃 */
+        readonly post: operations["logoutMember"];
+        readonly delete?: never;
+        readonly options?: never;
+        readonly head?: never;
+        readonly patch?: never;
+        readonly trace?: never;
+    };
+    readonly "/api/v1/me/conditions": {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header?: never;
+            readonly path?: never;
+            readonly cookie?: never;
+        };
+        /** 내가 저장한 기본 조건 조회 */
+        readonly get: operations["getMemberConditions"];
+        /** 확인한 내 기본 조건 저장 */
+        readonly put: operations["saveMemberConditions"];
+        readonly post?: never;
+        /** 내 저장 조건 삭제 */
+        readonly delete: operations["clearMemberConditions"];
+        readonly options?: never;
+        readonly head?: never;
+        readonly patch?: never;
+        readonly trace?: never;
+    };
+    readonly "/api/v1/me/notifications": {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header?: never;
+            readonly path?: never;
+            readonly cookie?: never;
+        };
+        /** 내 서비스 내 알림 조회 */
+        readonly get: operations["listMemberNotifications"];
+        readonly put?: never;
+        readonly post?: never;
+        readonly delete?: never;
+        readonly options?: never;
+        readonly head?: never;
+        readonly patch?: never;
+        readonly trace?: never;
+    };
+    readonly "/api/v1/me/notifications/{id}/read": {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header?: never;
+            readonly path?: never;
+            readonly cookie?: never;
+        };
+        readonly get?: never;
+        readonly put?: never;
+        /** 내 알림 읽음 처리 */
+        readonly post: operations["readMemberNotification"];
+        readonly delete?: never;
+        readonly options?: never;
+        readonly head?: never;
+        readonly patch?: never;
+        readonly trace?: never;
+    };
+    readonly "/api/v1/me/policies": {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header?: never;
+            readonly path?: never;
+            readonly cookie?: never;
+        };
+        /** 내 관심 정책과 최신 마감 일정 조회 */
+        readonly get: operations["listSavedPolicies"];
+        readonly put?: never;
+        readonly post?: never;
+        readonly delete?: never;
+        readonly options?: never;
+        readonly head?: never;
+        readonly patch?: never;
+        readonly trace?: never;
+    };
+    readonly "/api/v1/me/policies/{number}": {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header?: never;
+            readonly path?: never;
+            readonly cookie?: never;
+        };
+        readonly get?: never;
+        /** 내 관심 정책 저장과 마감 알림 예약 */
+        readonly put: operations["savePolicy"];
+        readonly post?: never;
+        /** 내 관심 정책 해제와 미발송 알림 취소 */
+        readonly delete: operations["removeSavedPolicy"];
+        readonly options?: never;
+        readonly head?: never;
+        readonly patch?: never;
+        readonly trace?: never;
+    };
     readonly "/api/v1/policies": {
         readonly parameters: {
             readonly query?: never;
@@ -15,6 +120,23 @@ export interface paths {
         readonly get: operations["listPolicies"];
         readonly put?: never;
         readonly post?: never;
+        readonly delete?: never;
+        readonly options?: never;
+        readonly head?: never;
+        readonly patch?: never;
+        readonly trace?: never;
+    };
+    readonly "/api/v1/policies/checks": {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header?: never;
+            readonly path?: never;
+            readonly cookie?: never;
+        };
+        readonly get?: never;
+        readonly put?: never;
+        /** 기본 조건으로 실제 정책의 확인할 요건과 원문 조회. 조건은 저장하지 않음 */
+        readonly post: operations["checkPolicyConditions"];
         readonly delete?: never;
         readonly options?: never;
         readonly head?: never;
@@ -38,13 +160,94 @@ export interface paths {
         readonly patch?: never;
         readonly trace?: never;
     };
+    readonly "/api/v1/session": {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header?: never;
+            readonly path?: never;
+            readonly cookie?: never;
+        };
+        /** 로그인 상태·설정된 로그인 제공자·CSRF 토큰 조회 */
+        readonly get: operations["getMemberSession"];
+        readonly put?: never;
+        readonly post?: never;
+        readonly delete?: never;
+        readonly options?: never;
+        readonly head?: never;
+        readonly patch?: never;
+        readonly trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        readonly BasicConditions: {
+            /** Format: date */
+            readonly birthDate: string;
+            readonly district: string;
+            /** @enum {string} */
+            readonly employmentStatus: "EMPLOYED" | "SELF_EMPLOYED" | "NOT_EMPLOYED" | "FREELANCER" | "DAY_WORKER" | "ENTREPRENEUR" | "SHORT_TERM_WORKER" | "FARMER" | "OTHER";
+        };
+        readonly LoginProvider: {
+            readonly id: string;
+            readonly name: string;
+            readonly url: string;
+        };
+        readonly MemberConditions: {
+            readonly conditions: components["schemas"]["BasicConditions"] | null;
+        };
+        readonly MemberNotification: {
+            /** Format: date-time */
+            readonly createdAt: string;
+            readonly id: string;
+            readonly message: string;
+            readonly policyNumber: string;
+            readonly read: boolean;
+            readonly title: string;
+        };
+        readonly MemberNotificationList: {
+            readonly items: readonly components["schemas"]["MemberNotification"][];
+        };
+        readonly MemberSession: {
+            readonly authenticated: boolean;
+            readonly csrfToken: string;
+            readonly displayName: string;
+            readonly providers: readonly components["schemas"]["LoginProvider"][];
+            readonly suggestedBirthDate: string;
+        };
         readonly PolicyApiError: {
             readonly code: string;
             readonly message: string;
+        };
+        readonly PolicyCheckItem: {
+            readonly applicationPeriod: string;
+            readonly checks: readonly components["schemas"]["PolicyConditionCheck"][];
+            /** Format: date-time */
+            readonly collectedAt: string;
+            readonly explanation: string;
+            readonly policyNumber: string;
+            /** Format: int64 */
+            readonly revision: number;
+            readonly sourceUrl: string;
+            /** @enum {string} */
+            readonly status: "ELIGIBLE" | "NEEDS_REVIEW" | "INELIGIBLE";
+            readonly title: string;
+        };
+        readonly PolicyCheckResponse: {
+            /** Format: date-time */
+            readonly evaluatedAt: string;
+            readonly hasNext: boolean;
+            readonly items: readonly components["schemas"]["PolicyCheckItem"][];
+            /** Format: int32 */
+            readonly page: number;
+            /** Format: int64 */
+            readonly total: number;
+        };
+        readonly PolicyConditionCheck: {
+            readonly evidence: string;
+            readonly explanation: string;
+            readonly label: string;
+            readonly providedValue: string;
         };
         readonly PolicyContent: {
             readonly applicationPeriod: string;
@@ -57,6 +260,11 @@ export interface components {
             /** @description 시간대가 확정되지 않은 원천 수정 일시 원문 */
             readonly sourceModifiedAtText: string;
             readonly title: string;
+        };
+        readonly PolicyDeadline: {
+            /** Format: date */
+            readonly date: string | null;
+            readonly note: string;
         };
         readonly PolicyDetailResponse: {
             /** Format: date-time */
@@ -101,6 +309,21 @@ export interface components {
             readonly text: string;
             readonly title: string;
         };
+        readonly SavedPolicy: {
+            readonly applicationPeriod: string;
+            /** Format: int64 */
+            readonly currentRevision: number;
+            readonly deadline: components["schemas"]["PolicyDeadline"];
+            readonly policyNumber: string;
+            /** Format: date-time */
+            readonly savedAt: string;
+            /** Format: int64 */
+            readonly savedRevision: number;
+            readonly title: string;
+        };
+        readonly SavedPolicyList: {
+            readonly items: readonly components["schemas"]["SavedPolicy"][];
+        };
     };
     responses: never;
     parameters: never;
@@ -110,6 +333,328 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    readonly logoutMember: {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header: {
+                /** @description GET /api/v1/session에서 받은 csrfToken */
+                readonly "X-CSRF-TOKEN": string;
+            };
+            readonly path?: never;
+            readonly cookie?: never;
+        };
+        readonly requestBody?: never;
+        readonly responses: {
+            /** @description 로그아웃 완료 */
+            readonly 204: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 로그인 필요 */
+            readonly 401: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 권한 또는 CSRF 토큰 확인 필요 */
+            readonly 403: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    readonly getMemberConditions: {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header?: never;
+            readonly path?: never;
+            readonly cookie?: never;
+        };
+        readonly requestBody?: never;
+        readonly responses: {
+            /** @description OK */
+            readonly 200: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "*/*": components["schemas"]["MemberConditions"];
+                };
+            };
+            /** @description 로그인 필요 */
+            readonly 401: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 권한 또는 CSRF 토큰 확인 필요 */
+            readonly 403: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    readonly saveMemberConditions: {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header: {
+                /** @description GET /api/v1/session에서 받은 csrfToken */
+                readonly "X-CSRF-TOKEN": string;
+            };
+            readonly path?: never;
+            readonly cookie?: never;
+        };
+        readonly requestBody: {
+            readonly content: {
+                readonly "application/json": components["schemas"]["BasicConditions"];
+            };
+        };
+        readonly responses: {
+            /** @description No Content */
+            readonly 204: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 로그인 필요 */
+            readonly 401: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 권한 또는 CSRF 토큰 확인 필요 */
+            readonly 403: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    readonly clearMemberConditions: {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header: {
+                /** @description GET /api/v1/session에서 받은 csrfToken */
+                readonly "X-CSRF-TOKEN": string;
+            };
+            readonly path?: never;
+            readonly cookie?: never;
+        };
+        readonly requestBody?: never;
+        readonly responses: {
+            /** @description No Content */
+            readonly 204: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 로그인 필요 */
+            readonly 401: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 권한 또는 CSRF 토큰 확인 필요 */
+            readonly 403: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    readonly listMemberNotifications: {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header?: never;
+            readonly path?: never;
+            readonly cookie?: never;
+        };
+        readonly requestBody?: never;
+        readonly responses: {
+            /** @description OK */
+            readonly 200: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "*/*": components["schemas"]["MemberNotificationList"];
+                };
+            };
+            /** @description 로그인 필요 */
+            readonly 401: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 권한 또는 CSRF 토큰 확인 필요 */
+            readonly 403: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    readonly readMemberNotification: {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header: {
+                /** @description GET /api/v1/session에서 받은 csrfToken */
+                readonly "X-CSRF-TOKEN": string;
+            };
+            readonly path: {
+                readonly id: string;
+            };
+            readonly cookie?: never;
+        };
+        readonly requestBody?: never;
+        readonly responses: {
+            /** @description No Content */
+            readonly 204: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 로그인 필요 */
+            readonly 401: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 권한 또는 CSRF 토큰 확인 필요 */
+            readonly 403: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    readonly listSavedPolicies: {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header?: never;
+            readonly path?: never;
+            readonly cookie?: never;
+        };
+        readonly requestBody?: never;
+        readonly responses: {
+            /** @description OK */
+            readonly 200: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "*/*": components["schemas"]["SavedPolicyList"];
+                };
+            };
+            /** @description 로그인 필요 */
+            readonly 401: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 권한 또는 CSRF 토큰 확인 필요 */
+            readonly 403: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    readonly savePolicy: {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header: {
+                /** @description GET /api/v1/session에서 받은 csrfToken */
+                readonly "X-CSRF-TOKEN": string;
+            };
+            readonly path: {
+                readonly number: string;
+            };
+            readonly cookie?: never;
+        };
+        readonly requestBody?: never;
+        readonly responses: {
+            /** @description No Content */
+            readonly 204: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 로그인 필요 */
+            readonly 401: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 권한 또는 CSRF 토큰 확인 필요 */
+            readonly 403: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    readonly removeSavedPolicy: {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header: {
+                /** @description GET /api/v1/session에서 받은 csrfToken */
+                readonly "X-CSRF-TOKEN": string;
+            };
+            readonly path: {
+                readonly number: string;
+            };
+            readonly cookie?: never;
+        };
+        readonly requestBody?: never;
+        readonly responses: {
+            /** @description No Content */
+            readonly 204: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 로그인 필요 */
+            readonly 401: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 권한 또는 CSRF 토큰 확인 필요 */
+            readonly 403: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     readonly listPolicies: {
         readonly parameters: {
             readonly query?: {
@@ -130,6 +675,50 @@ export interface operations {
                 };
                 content: {
                     readonly "*/*": components["schemas"]["PolicyListResponse"];
+                };
+            };
+            /** @description Bad Request */
+            readonly 400: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "*/*": components["schemas"]["PolicyApiError"];
+                };
+            };
+            /** @description 정책 저장소 조회 실패 */
+            readonly 503: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "*/*": components["schemas"]["PolicyApiError"];
+                };
+            };
+        };
+    };
+    readonly checkPolicyConditions: {
+        readonly parameters: {
+            readonly query?: {
+                readonly page?: number;
+            };
+            readonly header?: never;
+            readonly path?: never;
+            readonly cookie?: never;
+        };
+        readonly requestBody: {
+            readonly content: {
+                readonly "application/json": components["schemas"]["BasicConditions"];
+            };
+        };
+        readonly responses: {
+            /** @description OK */
+            readonly 200: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "*/*": components["schemas"]["PolicyCheckResponse"];
                 };
             };
             /** @description Bad Request */
@@ -188,6 +777,26 @@ export interface operations {
                 };
                 content: {
                     readonly "*/*": components["schemas"]["PolicyApiError"];
+                };
+            };
+        };
+    };
+    readonly getMemberSession: {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header?: never;
+            readonly path?: never;
+            readonly cookie?: never;
+        };
+        readonly requestBody?: never;
+        readonly responses: {
+            /** @description OK */
+            readonly 200: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "*/*": components["schemas"]["MemberSession"];
                 };
             };
         };

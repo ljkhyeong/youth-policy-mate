@@ -38,7 +38,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @Testcontainers
 @SpringBootTest(properties = {"springdoc.api-docs.enabled=true", "springdoc.api-docs.path=/contract/policy",
-        "springdoc.api-docs.version=OPENAPI_3_1", "springdoc.packages-to-scan=kr.youthpolicymate.policy.catalog",
+        "springdoc.api-docs.version=OPENAPI_3_1", "springdoc.packages-to-scan=kr.youthpolicymate.policy.catalog,kr.youthpolicymate.member",
         "springdoc.writer-with-order-by-keys=true"})
 @AutoConfigureMockMvc
 @Import(PolicyCatalogTest.ContractSecurity.class)
@@ -147,7 +147,9 @@ class PolicyCatalogTest {
     void matchesGeneratedContract() throws Exception {
         var response = mvc.perform(get("/contract/policy")).andExpect(status().isOk()).andReturn();
         var actual = mapper.readTree(response.getResponse().getContentAsByteArray());
-        assertThat(actual.path("paths").size()).isEqualTo(2);
+        assertThat(actual.path("paths").size()).isEqualTo(10);
+        assertThat(actual.at("/components/schemas/MemberConditions/properties/conditions/anyOf/1/type").asString()).isEqualTo("null");
+        assertThat(actual.at("/paths/~1api~1v1~1session/get/parameters").isMissingNode()).isTrue();
         var path = Path.of(System.getProperty("policy.contract.path"));
         if (Boolean.getBoolean("policy.contract.update")) {
             Files.writeString(path, mapper.writerWithDefaultPrettyPrinter().writeValueAsString(actual) + "\n");

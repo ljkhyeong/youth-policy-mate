@@ -14,7 +14,7 @@
 | 빌드 | Gradle Wrapper 9.7.1, npm 잠금 파일 | 백엔드·프런트엔드 빌드 |
 | DB | PostgreSQL 18.6 Alpine, `compose.yaml` | 프로젝트 전용 로컬 DB |
 
-Spring Batch, OAuth2 공급자, shadcn/ui 컴포넌트, Playwright 자동 테스트, Outbox와 배포 구성은 아직 추가하지 않았다. OpenAPI·생성 TypeScript는 개발 전용 인공 자료 API에 먼저 적용했으며 공개·회원 API 계약은 아직 없다. 웹·서버 CI의 원격 실행 미확인 범위는 [CI 안내](ci.md)를 따른다.
+Spring Batch, OAuth2 공급자, shadcn/ui 컴포넌트, Playwright 자동 테스트, Outbox와 배포 구성은 아직 추가하지 않았다. OpenAPI·생성 TypeScript는 개발 전용 인공 자료 API에 먼저 적용했으며 공개 정책 API에도 적용했다. 회원 API 계약은 아직 없다. 웹·서버 CI의 원격 실행 미확인 범위는 [CI 안내](ci.md)를 따른다.
 
 ## 2. 필요한 도구
 
@@ -78,7 +78,7 @@ DB 없이 서버 계산 결과를 확인하려면 위 DB 연결 서버 대신 `n
 | 서버 상태 | <http://127.0.0.1:8080/actuator/health> |
 | PostgreSQL | `127.0.0.1:55432` |
 
-웹과 로컬·preview 프로필의 서버·DB는 루프백 주소에만 연결한다. 다른 기기에 공개하거나 운영에 배포하기 위한 설정이 아니다. 기본 서버는 GET `/actuator/health`만 허용한다. preview는 두 고정 예시 API·명세의 GET, `/api/dev/eligibility-trial`의 질문 GET·인공 계산 POST를 추가 허용한다. 상태 응답에 DB 연결 문자열이나 상세 정보를 노출하지 않는다. 소셜 로그인·실제 정책·회원 업무 API 연동은 아직 없다.
+웹과 로컬·preview 프로필의 서버·DB는 루프백 주소에만 연결한다. 다른 기기에 공개하거나 운영에 배포하기 위한 설정이 아니다. 기본 서버는 GET `/actuator/health`와 공개 정책 목록·상세 GET을 허용한다. preview는 두 고정 예시 API·명세의 GET, `/api/dev/eligibility-trial`의 질문 GET·인공 계산 POST를 추가 허용한다. 상태 응답에 DB 연결 문자열이나 상세 정보를 노출하지 않는다. 소량의 실제 정책 조회를 연결했으며 소셜 로그인·회원 업무 API 연동은 아직 없다. [정책 적재·조회 안내](policy-catalog.md)를 따른다.
 
 ### DB 설정 변경
 
@@ -97,7 +97,7 @@ PostgreSQL은 기존 볼륨이 있으면 초기 계정·DB를 다시 만들지 �
 
 ### 데이터와 종료
 
-DB 볼륨은 `youth-policy-mate_postgres_data`이다. PostgreSQL 18의 데이터 경로에 맞춰 컨테이너의 `/var/lib/postgresql`에 마운트했다. Flyway V1·V2는 AI 예산·요청 예약과 호출 이후 상태를, V3은 복구 시도를, V4·V5는 작업 실행과 운영 중단 정보를, V6는 작업 실행과 복구 시도 연결을, V7은 수동 검토 재개 감사를, V8은 활성 임대 갱신 감사를 만들고 V9는 작업 실행의 heartbeat 중단 집계를 추가한다. 정책 원천·회원·알림 테이블은 아직 없다. Hibernate는 스키마를 자동 생성·수정하지 않는다.
+DB 볼륨은 `youth-policy-mate_postgres_data`이다. PostgreSQL 18의 데이터 경로에 맞춰 컨테이너의 `/var/lib/postgresql`에 마운트했다. Flyway V1·V2는 AI 예산·요청 예약과 호출 이후 상태를, V3은 복구 시도를, V4·V5는 작업 실행과 운영 중단 정보를, V6는 작업 실행과 복구 시도 연결을, V7은 수동 검토 재개 감사를, V8은 활성 임대 갱신 감사를 만들고 V9는 작업 실행의 heartbeat 중단 집계를 추가한다. V10은 정책 원본·현재 내용·개정을 저장한다. 회원·알림 테이블은 아직 없다. Hibernate는 스키마를 자동 생성·수정하지 않는다.
 
 웹과 서버는 실행 터미널에서 `Ctrl+C`로 종료한다. DB 컨테이너는 아래 명령으로 종료·제거하되 볼륨은 보존한다.
 

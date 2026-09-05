@@ -19,6 +19,11 @@ public class PolicyCatalogStore {
 
     public PolicyCatalogStore(JdbcClient jdbc, ObjectMapper mapper) { this.jdbc = jdbc; this.mapper = mapper; }
 
+    public String contentHash(String number) {
+        return jdbc.sql("SELECT content_hash FROM policies WHERE policy_number = :number")
+                .param("number", number).query(String.class).optional().orElse("");
+    }
+
     @Transactional
     public ImportResult importPolicy(String number, PolicyContent content, String rawPolicy,
                                      Instant capturedAt, String captureHash, String contentHash) {

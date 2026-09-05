@@ -7,8 +7,13 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.HandlerMethodValidationException;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
-@RestControllerAdvice(assignableTypes = PolicyCatalogController.class)
+@RestControllerAdvice(assignableTypes = {PolicyCatalogController.class, PolicyQuestionController.class})
 class PolicyApiExceptionHandler {
+    @ExceptionHandler(PolicyQuestionService.PolicyChangedException.class)
+    ResponseEntity<PolicyApiError> changed() {
+        return ResponseEntity.status(409).body(new PolicyApiError("POLICY_CHANGED", "정책이나 질문이 바뀌었어요. 최신 내용을 다시 불러와주세요."));
+    }
+
     @ExceptionHandler(PolicyNotFoundException.class)
     ResponseEntity<PolicyApiError> missing() {
         return ResponseEntity.status(404).body(new PolicyApiError("POLICY_NOT_FOUND", "정책을 찾을 수 없습니다."));
@@ -18,7 +23,7 @@ class PolicyApiExceptionHandler {
             org.springframework.web.bind.MethodArgumentNotValidException.class,
             org.springframework.http.converter.HttpMessageNotReadableException.class, IllegalArgumentException.class})
     ResponseEntity<PolicyApiError> invalid() {
-        return ResponseEntity.badRequest().body(new PolicyApiError("INVALID_SEARCH", "입력한 조건과 페이지를 확인해주세요."));
+        return ResponseEntity.badRequest().body(new PolicyApiError("INVALID_SEARCH", "입력한 조건·질문·답변과 페이지를 확인해주세요."));
     }
 
     @ExceptionHandler(DataAccessException.class)

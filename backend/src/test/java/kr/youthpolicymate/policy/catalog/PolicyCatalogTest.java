@@ -147,7 +147,7 @@ class PolicyCatalogTest {
     void matchesGeneratedContract() throws Exception {
         var response = mvc.perform(get("/contract/policy")).andExpect(status().isOk()).andReturn();
         var actual = mapper.readTree(response.getResponse().getContentAsByteArray());
-        assertThat(actual.path("paths").size()).isEqualTo(10);
+        assertThat(actual.path("paths").size()).isEqualTo(12);
         assertThat(actual.at("/components/schemas/MemberConditions/properties/conditions/anyOf/1/type").asString()).isEqualTo("null");
         assertThat(actual.at("/paths/~1api~1v1~1session/get/parameters").isMissingNode()).isTrue();
         var path = Path.of(System.getProperty("policy.contract.path"));
@@ -155,6 +155,47 @@ class PolicyCatalogTest {
             Files.writeString(path, mapper.writerWithDefaultPrettyPrinter().writeValueAsString(actual) + "\n");
         }
         assertThat(actual).isEqualTo(mapper.readTree(Files.readString(path)));
+    }
+
+    @Test
+    @DisplayName("검토한 원문에만 비회원 질문을 제공하고 최신 개정·규칙으로 제출한 답변만 비교한다")
+    void evaluatesOnlyReviewedRevision() throws Exception {
+        save("unreviewed", AT);
+        mvc.perform(get("/api/v1/policies/" + NUMBER + "/questions"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.available").value(false));
+        // 규칙 활성화와 DB 개정 검사를 위한 인공 자료다. 정책 내용 자체의 검토 자료가 아니다.
+        item.put("plcyNo", WorkStudyRules.NUMBER);
+        var normalized = parser.item(item);
+        store.importPolicy(normalized.number(), normalized.content(), normalized.rawPolicy(), AT, "reviewed", WorkStudyRules.CONTENT_HASH);
+        var path = "/api/v1/policies/" + WorkStudyRules.NUMBER;
+        mvc.perform(get(path + "/questions")).andExpect(status().isOk())
+                .andExpect(header().string("Cache-Control", "no-store"))
+                .andExpect(jsonPath("$.available").value(true)).andExpect(jsonPath("$.questions.length()").value(6));
+        var request = new PolicyQuestions.Request(1, WorkStudyRules.VERSION, List.of());
+        mvc.perform(post(path + "/evaluation").contentType("application/json").content(mapper.writeValueAsString(request)))
+                .andExpect(status().isOk()).andExpect(header().string("Cache-Control", "no-store"))
+                .andExpect(jsonPath("$.status").value("NEEDS_REVIEW"))
+                .andExpect(jsonPath("$.commonCriteriaStatus").value("NEEDS_REVIEW"));
+        for (var stale : List.of(new PolicyQuestions.Request(2, WorkStudyRules.VERSION, List.of()),
+                new PolicyQuestions.Request(1, "old-rules", List.of()))) {
+            mvc.perform(post(path + "/evaluation").contentType("application/json").content(mapper.writeValueAsString(stale)))
+                    .andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("POLICY_CHANGED"));
+        }
+        store.importPolicy(normalized.number(), normalized.content(), normalized.rawPolicy(), AT.plusSeconds(1), "changed", "changed-content");
+        mvc.perform(get(path + "/questions")).andExpect(status().isOk()).andExpect(jsonPath("$.available").value(false));
+        mvc.perform(post(path + "/evaluation").contentType("application/json").content(mapper.writeValueAsString(request)))
+                .andExpect(status().isConflict());
+    }
+
+    @Test
+    @DisplayName("잘못된 추가 답변과 없는 정책을 안전한 오류 응답으로 구분한다")
+    void rejectsInvalidEvaluation() throws Exception {
+        var path = "/api/v1/policies/" + WorkStudyRules.NUMBER;
+        mvc.perform(get(path + "/questions")).andExpect(status().isNotFound());
+        for (String json : List.of("{}", "{\"revision\":1,\"ruleVersion\":\"v1\",\"answers\":null}",
+                "{\"revision\":1,\"ruleVersion\":\"v1\",\"answers\":[{\"questionId\":\"\",\"value\":\"YES\"}]}")) {
+            mvc.perform(post(path + "/evaluation").contentType("application/json").content(json)).andExpect(status().isBadRequest());
+        }
     }
 
     private PolicyCatalogStore.ImportResult save(String captureHash, Instant at) {

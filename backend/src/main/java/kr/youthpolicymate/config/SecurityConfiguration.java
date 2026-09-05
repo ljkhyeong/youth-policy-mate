@@ -24,7 +24,7 @@ class SecurityConfiguration {
             ObjectProvider<MemberConfiguration.Registrations> registrations, ObjectProvider<SocialMemberService> social,
             ObjectProvider<OAuth2AuthorizedClientService> authorizedClients) throws Exception {
         http
-                .csrf(csrf -> csrf.ignoringRequestMatchers("/api/v1/policies/checks"))
+                .csrf(csrf -> csrf.ignoringRequestMatchers("/api/v1/policies/checks", "/api/v1/policies/*/evaluation"))
                 .requestCache(cache -> cache.disable())
                 .exceptionHandling(errors -> errors
                         .authenticationEntryPoint((request, response, exception) -> {
@@ -38,8 +38,8 @@ class SecurityConfiguration {
                 .authorizeHttpRequests(requests -> requests
                         .requestMatchers(HttpMethod.GET, "/actuator/health").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/session", "/oauth2/authorization/*", "/login/oauth2/code/*").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/api/v1/policies", "/api/v1/policies/*").permitAll()
-                        .requestMatchers(HttpMethod.POST, "/api/v1/policies/checks").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/v1/policies", "/api/v1/policies/*", "/api/v1/policies/*/questions").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/v1/policies/checks", "/api/v1/policies/*/evaluation").permitAll()
                         .requestMatchers("/api/v1/me/**").hasRole("MEMBER")
                         .anyRequest().denyAll())
                 .logout(logout -> logout.logoutUrl("/api/v1/logout").invalidateHttpSession(true)

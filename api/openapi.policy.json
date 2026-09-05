@@ -431,6 +431,130 @@
         "tags" : [ "policy-catalog-controller" ]
       }
     },
+    "/api/v1/policies/{number}/evaluation" : {
+      "post" : {
+        "operationId" : "evaluatePolicyAnswers",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "number",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/PolicyEvaluationRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PolicyEvaluation"
+                }
+              }
+            },
+            "description" : "OK"
+          },
+          "400" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PolicyApiError"
+                }
+              }
+            },
+            "description" : "질문·답변 형식 오류"
+          },
+          "404" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PolicyApiError"
+                }
+              }
+            },
+            "description" : "정책 없음"
+          },
+          "409" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PolicyApiError"
+                }
+              }
+            },
+            "description" : "정책 개정 또는 질문 변경"
+          },
+          "503" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PolicyApiError"
+                }
+              }
+            },
+            "description" : "정책 저장소 조회 실패"
+          }
+        },
+        "summary" : "추가 답변으로 확인한 공통요건 비교. 답변은 저장하지 않음",
+        "tags" : [ "policy-question-controller" ]
+      }
+    },
+    "/api/v1/policies/{number}/questions" : {
+      "get" : {
+        "operationId" : "getPolicyQuestions",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "number",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PolicyQuestionnaire"
+                }
+              }
+            },
+            "description" : "OK"
+          },
+          "404" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PolicyApiError"
+                }
+              }
+            },
+            "description" : "정책 없음"
+          },
+          "503" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PolicyApiError"
+                }
+              }
+            },
+            "description" : "정책 저장소 조회 실패"
+          }
+        },
+        "summary" : "현재 정책 개정에서 검토한 추가 질문 조회",
+        "tags" : [ "policy-question-controller" ]
+      }
+    },
     "/api/v1/policies/{policyNumber}" : {
       "get" : {
         "operationId" : "getPolicy",
@@ -608,6 +732,34 @@
         },
         "required" : [ "authenticated", "csrfToken", "displayName", "providers", "suggestedBirthDate" ]
       },
+      "PolicyAnswer" : {
+        "type" : "object",
+        "properties" : {
+          "questionId" : {
+            "type" : "string",
+            "maxLength" : 60,
+            "minLength" : 0
+          },
+          "value" : {
+            "type" : "string",
+            "maxLength" : 40,
+            "minLength" : 0
+          }
+        },
+        "required" : [ "questionId", "value" ]
+      },
+      "PolicyAnswerOption" : {
+        "type" : "object",
+        "properties" : {
+          "label" : {
+            "type" : "string"
+          },
+          "value" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "label", "value" ]
+      },
       "PolicyApiError" : {
         "type" : "object",
         "properties" : {
@@ -784,6 +936,101 @@
         },
         "required" : [ "collectedAt", "content", "policyNumber", "revision", "sourceUrl" ]
       },
+      "PolicyEvaluatedCheck" : {
+        "type" : "object",
+        "properties" : {
+          "evidence" : {
+            "type" : "string"
+          },
+          "explanation" : {
+            "type" : "string"
+          },
+          "label" : {
+            "type" : "string"
+          },
+          "outcome" : {
+            "type" : "string",
+            "enum" : [ "MET", "NOT_MET", "UNKNOWN" ]
+          },
+          "providedValue" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "evidence", "explanation", "label", "outcome", "providedValue" ]
+      },
+      "PolicyEvaluation" : {
+        "type" : "object",
+        "properties" : {
+          "checks" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/PolicyEvaluatedCheck"
+            }
+          },
+          "commonCriteriaStatus" : {
+            "type" : "string",
+            "enum" : [ "ELIGIBLE", "NEEDS_REVIEW", "INELIGIBLE" ]
+          },
+          "evaluatedAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "explanation" : {
+            "type" : "string"
+          },
+          "policyNumber" : {
+            "type" : "string"
+          },
+          "remainingChecks" : {
+            "type" : "array",
+            "items" : {
+              "type" : "string"
+            }
+          },
+          "revision" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "ruleVersion" : {
+            "type" : "string"
+          },
+          "scope" : {
+            "type" : "string"
+          },
+          "sourceUrl" : {
+            "type" : "string"
+          },
+          "status" : {
+            "type" : "string",
+            "enum" : [ "ELIGIBLE", "NEEDS_REVIEW", "INELIGIBLE" ]
+          }
+        },
+        "required" : [ "checks", "commonCriteriaStatus", "evaluatedAt", "explanation", "policyNumber", "remainingChecks", "revision", "ruleVersion", "scope", "sourceUrl", "status" ]
+      },
+      "PolicyEvaluationRequest" : {
+        "type" : "object",
+        "properties" : {
+          "answers" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/PolicyAnswer"
+            },
+            "maxItems" : 10,
+            "minItems" : 0
+          },
+          "revision" : {
+            "type" : "integer",
+            "format" : "int64",
+            "minimum" : 0
+          },
+          "ruleVersion" : {
+            "type" : "string",
+            "maxLength" : 80,
+            "minLength" : 0
+          }
+        },
+        "required" : [ "answers", "revision", "ruleVersion" ]
+      },
       "PolicyListResponse" : {
         "type" : "object",
         "properties" : {
@@ -823,6 +1070,61 @@
           }
         },
         "required" : [ "label", "url" ]
+      },
+      "PolicyQuestion" : {
+        "type" : "object",
+        "properties" : {
+          "help" : {
+            "type" : "string"
+          },
+          "id" : {
+            "type" : "string"
+          },
+          "label" : {
+            "type" : "string"
+          },
+          "options" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/PolicyAnswerOption"
+            }
+          }
+        },
+        "required" : [ "help", "id", "label", "options" ]
+      },
+      "PolicyQuestionnaire" : {
+        "type" : "object",
+        "properties" : {
+          "available" : {
+            "type" : "boolean"
+          },
+          "policyNumber" : {
+            "type" : "string"
+          },
+          "questions" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/PolicyQuestion"
+            }
+          },
+          "reason" : {
+            "type" : "string"
+          },
+          "revision" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "ruleVersion" : {
+            "type" : "string"
+          },
+          "scope" : {
+            "type" : "string"
+          },
+          "sourceUrl" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "available", "policyNumber", "questions", "reason", "revision", "ruleVersion", "scope", "sourceUrl" ]
       },
       "PolicySummary" : {
         "type" : "object",

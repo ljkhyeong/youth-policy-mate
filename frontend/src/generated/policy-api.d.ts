@@ -143,6 +143,40 @@ export interface paths {
         readonly patch?: never;
         readonly trace?: never;
     };
+    readonly "/api/v1/policies/{number}/evaluation": {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header?: never;
+            readonly path?: never;
+            readonly cookie?: never;
+        };
+        readonly get?: never;
+        readonly put?: never;
+        /** 추가 답변으로 확인한 공통요건 비교. 답변은 저장하지 않음 */
+        readonly post: operations["evaluatePolicyAnswers"];
+        readonly delete?: never;
+        readonly options?: never;
+        readonly head?: never;
+        readonly patch?: never;
+        readonly trace?: never;
+    };
+    readonly "/api/v1/policies/{number}/questions": {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header?: never;
+            readonly path?: never;
+            readonly cookie?: never;
+        };
+        /** 현재 정책 개정에서 검토한 추가 질문 조회 */
+        readonly get: operations["getPolicyQuestions"];
+        readonly put?: never;
+        readonly post?: never;
+        readonly delete?: never;
+        readonly options?: never;
+        readonly head?: never;
+        readonly patch?: never;
+        readonly trace?: never;
+    };
     readonly "/api/v1/policies/{policyNumber}": {
         readonly parameters: {
             readonly query?: never;
@@ -215,6 +249,14 @@ export interface components {
             readonly providers: readonly components["schemas"]["LoginProvider"][];
             readonly suggestedBirthDate: string;
         };
+        readonly PolicyAnswer: {
+            readonly questionId: string;
+            readonly value: string;
+        };
+        readonly PolicyAnswerOption: {
+            readonly label: string;
+            readonly value: string;
+        };
         readonly PolicyApiError: {
             readonly code: string;
             readonly message: string;
@@ -278,6 +320,37 @@ export interface components {
             readonly revision: number;
             readonly sourceUrl: string;
         };
+        readonly PolicyEvaluatedCheck: {
+            readonly evidence: string;
+            readonly explanation: string;
+            readonly label: string;
+            /** @enum {string} */
+            readonly outcome: "MET" | "NOT_MET" | "UNKNOWN";
+            readonly providedValue: string;
+        };
+        readonly PolicyEvaluation: {
+            readonly checks: readonly components["schemas"]["PolicyEvaluatedCheck"][];
+            /** @enum {string} */
+            readonly commonCriteriaStatus: "ELIGIBLE" | "NEEDS_REVIEW" | "INELIGIBLE";
+            /** Format: date-time */
+            readonly evaluatedAt: string;
+            readonly explanation: string;
+            readonly policyNumber: string;
+            readonly remainingChecks: readonly string[];
+            /** Format: int64 */
+            readonly revision: number;
+            readonly ruleVersion: string;
+            readonly scope: string;
+            readonly sourceUrl: string;
+            /** @enum {string} */
+            readonly status: "ELIGIBLE" | "NEEDS_REVIEW" | "INELIGIBLE";
+        };
+        readonly PolicyEvaluationRequest: {
+            readonly answers: readonly components["schemas"]["PolicyAnswer"][];
+            /** Format: int64 */
+            readonly revision: number;
+            readonly ruleVersion: string;
+        };
         readonly PolicyListResponse: {
             readonly hasNext: boolean;
             readonly items: readonly components["schemas"]["PolicySummary"][];
@@ -294,6 +367,23 @@ export interface components {
         readonly PolicyOfficialLink: {
             readonly label: string;
             readonly url: string;
+        };
+        readonly PolicyQuestion: {
+            readonly help: string;
+            readonly id: string;
+            readonly label: string;
+            readonly options: readonly components["schemas"]["PolicyAnswerOption"][];
+        };
+        readonly PolicyQuestionnaire: {
+            readonly available: boolean;
+            readonly policyNumber: string;
+            readonly questions: readonly components["schemas"]["PolicyQuestion"][];
+            readonly reason: string;
+            /** Format: int64 */
+            readonly revision: number;
+            readonly ruleVersion: string;
+            readonly scope: string;
+            readonly sourceUrl: string;
         };
         readonly PolicySummary: {
             readonly applicationPeriod: string;
@@ -723,6 +813,108 @@ export interface operations {
             };
             /** @description Bad Request */
             readonly 400: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "*/*": components["schemas"]["PolicyApiError"];
+                };
+            };
+            /** @description 정책 저장소 조회 실패 */
+            readonly 503: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "*/*": components["schemas"]["PolicyApiError"];
+                };
+            };
+        };
+    };
+    readonly evaluatePolicyAnswers: {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header?: never;
+            readonly path: {
+                readonly number: string;
+            };
+            readonly cookie?: never;
+        };
+        readonly requestBody: {
+            readonly content: {
+                readonly "application/json": components["schemas"]["PolicyEvaluationRequest"];
+            };
+        };
+        readonly responses: {
+            /** @description OK */
+            readonly 200: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "*/*": components["schemas"]["PolicyEvaluation"];
+                };
+            };
+            /** @description 질문·답변 형식 오류 */
+            readonly 400: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "*/*": components["schemas"]["PolicyApiError"];
+                };
+            };
+            /** @description 정책 없음 */
+            readonly 404: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "*/*": components["schemas"]["PolicyApiError"];
+                };
+            };
+            /** @description 정책 개정 또는 질문 변경 */
+            readonly 409: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "*/*": components["schemas"]["PolicyApiError"];
+                };
+            };
+            /** @description 정책 저장소 조회 실패 */
+            readonly 503: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "*/*": components["schemas"]["PolicyApiError"];
+                };
+            };
+        };
+    };
+    readonly getPolicyQuestions: {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header?: never;
+            readonly path: {
+                readonly number: string;
+            };
+            readonly cookie?: never;
+        };
+        readonly requestBody?: never;
+        readonly responses: {
+            /** @description OK */
+            readonly 200: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "*/*": components["schemas"]["PolicyQuestionnaire"];
+                };
+            };
+            /** @description 정책 없음 */
+            readonly 404: {
                 headers: {
                     readonly [name: string]: unknown;
                 };

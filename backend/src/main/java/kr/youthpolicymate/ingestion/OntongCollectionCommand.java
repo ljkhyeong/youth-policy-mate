@@ -13,6 +13,7 @@ import java.util.UUID;
 /** 한 페이지 수집·저장 원본 재처리·최근 이력 확인을 위한 로컬 명령. */
 public final class OntongCollectionCommand {
     public static void main(String[] args) {
+        if (OntongSweepCommand.handles(args)) { OntongSweepCommand.main(args); return; }
         String mode;
         UUID runId;
         int page = 1;
@@ -44,7 +45,7 @@ public final class OntongCollectionCommand {
         application.setAdditionalProfiles("local", "collection");
         application.setWebApplicationType(WebApplicationType.NONE);
         int exitCode = 0;
-        try (var context = application.run("--spring.config.import=optional:file:.env[.properties]")) {
+        try (var context = application.run("--spring.config.import=optional:file:.env[.properties]", "--app.ontong.schedule.enabled=false", "--app.reminders.enabled=false")) {
             var store = context.getBean(OntongCollectionStore.class);
             if (!mode.equals("status")) {
                 System.out.println("정책 수집 실행 ID: " + runId);
@@ -54,6 +55,7 @@ public final class OntongCollectionCommand {
                 var execution = context.getBean(JobOperator.class).start(context.getBean("limitedOntongCollection", Job.class), parameters);
                 if (execution.getStatus() != BatchStatus.COMPLETED) exitCode = 1;
             }
+            System.out.println(store.requestStatus());
             var status = store.status(runId);
             if (status.isEmpty()) System.out.println("조회할 수집 이력이 없습니다.");
             status.forEach(System.out::println);

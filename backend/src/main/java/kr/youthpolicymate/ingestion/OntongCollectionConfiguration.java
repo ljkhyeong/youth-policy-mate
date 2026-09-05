@@ -18,10 +18,16 @@ import java.time.Clock;
 import java.util.UUID;
 
 @Configuration(proxyBeanMethods = false)
-@Profile("collection & !preview")
+@Profile("!preview")
 public class OntongCollectionConfiguration {
     @Bean
-    OntongApiClient ontongApiClient(ObjectMapper mapper) { return new OntongApiClient(mapper, Clock.systemUTC()); }
+    OntongRequestLimits ontongRequestLimits(Environment environment) {
+        return new OntongRequestLimits(environment.getProperty("ONTONG_COLLECTION_DAILY_LIMIT", Integer.class, 0),
+                environment.getProperty("ONTONG_COLLECTION_INTERVAL_SECONDS", Long.class, 0L));
+    }
+
+    @Bean
+    OntongApiClient ontongApiClient(ObjectMapper mapper, Clock clock) { return new OntongApiClient(mapper, clock); }
 
     @Bean
     OntongCollectionService ontongCollectionService(OntongCollectionStore store, OntongApiClient client, ObjectMapper mapper) {
@@ -39,6 +45,7 @@ public class OntongCollectionConfiguration {
                         var mode = parameters.getString("mode");
                         if ("fetch".equals(mode)) service.fetch(runId, Math.toIntExact(parameters.getLong("page")),
                                 environment.getProperty("ONTONG_API_KEY", ""));
+                        else if ("receive".equals(mode)) service.receive(runId, environment.getProperty("ONTONG_API_KEY", ""));
                         else if (!"replay".equals(mode)) throw new OntongApiClient.Failure("INVALID_MODE");
                         service.applyStored(runId);
                         return RepeatStatus.FINISHED;

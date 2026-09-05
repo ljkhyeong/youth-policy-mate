@@ -19,21 +19,62 @@ public class OntongCollectionStore {
     private final JdbcClient jdbc;
     private final PolicyCatalogStore catalog;
     private final OntongPolicyCapture parser;
+    private final java.time.Clock clock;
+    private final OntongRequestLimits limits;
 
-    public OntongCollectionStore(JdbcClient jdbc, PolicyCatalogStore catalog, ObjectMapper mapper) {
+    public OntongCollectionStore(JdbcClient jdbc, PolicyCatalogStore catalog, ObjectMapper mapper, java.time.Clock clock, OntongRequestLimits limits) {
         this.jdbc = jdbc;
         this.catalog = catalog;
         this.parser = new OntongPolicyCapture(mapper);
+        this.clock = clock; this.limits = limits;
     }
 
     @Transactional
     public void begin(UUID runId, int page) {
+        var next = jdbc.sql("SELECT next_request_at FROM ontong_collection_request_gate WHERE id = 1 FOR UPDATE")
+                .query(OffsetDateTime.class).single().toInstant();
+        var now = clock.instant();
+        if (limits.configured()) {
+            if (now.isBefore(next)) throw new OntongApiClient.Failure("LOCAL_REQUEST_INTERVAL");
+            var day = now.atZone(java.time.ZoneId.of("Asia/Seoul")).toLocalDate();
+            long count = jdbc.sql("SELECT count(*) FROM ontong_collection_pages WHERE started_at >= :start AND started_at < :end")
+                    .param("start", day.atStartOfDay(java.time.ZoneId.of("Asia/Seoul")).toOffsetDateTime())
+                    .param("end", day.plusDays(1).atStartOfDay(java.time.ZoneId.of("Asia/Seoul")).toOffsetDateTime()).query(Long.class).single();
+            if (count >= limits.dailyLimit()) throw new OntongApiClient.Failure("LOCAL_DAILY_LIMIT");
+        }
         // 이 순번을 커밋한 뒤 호출한다. 같은 실행 ID로 외부 요청을 반복하지 않는다.
         int inserted = jdbc.sql("""
-                INSERT INTO ontong_collection_pages(run_id, page_number, state)
-                VALUES (:id, :page, 'FETCHING') ON CONFLICT (run_id) DO NOTHING
-                """).param("id", runId).param("page", page).update();
+                INSERT INTO ontong_collection_pages(run_id, page_number, state, started_at)
+                VALUES (:id, :page, 'FETCHING', :at) ON CONFLICT (run_id) DO NOTHING
+                """).param("id", runId).param("page", page).param("at", now.atOffset(ZoneOffset.UTC)).update();
         if (inserted != 1) throw new OntongApiClient.Failure("REQUEST_ALREADY_ATTEMPTED");
+        if (limits.configured()) jdbc.sql("UPDATE ontong_collection_request_gate SET next_request_at = :next, reserved_run_id = :run WHERE id = 1")
+                .param("next", now.plusSeconds(limits.intervalSeconds()).atOffset(ZoneOffset.UTC)).param("run", runId).update();
+    }
+
+    @Transactional
+    public void startDispatch(UUID runId) {
+        jdbc.sql("SELECT id FROM ontong_collection_request_gate WHERE id = 1 FOR UPDATE").query(Integer.class).single();
+        if (limits.configured()) {
+            var reservation = jdbc.sql("SELECT reserved_run_id FROM ontong_collection_request_gate WHERE id = 1").query(UUID.class).optional();
+            if (reservation.isEmpty() || !reservation.get().equals(runId)) throw new OntongApiClient.Failure("REQUEST_RESERVATION_CHANGED");
+        }
+        var now = clock.instant().atOffset(ZoneOffset.UTC);
+        int updated = jdbc.sql("UPDATE ontong_collection_pages SET dispatch_started_at = :now WHERE run_id = :id AND state = 'FETCHING' AND dispatch_started_at IS NULL")
+                .param("id", runId).param("now", now).update();
+        if (updated != 1) throw new OntongApiClient.Failure("REQUEST_ALREADY_ATTEMPTED");
+        if (limits.configured()) jdbc.sql("UPDATE ontong_collection_request_gate SET next_request_at = GREATEST(next_request_at, :next) WHERE id = 1")
+                .param("next", now.plusSeconds(limits.intervalSeconds())).update();
+    }
+
+    public String requestStatus() {
+        var day = clock.instant().atZone(java.time.ZoneId.of("Asia/Seoul")).toLocalDate();
+        long count = jdbc.sql("SELECT count(*) FROM ontong_collection_pages WHERE started_at >= :start AND started_at < :end")
+                .param("start", day.atStartOfDay(java.time.ZoneId.of("Asia/Seoul")).toOffsetDateTime())
+                .param("end", day.plusDays(1).atStartOfDay(java.time.ZoneId.of("Asia/Seoul")).toOffsetDateTime()).query(Long.class).single();
+        var next = jdbc.sql("SELECT next_request_at FROM ontong_collection_request_gate WHERE id = 1").query(OffsetDateTime.class).single();
+        return "서울 날짜 " + day + " | 요청 예약 " + count + " | 일일 한도 " + (limits.configured() ? limits.dailyLimit() : "미설정")
+                + " | 최소 간격(초) " + limits.intervalSeconds() + " | 다음 요청 허용 시각 " + (limits.configured() ? next : "미설정");
     }
 
     @Transactional
@@ -59,7 +100,8 @@ public class OntongCollectionStore {
                 .query((rs, row) -> {
                     var at = rs.getObject("received_at", OffsetDateTime.class);
                     return new Page(runId, rs.getLong("request_sequence"), rs.getInt("page_number"),
-                            rs.getString("state"), at == null ? null : at.toInstant(), rs.getString("raw_body"));
+                            rs.getString("state"), at == null ? null : at.toInstant(), rs.getString("raw_body"),
+                            rs.getString("failure_code"), rs.getObject("item_count", Integer.class), rs.getObject("total_count", Long.class));
                 }).optional().orElseThrow(() -> new OntongApiClient.Failure("RUN_NOT_FOUND"));
     }
 
@@ -157,5 +199,5 @@ public class OntongCollectionStore {
                         + " | " + rs.getString(3) + " | 처리 시도 " + rs.getInt(4)).list();
     }
 
-    public record Page(UUID runId, long sequence, int number, String state, Instant receivedAt, String rawBody) {}
+    public record Page(UUID runId, long sequence, int number, String state, Instant receivedAt, String rawBody, String failureCode, Integer itemCount, Long totalCount) {}
 }

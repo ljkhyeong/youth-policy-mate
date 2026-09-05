@@ -31,5 +31,8 @@ springdoc:
     enabled: false
 
 app:
+  ontong:
+    schedule:
+      enabled: ${ONTONG_COLLECTION_SCHEDULE_ENABLED:false}
   reminders:
     enabled: ${REMINDERS_ENABLED:false}

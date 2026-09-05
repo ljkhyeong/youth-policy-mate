@@ -5,7 +5,7 @@
 ## 현재 작업
 
 - 개발 브랜치의 누적 변경은 `39f78b5`에서 로컬 `main`에 병합했다. 원격 푸시는 하지 않았다.
-- `codex/concise-project-instructions`에서 공통 지시·전용 스킬·인계 문서를 정리했다. [정리 기준과 관리 방법](docs/development/skill-reuse.md)을 참고한다.
+- 지시·스킬 정리는 `7c6ec51`에 커밋했다. `codex/verification-workflow`에서 기존 두 작업의 검증 기록을 검토하고 [검증 명령·결과 기록·재실행 기준](docs/development/verification-workflow.md)을 추가했다.
 
 ## 구현·검증 범위
 
@@ -15,7 +15,7 @@
 - 이메일: 주소 확인·동의·암호화 저장·Outbox·SMTP 어댑터를 구현했다. 실제 공급자·발신 도메인은 미정이며 외부 수신함 전달은 미검증이다. [이메일 구현과 설정](docs/development/member-email-reminders.md)
 - AI: 후보 개정 검사·비용 예약·DB 복구 흐름은 내부 모델과 테스트용 공급자로 검증했다. 실제 AI 호출·청구·운영 작업자는 미연결이다. [AI 요청 판단](docs/development/ai-request-admission.md)·[복구 실행](docs/development/ai-reservation-recovery-work-runs.md)
 - 최근 앱 검증: 서버 전체 448건·빌드·OpenAPI 계약 일치를 통과했다. 정책 질문의 브라우저 동작·모바일·데스크톱·키보드 이동도 확인했다. 상세 결과는 [최근 개발 기록](docs/development/seoul-youth-network-questions.md)에 있다.
-- 이번 변경은 지시·문서만 수정했다. 스킬 7개 형식·UI·설치 연결, 문서 내부 링크 149개와 npm 명령 13개를 확인했다. 앱 테스트는 재실행하지 않았다.
+- 검증 도구의 성공·실패·실행 중 변경 시나리오와 기존 도구 검사를 통과했다. 컴파일·패키징 명령의 Gradle 실행 계획에 테스트 실행이 없음을 확인했다. `npm run verify -- status`에서 실행 기록을 확인한다. 앱 기능은 변경하지 않아 전체 앱 테스트를 재실행하지 않았다.
 
 ## 남은 작업
 

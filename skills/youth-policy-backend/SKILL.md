@@ -24,4 +24,5 @@ description: 청년정책메이트의 Spring Boot 공통 코드·회원 인증·
 ## 검증
 
 - 업무 규칙은 단위 테스트, SQL·트랜잭션·마이그레이션은 PostgreSQL Testcontainers로 변경한 동작을 확인한다. 같은 사례를 모든 계층에서 반복하지 않는다.
-- 저장소 루트에서 `./backend/gradlew -p backend test --tests '<변경한 테스트 클래스>' --no-daemon`으로 관련 테스트를 실행한다. 빌드 검증이 필요하면 `npm run check:backend`를 사용한다. DB 테스트에는 Docker가 필요하다.
+- 저장소 루트에서 `./backend/gradlew -p backend test --tests '<변경한 테스트 클래스>' --no-daemon` 또는 기능별 `test:*` 명령으로 관련 테스트를 실행한다. DB 테스트에는 Docker가 필요하다.
+- 컴파일만 필요하면 `npm run compile:backend`, 실행 파일만 필요하면 `npm run package:backend`를 사용한다. `check:backend`는 전체 테스트를 포함하므로 공통 설정·넓은 영향 범위를 검증할 때 선택한다. 실행과 기록은 [검증 절차](../../docs/development/verification-workflow.md)를 따른다.

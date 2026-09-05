@@ -1,6 +1,6 @@
 # 로컬 개발 환경
 
-2026-08-31 기준. 이 문서는 현재 실행할 수 있는 개발 골격을 설명한다. 제품 기능의 완료 상태는 [HANDOFF](../../HANDOFF.md), 제품 요구는 [PRD](../PRD/0001_product-baseline/spec.md), 기술 선택은 [ADR](../ADR/0001_기술스택과_책임_분리.md)를 기준으로 한다.
+이 문서는 로컬 설치·실행 방법을 설명한다. 제품 기능의 완료 상태는 [HANDOFF](../../HANDOFF.md), 제품 요구는 [PRD](../PRD/0001_product-baseline/spec.md), 기술 선택은 [ADR](../ADR/0001_기술스택과_책임_분리.md)를 기준으로 한다. 변경별 검사와 결과 기록은 [검증 절차](verification-workflow.md)를 따른다.
 
 ## 1. 현재 구성과 버전
 
@@ -14,7 +14,7 @@
 | 빌드 | Gradle Wrapper 9.7.1, npm 잠금 파일 | 백엔드·프런트엔드 빌드 |
 | DB | PostgreSQL 18.6 Alpine, `compose.yaml` | 프로젝트 전용 로컬 DB |
 
-Spring Batch, OAuth2 공급자, shadcn/ui 컴포넌트, Playwright 자동 테스트, Outbox와 배포 구성은 아직 추가하지 않았다. OpenAPI·생성 TypeScript는 개발 전용 인공 자료 API에 먼저 적용했으며 공개 정책 API에도 적용했다. 회원 API 계약은 아직 없다. 웹·서버 CI의 원격 실행 미확인 범위는 [CI 안내](ci.md)를 따른다.
+Spring Batch 수집, OAuth2 회원 API, 이메일 Outbox 구현을 포함한 현재 기능은 HANDOFF에서 확인한다. 외부 로그인·이메일 공급자의 실제 연동 검증과 구현 완료를 구분한다. 정확한 의존성은 빌드 설정·잠금 파일, 원격 검증 범위는 [CI 안내](ci.md)를 따른다.
 
 ## 2. 필요한 도구
 
@@ -78,7 +78,7 @@ DB 없이 서버 계산 결과를 확인하려면 위 DB 연결 서버 대신 `n
 | 서버 상태 | <http://127.0.0.1:8080/actuator/health> |
 | PostgreSQL | `127.0.0.1:55432` |
 
-웹과 로컬·preview 프로필의 서버·DB는 루프백 주소에만 연결한다. 다른 기기에 공개하거나 운영에 배포하기 위한 설정이 아니다. 기본 서버는 GET `/actuator/health`와 공개 정책 목록·상세 GET을 허용한다. preview는 두 고정 예시 API·명세의 GET, `/api/dev/eligibility-trial`의 질문 GET·인공 계산 POST를 추가 허용한다. 상태 응답에 DB 연결 문자열이나 상세 정보를 노출하지 않는다. 소량의 실제 정책 조회를 연결했으며 소셜 로그인·회원 업무 API 연동은 아직 없다. [정책 적재·조회 안내](policy-catalog.md)를 따른다.
+웹과 로컬·preview 프로필의 서버·DB는 루프백 주소에만 연결한다. 다른 기기에 공개하거나 운영에 배포하기 위한 설정이 아니다. 기본 서버는 GET `/actuator/health`와 공개 정책 목록·상세 GET을 허용한다. preview는 두 고정 예시 API·명세의 GET, `/api/dev/eligibility-trial`의 질문 GET·인공 계산 POST를 추가 허용한다. 상태 응답에 DB 연결 문자열이나 상세 정보를 노출하지 않는다. 실제 정책은 [조회 안내](policy-catalog.md), 회원 인증은 [회원 기능](member-policy-flow.md), 이메일은 [이메일 설정](member-email-reminders.md)을 참고한다.
 
 ### DB 설정 변경
 

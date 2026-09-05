@@ -1,11 +1,17 @@
 package kr.youthpolicymate.policy.catalog;
 
 import org.springframework.context.annotation.Profile;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.JsonNode;
 
+import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
@@ -117,11 +123,39 @@ public class PolicyCatalogStore {
     }
 
     public Optional<PolicyDetailResponse> find(String number) {
-        return jdbc.sql("SELECT current_revision, content, last_collected_at FROM policies WHERE policy_number = :number AND current_revision > 0")
-                .param("number", number).query((rs, row) -> new PolicyDetailResponse(number, rs.getLong("current_revision"),
-                        mapper.readValue(rs.getString("content"), PolicyContent.class),
-                        "https://www.youthcenter.go.kr/youthPolicy/ythPlcyTotalSearch/ythPlcyDetail/" + number + "?isNew=N",
-                        rs.getObject("last_collected_at", OffsetDateTime.class).toInstant())).optional();
+        return jdbc.sql("SELECT policy_number, current_revision, content, last_collected_at FROM policies WHERE policy_number = :number AND current_revision > 0")
+                .param("number", number).query((rs, row) -> detail(rs)).optional();
+    }
+
+    @Transactional(readOnly = true, isolation = org.springframework.transaction.annotation.Isolation.REPEATABLE_READ)
+    public Page<CheckSource> listForCheck(PageRequest page, Instant now) {
+        var reviewed = ReviewedPolicyQuestions.contentHashesAt(now);
+        var total = jdbc.sql("SELECT count(*) FROM policies WHERE current_revision > 0").query(Long.class).single();
+        var items = jdbc.sql("""
+                SELECT p.policy_number, p.current_revision, p.content, p.content_hash, p.last_collected_at, s.raw_policy
+                FROM policies p
+                LEFT JOIN policy_revisions r ON r.policy_number = p.policy_number AND r.revision = p.current_revision
+                LEFT JOIN policy_source_snapshots s ON s.id = r.source_snapshot_id
+                WHERE p.current_revision > 0
+                ORDER BY p.last_collected_at DESC, p.policy_number
+                LIMIT :limit OFFSET :offset
+                """).param("limit", page.getPageSize()).param("offset", page.getOffset())
+                .query((rs, row) -> {
+                    var raw = rs.getString("raw_policy");
+                    if (raw == null) throw new PolicyNotFoundException();
+                    var number = rs.getString("policy_number");
+                    return new CheckSource(detail(rs), mapper.readTree(raw),
+                            reviewed.containsKey(number) && reviewed.get(number).equals(rs.getString("content_hash")));
+                }).list();
+        return new PageImpl<>(items, page, total);
+    }
+
+    private PolicyDetailResponse detail(ResultSet rs) throws SQLException {
+        var number = rs.getString("policy_number");
+        return new PolicyDetailResponse(number, rs.getLong("current_revision"),
+                mapper.readValue(rs.getString("content"), PolicyContent.class),
+                "https://www.youthcenter.go.kr/youthPolicy/ythPlcyTotalSearch/ythPlcyDetail/" + number + "?isNew=N",
+                rs.getObject("last_collected_at", OffsetDateTime.class).toInstant());
     }
 
     public Optional<tools.jackson.databind.JsonNode> source(String number) {
@@ -133,5 +167,6 @@ public class PolicyCatalogStore {
     }
 
     public enum ImportResult { APPLIED, UNCHANGED, REPLAYED, STALE }
+    public record CheckSource(PolicyDetailResponse policy, JsonNode raw, boolean questionnaireAvailable) {}
     private record Current(long revision, String hash, OffsetDateTime collectedAt, long requestSequence) {}
 }

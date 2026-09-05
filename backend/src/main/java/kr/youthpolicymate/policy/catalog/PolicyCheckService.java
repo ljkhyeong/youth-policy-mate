@@ -1,7 +1,8 @@
 package kr.youthpolicymate.policy.catalog;
 
-import kr.youthpolicymate.eligibility.*;
+import kr.youthpolicymate.eligibility.EligibilityStatus;
 import org.springframework.context.annotation.Profile;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import tools.jackson.databind.JsonNode;
@@ -11,7 +12,6 @@ import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Optional;
 
 @Service
 @Profile("!preview")
@@ -25,11 +25,11 @@ public class PolicyCheckService {
     public PolicyCheckResponse check(BasicConditions input, int page) {
         var now = clock.instant();
         input.validate(LocalDate.ofInstant(now, ZoneId.of("Asia/Seoul")));
-        var policies = store.list("", page, 20, false, now);
+        var policies = store.listForCheck(PageRequest.of(page - 1, 20), now);
         var items = new ArrayList<PolicyCheckResponse.Item>();
-        for (var summary : policies.items()) {
-            var policy = store.find(summary.policyNumber()).orElseThrow(PolicyNotFoundException::new);
-            var raw = store.source(policy.policyNumber()).orElseThrow(PolicyNotFoundException::new);
+        for (var source : policies) {
+            var policy = source.policy();
+            var raw = source.raw();
             var checks = List.of(
                     new PolicyCheckResponse.Check("연령", "생년월일 입력됨",
                             "연령을 계산할 정책 기준일과 제한·예외가 확인되지 않았어요.",
@@ -43,15 +43,11 @@ public class PolicyCheckService {
                     new PolicyCheckResponse.Check("추가 조건과 참여 제한", "추가 확인 필요",
                             "본문과 공식 신청처의 필수 조건·예외를 함께 확인해야 해요. 원문 누락은 제한 없음이 아니에요.",
                             text(raw, "ptcpPrpTrgtCn", "addAplyQlfcCndCn", "plcySprtCn")));
-            var evidence = new SourceEvidence(policy.sourceUrl(), "온통청년 정책 원문", Optional.of(checks.getLast().evidence()));
-            var decision = new EligibilityDecision(new EvaluationBasis(policy.policyNumber(), Long.toString(policy.revision()),
-                    "source-review-v1", now), PolicyReview.incomplete(List.of(new PolicyReview.PendingIssue(
-                    "실제 정책의 기준일과 필수 조건·예외가 판정 규칙으로 확인되지 않았습니다.", evidence))), List.of());
-            items.add(new PolicyCheckResponse.Item(policy.policyNumber(), policy.revision(), policy.content().title(), decision.status(),
+            items.add(new PolicyCheckResponse.Item(policy.policyNumber(), policy.revision(), policy.content().title(), EligibilityStatus.NEEDS_REVIEW,
                     "신청 자격을 확정할 수 없어요. 아래 원문과 추가 확인할 항목을 살펴보세요.",
-                    policy.content().applicationPeriod(), policy.sourceUrl(), policy.collectedAt(), checks, summary.questionnaireAvailable()));
+                    policy.content().applicationPeriod(), policy.sourceUrl(), policy.collectedAt(), checks, source.questionnaireAvailable()));
         }
-        return new PolicyCheckResponse(items, page, policies.total(), policies.hasNext(), now);
+        return new PolicyCheckResponse(items, page, policies.getTotalElements(), policies.hasNext(), now);
     }
 
     private String text(JsonNode raw, String... fields) {

@@ -46,7 +46,8 @@ class PolicyCatalogTest {
     @Container @ServiceConnection
     static final PostgreSQLContainer postgres = new PostgreSQLContainer("postgres:18.6-alpine");
     @Autowired PolicyCatalogStore store;
-    @Autowired JdbcClient jdbc;
+    @org.springframework.test.context.bean.override.mockito.MockitoSpyBean JdbcClient jdbc;
+    @Autowired PolicyCheckService checks;
     @Autowired ObjectMapper mapper;
     @Autowired MockMvc mvc;
     @org.springframework.test.context.bean.override.mockito.MockitoBean java.time.Clock clock;
@@ -289,6 +290,44 @@ class PolicyCatalogTest {
                 .andExpect(jsonPath("$.items[0].policyNumber").value(WorkStudyRules.NUMBER));
         mvc.perform(get("/api/v1/policies").param("questionsOnly", "true").param("q", "없는검색어"))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.total").value(0)).andExpect(jsonPath("$.items").isEmpty());
+    }
+
+    @Test
+    @DisplayName("조건 확인은 SELECT 두 번으로 정렬·페이지·현재 개정의 원문을 반환한다")
+    void loadsConditionPageWithTwoQueries() {
+        var numbers = new java.util.ArrayList<String>();
+        for (int index = 1; index <= 21; index++) {
+            var number = "900000000000000000%02d".formatted(index);
+            numbers.add(number);
+            item.put("plcyNo", number).put("plcyNm", "조회 테스트 정책 " + index);
+            item.put("addAplyQlfcCndCn", "이전 조건 " + index);
+            save("page-" + index, AT);
+        }
+        item.put("plcyNm", "개정한 정책").put("addAplyQlfcCndCn", "최신 조건");
+        save("current-revision", AT.plusSeconds(1));
+        var expected = new java.util.ArrayList<>(numbers);
+        expected.addFirst(expected.removeLast());
+        var input = new BasicConditions(java.time.LocalDate.of(2000, 1, 2), "강남구", BasicConditions.EmploymentStatus.NOT_EMPLOYED);
+
+        for (int page = 1; page <= 3; page++) {
+            org.mockito.Mockito.clearInvocations(jdbc);
+            var response = checks.check(input, page);
+            org.mockito.Mockito.verify(jdbc, org.mockito.Mockito.times(2)).sql(org.mockito.ArgumentMatchers.anyString());
+            assertThat(response.page()).isEqualTo(page);
+            assertThat(response.total()).isEqualTo(21);
+            assertThat(response.hasNext()).isEqualTo(page == 1);
+            int from = Math.min((page - 1) * 20, expected.size());
+            int to = Math.min(page * 20, expected.size());
+            assertThat(response.items()).extracting(PolicyCheckResponse.Item::policyNumber).containsExactlyElementsOf(expected.subList(from, to));
+            assertThat(response.items()).allSatisfy(value ->
+                    assertThat(value.status()).isEqualTo(kr.youthpolicymate.eligibility.EligibilityStatus.NEEDS_REVIEW));
+            if (page == 1) {
+                var current = response.items().getFirst();
+                assertThat(current.revision()).isEqualTo(2);
+                assertThat(current.title()).isEqualTo("개정한 정책");
+                assertThat(current.checks().getFirst().evidence()).isEqualTo("최신 조건");
+            }
+        }
     }
 
     @Test

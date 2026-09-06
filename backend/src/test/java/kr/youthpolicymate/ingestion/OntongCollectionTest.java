@@ -60,16 +60,21 @@ class OntongCollectionTest {
     @DisplayName("호출 전에 실행을 저장하고 트랜잭션 밖에서 가져온 정책을 배치 이력과 함께 반영한다")
     void runsJobWithDurableHistory() throws Exception {
         var run = UUID.randomUUID();
+        var original = body("첫 정책", "두 번째 정책");
         when(client.fetch(anyString(), eq(1))).thenAnswer(call -> {
             assertThat(TransactionSynchronizationManager.isActualTransactionActive()).isFalse();
             assertThat(store.pageStatus(run).state()).isEqualTo("FETCHING");
-            return new OntongApiClient.Response(AT, body("첫 정책", "두 번째 정책"));
+            return new OntongApiClient.Response(AT, original);
         });
         assertThat(job("fetch", run).getStatus()).isEqualTo(BatchStatus.COMPLETED);
         assertThat(catalog.list("", 1, 20, false, AT).total()).isEqualTo(2);
         assertThat(store.status(run).getFirst()).contains("처리 2/2", "실패 0");
         assertThat(jdbc.sql("SELECT count(*) FROM batch_job_execution WHERE status = 'COMPLETED'").query(Long.class).single()).isPositive();
         assertThat(jdbc.sql("SELECT count(*) FROM batch_job_execution_params WHERE parameter_value LIKE '%collection-test-key%'").query(Long.class).single()).isZero();
+        assertThatThrownBy(() -> store.received(run,
+                new OntongApiClient.Response(AT.plusSeconds(1), body("덮어쓸 정책"))))
+                .hasMessage("RESPONSE_ALREADY_RECORDED");
+        assertThat(store.page(run).rawBody()).isEqualTo(original);
         assertThat(job("replay", run).getStatus()).isEqualTo(BatchStatus.COMPLETED);
         verify(client, times(1)).fetch(anyString(), eq(1));
         assertThat(jdbc.sql("SELECT count(*) FROM policy_revisions").query(Long.class).single()).isEqualTo(2);
@@ -88,6 +93,24 @@ class OntongCollectionTest {
         assertThat(store.itemStatus(run)).anyMatch(value -> value.contains("INVALID_ITEM") && value.contains("시도 2"));
         assertThat(jdbc.sql("SELECT attempts FROM ontong_collection_items WHERE item_index = 0").query(Integer.class).single()).isOne();
         verify(client, times(1)).fetch(anyString(), eq(1));
+    }
+
+    @Test
+    @DisplayName("같은 페이지의 중복 정책 번호는 모두 보류하고 나머지 정책은 반영한다")
+    void rejectsDuplicatePolicyNumbersWithinPage() throws Exception {
+        var raw = mapper.readTree(body("중복 정책 1", "중복 정책 2", "정상 정책"));
+        var items = raw.path("result").path("youthPolicyList");
+        ((ObjectNode) items.get(1)).put("plcyNo", items.get(0).path("plcyNo").asString());
+        var run = stored(raw.toString(), AT);
+
+        assertThatThrownBy(() -> service.applyStored(run)).hasMessage("ITEMS_REQUIRE_REPROCESSING");
+        assertThat(store.pending(run)).containsExactly(0, 1);
+        assertThat(jdbc.sql("SELECT outcome FROM ontong_collection_items WHERE run_id = :id ORDER BY item_index")
+                .param("id", run).query(String.class).list()).containsExactly("INVALID_ITEM", "INVALID_ITEM", "APPLIED");
+        var policies = catalog.list("", 1, 20, false, AT);
+        assertThat(policies.total()).isOne();
+        assertThat(policies.items().getFirst().title()).isEqualTo("정상 정책");
+        verifyNoInteractions(client);
     }
 
     @Test

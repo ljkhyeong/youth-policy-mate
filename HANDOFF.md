@@ -9,7 +9,7 @@
 - `codex/backend-api-review`에서 [Java·Spring API 활용과 중복 검증 정리](docs/development/backend-api-review.md) 6개 항목을 구현했다. SMTP 자동 설정·이메일 주소 공통 제약·OAuth 기본 저장소를 적용하고 중복 null 검사·미사용 팩터리·정책별 중복 답변 검증을 정리했다.
 - 추가 정리 대상 4개도 구현했다. 조건 확인은 SELECT 2회로 조회하고 고정 상태용 판정 객체를 제거했다. AI 종료 상태는 `Phase.isTerminal()`, DB 시각 변환·비교는 `AiDatabaseTime`으로 모았다.
 - 추가 3개 항목도 구현했다. `b4a09e7`은 변경 없는 관심 정책 조회를 SELECT 3회, 질문·평가를 각각 1회로 줄인다. `8cae9f6`은 미사용 AI 예약 엔진을 제거하고 필요한 검사를 DB 테스트로 통합한다. [적용 내용·검증 기록](docs/development/backend-api-review.md#반복-조회미사용-모델-정리--2026-09-06-적용)에 조회 횟수·잠금·테스트 범위를 기록했다.
-- `007dc7e` 기준 [수집 조회 추가 검토](docs/development/backend-api-review.md#수집-조회-추가-검토--2026-09-06-미적용)에서 원문 전체의 불필요한 반복 읽기와 발송 제어 행의 중복 조회를 확인했다. 두 항목은 미적용이며 문서만 변경했다. 기존 검증 기록은 그대로 사용한다.
+- 수집 조회 2개도 `22a8120`에서 구현했다. 상태 확인과 원문 조회를 분리해 정상 재처리의 원문 읽기를 1회로 줄였고, 발송 예약 ID는 잠금 조회에서 함께 읽는다. [수집 조회 정리](docs/development/backend-api-review.md#수집-조회-정리--2026-09-06-적용)에 적용 내용과 검증 범위를 기록했다.
 
 ## 구현·검증 범위
 
@@ -18,7 +18,7 @@
 - 회원 기능: OAuth 로그인 코드, 관심 정책 저장·해제, 일정·서비스 내 알림을 연결했다. 실제 카카오·네이버 로그인은 미검증이다. [회원 기능](docs/development/member-policy-flow.md)
 - 이메일: 주소 확인·동의·암호화 저장·Outbox·SMTP 어댑터를 구현했다. 실제 공급자·발신 도메인은 미정이며 외부 수신함 전달은 미검증이다. [이메일 구현과 설정](docs/development/member-email-reminders.md)
 - AI: 후보 개정 검사·비용 예약·DB 복구 흐름은 내부 모델과 테스트용 공급자로 검증했다. 실제 AI 호출·청구·운영 작업자는 미연결이다. [AI 요청 판단](docs/development/ai-request-admission.md)·[복구 실행](docs/development/ai-reservation-recovery-work-runs.md)
-- 최근 앱 검증: `8cae9f6`의 수집·회원·정책 조회·AI 예약/복구·API 계약 일치를 확인했다. 전체 관련 검사 중 이관 테스트의 예외 기대값 1건을 수정하고 `npm run verify -- test:ai-reservations`로 DB 범위만 재실행해 통과했다. 다른 통과 범위는 코드·테스트가 같아 재사용했다. [실제 명령·로그·미실행 범위](docs/development/backend-api-review.md#검증-기록)를 참고한다. 그 뒤 변경은 문서뿐이다.
+- 최근 앱 검증: `22a8120`에서 `npm run verify -- test:policy-collection`으로 수집·재처리·동시 배정·정책 조회·API 계약 검사를 통과했다. 로그는 `.local/verification/1788658608359-66a5a149.log`이며 이후 변경은 문서뿐이다. 이전 회원·AI 예약/복구 검증은 해당 코드·테스트가 같아 재사용한다. [실제 명령·범위·미실행 항목](docs/development/backend-api-review.md)을 참고한다.
 - 검증 도구의 성공·실패·실행 중 변경 시나리오와 기존 도구 검사를 통과했다. 컴파일·패키징 명령의 Gradle 실행 계획에 테스트 실행이 없음을 확인했다. `npm run verify -- status`에서 실행 기록을 확인한다. 검증 도구를 정리할 당시에는 앱 기능을 변경하지 않아 전체 앱 테스트를 재실행하지 않았다.
 
 ## 남은 작업

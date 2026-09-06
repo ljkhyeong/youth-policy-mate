@@ -21,6 +21,10 @@ final class BasicConditionRules {
         if (MovingFeeRules.appliesAt(now)) comparisons.put(MovingFeeRules.NUMBER,
                 new Comparison(MovingFeeRules.CONTENT_HASH, MovingFeeRules.VERSION, MovingFeeRules.SOURCE,
                         MovingFeeRules.ageCheck(birth), MovingFeeRules.periodNotice(now)));
+        if (YouthHousingSavingsRules.appliesAt(now)) comparisons.put(YouthHousingSavingsRules.NUMBER,
+                new Comparison(YouthHousingSavingsRules.CONTENT_HASH, YouthHousingSavingsRules.VERSION, YouthHousingSavingsRules.SOURCE,
+                        YouthHousingSavingsRules.ageCheck(birth, now),
+                        "오늘(서울 날짜) 가입하는 경우의 연령만 비교했어요. 실제 가입일이 다르면 다시 확인해주세요."));
         return comparisons;
     }
 

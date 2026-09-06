@@ -744,6 +744,48 @@ class PolicyCatalogTest {
         }
     }
 
+    @Test @DisplayName("청약통장 연령을 검색·정렬·접수 필터에 연결하고 원문·검토 연도 변경 시 중단한다")
+    void comparesHousingAgeInBasicConditions() throws Exception {
+        item.put("aplyPrdSeCd", "0057002").put("aplyYmd", "");
+        saveReviewed(YouthHousingSavingsRules.NUMBER, "청년주택드림청약통장", YouthHousingSavingsRules.CONTENT_HASH);
+        item.put("plcyNo", "99881").put("plcyNm", "연령 미검토 정책");
+        save("housing-age-order", AT.plusSeconds(1));
+        var input = new BasicConditions(java.time.LocalDate.parse("2000-01-01"), "강남구", BasicConditions.EmploymentStatus.NOT_EMPLOYED);
+        org.mockito.Mockito.clearInvocations(jdbc);
+        var result = checks.check(input, 1, "", PolicyCheckResponse.Sort.AGE_MATCH, kr.youthpolicymate.policy.RecruitmentStatus.ROLLING);
+        org.mockito.Mockito.verify(jdbc, org.mockito.Mockito.times(2)).sql(org.mockito.ArgumentMatchers.anyString());
+        var housing = result.items().getFirst();
+        assertThat(housing.policyNumber()).isEqualTo(YouthHousingSavingsRules.NUMBER);
+        assertThat(housing.ruleVersion()).isEqualTo(YouthHousingSavingsRules.VERSION);
+        assertThat(housing.sourceUrl()).isEqualTo(YouthHousingSavingsRules.SOURCE);
+        assertThat(housing.explanation()).contains("오늘(서울 날짜) 가입", "실제 가입일");
+        assertThat(housing.checks()).extracting(PolicyCheckResponse.Check::outcome).containsExactly(
+                kr.youthpolicymate.eligibility.ConditionAssessment.Outcome.MET,
+                kr.youthpolicymate.eligibility.ConditionAssessment.Outcome.UNKNOWN,
+                kr.youthpolicymate.eligibility.ConditionAssessment.Outcome.UNKNOWN,
+                kr.youthpolicymate.eligibility.ConditionAssessment.Outcome.UNKNOWN);
+        mvc.perform(post("/api/v1/policies/checks").param("q", "청약").param("recruitmentStatus", "ROLLING")
+                        .contentType("application/json").content(mapper.writeValueAsString(input)))
+                .andExpect(status().isOk()).andExpect(header().string("Cache-Control", "no-store"))
+                .andExpect(jsonPath("$.total").value(1)).andExpect(jsonPath("$.items[0].status").value("NEEDS_REVIEW"))
+                .andExpect(jsonPath("$.items[0].checks[0].providedValue").value("만 26세 (2026-09-05 · 서울)"));
+        var military = new BasicConditions(java.time.LocalDate.parse("1990-01-01"), input.district(), input.employmentStatus());
+        assertThat(checks.check(military, 1, "청약", PolicyCheckResponse.Sort.AGE_MATCH, null).items().getFirst().explanation())
+                .contains("병역기간 차감", "실제 가입일");
+
+        org.mockito.Mockito.when(clock.instant()).thenReturn(Instant.parse("2026-12-31T15:00:00Z"));
+        var expired = checks.check(input, 1, "청약", PolicyCheckResponse.Sort.AGE_MATCH, null).items().getFirst();
+        assertThat(expired.ruleVersion()).isEmpty();
+        assertThat(expired.checks().getFirst().outcome()).isEqualTo(kr.youthpolicymate.eligibility.ConditionAssessment.Outcome.UNKNOWN);
+        org.mockito.Mockito.when(clock.instant()).thenReturn(AT);
+        var current = store.find(YouthHousingSavingsRules.NUMBER).orElseThrow();
+        store.importPolicy(YouthHousingSavingsRules.NUMBER, current.content(), "{}", AT.plusSeconds(2), "housing-age-changed", "changed-housing-age");
+        var changed = checks.check(input, 1, "청약", PolicyCheckResponse.Sort.AGE_MATCH, null).items().getFirst();
+        assertThat(changed.ruleVersion()).isEmpty();
+        assertThat(changed.checks().getFirst().outcome()).isEqualTo(kr.youthpolicymate.eligibility.ConditionAssessment.Outcome.UNKNOWN);
+        assertThat(changed.questionnaireAvailable()).isFalse();
+    }
+
     private void saveReviewed(String number, String title, String hash) {
         // 인공 본문과 검토 해시로 조회·질문 연결만 검사한다. 공식 조건의 정확성 검사가 아니다.
         var source = item.deepCopy();

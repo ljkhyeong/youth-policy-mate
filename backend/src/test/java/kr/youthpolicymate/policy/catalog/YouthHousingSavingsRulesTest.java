@@ -3,6 +3,7 @@ package kr.youthpolicymate.policy.catalog;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.util.List;
 import static kr.youthpolicymate.policy.catalog.PolicyQuestions.*;
 import static kr.youthpolicymate.eligibility.EligibilityStatus.*;
@@ -11,6 +12,31 @@ import static org.assertj.core.api.Assertions.*;
 
 class YouthHousingSavingsRulesTest {
     private static final Instant NOW = Instant.parse("2026-09-05T01:00:00Z");
+
+    @Test @DisplayName("기본 생년월일은 오늘 가입할 때의 연령만 비교하고 병역기간을 추정하지 않는다")
+    void comparesBirthDateUsingExistingAgeRules() {
+        var below = YouthHousingSavingsRules.ageCheck(LocalDate.parse("2007-09-06"), NOW);
+        var adult = YouthHousingSavingsRules.ageCheck(LocalDate.parse("2007-09-05"), NOW);
+        var upper = YouthHousingSavingsRules.ageCheck(LocalDate.parse("1991-09-06"), NOW);
+        var military = YouthHousingSavingsRules.ageCheck(LocalDate.parse("1991-09-05"), NOW);
+        assertThat(below.outcome()).isEqualTo(NOT_MET);
+        assertThat(adult.outcome()).isEqualTo(MET);
+        assertThat(upper.outcome()).isEqualTo(MET);
+        assertThat(military.outcome()).isEqualTo(UNKNOWN);
+        assertThat(military.explanation()).contains("병역기간 차감");
+        assertThat(adult.providedValue()).isEqualTo("만 19세 (2026-09-05 · 서울)");
+        assertThat(adult.evidence()).isEqualTo(evaluate("AGE_19_TO_34", "UNKNOWN", "UNKNOWN", "UNKNOWN").checks().getFirst().evidence());
+    }
+
+    @Test @DisplayName("생일의 서울 자정에 연령이 바뀌고 윤일 출생도 날짜 계산으로 비교한다")
+    void usesSeoulBirthdayBoundary() {
+        var birth = LocalDate.parse("2007-09-06");
+        assertThat(YouthHousingSavingsRules.ageCheck(birth, Instant.parse("2026-09-05T14:59:59Z")).outcome()).isEqualTo(NOT_MET);
+        assertThat(YouthHousingSavingsRules.ageCheck(birth, Instant.parse("2026-09-05T15:00:00Z")).outcome()).isEqualTo(MET);
+        var leapBirth = LocalDate.parse("1992-02-29");
+        assertThat(YouthHousingSavingsRules.ageCheck(leapBirth, Instant.parse("2026-02-28T00:00:00Z")).providedValue()).startsWith("만 33세");
+        assertThat(YouthHousingSavingsRules.ageCheck(leapBirth, Instant.parse("2026-03-01T00:00:00Z")).providedValue()).startsWith("만 34세");
+    }
 
     @Test @DisplayName("연령·본인 무주택·소득 충족과 은행의 가입·혜택 심사를 구분한다")
     void separatesCheckedCriteriaFromBankReview() {

@@ -2,6 +2,8 @@ package kr.youthpolicymate.policy.catalog;
 
 import kr.youthpolicymate.eligibility.*;
 import java.time.Instant;
+import java.time.LocalDate;
+import java.time.Period;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
@@ -53,15 +55,8 @@ public final class YouthHousingSavingsRules {
         var values = validatedAnswers(QUESTIONS, input.answers());
         var age = values.getOrDefault("age", "UNKNOWN");
         var home = values.getOrDefault("homeOwnership", "UNKNOWN");
-        var ageOutcome = switch (age) {
-            case "AGE_19_TO_34", "MILITARY_AGE_CONFIRMED" -> MET;
-            case "UNDER_19", "NO_MILITARY_DEDUCTION", "OVER_LIMIT_CONFIRMED" -> NOT_MET;
-            default -> UNKNOWN;
-        };
         var checks = List.of(
-                check("가입일 연령", provided("age", values), ageOutcome,
-                        "만 19~34세가 대상이에요. 만 35세 이상은 인정되는 병역기간을 최대 6년 차감한 나이가 만 34세 이하여야 해요.",
-                        "가입일의 만 나이와 병역기간 차감 기준을 확인해주세요."),
+                ageCheck(age, provided("age", values)),
                 check("본인 무주택", provided("homeOwnership", values), "NO_HOME".equals(home) ? MET : "OWNS_HOME".equals(home) ? NOT_MET : UNKNOWN,
                         "가입일 기준 본인 소유의 주택이 없어야 해요. 세대주 여부와 세대원의 무주택 요건은 비과세 등 별도 기준에서 확인해요.",
                         "가입일에 본인 소유의 주택이 없는지 확인해주세요."),
@@ -83,6 +78,24 @@ public final class YouthHousingSavingsRules {
                 .map(message -> new PolicyReview.PendingIssue(message, evidence)).toList()), conditions);
         return new Evaluation(NUMBER, revision, VERSION, whole.status(), common, SCOPE,
                 "연령·본인 무주택·소득의 확인 결과예요. 가입 서류와 기존 통장 전환 여부는 은행에서 확인해주세요.", remaining, SOURCE, now, checks);
+    }
+
+    static Check ageCheck(LocalDate birthDate, Instant now) {
+        var today = now.atZone(ZoneId.of("Asia/Seoul")).toLocalDate();
+        var age = Period.between(birthDate, today).getYears();
+        var answer = age < 19 ? "UNDER_19" : age <= 34 ? "AGE_19_TO_34" : "MILITARY_AGE_PENDING";
+        return ageCheck(answer, "만 " + age + "세 (" + today + " · 서울)");
+    }
+
+    private static Check ageCheck(String age, String provided) {
+        var outcome = switch (age) {
+            case "AGE_19_TO_34", "MILITARY_AGE_CONFIRMED" -> MET;
+            case "UNDER_19", "NO_MILITARY_DEDUCTION", "OVER_LIMIT_CONFIRMED" -> NOT_MET;
+            default -> UNKNOWN;
+        };
+        return check("가입일 연령", provided, outcome,
+                "만 19~34세가 대상이에요. 만 35세 이상은 인정되는 병역기간을 최대 6년 차감한 나이가 만 34세 이하여야 해요.",
+                "가입일의 만 나이와 병역기간 차감 기준을 확인해주세요.");
     }
 
     private static Check incomeCheck(Map<String, String> values) {

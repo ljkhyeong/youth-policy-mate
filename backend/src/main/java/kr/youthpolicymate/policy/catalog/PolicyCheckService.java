@@ -60,7 +60,7 @@ public class PolicyCheckService {
         var message = switch (comparison.age().outcome()) {
             case MET -> "입력한 생년월일은 연령 조건을 충족해요. 다른 신청 조건은 추가 확인이 필요해요.";
             case NOT_MET -> "입력한 생년월일은 이 공고의 연령 조건을 충족하지 않아요. 적용 기준을 확인해주세요.";
-            case UNKNOWN -> "군복무에 따른 연령 연장 등 추가 확인이 필요해요.";
+            case UNKNOWN -> comparison.age().explanation();
         };
         return comparison.periodNotice().isEmpty() ? message : message + " " + comparison.periodNotice();
     }

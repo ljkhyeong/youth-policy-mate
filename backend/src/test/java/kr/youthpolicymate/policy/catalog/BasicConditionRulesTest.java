@@ -42,7 +42,7 @@ class BasicConditionRulesTest {
     @Test @DisplayName("서울 자정에 검토 연도가 끝나면 연령 비교를 재사용하지 않는다")
     void expiresReviewedComparisons() {
         var input = new BasicConditions(LocalDate.parse("2000-01-01"), "강남구", BasicConditions.EmploymentStatus.NOT_EMPLOYED);
-        assertThat(BasicConditionRules.compare(input, Instant.parse("2026-12-31T14:59:59Z"))).hasSize(4);
+        assertThat(BasicConditionRules.compare(input, Instant.parse("2026-12-31T14:59:59Z"))).hasSize(5);
         assertThat(BasicConditionRules.compare(input, Instant.parse("2026-12-31T15:00:00Z"))).isEmpty();
         assertThat(KPassRules.ageCheck(LocalDate.parse("2007-09-06"), Instant.parse("2026-09-05T14:59:59Z")).outcome()).isEqualTo(NOT_MET);
         assertThat(KPassRules.ageCheck(LocalDate.parse("2007-09-06"), Instant.parse("2026-09-05T15:00:00Z")).outcome()).isEqualTo(MET);

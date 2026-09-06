@@ -48,6 +48,7 @@ class PolicyCatalogTest {
     @Autowired PolicyCatalogStore store;
     @org.springframework.test.context.bean.override.mockito.MockitoSpyBean JdbcClient jdbc;
     @Autowired PolicyCheckService checks;
+    @Autowired PolicyQuestionService questions;
     @Autowired ObjectMapper mapper;
     @Autowired MockMvc mvc;
     @org.springframework.test.context.bean.override.mockito.MockitoBean java.time.Clock clock;
@@ -64,6 +65,24 @@ class PolicyCatalogTest {
         jdbc.sql("DELETE FROM policies").update();
         parser = new OntongPolicyCapture(mapper);
         item = (ObjectNode) parser.parse(Files.readString(Path.of("src/test/resources/ontong/list-capture.json"))).items().getFirst();
+    }
+
+    @Test
+    @DisplayName("질문과 답변 평가는 각각 SELECT 한 번으로 현재 개정과 해시를 확인한다")
+    void loadsQuestionVersionWithOneQuery() {
+        saveReviewed(ExamFeeRules.NUMBER, "응시료 지원", ExamFeeRules.CONTENT_HASH);
+
+        org.mockito.Mockito.clearInvocations(jdbc);
+        var questionnaire = questions.questions(ExamFeeRules.NUMBER);
+        org.mockito.Mockito.verify(jdbc, org.mockito.Mockito.times(1)).sql(org.mockito.ArgumentMatchers.anyString());
+        assertThat(questionnaire.available()).isTrue();
+        assertThat(questionnaire.revision()).isOne();
+
+        org.mockito.Mockito.clearInvocations(jdbc);
+        var evaluation = questions.evaluate(ExamFeeRules.NUMBER,
+                new PolicyQuestions.Request(questionnaire.revision(), questionnaire.ruleVersion(), List.of()));
+        org.mockito.Mockito.verify(jdbc, org.mockito.Mockito.times(1)).sql(org.mockito.ArgumentMatchers.anyString());
+        assertThat(evaluation.revision()).isOne();
     }
 
     @Test

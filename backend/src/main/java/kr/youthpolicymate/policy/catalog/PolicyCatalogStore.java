@@ -27,9 +27,10 @@ public class PolicyCatalogStore {
 
     public PolicyCatalogStore(JdbcClient jdbc, ObjectMapper mapper) { this.jdbc = jdbc; this.mapper = mapper; }
 
-    public String contentHash(String number) {
-        return jdbc.sql("SELECT content_hash FROM policies WHERE policy_number = :number")
-                .param("number", number).query(String.class).optional().orElse("");
+    Optional<QuestionVersion> questionVersion(String number) {
+        return jdbc.sql("SELECT current_revision, content_hash FROM policies WHERE policy_number = :number AND current_revision > 0")
+                .param("number", number).query((rs, row) -> new QuestionVersion(rs.getLong("current_revision"),
+                        rs.getString("content_hash"))).optional();
     }
 
     @Transactional
@@ -154,8 +155,12 @@ public class PolicyCatalogStore {
         var number = rs.getString("policy_number");
         return new PolicyDetailResponse(number, rs.getLong("current_revision"),
                 mapper.readValue(rs.getString("content"), PolicyContent.class),
-                "https://www.youthcenter.go.kr/youthPolicy/ythPlcyTotalSearch/ythPlcyDetail/" + number + "?isNew=N",
+                sourceUrl(number),
                 rs.getObject("last_collected_at", OffsetDateTime.class).toInstant());
+    }
+
+    static String sourceUrl(String number) {
+        return "https://www.youthcenter.go.kr/youthPolicy/ythPlcyTotalSearch/ythPlcyDetail/" + number + "?isNew=N";
     }
 
     public Optional<tools.jackson.databind.JsonNode> source(String number) {
@@ -168,5 +173,6 @@ public class PolicyCatalogStore {
 
     public enum ImportResult { APPLIED, UNCHANGED, REPLAYED, STALE }
     public record CheckSource(PolicyDetailResponse policy, JsonNode raw, boolean questionnaireAvailable) {}
+    record QuestionVersion(long revision, String contentHash) {}
     private record Current(long revision, String hash, OffsetDateTime collectedAt, long requestSequence) {}
 }

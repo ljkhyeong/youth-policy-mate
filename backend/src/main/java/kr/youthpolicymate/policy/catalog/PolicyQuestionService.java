@@ -19,8 +19,8 @@ public class PolicyQuestionService {
         return questionsAt(number, clock.instant());
     }
     private PolicyQuestions.Questionnaire questionsAt(String number, Instant now) {
-        var policy = store.find(number).orElseThrow(PolicyNotFoundException::new);
-        var hash = store.contentHash(number);
+        var policy = store.questionVersion(number).orElseThrow(PolicyNotFoundException::new);
+        var hash = policy.contentHash();
         var reviewedHash = ReviewedPolicyQuestions.contentHashesAt(now).get(number);
         if (reviewedHash != null && reviewedHash.equals(hash)) {
             return switch (number) {
@@ -49,7 +49,7 @@ public class PolicyQuestionService {
                     "이 질문은 2026년 하반기 모집 기준이에요. 새 모집의 질문은 아직 제공하지 않아요.", SeoulYouthNetworkRules.SOURCE, List.of());
         }
         return new PolicyQuestions.Questionnaire(number, policy.revision(), "", false, "신청 조건 확인",
-                "이 정책의 조건 확인 질문은 아직 제공하지 않아요. 공식 안내를 확인해주세요.", policy.sourceUrl(), List.of());
+                "이 정책의 조건 확인 질문은 아직 제공하지 않아요. 공식 안내를 확인해주세요.", PolicyCatalogStore.sourceUrl(number), List.of());
     }
     @Transactional(readOnly = true, isolation = org.springframework.transaction.annotation.Isolation.REPEATABLE_READ)
     public PolicyQuestions.Evaluation evaluate(String number, PolicyQuestions.Request request) {

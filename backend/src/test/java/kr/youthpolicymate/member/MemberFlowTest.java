@@ -53,7 +53,7 @@ class MemberFlowTest {
     @Autowired MemberPolicyStore members;
     @Autowired MemberIdentityStore identities;
     @Autowired PolicyCatalogStore policies;
-    @Autowired JdbcClient jdbc;
+    @org.springframework.test.context.bean.override.mockito.MockitoSpyBean JdbcClient jdbc;
     @Autowired ObjectMapper mapper;
     @Autowired MockMvc mvc;
     @Autowired PlatformTransactionManager transactions;
@@ -171,6 +171,61 @@ class MemberFlowTest {
         assertThat(members.notifications(first).items().getFirst().read()).isFalse();
         members.read(first, id);
         assertThat(members.notifications(first).items().getFirst().read()).isTrue();
+    }
+
+    @Test
+    @DisplayName("변경 없는 관심 정책 20건과 빈 목록을 각각 SELECT 세 번으로 조회한다")
+    void loadsSavedPoliciesWithThreeQueries() {
+        for (int index = 1; index <= 20; index++) {
+            var number = "2026090600540011%04d".formatted(index);
+            raw.put("plcyNo", number).put("plcyNm", "관심 정책 " + index)
+                    .put("aplyYmd", "20260901 ~ 202610%02d".formatted(index));
+            importPolicy();
+            members.save(first, number);
+        }
+
+        org.mockito.Mockito.clearInvocations(jdbc);
+        var saved = members.saved(first).items();
+        org.mockito.Mockito.verify(jdbc, org.mockito.Mockito.times(3)).sql(org.mockito.ArgumentMatchers.anyString());
+        assertThat(saved).hasSize(20);
+        assertThat(saved).extracting(MemberResponses.Saved::title)
+                .containsExactlyElementsOf(java.util.stream.IntStream.rangeClosed(1, 20)
+                        .mapToObj(index -> "관심 정책 " + index).toList());
+        assertThat(saved.getFirst().deadline().date()).hasToString("2026-10-01");
+        assertThat(saved.getFirst().applicationPeriod()).isEqualTo("20260901 ~ 20261001");
+        assertThat(saved).allSatisfy(policy -> {
+            assertThat(policy.savedRevision()).isOne();
+            assertThat(policy.currentRevision()).isOne();
+        });
+        assertThat(members.notifications(first).items()).isEmpty();
+
+        org.mockito.Mockito.clearInvocations(jdbc);
+        assertThat(members.saved(second).items()).isEmpty();
+        org.mockito.Mockito.verify(jdbc, org.mockito.Mockito.times(3)).sql(org.mockito.ArgumentMatchers.anyString());
+    }
+
+    @Test
+    @DisplayName("관심 정책 조회가 끝날 때까지 수집의 정책 갱신을 막는다")
+    void keepsPolicyLockedDuringSavedListRead() {
+        members.save(first, NUMBER);
+        var transaction = new TransactionTemplate(transactions);
+        try (var pool = Executors.newSingleThreadExecutor()) {
+            transaction.executeWithoutResult(status -> {
+                assertThat(members.saved(first).items()).hasSize(1);
+                var update = pool.submit(() -> transaction.executeWithoutResult(other -> {
+                    jdbc.sql("SET LOCAL lock_timeout = '100ms'").update();
+                    jdbc.sql("UPDATE policies SET last_collected_at = last_collected_at WHERE policy_number = :number")
+                            .param("number", NUMBER).update();
+                }));
+                assertThatThrownBy(() -> update.get(5, TimeUnit.SECONDS))
+                        .hasRootCauseInstanceOf(java.sql.SQLException.class)
+                        .rootCause().extracting(cause -> ((java.sql.SQLException) cause).getSQLState())
+                        .isEqualTo("55P03");
+            });
+        }
+        raw.put("aplyYmd", "20260901 ~ 20260920");
+        importPolicy();
+        assertThat(members.saved(first).items().getFirst().currentRevision()).isEqualTo(2);
     }
 
     @Test

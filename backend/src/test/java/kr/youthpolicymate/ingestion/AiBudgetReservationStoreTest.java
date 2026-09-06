@@ -139,6 +139,52 @@ class AiBudgetReservationStoreTest {
     }
 
     @Test
+    @DisplayName("예약 시점에 예산 시작·종료와 비용 유효기간을 다시 확인한다")
+    void rechecksReservationTimeBoundaries() {
+        var balance = insertBudget("budget-a", "100", "0", "0");
+        var startsAt = NOW.plusSeconds(1);
+        jdbcClient.sql("update ai_budgets set starts_at = :startsAt where budget_id = :budgetId")
+                .param("startsAt", dbTime(startsAt)).param("budgetId", balance.budgetId()).update();
+        var future = new Balance(balance.budgetId(), startsAt, balance.endsAt(), balance.limitWon(),
+                balance.confirmedWon(), balance.reservedWon());
+        assertThat(store.reserve("before-budget", required(future, request(10), "1"), NOW).decision())
+                .isEqualTo(BUDGET_PERIOD_INACTIVE);
+        assertThat(store.reserve("after-budget", required(future, request(10), "1"), future.endsAt()).decision())
+                .isEqualTo(BUDGET_PERIOD_INACTIVE);
+
+        var expired = new ReservationRequired(future,
+                new CostCeiling(request(10), "price-a", startsAt, money("1")));
+        assertThat(store.reserve("expired", expired, startsAt).decision()).isEqualTo(COST_EXPIRED);
+        assertThat(jdbcClient.sql("select count(*) from ai_request_reservations").query(Long.class).single()).isZero();
+        assertThat(budgetAmounts("budget-a").reservedWon()).isEqualByComparingTo("0");
+    }
+
+    @Test
+    @DisplayName("없는 예약·호출 전 상태 변경·역전된 시각과 음수 청구를 거절한다")
+    void rejectsInvalidLifecycleOrderAndValues() {
+        assertThat(lifecycleStore.dispatch("missing", new Dispatch("dispatch-a", NOW)).decision())
+                .isEqualTo(AiBudgetReservationLifecycleStore.Decision.RESERVATION_NOT_FOUND);
+        reserve("budget-a", "reservation-a", 10, "10");
+        assertThat(lifecycleStore.markOutcomeUnknown("reservation-a",
+                new UncertainOutcome("unknown-a", NOW.plusSeconds(1), UncertainReason.TIMEOUT)).decision())
+                .isEqualTo(AiBudgetReservationLifecycleStore.Decision.INVALID_STATE);
+        assertThat(lifecycleStore.settle("reservation-a", new ChargeConfirmation("charge-a", NOW, money("1"))).decision())
+                .isEqualTo(AiBudgetReservationLifecycleStore.Decision.INVALID_STATE);
+        assertThatIllegalArgumentException().isThrownBy(() ->
+                new ChargeConfirmation("charge-a", NOW, money("-0.01")));
+        assertThatThrownBy(() -> lifecycleStore.dispatch("reservation-a", new Dispatch("dispatch-a", NOW.minusNanos(1))))
+                .isInstanceOf(org.springframework.dao.InvalidDataAccessApiUsageException.class)
+                .hasCauseInstanceOf(IllegalArgumentException.class);
+        lifecycleStore.dispatch("reservation-a", new Dispatch("dispatch-a", NOW.plusSeconds(1)));
+        assertThatThrownBy(() -> lifecycleStore.markOutcomeUnknown("reservation-a",
+                new UncertainOutcome("unknown-a", NOW, UncertainReason.TIMEOUT)))
+                .isInstanceOf(org.springframework.dao.InvalidDataAccessApiUsageException.class)
+                .hasCauseInstanceOf(IllegalArgumentException.class);
+        assertThat(lifecycleStore.find("reservation-a").orElseThrow().phase()).isEqualTo(Phase.DISPATCHED);
+        assertThat(budgetAmounts("budget-a").reservedWon()).isEqualByComparingTo("10");
+    }
+
+    @Test
     @DisplayName("동시에 같은 잔액을 본 두 요청 중 하나만 예약한다")
     void serializesConcurrentReservations() throws Exception {
         var balance = insertBudget("budget-a", "100", "0", "0");
@@ -234,6 +280,12 @@ class AiBudgetReservationStoreTest {
                 .isEqualTo(AiBudgetReservationLifecycleStore.Decision.SETTLED);
         assertThat(lifecycleStore.settle("reservation-a", confirmation).decision())
                 .isEqualTo(AiBudgetReservationLifecycleStore.Decision.REPLAYED);
+        assertThat(lifecycleStore.releaseAfterNoCharge("reservation-a",
+                new NoChargeConfirmation("no-charge-a", NOW.plusSeconds(4))).decision())
+                .isEqualTo(AiBudgetReservationLifecycleStore.Decision.TERMINAL_CONFLICT);
+        assertThat(lifecycleStore.settle("reservation-a",
+                new ChargeConfirmation("other-charge", NOW.plusSeconds(4), money("8"))).decision())
+                .isEqualTo(AiBudgetReservationLifecycleStore.Decision.TERMINAL_CONFLICT);
         assertThat(budgetAmounts("budget-a"))
                 .isEqualTo(new BudgetAmounts(money("7.50"), money("0")));
         assertThat(lifecycleStore.find("reservation-a").orElseThrow().uncertain()).isPresent();

@@ -16,6 +16,7 @@ import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.Optional;
+import java.util.Map;
 import java.util.HashMap;
 import java.util.StringJoiner;
 
@@ -134,24 +135,43 @@ public class PolicyCatalogStore {
     }
 
     @Transactional(readOnly = true, isolation = org.springframework.transaction.annotation.Isolation.REPEATABLE_READ)
-    public Page<CheckSource> listForCheck(PageRequest page, Instant now) {
+    public Page<CheckSource> listForCheck(PageRequest page, String query, PolicyCheckResponse.Sort sort,
+                                         Map<String, BasicConditionRules.Comparison> comparisons, Instant now) {
         var reviewed = ReviewedPolicyQuestions.contentHashesAt(now);
-        var total = jdbc.sql("SELECT count(*) FROM policies WHERE current_revision > 0").query(Long.class).single();
+        var parameters = new HashMap<String, Object>();
+        parameters.put("query", query);
+        var where = " WHERE p.current_revision > 0 AND (:query = '' OR strpos(lower((p.content->>'title') || ' ' || (p.content->>'description')), lower(:query)) > 0)";
+        var total = jdbc.sql("SELECT count(*) FROM policies p" + where).params(parameters).query(Long.class).single();
+        var order = "p.last_collected_at DESC, p.policy_number";
+        if (sort == PolicyCheckResponse.Sort.AGE_MATCH && !comparisons.isEmpty()) {
+            var priority = new StringBuilder("CASE");
+            int index = 0;
+            for (var entry : comparisons.entrySet()) {
+                priority.append(" WHEN p.policy_number = :number").append(index).append(" AND p.content_hash = :hash").append(index)
+                        .append(" THEN :priority").append(index);
+                parameters.put("number" + index, entry.getKey());
+                parameters.put("hash" + index, entry.getValue().contentHash());
+                parameters.put("priority" + index, entry.getValue().priority());
+                index++;
+            }
+            order = priority.append(" ELSE 1 END, ") + order;
+        }
         var items = jdbc.sql("""
                 SELECT p.policy_number, p.current_revision, p.content, p.content_hash, p.last_collected_at, s.raw_policy
                 FROM policies p
                 LEFT JOIN policy_revisions r ON r.policy_number = p.policy_number AND r.revision = p.current_revision
                 LEFT JOIN policy_source_snapshots s ON s.id = r.source_snapshot_id
-                WHERE p.current_revision > 0
-                ORDER BY p.last_collected_at DESC, p.policy_number
-                LIMIT :limit OFFSET :offset
-                """).param("limit", page.getPageSize()).param("offset", page.getOffset())
+                """ + where + " ORDER BY " + order + " LIMIT :limit OFFSET :offset")
+                .params(parameters).param("limit", page.getPageSize()).param("offset", page.getOffset())
                 .query((rs, row) -> {
                     var raw = rs.getString("raw_policy");
                     if (raw == null) throw new PolicyNotFoundException();
                     var number = rs.getString("policy_number");
+                    var hash = rs.getString("content_hash");
+                    var comparison = comparisons.get(number);
                     return new CheckSource(detail(rs), mapper.readTree(raw),
-                            reviewed.containsKey(number) && reviewed.get(number).equals(rs.getString("content_hash")));
+                            reviewed.containsKey(number) && reviewed.get(number).equals(hash),
+                            comparison != null && comparison.contentHash().equals(hash) ? comparison : null);
                 }).list();
         return new PageImpl<>(items, page, total);
     }
@@ -177,7 +197,7 @@ public class PolicyCatalogStore {
     }
 
     public enum ImportResult { APPLIED, UNCHANGED, REPLAYED, STALE }
-    public record CheckSource(PolicyDetailResponse policy, JsonNode raw, boolean questionnaireAvailable) {}
+    record CheckSource(PolicyDetailResponse policy, JsonNode raw, boolean questionnaireAvailable, BasicConditionRules.Comparison comparison) {}
     record QuestionVersion(long revision, String contentHash) {}
     private record Current(long revision, String hash, OffsetDateTime collectedAt, long requestSequence) {}
 }

@@ -766,6 +766,25 @@
             "maximum" : 1000,
             "minimum" : 1
           }
+        }, {
+          "in" : "query",
+          "name" : "q",
+          "required" : false,
+          "schema" : {
+            "type" : "string",
+            "default" : "",
+            "maxLength" : 80,
+            "minLength" : 0
+          }
+        }, {
+          "in" : "query",
+          "name" : "sort",
+          "required" : false,
+          "schema" : {
+            "type" : "string",
+            "default" : "AGE_MATCH",
+            "enum" : [ "AGE_MATCH", "RECENT" ]
+          }
         } ],
         "requestBody" : {
           "content" : {
@@ -809,7 +828,7 @@
             "description" : "정책 저장소 조회 실패"
           }
         },
-        "summary" : "기본 조건으로 실제 정책의 확인할 요건과 원문 조회. 조건은 저장하지 않음",
+        "summary" : "기본 조건으로 연령 비교·정책 검색·정렬. 조건은 저장하지 않음",
         "tags" : [ "policy-catalog-controller" ]
       }
     },
@@ -1245,6 +1264,10 @@
             "type" : "integer",
             "format" : "int64"
           },
+          "ruleVersion" : {
+            "type" : "string",
+            "description" : "적용한 연령 규칙 버전. 검토된 비교 기준이 없으면 빈 문자열"
+          },
           "sourceUrl" : {
             "type" : "string"
           },
@@ -1256,7 +1279,7 @@
             "type" : "string"
           }
         },
-        "required" : [ "applicationPeriod", "checks", "collectedAt", "explanation", "policyNumber", "questionnaireAvailable", "revision", "sourceUrl", "status", "title" ]
+        "required" : [ "applicationPeriod", "checks", "collectedAt", "explanation", "policyNumber", "questionnaireAvailable", "revision", "ruleVersion", "sourceUrl", "status", "title" ]
       },
       "PolicyCheckResponse" : {
         "type" : "object",
@@ -1297,11 +1320,15 @@
           "label" : {
             "type" : "string"
           },
+          "outcome" : {
+            "type" : "string",
+            "enum" : [ "MET", "NOT_MET", "UNKNOWN" ]
+          },
           "providedValue" : {
             "type" : "string"
           }
         },
-        "required" : [ "evidence", "explanation", "label", "providedValue" ]
+        "required" : [ "evidence", "explanation", "label", "outcome", "providedValue" ]
       },
       "PolicyContent" : {
         "type" : "object",

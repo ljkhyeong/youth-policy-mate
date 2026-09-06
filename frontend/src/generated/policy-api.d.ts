@@ -188,7 +188,7 @@ export interface paths {
         };
         readonly get?: never;
         readonly put?: never;
-        /** 기본 조건으로 실제 정책의 확인할 요건과 원문 조회. 조건은 저장하지 않음 */
+        /** 기본 조건으로 연령 비교·정책 검색·정렬. 조건은 저장하지 않음 */
         readonly post: operations["checkPolicyConditions"];
         readonly delete?: never;
         readonly options?: never;
@@ -346,6 +346,8 @@ export interface components {
             readonly questionnaireAvailable: boolean;
             /** Format: int64 */
             readonly revision: number;
+            /** @description 적용한 연령 규칙 버전. 검토된 비교 기준이 없으면 빈 문자열 */
+            readonly ruleVersion: string;
             readonly sourceUrl: string;
             /** @enum {string} */
             readonly status: "ELIGIBLE" | "NEEDS_REVIEW" | "INELIGIBLE";
@@ -365,6 +367,8 @@ export interface components {
             readonly evidence: string;
             readonly explanation: string;
             readonly label: string;
+            /** @enum {string} */
+            readonly outcome: "MET" | "NOT_MET" | "UNKNOWN";
             readonly providedValue: string;
         };
         readonly PolicyContent: {
@@ -1236,6 +1240,8 @@ export interface operations {
         readonly parameters: {
             readonly query?: {
                 readonly page?: number;
+                readonly q?: string;
+                readonly sort?: "AGE_MATCH" | "RECENT";
             };
             readonly header?: never;
             readonly path?: never;

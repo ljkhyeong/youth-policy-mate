@@ -27,13 +27,15 @@ public class PolicyCatalogController {
     }
 
     @org.springframework.web.bind.annotation.PostMapping(value = "/checks", consumes = "application/json")
-    @Operation(operationId = "checkPolicyConditions", summary = "기본 조건으로 실제 정책의 확인할 요건과 원문 조회. 조건은 저장하지 않음")
+    @Operation(operationId = "checkPolicyConditions", summary = "기본 조건으로 연령 비교·정책 검색·정렬. 조건은 저장하지 않음")
     @ApiResponse(responseCode = "200", content = @Content(schema = @Schema(implementation = PolicyCheckResponse.class)))
     @ApiResponse(responseCode = "400", content = @Content(schema = @Schema(implementation = PolicyApiError.class)))
     public org.springframework.http.ResponseEntity<PolicyCheckResponse> check(
             @org.springframework.web.bind.annotation.RequestBody @jakarta.validation.Valid BasicConditions input,
-            @RequestParam(defaultValue = "1") @Min(1) @Max(1000) int page) {
-        return org.springframework.http.ResponseEntity.ok().cacheControl(org.springframework.http.CacheControl.noStore()).body(checks.check(input, page));
+            @RequestParam(defaultValue = "1") @Min(1) @Max(1000) int page,
+            @RequestParam(defaultValue = "") @Size(max = 80) String q,
+            @RequestParam(defaultValue = "AGE_MATCH") PolicyCheckResponse.Sort sort) {
+        return org.springframework.http.ResponseEntity.ok().cacheControl(org.springframework.http.CacheControl.noStore()).body(checks.check(input, page, q.strip(), sort));
     }
 
     @GetMapping

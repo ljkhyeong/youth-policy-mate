@@ -1029,3 +1029,5 @@ select {
 .email-settings button { width: fit-content; max-width: 100%; }
 .email-current { padding-block: .8rem; overflow-wrap: anywhere; }
 .email-current .text-button { display: block; margin-top: .8rem; }
+
+.condition-policy-sort { max-width: 100%; border: 1px solid #cfd5de; border-radius: 10px; background: white; padding: 10px 12px; font-size: 16px; }

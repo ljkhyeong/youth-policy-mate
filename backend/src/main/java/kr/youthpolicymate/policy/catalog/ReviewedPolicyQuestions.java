@@ -15,6 +15,7 @@ final class ReviewedPolicyQuestions {
         if (KPassRules.appliesAt(now)) hashes.put(KPassRules.NUMBER, KPassRules.CONTENT_HASH);
         if (YouthHousingSavingsRules.appliesAt(now)) hashes.put(YouthHousingSavingsRules.NUMBER, YouthHousingSavingsRules.CONTENT_HASH);
         if (SeoulYouthNetworkRules.appliesAt(now)) hashes.put(SeoulYouthNetworkRules.NUMBER, SeoulYouthNetworkRules.CONTENT_HASH);
+        if (MovingFeeRules.appliesAt(now)) hashes.put(MovingFeeRules.NUMBER, MovingFeeRules.CONTENT_HASH);
         return hashes;
     }
 }

@@ -51,8 +51,7 @@ public final class KPassRules {
         var values = validatedAnswers(QUESTIONS, input.answers());
         var age = values.get("age"); var registration = values.get("registration"); var residence = values.get("residence"); var rides = values.get("monthlyRides");
         var checks = List.of(
-                check("age", "기본 가입 연령", age, "ADULT".equals(age) ? MET : "UNDER_19".equals(age) ? NOT_MET : UNKNOWN,
-                        "기본 가입 연령은 만 19세 이상이에요. 만 35세 이상도 가입할 수 있고, 청년 환급률은 만 19~34세에 적용돼요. 근거: https://korea-pass.kr/info/use_join.do"),
+                ageCheck(age),
                 check("registration", "회원가입과 이용 카드 등록", registration, "REGISTERED".equals(registration) ? MET : List.of("CARD_ONLY", "NOT_REGISTERED").contains(registration == null ? "" : registration) ? NOT_MET : UNKNOWN,
                         "적립을 받으려면 카드 발급 후 공식 홈페이지나 앱에 회원가입하고 카드를 등록해야 해요. 가입하지 않고 이용한 카드에는 환급금이 발생하지 않는다고 안내돼 있어요. 근거: https://korea-pass.kr/info/use_accm.do"),
                 check("residence", "참여 지자체 거주 확인", residence, "CONFIRMED".equals(residence) ? MET : UNKNOWN,
@@ -77,6 +76,13 @@ public final class KPassRules {
                 .map(message -> new PolicyReview.PendingIssue(message, evidence)).toList()), conditions);
         return new Evaluation(NUMBER, revision, versionAt(now), whole.status(), common, scopeAt(now),
                 "이번 달 가입·이용 조건의 확인 결과예요. 실제 적립 내역과 환급액·지급 여부는 K-패스에서 확인해주세요.", remaining, SOURCE, now, checks);
+    }
+    static Check ageCheck(java.time.LocalDate birthDate, Instant now) {
+        return ageCheck(java.time.Period.between(birthDate, now.atZone(SEOUL).toLocalDate()).getYears() < 19 ? "UNDER_19" : "ADULT");
+    }
+    private static Check ageCheck(String age) {
+        return check("age", "기본 가입 연령", age, "ADULT".equals(age) ? MET : "UNDER_19".equals(age) ? NOT_MET : UNKNOWN,
+                "오늘(서울) 기준 기본 가입 연령은 만 19세 이상이에요. 만 35세 이상도 가입할 수 있고, 청년 환급률은 만 19~34세에 적용돼요. 근거: https://korea-pass.kr/info/use_join.do");
     }
     private static Check check(String id, String label, String value, ConditionAssessment.Outcome outcome, String evidence) {
         var provided = QUESTIONS.stream().filter(q -> q.id().equals(id)).flatMap(q -> q.options().stream())

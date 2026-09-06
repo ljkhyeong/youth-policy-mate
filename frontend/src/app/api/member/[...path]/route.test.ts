@@ -58,6 +58,19 @@ describe("개인 API 중계", () => {
     expect(fetch).toHaveBeenCalledTimes(2);
   });
 
+  it("조건 검색·정렬만 쿼리로 전달하고 생년월일은 본문에 유지한다", async () => {
+    const fetch = vi.fn().mockResolvedValue(Response.json({ items: [] })); vi.stubGlobal("fetch", fetch);
+    const body = JSON.stringify({ birthDate: "2000-01-02", district: "강남구", employmentStatus: "NOT_EMPLOYED" });
+    const response = await POST(new NextRequest(`${base}/api/member/checks?page=2&q=이사비&sort=RECENT&birthDate=2000-01-02`, {
+      method: "POST", headers: { origin: base, "Content-Type": "application/json" }, body,
+    }), context("checks"));
+    const [url, request] = fetch.mock.calls[0];
+    expect(Object.fromEntries(url.searchParams)).toEqual({ page: "2", q: "이사비", sort: "RECENT" });
+    expect(request.body).toBe(body);
+    expect(request.cache).toBe("no-store");
+    expect(response.headers.get("cache-control")).toBe("no-store");
+  });
+
   it("조건 확인에는 회원 쿠키를 전달하지 않고 개인정보를 포함한 큰 본문은 거절한다", async () => {
     const fetch = vi.fn().mockResolvedValue(Response.json({ items: [] })); vi.stubGlobal("fetch", fetch);
     await POST(new NextRequest(`${base}/api/member/checks?page=2`, { method: "POST", headers: { origin: base, cookie: "YPM_SESSION=private" }, body: "{}" }), context("checks"));

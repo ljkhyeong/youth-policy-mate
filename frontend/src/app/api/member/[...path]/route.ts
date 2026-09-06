@@ -46,7 +46,12 @@ async function handle(request: NextRequest, context: { params: Promise<{ path: s
     const apiPath = question ? `/api/v1/policies/${question[1]}/questions`
       : evaluation ? `/api/v1/policies/${evaluation[1]}/evaluation` : path === "checks" ? "/api/v1/policies/checks" : ["session", "logout"].includes(path) ? `/api/v1/${path}` : `/api/v1/me/${path}`;
     const url = new URL(apiPath, base);
-    if (path === "checks") url.searchParams.set("page", request.nextUrl.searchParams.get("page") || "1");
+    if (path === "checks") {
+      for (const key of ["page", "q", "sort"]) {
+        const value = request.nextUrl.searchParams.get(key);
+        if (value !== null) url.searchParams.set(key, value);
+      }
+    }
     const headers: Record<string, string> = { Accept: "application/json" };
     if (body) headers["Content-Type"] = "application/json";
     const cookie = request.headers.get("cookie")?.split(";").map(value => value.trim()).find(value => value.startsWith("YPM_SESSION="));

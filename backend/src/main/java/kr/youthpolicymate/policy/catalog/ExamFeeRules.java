@@ -40,8 +40,7 @@ public final class ExamFeeRules {
         var values = validatedAnswers(QUESTIONS, input.answers());
         var birth = values.get("birthRange"); var exam = values.get("exam"); var uses = values.get("remainingUses");
         var checks = List.of(
-                check("birthRange", "공식 출생일 기준", birth, "ON_OR_AFTER_1991_01_01".equals(birth) ? MET : "BEFORE_1991_01_01".equals(birth) ? NOT_MET : UNKNOWN,
-                        "2026년 지원 대상은 1991년 1월 1일 이후 출생자예요."),
+                birthCheck(birth),
                 check("exam", "시험 종류와 시행기관", exam, "HRDK_TECHNICAL".equals(exam) ? MET : "OTHER".equals(exam) ? NOT_MET : UNKNOWN,
                         "이 지원은 한국산업인력공단이 시행하는 국가기술자격시험의 응시료에 적용돼요."),
                 check("remainingUses", "2026년 남은 지원 횟수", uses, List.of("ONE", "TWO", "THREE").contains(uses == null ? "" : uses) ? MET : "ZERO".equals(uses) ? NOT_MET : UNKNOWN,
@@ -62,6 +61,13 @@ public final class ExamFeeRules {
                 .map(message -> new PolicyReview.PendingIssue(message, evidence)).toList()), conditions);
         return new Evaluation(NUMBER, revision, VERSION, whole.status(), common, SCOPE,
                 "출생일·시험 종류·남은 지원 횟수의 확인 결과예요. 시험 접수, 예산 소진 여부, 할인 적용 여부는 별도로 확인해주세요.", remaining, SOURCE, now, checks);
+    }
+    static Check ageCheck(java.time.LocalDate birthDate) {
+        return birthCheck(birthDate.isBefore(java.time.LocalDate.of(1991, 1, 1)) ? "BEFORE_1991_01_01" : "ON_OR_AFTER_1991_01_01");
+    }
+    private static Check birthCheck(String birth) {
+        return check("birthRange", "공식 출생일 기준", birth, "ON_OR_AFTER_1991_01_01".equals(birth) ? MET : "BEFORE_1991_01_01".equals(birth) ? NOT_MET : UNKNOWN,
+                "2026년 지원 대상은 1991년 1월 1일 이후 출생자예요(당일 포함).");
     }
     private static Check check(String id, String label, String value, ConditionAssessment.Outcome outcome, String evidence) {
         var provided = QUESTIONS.stream().filter(q -> q.id().equals(id)).flatMap(q -> q.options().stream())

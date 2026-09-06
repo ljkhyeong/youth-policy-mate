@@ -52,24 +52,17 @@ public final class SeoulYouthNetworkRules {
     public static Evaluation evaluate(long revision, Request input, Instant now) {
         if (!appliesAt(now)) throw new IllegalArgumentException("검토한 2026년 하반기 모집 기준만 사용할 수 있습니다.");
         var values = validatedAnswers(QUESTIONS, input.answers());
-        var birth = values.getOrDefault("birthRange", "UNKNOWN");
+        var birth = values.get("birthRange");
         var connection = values.getOrDefault("seoulConnection", "UNKNOWN");
         var terms = values.get("consecutiveTerms");
         var disqualification = values.get("priorDisqualification");
-        var ageOutcome = switch (birth) {
-            case "BASE_RANGE", "MILITARY_EXTENSION_CONFIRMED" -> MET;
-            case "TOO_YOUNG", "OLDER_NO_EXTENSION", "EXTENDED_LIMIT_EXCEEDED" -> NOT_MET;
-            default -> UNKNOWN;
-        };
         var connectionOutcome = switch (connection) {
             case "RESIDENT", "UNIVERSITY", "WORKPLACE", "BUSINESS_CONFIRMED" -> MET;
             case "NONE_CONFIRMED" -> NOT_MET;
             default -> UNKNOWN;
         };
         var checks = List.of(
-                check("birthRange", "공고의 연령 기준", values.get("birthRange"), ageOutcome,
-                        "2026.1.1. 기준 만 19~39세로, 1986.1.2.~2007.1.1. 출생자가 기본 대상이에요. 의무복무 제대군인의 연령 상한 연장은 최대 3세 범위에서 확인해요.",
-                        "출생일 범위와 군복무에 따른 연령 연장 후 기준 충족 여부를 확인해주세요."),
+                birthCheck(birth),
                 check("seoulConnection", "서울 거주 또는 생활권", values.get("seoulConnection"), connectionOutcome,
                         "서울 거주자 또는 서울 소재 대학의 재·휴학생, 직장의 재·휴직자가 대상이에요. 서울 생활권 증빙은 재학·휴학·재직증명서, 사업자등록증 등으로 확인해요.",
                         "서울에 살지 않아도 서울 소재 대학·직장에 해당할 수 있어요. 서울 생활권 증빙을 확인해주세요."),
@@ -95,7 +88,21 @@ public final class SeoulYouthNetworkRules {
         return new Evaluation(NUMBER, revision, VERSION, whole.status(), common, SCOPE,
                 periodNotice(now) + " 연령·서울 거주 또는 생활권·위원 이력만 비교한 결과예요.", remaining, SOURCE, now, checks);
     }
-    private static String periodNotice(Instant now) {
+    static Check ageCheck(java.time.LocalDate birthDate) {
+        return birthCheck(birthDate.isBefore(java.time.LocalDate.of(1986, 1, 2)) ? "MILITARY_EXTENSION_PENDING"
+                : birthDate.isAfter(java.time.LocalDate.of(2007, 1, 1)) ? "TOO_YOUNG" : "BASE_RANGE");
+    }
+    private static Check birthCheck(String birth) {
+        var ageOutcome = switch (birth == null ? "" : birth) {
+            case "BASE_RANGE", "MILITARY_EXTENSION_CONFIRMED" -> MET;
+            case "TOO_YOUNG", "OLDER_NO_EXTENSION", "EXTENDED_LIMIT_EXCEEDED" -> NOT_MET;
+            default -> UNKNOWN;
+        };
+        return check("birthRange", "공고의 연령 기준", birth, ageOutcome,
+                        "2026.1.1. 기준 만 19~39세로, 1986.1.2.~2007.1.1. 출생자가 기본 대상이에요. 의무복무 제대군인의 연령 상한 연장은 최대 3세 범위에서 확인해요.",
+                        "출생일 범위와 군복무에 따른 연령 연장 후 기준 충족 여부를 확인해주세요.");
+    }
+    static String periodNotice(Instant now) {
         if (!now.isBefore(CLOSE_AT)) return "이 모집은 2026년 5월 29일 17:00(서울)에 접수가 마감됐어요.";
         var period = "접수 기간은 2026년 5월 20일 09:00~5월 29일 17:00(서울)이에요.";
         return now.isBefore(OPEN_AT) ? "접수 전이에요. " + period : period;

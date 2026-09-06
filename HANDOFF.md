@@ -10,6 +10,7 @@
 - 추가 정리 대상 4개도 구현했다. 조건 확인은 SELECT 2회로 조회하고 고정 상태용 판정 객체를 제거했다. AI 종료 상태는 `Phase.isTerminal()`, DB 시각 변환·비교는 `AiDatabaseTime`으로 모았다.
 - 추가 3개 항목도 구현했다. `b4a09e7`은 변경 없는 관심 정책 조회를 SELECT 3회, 질문·평가를 각각 1회로 줄인다. `8cae9f6`은 미사용 AI 예약 엔진을 제거하고 필요한 검사를 DB 테스트로 통합한다. [적용 내용·검증 기록](docs/development/backend-api-review.md#반복-조회미사용-모델-정리--2026-09-06-적용)에 조회 횟수·잠금·테스트 범위를 기록했다.
 - 수집 조회 2개도 `22a8120`에서 구현했다. 상태 확인과 원문 조회를 분리해 정상 재처리의 원문 읽기를 1회로 줄였고, 발송 예약 ID는 잠금 조회에서 함께 읽는다. [수집 조회 정리](docs/development/backend-api-review.md#수집-조회-정리--2026-09-06-적용)에 적용 내용과 검증 범위를 기록했다.
+- `950311f` 기준 [미사용 수집 모델](docs/development/backend-api-review.md#미사용-수집-모델-검토--2026-09-06-미적용)을 추가 확인했다. `CollectionRun`·`CollectionAttempt`·`CollectionPosition`은 전용 테스트에서만 사용한다. 현재 Spring Batch·DB 수집 검사와 대조해 정리할 후보이며 아직 미적용이다. 이번에는 문서만 변경했다.
 
 ## 구현·검증 범위
 

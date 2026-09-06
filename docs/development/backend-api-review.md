@@ -111,3 +111,13 @@ npm run verify -- test:ingestion -- \
 Temurin 25.0.3을 사용해 `npm run verify -- test:policy-collection`을 실행했다. 수집 HTTP 클라이언트·원문 변환·페이지 수집·범위 재처리·스케줄러·정책 조회와 API 계약 검사 46건이 실패·오류·건너뜀 없이 통과했다. 기존 `OntongSweepTest`에서 원문 조회 함수 1회와 제어 행 SELECT 1회를 확인했다. 별도 테스트 사례를 추가하지 않고 기존 재처리·예약 교체 사례를 보완했다.
 
 로그는 `.local/verification/1788658608359-66a5a149.log`다. 검증한 앱 코드는 `22a8120`이며 이후 변경은 문서뿐이다. 수집 내부 조회만 변경해 전체 서버 빌드·웹 검사·실제 온통청년 호출은 실행하지 않았다.
+
+## 미사용 수집 모델 검토 — 2026-09-06, 미적용
+
+`950311f`에서 추가로 확인한 정리 대상은 초기 메모리 수집 모델 1개다. [CollectionRun](../../backend/src/main/java/kr/youthpolicymate/ingestion/CollectionRun.java)·[CollectionAttempt](../../backend/src/main/java/kr/youthpolicymate/ingestion/CollectionAttempt.java)·[CollectionPosition](../../backend/src/main/java/kr/youthpolicymate/ingestion/CollectionPosition.java)는 서로를 참조하지만 다른 실행 코드에서는 사용하지 않는다. 앱 코드 329줄이며 유일한 외부 사용처는 전용 `CollectionRunTest` 260줄이다. `test:ingestion`도 이 모델의 검사를 계속 실행한다.
+
+[당시 설계](../design/collection-run-progress.md)는 API 연결 전의 진행·중단·재개 모델을 정의한다. 실제 수집은 이후 추가한 Spring Batch 작업과 `OntongCollectionStore`·`OntongSweepStore`로 실행한다. 두 구현의 상태·재시도 방식이 완전히 같지는 않으므로 초기 모델의 테스트를 현재 수집 검증으로 볼 수 없다.
+
+정리 방향은 세 모델 파일과 전용 테스트를 제거하고, 현재 수집 동작에 필요한 사례만 기존 `OntongCollectionTest`·`OntongSweepTest`와 대조해 보완하는 것이다. 페이지 커서 순환처럼 현재 숫자 페이지 수집에 해당하지 않는 가상 사례까지 옮기지는 않는다. 설계·README·검증 명령에서도 이전 모델과 실제 구현의 관계를 정리해야 한다. 우선순위는 중간이며, 실행 성능보다 유지보수 범위를 줄이는 작업이다.
+
+이번에는 사용처·호출 경로·기준 문서를 확인하고 검토·인계 문서만 변경했다. 앱 코드와 테스트는 수정하거나 실행하지 않았다.

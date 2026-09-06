@@ -64,18 +64,35 @@ npm run verify -- test:ai-recovery-policy -- \
   --tests 'kr.youthpolicymate.member.MemberFlowTest'
 ```
 
-## 추가 검토 — 2026-09-06, 미적용
+## 반복 조회·미사용 모델 정리 — 2026-09-06 적용
 
-`96b1bc6`에서 기존 10개 항목을 제외하고 호출 경로와 설계 문서를 확인했다. 조회 개선 2개와 설계 정리 후보 1개가 남아 있다.
+`7f5182d`에서 검토한 3개 항목을 구현했다. 조회 개선은 `b4a09e7`, AI 예약 정리는 `8cae9f6`에 커밋했다.
 
-| 우선순위 | 대상과 현재 문제 | 정리 방향 |
-|---|---|---|
-| 높음 | [관심 정책 목록](../../backend/src/main/java/kr/youthpolicymate/member/MemberPolicyStore.java)의 `saved → refresh`는 정책마다 잠금·상세·저장 개정을 따로 조회한다. 변경이 없는 20건에도 SELECT 63회가 필요하고 본문을 갱신 확인과 목록 표시에서 각각 변환한다. | 저장 개정·현재 개정·표시 필드를 묶어 조회하고, 개정이 달라진 정책만 원문을 읽어 일정과 알림을 갱신한다. 회원 잠금, 정책 번호순 잠금, 최신 개정 확인은 유지한다. |
-| 중간 | [질문 조회](../../backend/src/main/java/kr/youthpolicymate/policy/catalog/PolicyQuestionService.java)의 `questionsAt`은 `find`와 `contentHash`로 같은 정책을 두 번 읽는다. 전체 본문·수집 시각을 변환하지만 실제로는 개정·해시·출처 주소만 쓴다. 답변 평가도 같은 경로를 호출한다. | 개정·해시를 한 번에 읽는 내부 조회 결과를 사용한다. 출처 주소는 기존 형식으로 만들고, 미존재·미공개 정책 거절과 질문 제공 기간·해시 검사를 유지한다. SELECT를 2회에서 1회로 줄일 수 있다. |
-| 낮음·설계 검토 | [AI 예약 상태 모델](../../backend/src/main/java/kr/youthpolicymate/ingestion/AiBudgetReservationState.java)의 `open`과 인스턴스 상태 전이는 전용 테스트에서만 실행된다. [예약 저장소](../../backend/src/main/java/kr/youthpolicymate/ingestion/AiBudgetReservationStore.java)와 [후속 상태 저장소](../../backend/src/main/java/kr/youthpolicymate/ingestion/AiBudgetReservationLifecycleStore.java)가 예약·정산 규칙을 별도로 구현한다. | 현재 설계가 순수 모델과 DB 구현을 모두 명시하므로 삭제 전에 기준을 정리한다. DB 구현을 기준으로 테스트 범위를 대조한 뒤 미사용 상태 엔진을 제거하거나, 실제로 공유할 전이 규칙을 분리하는 방향을 검토한다. 운영 코드가 쓰는 `Phase`·이벤트 값 타입은 보존한다. |
+| 대상 | 적용 내용 |
+|---|---|
+| [관심 정책 목록](../../backend/src/main/java/kr/youthpolicymate/member/MemberPolicyStore.java) | 회원 잠금 뒤 저장 개정·현재 개정·알림 제목을 JOIN하고 정책 번호순으로 `FOR SHARE OF p` 잠금을 잡는다. 변경된 정책만 원문을 읽어 일정·알림을 갱신한다. 최종 목록은 제목·신청 기간만 추출해 본문 전체를 Java 객체로 변환하지 않는다. |
+| [질문 조회·평가](../../backend/src/main/java/kr/youthpolicymate/policy/catalog/PolicyQuestionService.java) | 내부 `QuestionVersion`으로 개정·해시를 한 번에 조회한다. 본문·수집 시각 변환을 제거했다. 출처 주소, 미존재·미공개 정책 거절, 기간·해시·답변 버전 검사는 유지한다. |
+| [AI 예약 상태](../../backend/src/main/java/kr/youthpolicymate/ingestion/AiBudgetReservationState.java) | 테스트에서만 실행하던 예약 목록·상태 엔진을 제거하고 `Phase`·이벤트 값 타입을 유지했다. [설계](../design/ai-budget-reservation-lifecycle.md)를 DB 저장소 기준으로 정리했다. 순수 모델에만 있던 시간 경계·잘못된 호출 순서 검사를 DB 테스트로 옮기고 종료 결과 충돌 검사를 보완했다. |
 
-관심 정책 SELECT 수는 변경이 없는 N건에서 회원 잠금 1회 + 정책 번호 목록 1회 + 정책별 3회 + 최종 목록 1회, 즉 `3N + 3`으로 계산했다. 코드의 호출 횟수이며 실행 시간이나 부하를 측정한 결과는 아니다. 개선 후 조회 횟수는 구현과 통합 테스트에서 확인해야 한다.
+변경이 없는 관심 정책 N건의 SELECT는 기존 `3N + 3`회에서 3회로 줄었다. PostgreSQL 통합 테스트에서 20건과 빈 목록 모두 3회, 목록 정렬·표시 필드·회원 분리를 확인했다. 별도 트랜잭션의 정책 갱신이 조회 트랜잭션이 끝날 때까지 차단되는 것도 확인했다. 기존 마감 변경·알림 취소·중복 발송·Outbox 검사는 그대로 통과했다.
 
-짧은 `requireText` 같은 검증 함수를 전부 공통화하는 작업은 제외했다. 새 공통 계층을 추가할 만큼 이득이 크지 않다. DB 잠금 뒤 상태 확인과 발송 직전 동의·개정 확인도 유지 대상이다.
+질문 조회와 답변 평가는 각각 SELECT 2회에서 1회로 줄었고 호출 횟수를 통합 테스트에서 확인했다. 응답 시간이나 부하 개선율을 측정한 것은 아니다.
 
-이번에는 코드·테스트·설정 변경 없이 검토 내용과 인계 문서만 수정했다. `npm run verify -- status`에서 최근 관련 검사 이후 문서 2개만 달라진 것을 확인했으며 앱 테스트는 반복하지 않았다.
+`test:ingestion`에서 삭제한 메모리 모델 검사를 제외했다. `test:ai-reservations`는 `test:ai-reservation-db`를 실행하는 별칭이며 Docker가 필요하다. 두 명령을 연달아 실행할 필요는 없다. 짧은 검증 함수, 발송 직전 동의·개정 검사, DB 잠금·유일성 제약은 유지했다.
+
+### 검증 기록
+
+Temurin 25.0.3을 `JAVA_HOME`으로 지정해 다음 범위를 실행했다.
+
+```sh
+npm run verify -- test:ingestion -- \
+  --tests 'kr.youthpolicymate.ingestion.Ai*Test' \
+  --tests 'kr.youthpolicymate.ingestion.PolicyAi*Test' \
+  --tests 'kr.youthpolicymate.policy.catalog.PolicyCatalogTest' \
+  --tests 'kr.youthpolicymate.member.MemberFlowTest'
+```
+
+- 192건 중 191건 통과. 이관한 AI 테스트 1건에서 `IllegalArgumentException`을 기대했으나 Spring 저장소의 예외 변환으로 `InvalidDataAccessApiUsageException`이 발생했다. 거절 동작은 정상이며 테스트 기대값을 원인 예외까지 확인하도록 수정했다.
+- `npm run verify -- test:ai-reservations`로 영향받은 DB 테스트 14건을 다시 실행해 실패·오류·건너뜀 없이 통과했다. 앞서 통과한 나머지 178건의 코드·테스트는 변경하지 않아 재사용했다.
+- 로그: `.local/verification/1788656647057-b7d789e9.log`, `.local/verification/1788656736335-c7602d24.log`. 두 실행을 합쳐 관련 192건을 확인했다. `verify status`에는 첫 실행의 실패 이력이 남아 있으므로 위 재실행 범위와 함께 판단한다.
+- 검증 후 앱 코드는 `8cae9f6`과 동일하며 후속 변경은 문서뿐이다. API 계약 일치 검사는 통과했고 외부 계약·프런트엔드·공통 설정을 바꾸지 않아 API 재생성·전체 서버 빌드·웹 검사는 반복하지 않았다.

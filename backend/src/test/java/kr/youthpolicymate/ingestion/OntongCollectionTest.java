@@ -62,7 +62,7 @@ class OntongCollectionTest {
         var run = UUID.randomUUID();
         when(client.fetch(anyString(), eq(1))).thenAnswer(call -> {
             assertThat(TransactionSynchronizationManager.isActualTransactionActive()).isFalse();
-            assertThat(store.page(run).state()).isEqualTo("FETCHING");
+            assertThat(store.pageStatus(run).state()).isEqualTo("FETCHING");
             return new OntongApiClient.Response(AT, body("첫 정책", "두 번째 정책"));
         });
         assertThat(job("fetch", run).getStatus()).isEqualTo(BatchStatus.COMPLETED);

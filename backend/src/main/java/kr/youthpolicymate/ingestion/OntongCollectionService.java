@@ -22,7 +22,7 @@ public class OntongCollectionService {
 
     // 범위 실행이 사전에 저장한 요청만 보낸다. 중단 후에는 저장 원본만 재처리한다.
     void receive(UUID runId, String apiKey) {
-        var page = store.page(runId);
+        var page = store.pageStatus(runId);
         store.startDispatch(runId);
         try { store.received(runId, client.fetch(apiKey, page.number())); }
         catch (OntongApiClient.Failure failure) {

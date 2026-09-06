@@ -9,6 +9,7 @@ import org.springframework.boot.testcontainers.service.connection.ServiceConnect
 import org.springframework.context.ApplicationContext;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
@@ -39,8 +40,8 @@ class OntongSweepTest {
     static final PostgreSQLContainer postgres = new PostgreSQLContainer("postgres:18.6-alpine");
     @Autowired OntongSweepStore sweeps;
     @Autowired OntongSweepRunner runner;
-    @Autowired OntongCollectionStore pages;
-    @Autowired JdbcClient jdbc;
+    @MockitoSpyBean OntongCollectionStore pages;
+    @MockitoSpyBean JdbcClient jdbc;
     @Autowired ObjectMapper mapper;
     @Autowired ApplicationContext context;
     @MockitoBean OntongApiClient client;
@@ -90,7 +91,9 @@ class OntongSweepTest {
         advance(5);
         assertThatThrownBy(() -> pages.begin(UUID.randomUUID(), 2)).hasMessage("LOCAL_REQUEST_INTERVAL");
         pages.received(request.runId(), response(1, 2, 2, false));
+        clearInvocations(pages);
         assertThat(runner.tick(id)).isEqualTo("PROGRESSED");
+        verify(pages, times(1)).page(request.runId());
         assertThat(sweeps.find(id).state()).isEqualTo("COMPLETED");
         verifyNoInteractions(client);
     }
@@ -100,7 +103,9 @@ class OntongSweepTest {
         var earlier = UUID.randomUUID(); pages.begin(earlier, 1); advance(30);
         var later = UUID.randomUUID(); pages.begin(later, 2);
         assertThatThrownBy(() -> pages.startDispatch(earlier)).hasMessage("REQUEST_RESERVATION_CHANGED");
+        clearInvocations(jdbc);
         pages.startDispatch(later);
+        verify(jdbc, times(1)).sql(startsWith("SELECT"));
         verifyNoInteractions(client);
     }
 

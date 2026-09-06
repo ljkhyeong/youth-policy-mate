@@ -55,8 +55,8 @@ public class OntongSweepStore {
         if (existing.isPresent()) {
             var work = existing.get();
             if (work.kind().equals("COMPLETED")) return new Work("SKIP", id, work.runId(), work.page());
-            var page = pages.page(work.runId());
-            if (page.rawBody() != null) return new Work("REPLAY", id, work.runId(), work.page());
+            var page = pages.pageStatus(work.runId());
+            if (page.responseStored()) return new Work("REPLAY", id, work.runId(), work.page());
             if (page.state().equals("FETCH_FAILED")) {
                 pause(work, page.failureCode()); return new Work("PAUSED", id, work.runId(), work.page());
             }

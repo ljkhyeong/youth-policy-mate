@@ -34,7 +34,7 @@ public class OntongSweepRunner {
             var execution = operator.start(job, new JobParametersBuilder().addString("runId", work.runId().toString())
                     .addString("mode", work.kind().equals("FETCH") ? "receive" : "replay").addLong("page", (long) work.page())
                     .addString("invocation", UUID.randomUUID().toString()).toJobParameters());
-            var page = pages.page(work.runId());
+            var page = pages.pageStatus(work.runId());
             if (execution.getStatus() == BatchStatus.COMPLETED) {
                 long expected = Math.min(10, Math.max(0, page.totalCount() - (page.number() - 1L) * 10));
                 boolean complete = page.itemCount() == expected;

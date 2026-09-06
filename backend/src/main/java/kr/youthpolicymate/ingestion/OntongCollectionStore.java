@@ -54,11 +54,10 @@ public class OntongCollectionStore {
 
     @Transactional
     public void startDispatch(UUID runId) {
-        jdbc.sql("SELECT id FROM ontong_collection_request_gate WHERE id = 1 FOR UPDATE").query(Integer.class).single();
-        if (limits.configured()) {
-            var reservation = jdbc.sql("SELECT reserved_run_id FROM ontong_collection_request_gate WHERE id = 1").query(UUID.class).optional();
-            if (reservation.isEmpty() || !reservation.get().equals(runId)) throw new OntongApiClient.Failure("REQUEST_RESERVATION_CHANGED");
-        }
+        var reservation = jdbc.sql("SELECT reserved_run_id FROM ontong_collection_request_gate WHERE id = 1 FOR UPDATE")
+                .query().singleRow().get("reserved_run_id");
+        if (limits.configured() && (reservation == null || !reservation.equals(runId)))
+            throw new OntongApiClient.Failure("REQUEST_RESERVATION_CHANGED");
         var now = clock.instant().atOffset(ZoneOffset.UTC);
         int updated = jdbc.sql("UPDATE ontong_collection_pages SET dispatch_started_at = :now WHERE run_id = :id AND state = 'FETCHING' AND dispatch_started_at IS NULL")
                 .param("id", runId).param("now", now).update();
@@ -96,13 +95,23 @@ public class OntongCollectionStore {
     }
 
     public Page page(UUID runId) {
-        return jdbc.sql("SELECT * FROM ontong_collection_pages WHERE run_id = :id").param("id", runId)
+        return jdbc.sql("SELECT request_sequence, page_number, received_at, raw_body FROM ontong_collection_pages WHERE run_id = :id")
+                .param("id", runId)
                 .query((rs, row) -> {
                     var at = rs.getObject("received_at", OffsetDateTime.class);
                     return new Page(runId, rs.getLong("request_sequence"), rs.getInt("page_number"),
-                            rs.getString("state"), at == null ? null : at.toInstant(), rs.getString("raw_body"),
-                            rs.getString("failure_code"), rs.getObject("item_count", Integer.class), rs.getObject("total_count", Long.class));
+                            at == null ? null : at.toInstant(), rs.getString("raw_body"));
                 }).optional().orElseThrow(() -> new OntongApiClient.Failure("RUN_NOT_FOUND"));
+    }
+
+    PageStatus pageStatus(UUID runId) {
+        return jdbc.sql("""
+                SELECT page_number, state, raw_body IS NOT NULL AS response_stored, failure_code, item_count, total_count
+                FROM ontong_collection_pages WHERE run_id = :id
+                """).param("id", runId).query((rs, row) -> new PageStatus(rs.getInt("page_number"),
+                        rs.getString("state"), rs.getBoolean("response_stored"), rs.getString("failure_code"),
+                        rs.getObject("item_count", Integer.class), rs.getObject("total_count", Long.class)))
+                .optional().orElseThrow(() -> new OntongApiClient.Failure("RUN_NOT_FOUND"));
     }
 
     @Transactional
@@ -199,5 +208,6 @@ public class OntongCollectionStore {
                         + " | " + rs.getString(3) + " | 처리 시도 " + rs.getInt(4)).list();
     }
 
-    public record Page(UUID runId, long sequence, int number, String state, Instant receivedAt, String rawBody, String failureCode, Integer itemCount, Long totalCount) {}
+    public record Page(UUID runId, long sequence, int number, Instant receivedAt, String rawBody) {}
+    record PageStatus(int number, String state, boolean responseStored, String failureCode, Integer itemCount, Long totalCount) {}
 }

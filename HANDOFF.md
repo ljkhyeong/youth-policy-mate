@@ -6,12 +6,8 @@
 
 - 개발 브랜치의 누적 변경은 `39f78b5`에서 로컬 `main`에 병합했다. 원격 푸시는 하지 않았다.
 - 지시·스킬 정리는 `7c6ec51`에 커밋했다. `codex/verification-workflow`에서 기존 두 작업의 검증 기록을 검토하고 [검증 명령·결과 기록·재실행 기준](docs/development/verification-workflow.md)을 추가했다.
-- `codex/backend-api-review`에서 [Java·Spring API 활용과 중복 검증 정리](docs/development/backend-api-review.md) 6개 항목을 구현했다. SMTP 자동 설정·이메일 주소 공통 제약·OAuth 기본 저장소를 적용하고 중복 null 검사·미사용 팩터리·정책별 중복 답변 검증을 정리했다.
-- 추가 정리 대상 4개도 구현했다. 조건 확인은 SELECT 2회로 조회하고 고정 상태용 판정 객체를 제거했다. AI 종료 상태는 `Phase.isTerminal()`, DB 시각 변환·비교는 `AiDatabaseTime`으로 모았다.
-- 추가 3개 항목도 구현했다. `b4a09e7`은 변경 없는 관심 정책 조회를 SELECT 3회, 질문·평가를 각각 1회로 줄인다. `8cae9f6`은 미사용 AI 예약 엔진을 제거하고 필요한 검사를 DB 테스트로 통합한다. [적용 내용·검증 기록](docs/development/backend-api-review.md#반복-조회미사용-모델-정리--2026-09-06-적용)에 조회 횟수·잠금·테스트 범위를 기록했다.
-- 수집 조회 2개도 `22a8120`에서 구현했다. 상태 확인과 원문 조회를 분리해 정상 재처리의 원문 읽기를 1회로 줄였고, 발송 예약 ID는 잠금 조회에서 함께 읽는다. [수집 조회 정리](docs/development/backend-api-review.md#수집-조회-정리--2026-09-06-적용)에 적용 내용과 검증 범위를 기록했다.
-- 미사용 수집 모델은 `211307b`에서 제거했다. 세 모델 파일·전용 테스트·초기 설계/개발 문서를 삭제하고 원문 보존·중복 정책 번호 검사를 실제 수집 DB 테스트에 보완했다. [정리 내용](docs/development/backend-api-review.md#미사용-수집-모델-정리--2026-09-06-적용)을 참고한다.
-- 목록 조회·수집 저장 2개는 `62aff07`에서 구현했다. 목록은 필요한 JSON 필드만 조회하고 수집 항목 INSERT는 Spring JDBC 배치로 묶는다. [적용 내용·검증 범위](docs/development/backend-api-review.md#목록-조회수집-저장-정리--2026-09-06-적용)를 참고한다.
+- `codex/backend-api-review`에서 Spring 표준 API 적용, 중복 검증·미사용 수집/AI 예약 모델 제거, 반복 조회 축소와 수집 배치 저장을 마쳤다. [적용 내용·검증 기록](docs/development/backend-api-review.md)에 완료 항목과 유지할 검증 근거를 정리했다.
+- 프로젝트 추가 점검은 `c8cfc33`에서 마쳤다. 사용하지 않는 JPA/Hibernate ORM·Modulith 의존성과 JPA 설정을 제거하고 JDBC 트랜잭션 구성을 사용한다. 프런트엔드·개발 도구는 변경하지 않았다. [정리 내용](docs/development/backend-api-review.md#미사용-프레임워크-정리--2026-09-06-적용)을 참고한다.
 
 ## 구현·검증 범위
 
@@ -20,7 +16,7 @@
 - 회원 기능: OAuth 로그인 코드, 관심 정책 저장·해제, 일정·서비스 내 알림을 연결했다. 실제 카카오·네이버 로그인은 미검증이다. [회원 기능](docs/development/member-policy-flow.md)
 - 이메일: 주소 확인·동의·암호화 저장·Outbox·SMTP 어댑터를 구현했다. 실제 공급자·발신 도메인은 미정이며 외부 수신함 전달은 미검증이다. [이메일 구현과 설정](docs/development/member-email-reminders.md)
 - AI: 후보 개정 검사·비용 예약·DB 복구 흐름은 내부 모델과 테스트용 공급자로 검증했다. 실제 AI 호출·청구·운영 작업자는 미연결이다. [AI 요청 판단](docs/development/ai-request-admission.md)·[복구 실행](docs/development/ai-reservation-recovery-work-runs.md)
-- 최근 앱 검증: `62aff07`에서 `npm run verify -- test:policy-collection`을 통과했다. 로그는 `.local/verification/1788677061574-2dd6ff10.log`이며 이후 변경은 문서뿐이다. 변경하지 않은 회원·AI 예약/복구 등은 이전 결과를 재사용한다. [실제 명령·범위·미실행 항목](docs/development/backend-api-review.md)을 참고한다.
+- 최근 앱 검증: `c8cfc33`에서 `npm run verify -- check:backend`로 서버 전체 테스트·빌드를 통과했다. 로그는 `.local/verification/1788690272938-2917da10.log`이며 이후 변경은 문서뿐이다. [실제 명령·범위·미실행 항목](docs/development/backend-api-review.md)을 참고한다.
 - 검증 도구의 성공·실패·실행 중 변경 시나리오와 기존 도구 검사를 통과했다. 컴파일·패키징 명령의 Gradle 실행 계획에 테스트 실행이 없음을 확인했다. `npm run verify -- status`에서 실행 기록을 확인한다. 검증 도구를 정리할 당시에는 앱 기능을 변경하지 않아 전체 앱 테스트를 재실행하지 않았다.
 
 ## 남은 작업
@@ -36,6 +32,6 @@
 
 - 제품 동작은 [PRD](docs/PRD/0001_product-baseline/spec.md), 기술 선택은 [ADR](docs/ADR/), 적용 스킬은 [AGENTS.md](AGENTS.md)를 따른다.
 - 로컬 실행은 [개발 환경](docs/development/local-development.md), 실제 정책 서버 연결은 [조회 문서](docs/development/policy-catalog.md)를 참고한다. 현재 프로세스·브랜치·환경 설정은 실행 시점에 확인한다.
-- 최근 검증의 `JAVA_HOME`은 `/Users/lim/.gradle/jdks/eclipse_adoptium-25-aarch64-os_x.2/jdk-25.0.3+9/Contents/Home`이다. `test:ai-reservations`는 이제 PostgreSQL 검사로 Docker가 필요하다. `verify status`의 첫 실패는 검토 문서에 기록한 DB 범위 재실행으로 해결했다.
+- 최근 검증의 `JAVA_HOME`은 `/Users/lim/.gradle/jdks/eclipse_adoptium-25-aarch64-os_x.2/jdk-25.0.3+9/Contents/Home`이다. `test:ai-reservations`는 PostgreSQL 검사로 Docker가 필요하다.
 - 수집 필드·미확인 계약은 [온통청년 API 조사](docs/research/ontong-api-contract.md)에 있다. API 키 설정과 실제 응답 확보는 완료했으며 비밀값·전체 캡처는 Git에 넣지 않는다.
 - 정기 수집·SMTP·AI 복구 실행기의 기본값은 비활성화다. 외부 연동 검증에는 실제 설정이 필요하다. 운영 장비·클라우드와 개인정보 보관·삭제 정책은 아직 미정이다.

@@ -4,6 +4,46 @@
  */
 
 export interface paths {
+    readonly "/api/v1/admin/collection-exceptions": {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header?: never;
+            readonly path?: never;
+            readonly cookie?: never;
+        };
+        /**
+         * 관리자 전용 수집 항목 검증·저장 실패 목록
+         * @description 최근 처리 시각 순. 재처리에 성공한 항목은 제외하며, 같은 시각에는 수집 요청 순번 역순·항목 위치 순으로 정렬한다.
+         */
+        readonly get: operations["listCollectionExceptions"];
+        readonly put?: never;
+        readonly post?: never;
+        readonly delete?: never;
+        readonly options?: never;
+        readonly head?: never;
+        readonly patch?: never;
+        readonly trace?: never;
+    };
+    readonly "/api/v1/admin/collection-exceptions/{runId}/{itemIndex}": {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header?: never;
+            readonly path?: never;
+            readonly cookie?: never;
+        };
+        /**
+         * 관리자 전용 수집 실패 원본·현재 정책 조회
+         * @description 저장된 실패 유형만 제공하며 구체적인 실패 원인을 추정하지 않는다. 원본 수정이나 재처리를 실행하지 않는다.
+         */
+        readonly get: operations["getCollectionException"];
+        readonly put?: never;
+        readonly post?: never;
+        readonly delete?: never;
+        readonly options?: never;
+        readonly head?: never;
+        readonly patch?: never;
+        readonly trace?: never;
+    };
     readonly "/api/v1/logout": {
         readonly parameters: {
             readonly query?: never;
@@ -275,6 +315,48 @@ export interface components {
             /** @enum {string} */
             readonly employmentStatus: "EMPLOYED" | "SELF_EMPLOYED" | "NOT_EMPLOYED" | "FREELANCER" | "DAY_WORKER" | "ENTREPRENEUR" | "SHORT_TERM_WORKER" | "FARMER" | "OTHER";
         };
+        readonly CollectionExceptionCurrentPolicy: {
+            /** Format: date-time */
+            readonly collectedAt: string;
+            readonly content: components["schemas"]["PolicyContent"];
+            readonly policyNumber: string;
+            /** Format: int64 */
+            readonly revision: number;
+        };
+        readonly CollectionExceptionDetail: {
+            /** @description 같은 정책번호의 조회 시점 공개 내용. 없으면 null */
+            readonly currentPolicy: components["schemas"]["CollectionExceptionCurrentPolicy"] | null;
+            readonly item: components["schemas"]["CollectionExceptionItem"];
+            /** @description 저장된 수집 항목의 JSON 문자열. 외부 원문이므로 실행하지 않고 텍스트로 표시 */
+            readonly rawPolicyJson: string;
+        };
+        readonly CollectionExceptionItem: {
+            /** Format: int32 */
+            readonly attempts: number;
+            /**
+             * Format: int32
+             * @description 수집 페이지 내 0부터 시작하는 항목 위치
+             */
+            readonly itemIndex: number;
+            /** Format: date-time */
+            readonly lastAttemptAt: string | null;
+            /** @enum {string} */
+            readonly outcome: "INVALID_ITEM" | "STORE_FAILED";
+            /** Format: int32 */
+            readonly pageNumber: number;
+            /** @description 형식을 확인한 원천 정책번호. 확인 불가 시 null */
+            readonly policyNumber: string | null;
+            /** Format: uuid */
+            readonly runId: string;
+        };
+        readonly CollectionExceptionPage: {
+            readonly hasNext: boolean;
+            readonly items: readonly components["schemas"]["CollectionExceptionItem"][];
+            /** Format: int32 */
+            readonly page: number;
+            /** Format: int32 */
+            readonly pageSize: number;
+        };
         readonly LoginProvider: {
             readonly id: string;
             readonly name: string;
@@ -515,6 +597,133 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    readonly listCollectionExceptions: {
+        readonly parameters: {
+            readonly query?: {
+                readonly page?: number;
+                readonly pageSize?: number;
+            };
+            readonly header?: never;
+            readonly path?: never;
+            readonly cookie?: never;
+        };
+        readonly requestBody?: never;
+        readonly responses: {
+            /** @description OK */
+            readonly 200: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "*/*": components["schemas"]["CollectionExceptionPage"];
+                };
+            };
+            /** @description 조회 조건 오류 */
+            readonly 400: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "*/*": components["schemas"]["PolicyApiError"];
+                };
+            };
+            /** @description 로그인 필요 */
+            readonly 401: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "*/*": components["schemas"]["PolicyApiError"];
+                };
+            };
+            /** @description 관리자 권한 없음 */
+            readonly 403: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "*/*": components["schemas"]["PolicyApiError"];
+                };
+            };
+            /** @description 수집 이력 조회 실패 */
+            readonly 503: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "*/*": components["schemas"]["PolicyApiError"];
+                };
+            };
+        };
+    };
+    readonly getCollectionException: {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header?: never;
+            readonly path: {
+                readonly runId: string;
+                readonly itemIndex: number;
+            };
+            readonly cookie?: never;
+        };
+        readonly requestBody?: never;
+        readonly responses: {
+            /** @description OK */
+            readonly 200: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "*/*": components["schemas"]["CollectionExceptionDetail"];
+                };
+            };
+            /** @description 조회 조건 오류 */
+            readonly 400: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "*/*": components["schemas"]["PolicyApiError"];
+                };
+            };
+            /** @description 로그인 필요 */
+            readonly 401: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "*/*": components["schemas"]["PolicyApiError"];
+                };
+            };
+            /** @description 관리자 권한 없음 */
+            readonly 403: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "*/*": components["schemas"]["PolicyApiError"];
+                };
+            };
+            /** @description 현재 실패 상태인 항목 없음 */
+            readonly 404: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "*/*": components["schemas"]["PolicyApiError"];
+                };
+            };
+            /** @description 수집 이력 조회 실패 */
+            readonly 503: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "*/*": components["schemas"]["PolicyApiError"];
+                };
+            };
+        };
+    };
     readonly logoutMember: {
         readonly parameters: {
             readonly query?: never;

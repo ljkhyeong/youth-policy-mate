@@ -38,7 +38,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @Testcontainers
 @SpringBootTest(properties = {"springdoc.api-docs.enabled=true", "springdoc.api-docs.path=/contract/policy",
-        "springdoc.api-docs.version=OPENAPI_3_1", "springdoc.packages-to-scan=kr.youthpolicymate.policy.catalog,kr.youthpolicymate.member",
+        "springdoc.api-docs.version=OPENAPI_3_1", "springdoc.packages-to-scan=kr.youthpolicymate.policy.catalog,kr.youthpolicymate.member,kr.youthpolicymate.admin",
         "springdoc.writer-with-order-by-keys=true"})
 @AutoConfigureMockMvc
 @Import(PolicyCatalogTest.ContractSecurity.class)
@@ -178,7 +178,9 @@ class PolicyCatalogTest {
     void matchesGeneratedContract() throws Exception {
         var response = mvc.perform(get("/contract/policy")).andExpect(status().isOk()).andReturn();
         var actual = mapper.readTree(response.getResponse().getContentAsByteArray());
-        assertThat(actual.path("paths").size()).isEqualTo(15);
+        assertThat(actual.at("/paths/~1api~1v1~1admin~1collection-exceptions/get/security/0/memberSession").isArray()).isTrue();
+        assertThat(actual.at("/paths/~1api~1v1~1admin~1collection-exceptions~1{runId}~1{itemIndex}/get/security/0/memberSession").isArray()).isTrue();
+        assertThat(actual.at("/components/schemas/CollectionExceptionDetail/properties/currentPolicy/anyOf/1/type").asString()).isEqualTo("null");
         assertThat(actual.at("/components/schemas/PolicySummary/required").valueStream().map(value -> value.asString()))
                 .contains("questionnaireAvailable");
         assertThat(actual.at("/components/schemas/PolicyCheckItem/required").valueStream().map(value -> value.asString()))

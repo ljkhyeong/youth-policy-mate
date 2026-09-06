@@ -16,11 +16,12 @@ import org.springframework.security.oauth2.client.OAuth2AuthorizedClientService;
 import org.springframework.security.oauth2.client.authentication.OAuth2AuthenticationToken;
 
 @Configuration(proxyBeanMethods = false)
+@org.springframework.boot.context.properties.EnableConfigurationProperties(AdminAccess.class)
 @ConditionalOnWebApplication(type = ConditionalOnWebApplication.Type.SERVLET)
 class SecurityConfiguration {
 
     @Bean
-    SecurityFilterChain securityFilterChain(HttpSecurity http, Environment env,
+    SecurityFilterChain securityFilterChain(HttpSecurity http, Environment env, AdminAccess adminAccess,
             ObjectProvider<InMemoryClientRegistrationRepository> registrations, ObjectProvider<SocialMemberService> social,
             ObjectProvider<OAuth2AuthorizedClientService> authorizedClients) throws Exception {
         http
@@ -28,7 +29,9 @@ class SecurityConfiguration {
                 .requestCache(cache -> cache.disable())
                 .exceptionHandling(errors -> errors
                         .authenticationEntryPoint((request, response, exception) -> {
-                            response.setStatus(request.getRequestURI().startsWith("/api/v1/me/") ? 401 : 403); response.setContentType("application/json;charset=UTF-8");
+                            var path = request.getRequestURI();
+                            response.setStatus(path.startsWith("/api/v1/me/") || path.startsWith("/api/v1/admin/") ? 401 : 403);
+                            response.setContentType("application/json;charset=UTF-8");
                             response.getWriter().write("{\"code\":\"LOGIN_REQUIRED\",\"message\":\"로그인이 필요합니다.\"}");
                         })
                         .accessDeniedHandler((request, response, exception) -> {
@@ -41,6 +44,8 @@ class SecurityConfiguration {
                         .requestMatchers(HttpMethod.GET, "/api/v1/policies", "/api/v1/policies/*", "/api/v1/policies/*/questions").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/v1/policies/checks", "/api/v1/policies/*/evaluation").permitAll()
                         .requestMatchers("/api/v1/me/**").hasRole("MEMBER")
+                        .requestMatchers(HttpMethod.GET, "/api/v1/admin/collection-exceptions", "/api/v1/admin/collection-exceptions/*/*")
+                            .access(adminAccess.authorization())
                         .anyRequest().denyAll())
                 .logout(logout -> logout.logoutUrl("/api/v1/logout").invalidateHttpSession(true)
                         .deleteCookies("YPM_SESSION").logoutSuccessHandler((request, response, authentication) -> response.setStatus(204)));

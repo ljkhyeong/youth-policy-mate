@@ -140,9 +140,17 @@ class PolicyCatalogTest {
     @DisplayName("비회원이 검색·페이지·상세·404를 구분하고 원본 담당자 필드는 공개 응답에서 제외한다")
     void exposesPublicReads() throws Exception {
         save("first", AT);
+        var content = parser.item(item).content();
         mvc.perform(get("/api/v1/policies").param("q", "AI학업").param("pageSize", "1"))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.total").value(1))
-                .andExpect(jsonPath("$.items[0].policyNumber").value(NUMBER)).andExpect(jsonPath("$.hasNext").value(false));
+                .andExpect(jsonPath("$.items[0].policyNumber").value(NUMBER))
+                .andExpect(jsonPath("$.items[0].title").value(content.title()))
+                .andExpect(jsonPath("$.items[0].description").value(content.description()))
+                .andExpect(jsonPath("$.items[0].category").value(content.category()))
+                .andExpect(jsonPath("$.items[0].organization").value(content.organization()))
+                .andExpect(jsonPath("$.items[0].applicationPeriod").value(content.applicationPeriod()))
+                .andExpect(jsonPath("$.items[0].collectedAt").value(AT.toString()))
+                .andExpect(jsonPath("$.hasNext").value(false));
         mvc.perform(get("/api/v1/policies").param("q", "%"))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.items").isEmpty());
         mvc.perform(get("/api/v1/policies").param("page", "2").param("pageSize", "1"))

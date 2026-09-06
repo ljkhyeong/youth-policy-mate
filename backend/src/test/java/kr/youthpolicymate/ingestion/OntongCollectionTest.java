@@ -82,6 +82,31 @@ class OntongCollectionTest {
     }
 
     @Test
+    @DisplayName("페이지 준비 완료 기록이 실패하면 모든 항목 저장을 롤백하고 원본으로 다시 준비한다")
+    void rollsBackPreparedItemsAndRetries() throws Exception {
+        var original = body("첫 정책", "두 번째 정책", "마지막 정책");
+        var run = stored(original, AT);
+        jdbc.sql("ALTER TABLE ontong_collection_pages ADD CONSTRAINT test_reject_ready CHECK (state <> 'READY')").update();
+        try {
+            assertThatThrownBy(() -> service.applyStored(run)).isInstanceOf(org.springframework.dao.DataIntegrityViolationException.class);
+            assertThat(jdbc.sql("SELECT count(*) FROM ontong_collection_items WHERE run_id = :id")
+                    .param("id", run).query(Long.class).single()).isZero();
+            assertThat(store.pageStatus(run).state()).isEqualTo("RECEIVED");
+            assertThat(store.page(run).rawBody()).isEqualTo(original);
+        } finally {
+            jdbc.sql("ALTER TABLE ontong_collection_pages DROP CONSTRAINT test_reject_ready").update();
+        }
+
+        service.applyStored(run);
+        assertThat(store.pageStatus(run).state()).isEqualTo("READY");
+        assertThat(jdbc.sql("SELECT raw_policy->>'plcyNm' FROM ontong_collection_items WHERE run_id = :id ORDER BY item_index")
+                .param("id", run).query(String.class).list()).containsExactly("첫 정책", "두 번째 정책", "마지막 정책");
+        assertThat(store.pending(run)).isEmpty();
+        assertThat(catalog.list("", 1, 20, false, AT).total()).isEqualTo(3);
+        verifyNoInteractions(client);
+    }
+
+    @Test
     @DisplayName("깨진 항목의 위치를 남기고 다른 정책은 저장하며 재처리는 실패 항목만 대상으로 한다")
     void preservesPartialFailure() throws Exception {
         var run = UUID.randomUUID();

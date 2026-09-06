@@ -2,6 +2,8 @@ package kr.youthpolicymate.ingestion;
 
 import kr.youthpolicymate.policy.catalog.PolicyCatalogStore;
 import org.springframework.context.annotation.Profile;
+import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
+import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
@@ -17,13 +19,16 @@ import java.util.UUID;
 @Profile("!preview")
 public class OntongCollectionStore {
     private final JdbcClient jdbc;
+    private final NamedParameterJdbcTemplate batchJdbc;
     private final PolicyCatalogStore catalog;
     private final OntongPolicyCapture parser;
     private final java.time.Clock clock;
     private final OntongRequestLimits limits;
 
-    public OntongCollectionStore(JdbcClient jdbc, PolicyCatalogStore catalog, ObjectMapper mapper, java.time.Clock clock, OntongRequestLimits limits) {
+    public OntongCollectionStore(JdbcClient jdbc, NamedParameterJdbcTemplate batchJdbc, PolicyCatalogStore catalog,
+                                 ObjectMapper mapper, java.time.Clock clock, OntongRequestLimits limits) {
         this.jdbc = jdbc;
+        this.batchJdbc = batchJdbc;
         this.catalog = catalog;
         this.parser = new OntongPolicyCapture(mapper);
         this.clock = clock; this.limits = limits;
@@ -120,12 +125,15 @@ public class OntongCollectionStore {
                 .param("id", runId).query(String.class).single();
         if (state.equals("READY")) return;
         if (!List.of("RECEIVED", "INVALID_RESPONSE").contains(state)) throw new OntongApiClient.Failure("RESPONSE_NOT_STORED");
-        for (int index = 0; index < parsed.items().size(); index++) {
-            jdbc.sql("""
-                    INSERT INTO ontong_collection_items(run_id, item_index, raw_policy)
-                    VALUES (:id, :index, CAST(:raw AS jsonb))
-                    """).param("id", runId).param("index", index).param("raw", parsed.items().get(index).toString()).update();
+        var batch = new MapSqlParameterSource[parsed.items().size()];
+        for (int index = 0; index < batch.length; index++) {
+            batch[index] = new MapSqlParameterSource("id", runId)
+                    .addValue("index", index).addValue("raw", parsed.items().get(index).toString());
         }
+        batchJdbc.batchUpdate("""
+                INSERT INTO ontong_collection_items(run_id, item_index, raw_policy)
+                VALUES (:id, :index, CAST(:raw AS jsonb))
+                """, batch);
         jdbc.sql("""
                 UPDATE ontong_collection_pages SET state = 'READY', failure_code = NULL,
                     item_count = :count, total_count = :total WHERE run_id = :id

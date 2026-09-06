@@ -109,17 +109,22 @@ public class PolicyCatalogStore {
             where += " AND " + alternatives;
         }
         var total = jdbc.sql("SELECT count(*) FROM policies" + where).params(parameters).query(Long.class).single();
-        var items = jdbc.sql("SELECT policy_number, content_hash, content, last_collected_at FROM policies" + where
+        var items = jdbc.sql("""
+                SELECT policy_number, content_hash, last_collected_at,
+                    content->>'title' AS title, content->>'description' AS description,
+                    content->>'category' AS category, content->>'organization' AS organization,
+                    content->>'applicationPeriod' AS application_period
+                FROM policies
+                """ + where
                         + " ORDER BY last_collected_at DESC, policy_number LIMIT :limit OFFSET :offset")
                 .params(parameters).param("limit", pageSize).param("offset", (page - 1) * pageSize)
-                .query((rs, row) -> {
-                    var content = mapper.readValue(rs.getString("content"), PolicyContent.class);
-                    return new PolicySummary(rs.getString("policy_number"), content.title(), content.description(),
-                            content.category(), content.organization(), content.applicationPeriod(),
+                .query((rs, row) -> new PolicySummary(rs.getString("policy_number"), rs.getString("title"),
+                            rs.getString("description"), rs.getString("category"), rs.getString("organization"),
+                            rs.getString("application_period"),
                             rs.getObject("last_collected_at", OffsetDateTime.class).toInstant(),
                             reviewed.containsKey(rs.getString("policy_number"))
-                                    && reviewed.get(rs.getString("policy_number")).equals(rs.getString("content_hash")));
-                }).list();
+                                    && reviewed.get(rs.getString("policy_number")).equals(rs.getString("content_hash"))))
+                .list();
         return new PolicyListResponse(items, page, pageSize, total, (long) page * pageSize < total);
     }
 

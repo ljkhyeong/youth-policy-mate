@@ -1260,6 +1260,9 @@
             "type" : "boolean",
             "description" : "현재 원문·적용 시점에 맞는 공통요건 질문 제공 여부. 자격·모집 상태와 무관"
           },
+          "recruitment" : {
+            "$ref" : "#/components/schemas/PolicyRecruitment"
+          },
           "revision" : {
             "type" : "integer",
             "format" : "int64"
@@ -1279,7 +1282,7 @@
             "type" : "string"
           }
         },
-        "required" : [ "applicationPeriod", "checks", "collectedAt", "explanation", "policyNumber", "questionnaireAvailable", "revision", "ruleVersion", "sourceUrl", "status", "title" ]
+        "required" : [ "applicationPeriod", "checks", "collectedAt", "explanation", "policyNumber", "questionnaireAvailable", "recruitment", "revision", "ruleVersion", "sourceUrl", "status", "title" ]
       },
       "PolicyCheckResponse" : {
         "type" : "object",
@@ -1399,6 +1402,9 @@
           "policyNumber" : {
             "type" : "string"
           },
+          "recruitment" : {
+            "$ref" : "#/components/schemas/PolicyRecruitment"
+          },
           "revision" : {
             "type" : "integer",
             "format" : "int64",
@@ -1408,7 +1414,7 @@
             "type" : "string"
           }
         },
-        "required" : [ "collectedAt", "content", "policyNumber", "revision", "sourceUrl" ]
+        "required" : [ "collectedAt", "content", "policyNumber", "recruitment", "revision", "sourceUrl" ]
       },
       "PolicyEvaluatedCheck" : {
         "type" : "object",
@@ -1600,6 +1606,23 @@
         },
         "required" : [ "available", "policyNumber", "questions", "reason", "revision", "ruleVersion", "scope", "sourceUrl" ]
       },
+      "PolicyRecruitment" : {
+        "type" : "object",
+        "properties" : {
+          "evaluatedAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "explanation" : {
+            "type" : "string"
+          },
+          "status" : {
+            "type" : "string",
+            "enum" : [ "BEFORE_OPENING", "OPEN", "CLOSED", "ROLLING", "UNTIL_EXHAUSTED", "UNKNOWN" ]
+          }
+        },
+        "required" : [ "evaluatedAt", "explanation", "status" ]
+      },
       "PolicySummary" : {
         "type" : "object",
         "properties" : {
@@ -1626,11 +1649,14 @@
             "type" : "boolean",
             "description" : "현재 원문·적용 시점에 맞는 공통요건 질문 제공 여부. 자격·모집 상태와 무관"
           },
+          "recruitment" : {
+            "$ref" : "#/components/schemas/PolicyRecruitment"
+          },
           "title" : {
             "type" : "string"
           }
         },
-        "required" : [ "applicationPeriod", "category", "collectedAt", "description", "organization", "policyNumber", "questionnaireAvailable", "title" ]
+        "required" : [ "applicationPeriod", "category", "collectedAt", "description", "organization", "policyNumber", "questionnaireAvailable", "recruitment", "title" ]
       },
       "PolicyTextSection" : {
         "type" : "object",

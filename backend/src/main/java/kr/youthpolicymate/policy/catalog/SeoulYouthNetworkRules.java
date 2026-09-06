@@ -16,8 +16,8 @@ public final class SeoulYouthNetworkRules {
     public static final String VERSION = "seoul-network-2026-h2-v1";
     public static final String SOURCE = "https://youth.seoul.go.kr/bbs/view.do?key=2303300002&pstSn=2605150002";
     public static final String SCOPE = "2026년 하반기 서울청년정책네트워크 참여 조건";
-    private static final Instant OPEN_AT = Instant.parse("2026-05-20T00:00:00Z");
-    private static final Instant CLOSE_AT = Instant.parse("2026-05-29T08:00:00Z");
+    static final Instant OPEN_AT = Instant.parse("2026-05-20T00:00:00Z");
+    static final Instant CLOSE_AT = Instant.parse("2026-05-29T08:00:00Z");
     private static final List<Question> QUESTIONS = List.of(
             new Question("birthRange", "공고의 출생일 범위에 해당하나요?",
                     "기본 대상은 1986.1.2.~2007.1.1. 출생자예요(양 끝 날짜 포함). 의무복무 제대군인은 최대 3세까지 연령 상한을 연장해요. 연장 후 기준 충족 여부는 담당 기관에서 확인해주세요.",

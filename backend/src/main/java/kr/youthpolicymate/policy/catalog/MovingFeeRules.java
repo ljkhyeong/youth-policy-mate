@@ -17,6 +17,8 @@ public final class MovingFeeRules {
     public static final String VERSION = "moving-fee-2026-h1-v1";
     public static final String SOURCE = "https://youth.seoul.go.kr/bbs/view.do?key=2303300002&pstSn=2604010002";
     public static final String SCOPE = "2026년 상반기 서울 청년 중개보수·이사비 지원 조건";
+    static final Instant OPEN_AT = Instant.parse("2026-04-01T01:00:00Z");
+    static final Instant CLOSE_AT = Instant.parse("2026-04-14T09:00:00Z");
     private static final List<Question> QUESTIONS = List.of(
             new Question("birthRange", "1986.1.1.~2007.12.31. 출생인가요?",
                     "공고에 명시된 출생일 범위예요. 양 끝 날짜를 포함하며, 오늘의 만 나이로 계산하지 않아요.",
@@ -74,9 +76,9 @@ public final class MovingFeeRules {
                 periodNotice(now) + " 확인한 다섯 조건의 결과이며, 소득·참여 제한·증빙 심사는 별도예요.", remaining, SOURCE, now, checks);
     }
     static String periodNotice(Instant now) {
-        if (!now.isBefore(Instant.parse("2026-04-14T09:00:00Z"))) return "2026년 상반기 접수는 4월 14일 18:00(서울)에 마감됐어요.";
+        if (!now.isBefore(CLOSE_AT)) return "2026년 상반기 접수는 4월 14일 18:00(서울)에 마감됐어요.";
         var period = "접수 기간은 2026.4.1. 10:00~4.14. 18:00(서울)이에요.";
-        return now.isBefore(Instant.parse("2026-04-01T01:00:00Z")) ? "접수 전이에요. " + period : period;
+        return now.isBefore(OPEN_AT) ? "접수 전이에요. " + period : period;
     }
     private static Check check(String id, String label, String value, String met, String notMet, String evidence) {
         var outcome = met.equals(value) ? MET : notMet.equals(value) ? NOT_MET : UNKNOWN;

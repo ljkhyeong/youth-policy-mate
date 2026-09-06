@@ -25,8 +25,22 @@ import java.util.StringJoiner;
 public class PolicyCatalogStore {
     private final JdbcClient jdbc;
     private final ObjectMapper mapper;
+    private final java.time.Clock clock;
+    private static final String SOURCE_JOIN = """
+            LEFT JOIN policy_revisions r ON r.policy_number = p.policy_number AND r.revision = p.current_revision
+            LEFT JOIN policy_source_snapshots s ON s.id = r.source_snapshot_id
+            """;
+    // 목록에는 모집기간 해석에 쓰는 필드만 가져온다.
+    private static final String PERIOD_SOURCE = """
+            jsonb_build_object('aplyPrdSeCd', s.raw_policy->'aplyPrdSeCd', 'aplyYmd', s.raw_policy->'aplyYmd',
+                'plcySprtCn', s.raw_policy->'plcySprtCn', 'plcyAplyMthdCn', s.raw_policy->'plcyAplyMthdCn',
+                'etcMttrCn', s.raw_policy->'etcMttrCn', 'addAplyQlfcCndCn', s.raw_policy->'addAplyQlfcCndCn',
+                'srngMthdCn', s.raw_policy->'srngMthdCn', 'plcyExplnCn', s.raw_policy->'plcyExplnCn') AS raw_policy
+            """;
 
-    public PolicyCatalogStore(JdbcClient jdbc, ObjectMapper mapper) { this.jdbc = jdbc; this.mapper = mapper; }
+    public PolicyCatalogStore(JdbcClient jdbc, ObjectMapper mapper, java.time.Clock clock) {
+        this.jdbc = jdbc; this.mapper = mapper; this.clock = clock;
+    }
 
     Optional<QuestionVersion> questionVersion(String number) {
         return jdbc.sql("SELECT current_revision, content_hash FROM policies WHERE policy_number = :number AND current_revision > 0")
@@ -97,41 +111,44 @@ public class PolicyCatalogStore {
         var parameters = new HashMap<String, Object>();
         parameters.put("query", query);
         // strpos는 검색어의 %·_를 패턴으로 해석하지 않고 바인딩한 문자열 그대로 검색한다.
-        var where = " WHERE current_revision > 0 AND (:query = '' OR strpos(lower((content->>'title') || ' ' || (content->>'description')), lower(:query)) > 0)";
+        var where = " WHERE p.current_revision > 0 AND (:query = '' OR strpos(lower((p.content->>'title') || ' ' || (p.content->>'description')), lower(:query)) > 0)";
         if (questionsOnly) {
             var alternatives = new StringJoiner(" OR ", "(", ")").setEmptyValue("FALSE");
             int index = 0;
             for (var entry : reviewed.entrySet()) {
-                alternatives.add("(policy_number = :number" + index + " AND content_hash = :hash" + index + ")");
+                alternatives.add("(p.policy_number = :number" + index + " AND p.content_hash = :hash" + index + ")");
                 parameters.put("number" + index, entry.getKey());
                 parameters.put("hash" + index, entry.getValue());
                 index++;
             }
             where += " AND " + alternatives;
         }
-        var total = jdbc.sql("SELECT count(*) FROM policies" + where).params(parameters).query(Long.class).single();
+        var total = jdbc.sql("SELECT count(*) FROM policies p" + where).params(parameters).query(Long.class).single();
         var items = jdbc.sql("""
-                SELECT policy_number, content_hash, last_collected_at,
-                    content->>'title' AS title, content->>'description' AS description,
-                    content->>'category' AS category, content->>'organization' AS organization,
-                    content->>'applicationPeriod' AS application_period
-                FROM policies
-                """ + where
-                        + " ORDER BY last_collected_at DESC, policy_number LIMIT :limit OFFSET :offset")
+                SELECT p.policy_number, p.current_revision, p.content_hash, p.last_collected_at,
+                    p.content->>'title' AS title, p.content->>'description' AS description,
+                    p.content->>'category' AS category, p.content->>'organization' AS organization,
+                    p.content->>'applicationPeriod' AS application_period,
+                """ + PERIOD_SOURCE + " FROM policies p " + SOURCE_JOIN + where
+                        + " ORDER BY p.last_collected_at DESC, p.policy_number LIMIT :limit OFFSET :offset")
                 .params(parameters).param("limit", pageSize).param("offset", (page - 1) * pageSize)
                 .query((rs, row) -> new PolicySummary(rs.getString("policy_number"), rs.getString("title"),
                             rs.getString("description"), rs.getString("category"), rs.getString("organization"),
                             rs.getString("application_period"),
                             rs.getObject("last_collected_at", OffsetDateTime.class).toInstant(),
                             reviewed.containsKey(rs.getString("policy_number"))
-                                    && reviewed.get(rs.getString("policy_number")).equals(rs.getString("content_hash"))))
+                                    && reviewed.get(rs.getString("policy_number")).equals(rs.getString("content_hash")),
+                            PolicyRecruitment.from(rs.getString("policy_number"), rs.getLong("current_revision"), rs.getString("content_hash"),
+                                    mapper.readTree(rs.getString("raw_policy")), now)))
                 .list();
         return new PolicyListResponse(items, page, pageSize, total, (long) page * pageSize < total);
     }
 
     public Optional<PolicyDetailResponse> find(String number) {
-        return jdbc.sql("SELECT policy_number, current_revision, content, last_collected_at FROM policies WHERE policy_number = :number AND current_revision > 0")
-                .param("number", number).query((rs, row) -> detail(rs)).optional();
+        var now = clock.instant();
+        return jdbc.sql("SELECT p.policy_number, p.current_revision, p.content_hash, p.content, p.last_collected_at, "
+                        + PERIOD_SOURCE + " FROM policies p " + SOURCE_JOIN + " WHERE p.policy_number = :number AND p.current_revision > 0")
+                .param("number", number).query((rs, row) -> detail(rs, mapper.readTree(rs.getString("raw_policy")), now)).optional();
     }
 
     @Transactional(readOnly = true, isolation = org.springframework.transaction.annotation.Isolation.REPEATABLE_READ)
@@ -169,19 +186,21 @@ public class PolicyCatalogStore {
                     var number = rs.getString("policy_number");
                     var hash = rs.getString("content_hash");
                     var comparison = comparisons.get(number);
-                    return new CheckSource(detail(rs), mapper.readTree(raw),
+                    var source = mapper.readTree(raw);
+                    return new CheckSource(detail(rs, source, now), source,
                             reviewed.containsKey(number) && reviewed.get(number).equals(hash),
                             comparison != null && comparison.contentHash().equals(hash) ? comparison : null);
                 }).list();
         return new PageImpl<>(items, page, total);
     }
 
-    private PolicyDetailResponse detail(ResultSet rs) throws SQLException {
+    private PolicyDetailResponse detail(ResultSet rs, JsonNode raw, Instant now) throws SQLException {
         var number = rs.getString("policy_number");
         return new PolicyDetailResponse(number, rs.getLong("current_revision"),
                 mapper.readValue(rs.getString("content"), PolicyContent.class),
                 sourceUrl(number),
-                rs.getObject("last_collected_at", OffsetDateTime.class).toInstant());
+                rs.getObject("last_collected_at", OffsetDateTime.class).toInstant(),
+                PolicyRecruitment.from(number, rs.getLong("current_revision"), rs.getString("content_hash"), raw, now));
     }
 
     static String sourceUrl(String number) {

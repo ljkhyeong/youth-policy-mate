@@ -344,6 +344,7 @@ export interface components {
             readonly policyNumber: string;
             /** @description 현재 원문·적용 시점에 맞는 공통요건 질문 제공 여부. 자격·모집 상태와 무관 */
             readonly questionnaireAvailable: boolean;
+            readonly recruitment: components["schemas"]["PolicyRecruitment"];
             /** Format: int64 */
             readonly revision: number;
             /** @description 적용한 연령 규칙 버전. 검토된 비교 기준이 없으면 빈 문자열 */
@@ -393,6 +394,7 @@ export interface components {
             readonly collectedAt: string;
             readonly content: components["schemas"]["PolicyContent"];
             readonly policyNumber: string;
+            readonly recruitment: components["schemas"]["PolicyRecruitment"];
             /**
              * Format: int64
              * @description 서비스 내부 적용 개정 번호
@@ -465,6 +467,13 @@ export interface components {
             readonly scope: string;
             readonly sourceUrl: string;
         };
+        readonly PolicyRecruitment: {
+            /** Format: date-time */
+            readonly evaluatedAt: string;
+            readonly explanation: string;
+            /** @enum {string} */
+            readonly status: "BEFORE_OPENING" | "OPEN" | "CLOSED" | "ROLLING" | "UNTIL_EXHAUSTED" | "UNKNOWN";
+        };
         readonly PolicySummary: {
             readonly applicationPeriod: string;
             readonly category: string;
@@ -475,6 +484,7 @@ export interface components {
             readonly policyNumber: string;
             /** @description 현재 원문·적용 시점에 맞는 공통요건 질문 제공 여부. 자격·모집 상태와 무관 */
             readonly questionnaireAvailable: boolean;
+            readonly recruitment: components["schemas"]["PolicyRecruitment"];
             readonly title: string;
         };
         readonly PolicyTextSection: {

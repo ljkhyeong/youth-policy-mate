@@ -1031,3 +1031,9 @@ select {
 .email-current .text-button { display: block; margin-top: .8rem; }
 
 .condition-policy-sort { max-width: 100%; border: 1px solid #cfd5de; border-radius: 10px; background: white; padding: 10px 12px; font-size: 16px; }
+
+.policy-recruitment { margin: 12px 0; }
+.policy-recruitment p { margin: 8px 0 0; color: var(--app-muted); font-size: 13px; line-height: 1.65; font-weight: 400; }
+.recruitment-badge { display: inline-block; padding: 4px 9px; border-radius: 6px; background: #edf1ff; color: #354ab4; font-size: 12px; font-weight: 700; }
+.recruitment-badge[data-status="CLOSED"] { background: #eef0f3; color: #606775; }
+.recruitment-badge[data-status="UNKNOWN"], .recruitment-badge[data-status="UNTIL_EXHAUSTED"] { background: #fbf3dc; color: #806515; }

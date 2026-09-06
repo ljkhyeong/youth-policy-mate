@@ -1,5 +1,6 @@
 "use client";
 import Link from "next/link";
+import { PolicyRecruitment } from "@/features/policies/policy-recruitment";
 import { useEffect, useRef, useState } from "react";
 import { memberApi, type BasicConditions, type PolicyChecks } from "@/features/member/member-api";
 import type { operations } from "@/generated/policy-api";
@@ -58,6 +59,7 @@ export function PolicyCheckResults({ input }: { input: BasicConditions }) {
     {response?.items.map(policy => <article className="member-panel" key={`${policy.policyNumber}-${policy.revision}`}>
       <span className="review-label">전체 자격: 추가 확인 필요</span><h3><Link href={`/policies/${policy.policyNumber}`}>{policy.title}</Link></h3>
       <p>{policy.explanation}</p><p className="policy-period">신청기간: {policy.applicationPeriod}</p>
+      <PolicyRecruitment recruitment={policy.recruitment} />
       {policy.questionnaireAvailable && <div className="policy-question-next">
         <span className="policy-question-badge">조건 확인 질문 있음</span>
         <p>질문에 답하면 일부 신청 조건을 확인할 수 있어요.</p>

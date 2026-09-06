@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { PolicyRecruitment } from "@/features/policies/policy-recruitment";
 import type { components } from "@/generated/policy-api";
 import { PolicyQuestionnaire } from "@/features/eligibility/policy-questionnaire";
 import { SavePolicyButton } from "@/features/member/save-policy-button";
@@ -19,6 +20,7 @@ export function PolicyCard({ policy }: { policy: Summary }) {
     {policy.questionnaireAvailable && <span className="policy-question-badge">조건 확인 질문 있음</span>}
     <p className="policy-description">{policy.description || "자세한 지원 내용을 확인해보세요."}</p>
     <p className="policy-period"><strong>신청기간</strong><span>{policy.applicationPeriod}</span></p>
+    <PolicyRecruitment recruitment={policy.recruitment} />
     <div className="policy-card-actions">
       <Link href={`/policies/${policy.policyNumber}`} className="text-link" aria-label={`${policy.title} 상세 보기`}>상세 보기 <span aria-hidden="true">↗</span></Link>
       {policy.questionnaireAvailable && <Link href={`/policies/${policy.policyNumber}#policy-questions`} className="text-link" aria-label={`${policy.title} 질문에 답하기`}>질문에 답하기 <span aria-hidden="true">→</span></Link>}
@@ -33,7 +35,9 @@ export function PolicyArticle({ policy }: { policy: Detail }) {
       <div className="policy-eyebrow"><span>{content.category || "청년 정책"}</span><span>{content.organization || "온통청년 제공"}</span></div>
       <h1>{content.title}</h1>
       <p className="policy-lead">{content.description}</p>
-      <div className="policy-date-panel"><p>신청 기간</p><strong>{content.applicationPeriod}</strong></div>
+      <div className="policy-date-panel"><p>신청 기간</p><strong>{content.applicationPeriod}</strong>
+        <PolicyRecruitment recruitment={policy.recruitment} />
+      </div>
     </header>
     <SavePolicyButton key={policy.policyNumber} policyNumber={policy.policyNumber} />
     <PolicyQuestionnaire key={`${policy.policyNumber}-${policy.revision}`} policyNumber={policy.policyNumber} />

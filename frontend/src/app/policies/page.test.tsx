@@ -11,6 +11,7 @@ const policy: components["schemas"]["PolicySummary"] = {
   policyNumber: "123", title: "시험 지원", description: "지원 안내", category: "교육",
   organization: "시험 기관", applicationPeriod: "공식 안내 확인", collectedAt: "2026-09-05T01:00:00Z",
   questionnaireAvailable: true,
+  recruitment: { status: "UNKNOWN", explanation: "신청기간을 확인해주세요.", evaluatedAt: "2026-09-06T00:00:00Z" },
 };
 
 describe("정책 목록의 공통요건 질문 탐색", () => {

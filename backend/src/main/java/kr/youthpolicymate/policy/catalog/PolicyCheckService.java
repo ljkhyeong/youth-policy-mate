@@ -49,7 +49,7 @@ public class PolicyCheckService {
                             text(raw, "ptcpPrpTrgtCn", "addAplyQlfcCndCn", "plcySprtCn"), UNKNOWN));
             items.add(new PolicyCheckResponse.Item(policy.policyNumber(), policy.revision(), policy.content().title(), EligibilityStatus.NEEDS_REVIEW,
                     explanation(comparison), policy.content().applicationPeriod(), comparison == null ? policy.sourceUrl() : comparison.sourceUrl(),
-                    policy.collectedAt(), checks, source.questionnaireAvailable(), comparison == null ? "" : comparison.ruleVersion()));
+                    policy.collectedAt(), checks, source.questionnaireAvailable(), comparison == null ? "" : comparison.ruleVersion(), policy.recruitment()));
         }
         return new PolicyCheckResponse(items, page, policies.getTotalElements(), policies.hasNext(), now);
     }

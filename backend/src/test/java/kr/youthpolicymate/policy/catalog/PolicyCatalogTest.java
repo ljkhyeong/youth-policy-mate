@@ -623,6 +623,33 @@ class PolicyCatalogTest {
         mvc.perform(get("/api/v1/policies").param("questionsOnly", "true")).andExpect(status().isOk()).andExpect(jsonPath("$.total").value(0));
     }
 
+    @Test @DisplayName("목록·상세·개인 조건에 같은 원문의 접수 상태를 제공하고 목록 조회 횟수를 유지한다")
+    void exposesRecruitmentAcrossPolicyViews() throws Exception {
+        item.put("aplyPrdSeCd", "0057001").put("aplyYmd", "20260901 ~ 20260912");
+        for (var field : List.of("plcySprtCn", "plcyAplyMthdCn", "etcMttrCn", "addAplyQlfcCndCn", "srngMthdCn", "plcyExplnCn")) item.put(field, "안내");
+        save("recruitment", AT);
+        var number = item.path("plcyNo").asString();
+        var body = mapper.writeValueAsString(new BasicConditions(java.time.LocalDate.parse("2000-01-01"), "강남구", BasicConditions.EmploymentStatus.NOT_EMPLOYED));
+        org.mockito.Mockito.clearInvocations(jdbc);
+        mvc.perform(get("/api/v1/policies")).andExpect(status().isOk())
+                .andExpect(jsonPath("$.items[0].recruitment.status").value("OPEN"))
+                .andExpect(jsonPath("$.items[0].recruitment.evaluatedAt").value(AT.toString()));
+        org.mockito.Mockito.verify(jdbc, org.mockito.Mockito.times(2)).sql(org.mockito.ArgumentMatchers.anyString());
+        mvc.perform(get("/api/v1/policies/" + number)).andExpect(status().isOk())
+                .andExpect(jsonPath("$.recruitment.status").value("OPEN"));
+        mvc.perform(post("/api/v1/policies/checks").contentType("application/json").content(body))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.items[0].recruitment.status").value("OPEN"))
+                .andExpect(jsonPath("$.items[0].status").value("NEEDS_REVIEW"));
+        item.put("etcMttrCn", "예산 소진까지 신청");
+        save("recruitment-change", AT.plusSeconds(1));
+        mvc.perform(get("/api/v1/policies")).andExpect(status().isOk())
+                .andExpect(jsonPath("$.items[0].recruitment.status").value("UNKNOWN"));
+        mvc.perform(get("/api/v1/policies/" + number)).andExpect(status().isOk())
+                .andExpect(jsonPath("$.recruitment.status").value("UNKNOWN"));
+        mvc.perform(post("/api/v1/policies/checks").contentType("application/json").content(body))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.items[0].recruitment.status").value("UNKNOWN"));
+    }
+
     private void saveReviewed(String number, String title, String hash) {
         // 인공 본문과 검토 해시로 조회·질문 연결만 검사한다. 공식 조건의 정확성 검사가 아니다.
         var source = item.deepCopy();

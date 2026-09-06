@@ -10,7 +10,7 @@
 - 추가 정리 대상 4개도 구현했다. 조건 확인은 SELECT 2회로 조회하고 고정 상태용 판정 객체를 제거했다. AI 종료 상태는 `Phase.isTerminal()`, DB 시각 변환·비교는 `AiDatabaseTime`으로 모았다.
 - 추가 3개 항목도 구현했다. `b4a09e7`은 변경 없는 관심 정책 조회를 SELECT 3회, 질문·평가를 각각 1회로 줄인다. `8cae9f6`은 미사용 AI 예약 엔진을 제거하고 필요한 검사를 DB 테스트로 통합한다. [적용 내용·검증 기록](docs/development/backend-api-review.md#반복-조회미사용-모델-정리--2026-09-06-적용)에 조회 횟수·잠금·테스트 범위를 기록했다.
 - 수집 조회 2개도 `22a8120`에서 구현했다. 상태 확인과 원문 조회를 분리해 정상 재처리의 원문 읽기를 1회로 줄였고, 발송 예약 ID는 잠금 조회에서 함께 읽는다. [수집 조회 정리](docs/development/backend-api-review.md#수집-조회-정리--2026-09-06-적용)에 적용 내용과 검증 범위를 기록했다.
-- `950311f` 기준 [미사용 수집 모델](docs/development/backend-api-review.md#미사용-수집-모델-검토--2026-09-06-미적용)을 추가 확인했다. `CollectionRun`·`CollectionAttempt`·`CollectionPosition`은 전용 테스트에서만 사용한다. 현재 Spring Batch·DB 수집 검사와 대조해 정리할 후보이며 아직 미적용이다. 이번에는 문서만 변경했다.
+- 미사용 수집 모델은 `211307b`에서 제거했다. 세 모델 파일·전용 테스트·초기 설계/개발 문서를 삭제하고 원문 보존·중복 정책 번호 검사를 실제 수집 DB 테스트에 보완했다. [정리 내용](docs/development/backend-api-review.md#미사용-수집-모델-정리--2026-09-06-적용)을 참고한다.
 
 ## 구현·검증 범위
 
@@ -19,7 +19,7 @@
 - 회원 기능: OAuth 로그인 코드, 관심 정책 저장·해제, 일정·서비스 내 알림을 연결했다. 실제 카카오·네이버 로그인은 미검증이다. [회원 기능](docs/development/member-policy-flow.md)
 - 이메일: 주소 확인·동의·암호화 저장·Outbox·SMTP 어댑터를 구현했다. 실제 공급자·발신 도메인은 미정이며 외부 수신함 전달은 미검증이다. [이메일 구현과 설정](docs/development/member-email-reminders.md)
 - AI: 후보 개정 검사·비용 예약·DB 복구 흐름은 내부 모델과 테스트용 공급자로 검증했다. 실제 AI 호출·청구·운영 작업자는 미연결이다. [AI 요청 판단](docs/development/ai-request-admission.md)·[복구 실행](docs/development/ai-reservation-recovery-work-runs.md)
-- 최근 앱 검증: `22a8120`에서 `npm run verify -- test:policy-collection`으로 수집·재처리·동시 배정·정책 조회·API 계약 검사를 통과했다. 로그는 `.local/verification/1788658608359-66a5a149.log`이며 이후 변경은 문서뿐이다. 이전 회원·AI 예약/복구 검증은 해당 코드·테스트가 같아 재사용한다. [실제 명령·범위·미실행 항목](docs/development/backend-api-review.md)을 참고한다.
+- 최근 앱 검증: `211307b`에서 `npm run verify -- test:ingestion -- --tests 'kr.youthpolicymate.ingestion.OntongCollectionTest'`를 통과했다. 로그는 `.local/verification/1788663376550-bb48e6d9.log`이며 이후 변경은 문서뿐이다. 변경하지 않은 범위 수집·회원·AI 예약/복구 등은 이전 결과를 재사용한다. [실제 명령·범위·미실행 항목](docs/development/backend-api-review.md)을 참고한다.
 - 검증 도구의 성공·실패·실행 중 변경 시나리오와 기존 도구 검사를 통과했다. 컴파일·패키징 명령의 Gradle 실행 계획에 테스트 실행이 없음을 확인했다. `npm run verify -- status`에서 실행 기록을 확인한다. 검증 도구를 정리할 당시에는 앱 기능을 변경하지 않아 전체 앱 테스트를 재실행하지 않았다.
 
 ## 남은 작업

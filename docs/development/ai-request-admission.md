@@ -37,7 +37,7 @@ npm run test:ingestion
 npm run check:backend
 ```
 
-`test:ai-admission`은 사전 판단을, `test:ingestion`은 수집 진행·AI 후보·실행/복구 결과 연결·사전 판단·복구 재확인 정책을 검사한다. 인증키·DB·Docker 없이 실행한다. 예약·정산 상태 변경은 `test:ai-reservations`의 PostgreSQL 검사로 분리했으며 Docker가 필요하다.
+`test:ai-admission`은 사전 판단을, `test:ingestion`은 AI 후보·실행/복구 결과 연결·사전 판단·복구 재확인 정책을 검사한다. 인증키·DB·Docker 없이 실행한다. 실제 수집은 `test:policy-collection`, 예약·정산은 `test:ai-reservations`의 PostgreSQL 검사로 확인하며 Docker가 필요하다.
 
 전용 명령 14건과 전체 서버 229건(도메인 214·개발 API/계약 13·실제 DB/기본 차단 2), 빌드가 실패·건너뛰기 없이 통과했다. Gradle 캐시·Docker 접근에 권한 확장을 사용했고 기존 JVM 클래스 공유 경고는 유지했다.
 

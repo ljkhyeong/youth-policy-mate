@@ -112,12 +112,26 @@ Temurin 25.0.3을 사용해 `npm run verify -- test:policy-collection`을 실행
 
 로그는 `.local/verification/1788658608359-66a5a149.log`다. 검증한 앱 코드는 `22a8120`이며 이후 변경은 문서뿐이다. 수집 내부 조회만 변경해 전체 서버 빌드·웹 검사·실제 온통청년 호출은 실행하지 않았다.
 
-## 미사용 수집 모델 검토 — 2026-09-06, 미적용
+## 미사용 수집 모델 정리 — 2026-09-06 적용
 
-`950311f`에서 추가로 확인한 정리 대상은 초기 메모리 수집 모델 1개다. [CollectionRun](../../backend/src/main/java/kr/youthpolicymate/ingestion/CollectionRun.java)·[CollectionAttempt](../../backend/src/main/java/kr/youthpolicymate/ingestion/CollectionAttempt.java)·[CollectionPosition](../../backend/src/main/java/kr/youthpolicymate/ingestion/CollectionPosition.java)는 서로를 참조하지만 다른 실행 코드에서는 사용하지 않는다. 앱 코드 329줄이며 유일한 외부 사용처는 전용 `CollectionRunTest` 260줄이다. `test:ingestion`도 이 모델의 검사를 계속 실행한다.
+`1b1a207`에서 검토한 초기 메모리 수집 모델을 `211307b`에서 제거했다. `CollectionRun`·`CollectionAttempt`·`CollectionPosition` 세 파일과 전용 `CollectionRunTest`를 삭제했다. 다른 실행 코드에서는 참조하지 않았으며 실제 Spring Batch·DB 수집 코드는 변경하지 않았다.
 
-[당시 설계](../design/collection-run-progress.md)는 API 연결 전의 진행·중단·재개 모델을 정의한다. 실제 수집은 이후 추가한 Spring Batch 작업과 `OntongCollectionStore`·`OntongSweepStore`로 실행한다. 두 구현의 상태·재시도 방식이 완전히 같지는 않으므로 초기 모델의 테스트를 현재 수집 검증으로 볼 수 없다.
+초기 모델의 설계·개발 문서도 삭제하고 연결을 [한 페이지 수집](limited-policy-collection.md)과 [범위 수집](policy-range-collection.md)으로 정리했다. `test:ingestion`은 이제 AI 후보·결과 연결·사전 판단·복구 재확인 정책만 검사한다. 실제 수집 검사는 `test:policy-collection`을 사용한다.
 
-정리 방향은 세 모델 파일과 전용 테스트를 제거하고, 현재 수집 동작에 필요한 사례만 기존 `OntongCollectionTest`·`OntongSweepTest`와 대조해 보완하는 것이다. 페이지 커서 순환처럼 현재 숫자 페이지 수집에 해당하지 않는 가상 사례까지 옮기지는 않는다. 설계·README·검증 명령에서도 이전 모델과 실제 구현의 관계를 정리해야 한다. 우선순위는 중간이며, 실행 성능보다 유지보수 범위를 줄이는 작업이다.
+초기 모델의 검증은 다음 기준으로 정리했다.
 
-이번에는 사용처·호출 경로·기준 문서를 확인하고 검토·인계 문서만 변경했다. 앱 코드와 테스트는 수정하거나 실행하지 않았다.
+| 확인할 동작 | 현재 수집 검증 |
+|---|---|
+| 중복 실행·빈 페이지·범위 종료·부분 실패·재처리 | 기존 `OntongCollectionTest`·`OntongSweepTest`가 확인한다. |
+| 늦은 이전 응답·동시 재처리·원본 없는 실패의 재호출 차단 | 요청 순번·항목 잠금·저장 원본을 사용하는 기존 DB 검사를 유지한다. |
+| 확정 원문 보존·같은 페이지의 중복 정책 번호 | 기존 실행 이력 테스트에 원문 덮어쓰기 거절을 추가하고, 중복 번호 항목만 보류하며 정상 항목을 반영하는 DB 사례를 추가했다. |
+
+가상 페이지 커서 순환·메모리 이력 목록의 불변성 등 삭제한 모델에만 필요한 검사는 이관하지 않았다. 실제 수집의 상태·재시도 규칙을 초기 모델에 맞춰 바꾸지도 않았다.
+
+Temurin 25.0.3에서 다음 명령으로 52건이 실패·오류·건너뜀 없이 통과했다.
+
+```sh
+npm run verify -- test:ingestion -- --tests 'kr.youthpolicymate.ingestion.OntongCollectionTest'
+```
+
+로그는 `.local/verification/1788663376550-bb48e6d9.log`다. 변경한 검증 명령과 실제 수집 DB 사례를 실행했으며 삭제 타입의 코드·빌드 설정 참조가 없음을 확인했다. 변경하지 않은 범위 수집·HTTP·파서·스케줄러·정책 조회는 이전 `22a8120` 검증 결과를 재사용했다. 전체 서버 빌드·웹·실제 온통청년 호출은 실행하지 않았다. 검증 후 앱 코드는 `211307b`와 같으며 후속 변경은 문서뿐이다.

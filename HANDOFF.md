@@ -5,19 +5,19 @@
 ## 현재 작업
 
 - 이전 코드 정리 작업은 `d6ef9d2`까지 로컬 `main`에 병합했다. 원격 푸시는 하지 않았다.
-- `codex/condition-policy-discovery`에서 개인 조건 검색·정렬과 이사비 질문을 구현한 뒤, `811d400`에서 목록·상세·내 조건의 접수 상태 표시를 추가했다. 이번 브랜치는 아직 `main`에 병합하지 않았다.
-- 비교 범위·개인정보 처리는 [개인 조건 탐색](docs/development/condition-policy-discovery.md), 최근 검증 명령·로그·실행 경로는 [접수 상태 표시](docs/development/policy-recruitment-display.md)에 있다. 이후 변경은 문서뿐이다.
+- `codex/condition-policy-discovery`에서 개인 조건 검색·정렬과 이사비 질문을 구현한 뒤, `94463e2`에서 공개 목록·내 조건에 접수 상태 필터와 검색용 기간 저장을 추가했다. 이번 브랜치는 아직 `main`에 병합하지 않았다.
+- 비교 범위·개인정보 처리는 [개인 조건 탐색](docs/development/condition-policy-discovery.md), 최근 검증 명령·로그·실행 경로는 [접수 상태별 검색](docs/development/policy-recruitment-filter.md)에 있다. 이후 변경은 문서뿐이다.
 
 ## 구현·검증 범위
 
 - 정책 조회: 로컬 수집 40건의 검색·상세·원문 링크를 제공한다. 서울 대상 전체 정책을 수집한 상태는 아니다. [조회](docs/development/policy-catalog.md)·[수집과 재개](docs/development/policy-range-collection.md)
 - 조건 질문: 국가근로장학금·응시료 지원·K-패스·청년주택드림청약통장·서울청년정책네트워크·상반기 이사비 지원 6개 정책을 제공한다. 일부 요건만 비교하므로 전체 자격은 추가 확인 필요다. [질문 탐색](docs/development/policy-question-discovery.md)·[최근 추가 정책](docs/development/moving-fee-questions.md)
-- 접수 상태: 목록·상세·내 조건에서 날짜형·시각형·상시·마감·미확인을 구분한다. 기존 마감 알림과 원문 해석을 공유한다. 날짜 충돌·회차·소진 안내를 임의로 접수 중으로 바꾸지 않는다.
+- 접수 상태: 목록·상세·내 조건에서 날짜형·시각형·상시·마감·미확인을 구분하며 공개 목록과 내 조건을 상태별로 검색한다. 검색·질문 필터·정렬과 함께 전체 결과에 적용한 뒤 페이지를 나눈다. Flyway V18로 기존 정책의 검색용 기간을 이전했다. 기존 마감 알림과 원문 해석을 공유한다. 날짜 충돌·회차·소진 안내를 임의로 접수 중으로 바꾸지 않는다.
 - 개인 조건 탐색: 검토된 4개 정책의 연령을 비교하고 전체 정책에서 검색·정렬한다. 거주·취업·소득은 추가 확인으로 남긴다. 검색·페이지 이동·오류 재시도·모바일 화면을 로컬 실제 정책으로 확인했다.
 - 회원 기능: OAuth 로그인 코드, 관심 정책 저장·해제, 일정·서비스 내 알림을 연결했다. 실제 카카오·네이버 로그인은 미검증이다. [회원 기능](docs/development/member-policy-flow.md)
 - 이메일: 주소 확인·동의·암호화 저장·Outbox·SMTP 어댑터를 구현했다. 실제 공급자·발신 도메인은 미정이며 외부 수신함 전달은 미검증이다. [이메일 구현과 설정](docs/development/member-email-reminders.md)
 - AI: 후보 개정 검사·비용 예약·DB 복구 흐름은 내부 모델과 테스트용 공급자로 검증했다. 실제 AI 호출·청구·운영 작업자는 미연결이다. [AI 요청 판단](docs/development/ai-request-admission.md)·[복구 실행](docs/development/ai-reservation-recovery-work-runs.md)
-- 최근 검증: `811d400`의 관련 PostgreSQL·모집/마감 규칙·회원 저장/알림·웹 검사, 생성 계약·웹 빌드·서버 패키징을 완료했다. [명령·범위·결과](docs/development/policy-recruitment-display.md#검증)를 참고한다. 이전 전체 서버 검사는 `c8cfc33`의 코드 정리 시점이며 최근 기능의 전체 서버 검사로 간주하지 않는다.
+- 최근 검증: `94463e2`의 관련 PostgreSQL·접수 필터/경계·기간 이전·수집·웹 검사, 생성 계약·웹 빌드·서버 패키징을 완료했다. PC·모바일의 실제 검색·필터 병용도 확인했다. [명령·범위·결과](docs/development/policy-recruitment-filter.md#검증)를 참고한다. 이전 전체 서버 검사는 `c8cfc33`의 코드 정리 시점이며 최근 기능의 전체 서버 검사로 간주하지 않는다.
 - 검증 도구의 성공·실패·실행 중 변경 시나리오와 기존 도구 검사를 통과했다. 컴파일·패키징 명령의 Gradle 실행 계획에 테스트 실행이 없음을 확인했다. `npm run verify -- status`에서 실행 기록을 확인한다. 검증 도구를 정리할 당시에는 앱 기능을 변경하지 않아 전체 앱 테스트를 재실행하지 않았다.
 
 ## 남은 작업

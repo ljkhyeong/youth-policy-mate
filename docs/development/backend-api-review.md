@@ -136,14 +136,14 @@ npm run verify -- test:ingestion -- --tests 'kr.youthpolicymate.ingestion.Ontong
 
 로그는 `.local/verification/1788663376550-bb48e6d9.log`다. 변경한 검증 명령과 실제 수집 DB 사례를 실행했으며 삭제 타입의 코드·빌드 설정 참조가 없음을 확인했다. 변경하지 않은 범위 수집·HTTP·파서·스케줄러·정책 조회는 이전 `22a8120` 검증 결과를 재사용했다. 전체 서버 빌드·웹·실제 온통청년 호출은 실행하지 않았다. 검증 후 앱 코드는 `211307b`와 같으며 후속 변경은 문서뿐이다.
 
-## 목록 조회·수집 저장 검토 — 2026-09-06, 미적용
+## 목록 조회·수집 저장 정리 — 2026-09-06 적용
 
-`19f7cbe`에서 추가로 확인한 후보는 2개다. 현재 코드의 불필요한 처리이며 성능 개선 폭은 측정하지 않았다.
+`e1b297c`에서 검토한 2개 항목을 `62aff07`에서 구현했다. 앱 응답 시간·전송량 개선 폭은 측정하지 않았다.
 
-| 대상 | 현재 처리와 정리 방향 | 우선순위 |
-|---|---|---|
-| [정책 목록](../../backend/src/main/java/kr/youthpolicymate/policy/catalog/PolicyCatalogStore.java)의 `list` | 목록에 쓰는 본문 필드는 제목·설명·분류·기관·신청 기간 5개인데, 상세 문단·링크·지역 코드까지 포함한 `content` 전체를 조회하고 `PolicyContent`로 변환한다. 필요한 JSON 필드만 SQL에서 추출해 `PolicySummary`에 매핑하면 전송량과 객체 변환을 줄일 수 있다. SELECT 2회와 정렬·검색·질문 제공 여부·페이지 계약은 유지한다. | 중간 |
-| [수집 항목 준비](../../backend/src/main/java/kr/youthpolicymate/ingestion/OntongCollectionStore.java)의 `prepare` | 한 페이지의 원문 항목을 `JdbcClient.update()`로 각각 저장한다. `NamedParameterJdbcTemplate.batchUpdate`로 같은 INSERT의 매개변수를 묶을 수 있다. 페이지 잠금과 항목 저장·READY 전환의 단일 트랜잭션은 유지한다. 페이지당 최대 10건이므로 긴급한 개선은 아니다. | 낮음 |
+| 대상 | 적용 내용 |
+|---|---|
+| [정책 목록](../../backend/src/main/java/kr/youthpolicymate/policy/catalog/PolicyCatalogStore.java)의 `list` | 본문 전체 대신 제목·설명·분류·기관·신청 기간 5개 JSON 필드를 SQL에서 추출해 `PolicySummary`에 매핑한다. 상세 문단·링크·지역 코드의 조회와 `PolicyContent` 변환을 제거했다. SELECT 2회와 정렬·검색·질문 제공 여부·페이지 계약은 유지했다. |
+| [수집 항목 준비](../../backend/src/main/java/kr/youthpolicymate/ingestion/OntongCollectionStore.java)의 `prepare` | 항목별 `JdbcClient.update()`를 `NamedParameterJdbcTemplate.batchUpdate` 호출로 묶었다. 페이지 잠금과 항목 저장·READY 전환의 단일 트랜잭션은 유지했다. 페이지당 최대 10건이므로 개선 범위는 작다. |
 
 Spring은 일괄 갱신에 [JDBC 배치 API](https://docs.spring.io/spring-framework/reference/data-access/jdbc/advanced.html)를 제공한다. 배치 호출로 묶어도 저장하는 행과 INSERT 작업 수가 줄어드는 것은 아니며, 여기서는 개별 실행 호출을 줄이는 개선이다. 항목별 정책 반영·재처리 트랜잭션까지 한 배치로 합치지는 않는다.
 
@@ -153,4 +153,8 @@ Spring은 일괄 갱신에 [JDBC 배치 API](https://docs.spring.io/spring-frame
 - 항목마다 페이지를 훑는 중복 정책 번호 검사: 최대 10건이라 전체 비교도 최대 100회다. 별도 색인과 전달 인자를 늘릴 만큼 효과가 크다고 보기 어렵다.
 - 아직 운영 호출이 연결되지 않은 AI 실행·복구 조정자: 공급자 연결을 위한 구현·DB 검증 경로가 있으므로 삭제한 초기 수집 모델과 같은 미사용 코드로 분류하지 않았다.
 
-이번에는 호출 경로·응답 필드·기존 테스트·Spring 공식 문서를 검토하고 문서만 변경했다. 앱 코드·테스트는 변경하거나 실행하지 않았다. 구현할 경우 기존 `test:policy-collection`에서 목록 응답·빈 페이지·항목 순서·실패 롤백·재처리를 확인한다.
+기존 목록 응답 검사에서 5개 표시 필드와 수집 시각을 확인하도록 보완했다. 페이지의 READY 전환을 DB 제약으로 실패시켜 배치 저장 항목도 모두 롤백되는지, 제약을 제거한 뒤 같은 원문을 순서대로 재처리하는지 확인하는 사례를 추가했다.
+
+Temurin 25.0.3에서 `npm run verify -- test:policy-collection`을 실행해 48건이 실패·오류·건너뜀 없이 통과했다. 기존 검색·정렬·질문 필터·빈 페이지·부분 실패·중복 수집·동시 재처리와 API 계약 일치 검사도 포함한다. 로그는 `.local/verification/1788677061574-2dd6ff10.log`다.
+
+검증한 앱 코드는 `62aff07`이며 이후 변경은 문서뿐이다. 전체 서버 빌드·웹 검사·실제 온통청년 호출은 실행하지 않았다. 변경하지 않은 회원·AI 검사는 이전 결과를 재사용한다.

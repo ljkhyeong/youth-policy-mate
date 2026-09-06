@@ -172,14 +172,11 @@ class AiBudgetReservationStoreTest {
                 .isEqualTo(AiBudgetReservationLifecycleStore.Decision.INVALID_STATE);
         assertThatIllegalArgumentException().isThrownBy(() ->
                 new ChargeConfirmation("charge-a", NOW, money("-0.01")));
-        assertThatThrownBy(() -> lifecycleStore.dispatch("reservation-a", new Dispatch("dispatch-a", NOW.minusNanos(1))))
-                .isInstanceOf(org.springframework.dao.InvalidDataAccessApiUsageException.class)
-                .hasCauseInstanceOf(IllegalArgumentException.class);
+        assertThatIllegalArgumentException().isThrownBy(() ->
+                lifecycleStore.dispatch("reservation-a", new Dispatch("dispatch-a", NOW.minusNanos(1))));
         lifecycleStore.dispatch("reservation-a", new Dispatch("dispatch-a", NOW.plusSeconds(1)));
-        assertThatThrownBy(() -> lifecycleStore.markOutcomeUnknown("reservation-a",
-                new UncertainOutcome("unknown-a", NOW, UncertainReason.TIMEOUT)))
-                .isInstanceOf(org.springframework.dao.InvalidDataAccessApiUsageException.class)
-                .hasCauseInstanceOf(IllegalArgumentException.class);
+        assertThatIllegalArgumentException().isThrownBy(() -> lifecycleStore.markOutcomeUnknown("reservation-a",
+                new UncertainOutcome("unknown-a", NOW, UncertainReason.TIMEOUT)));
         assertThat(lifecycleStore.find("reservation-a").orElseThrow().phase()).isEqualTo(Phase.DISPATCHED);
         assertThat(budgetAmounts("budget-a").reservedWon()).isEqualByComparingTo("10");
     }

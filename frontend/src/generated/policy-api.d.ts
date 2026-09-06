@@ -169,7 +169,7 @@ export interface paths {
             readonly path?: never;
             readonly cookie?: never;
         };
-        /** 저장된 정책 검색과 현재 공통요건 질문이 있는 정책 필터 */
+        /** 정책 검색·질문 제공 여부·접수 상태 필터 */
         readonly get: operations["listPolicies"];
         readonly put?: never;
         readonly post?: never;
@@ -188,7 +188,7 @@ export interface paths {
         };
         readonly get?: never;
         readonly put?: never;
-        /** 기본 조건으로 연령 비교·정책 검색·정렬. 조건은 저장하지 않음 */
+        /** 기본 조건으로 연령 비교·정책 검색·접수 상태 필터·정렬. 조건은 저장하지 않음 */
         readonly post: operations["checkPolicyConditions"];
         readonly delete?: never;
         readonly options?: never;
@@ -1210,6 +1210,7 @@ export interface operations {
                 readonly page?: number;
                 readonly pageSize?: number;
                 readonly questionsOnly?: boolean;
+                readonly recruitmentStatus?: "BEFORE_OPENING" | "OPEN" | "CLOSED" | "ROLLING" | "UNTIL_EXHAUSTED" | "UNKNOWN";
             };
             readonly header?: never;
             readonly path?: never;
@@ -1252,6 +1253,7 @@ export interface operations {
                 readonly page?: number;
                 readonly q?: string;
                 readonly sort?: "AGE_MATCH" | "RECENT";
+                readonly recruitmentStatus?: "BEFORE_OPENING" | "OPEN" | "CLOSED" | "ROLLING" | "UNTIL_EXHAUSTED" | "UNKNOWN";
             };
             readonly header?: never;
             readonly path?: never;

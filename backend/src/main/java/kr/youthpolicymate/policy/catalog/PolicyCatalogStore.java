@@ -1,5 +1,6 @@
 package kr.youthpolicymate.policy.catalog;
 
+import kr.youthpolicymate.policy.RecruitmentStatus;
 import org.springframework.context.annotation.Profile;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
@@ -96,17 +97,23 @@ public class PolicyCatalogStore {
                     """).param("number", number).param("revision", revision).param("snapshot", snapshotId)
                     .param("content", json).update();
         }
+        var window = PolicyRecruitmentWindow.from(number, contentHash, mapper.readTree(rawPolicy));
         jdbc.sql("""
                 UPDATE policies SET current_revision = :revision, content_hash = :hash,
                     content = CAST(:content AS jsonb), last_collected_at = :at,
-                    last_request_sequence = :sequence WHERE policy_number = :number
+                    last_request_sequence = :sequence,
+                    recruitment_kind = CASE WHEN :changed THEN :kind ELSE recruitment_kind END,
+                    recruitment_opens_at = CASE WHEN :changed THEN :opensAt ELSE recruitment_opens_at END,
+                    recruitment_closes_at = CASE WHEN :changed THEN :closesAt ELSE recruitment_closes_at END
+                    WHERE policy_number = :number
                 """).param("number", number).param("revision", revision).param("hash", contentHash)
-                .param("content", json).param("at", capturedAt.atOffset(ZoneOffset.UTC)).param("sequence", requestSequence).update();
+                .param("content", json).param("at", capturedAt.atOffset(ZoneOffset.UTC)).param("sequence", requestSequence).param("changed", changed)
+                .param("kind", window.kind()).param("opensAt", window.opensAt()).param("closesAt", window.closesAt()).update();
         return changed ? ImportResult.APPLIED : ImportResult.UNCHANGED;
     }
 
     @Transactional(readOnly = true, isolation = org.springframework.transaction.annotation.Isolation.REPEATABLE_READ)
-    public PolicyListResponse list(String query, int page, int pageSize, boolean questionsOnly, Instant now) {
+    public PolicyListResponse list(String query, int page, int pageSize, boolean questionsOnly, RecruitmentStatus recruitmentStatus, Instant now) {
         var reviewed = ReviewedPolicyQuestions.contentHashesAt(now);
         var parameters = new HashMap<String, Object>();
         parameters.put("query", query);
@@ -123,6 +130,7 @@ public class PolicyCatalogStore {
             }
             where += " AND " + alternatives;
         }
+        where += recruitmentFilter(recruitmentStatus, now, parameters);
         var total = jdbc.sql("SELECT count(*) FROM policies p" + where).params(parameters).query(Long.class).single();
         var items = jdbc.sql("""
                 SELECT p.policy_number, p.current_revision, p.content_hash, p.last_collected_at,
@@ -144,6 +152,20 @@ public class PolicyCatalogStore {
         return new PolicyListResponse(items, page, pageSize, total, (long) page * pageSize < total);
     }
 
+    private static String recruitmentFilter(RecruitmentStatus status, Instant now, Map<String, Object> parameters) {
+        if (status == null) return "";
+        parameters.put("recruitmentNow", now.atOffset(ZoneOffset.UTC));
+        return " AND " + switch (status) {
+            case BEFORE_OPENING -> "(p.recruitment_kind = 'PERIOD' AND p.recruitment_opens_at > :recruitmentNow)";
+            case OPEN -> "(p.recruitment_kind = 'PERIOD' AND p.recruitment_opens_at <= :recruitmentNow AND p.recruitment_closes_at > :recruitmentNow)";
+            case CLOSED -> "(p.recruitment_kind = 'CLOSED' OR (p.recruitment_kind = 'PERIOD' AND p.recruitment_closes_at <= :recruitmentNow))";
+            case ROLLING, UNTIL_EXHAUSTED, UNKNOWN -> {
+                parameters.put("recruitmentKind", status.name());
+                yield "p.recruitment_kind = :recruitmentKind";
+            }
+        };
+    }
+
     public Optional<PolicyDetailResponse> find(String number) {
         var now = clock.instant();
         return jdbc.sql("SELECT p.policy_number, p.current_revision, p.content_hash, p.content, p.last_collected_at, "
@@ -153,11 +175,12 @@ public class PolicyCatalogStore {
 
     @Transactional(readOnly = true, isolation = org.springframework.transaction.annotation.Isolation.REPEATABLE_READ)
     public Page<CheckSource> listForCheck(PageRequest page, String query, PolicyCheckResponse.Sort sort,
-                                         Map<String, BasicConditionRules.Comparison> comparisons, Instant now) {
+                                         Map<String, BasicConditionRules.Comparison> comparisons, RecruitmentStatus recruitmentStatus, Instant now) {
         var reviewed = ReviewedPolicyQuestions.contentHashesAt(now);
         var parameters = new HashMap<String, Object>();
         parameters.put("query", query);
         var where = " WHERE p.current_revision > 0 AND (:query = '' OR strpos(lower((p.content->>'title') || ' ' || (p.content->>'description')), lower(:query)) > 0)";
+        where += recruitmentFilter(recruitmentStatus, now, parameters);
         var total = jdbc.sql("SELECT count(*) FROM policies p" + where).params(parameters).query(Long.class).single();
         var order = "p.last_collected_at DESC, p.policy_number";
         if (sort == PolicyCheckResponse.Sort.AGE_MATCH && !comparisons.isEmpty()) {

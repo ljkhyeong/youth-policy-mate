@@ -17,21 +17,23 @@ const policy: components["schemas"]["PolicySummary"] = {
 describe("정책 목록의 공통요건 질문 탐색", () => {
   it("검색·페이지 이동에 필터를 유지하고 필터 전환은 첫 페이지로 돌아간다", async () => {
     vi.mocked(loadPolicies).mockResolvedValue({ status: "available", data: { items: [policy], page: 2, pageSize: 20, total: 41, hasNext: true } });
-    const html = renderToStaticMarkup(await PoliciesPage({ searchParams: Promise.resolve({ q: "시험&지원", page: "2", questionsOnly: "true" }) }));
-    expect(loadPolicies).toHaveBeenCalledWith("시험&지원", 2, true);
+    const html = renderToStaticMarkup(await PoliciesPage({ searchParams: Promise.resolve({ q: "시험&지원", page: "2", questionsOnly: "true", recruitmentStatus: "OPEN" }) }));
+    expect(loadPolicies).toHaveBeenCalledWith("시험&지원", 2, true, "OPEN");
     expect(html).toContain('type="hidden" name="questionsOnly" value="true"');
     const query = encodeURIComponent("시험&지원");
-    expect(html).toContain(`href="/policies?q=${query}&amp;page=3&amp;questionsOnly=true"`);
-    expect(html).toContain(`href="/policies?q=${query}&amp;page=1"`);
-    expect(html).toContain(`href="/policies?q=${query}&amp;page=1&amp;questionsOnly=true"`);
+    expect(html).toContain(`href="/policies?q=${query}&amp;page=3&amp;questionsOnly=true&amp;recruitmentStatus=OPEN"`);
+    expect(html).toContain(`href="/policies?q=${query}&amp;page=1&amp;recruitmentStatus=OPEN"`);
+    expect(html).toContain(`href="/policies?q=${query}&amp;page=1&amp;questionsOnly=true&amp;recruitmentStatus=OPEN"`);
     expect(html).toContain('href="/policies/123#policy-questions"');
     expect(html).toContain("41건");
+    expect(html).toContain('value="OPEN" selected=""');
+    expect(html).toContain('form="policy-search-form"');
   });
 
   it("질문이 없는 정책에는 질문 이동을 표시하지 않고 전체 조회를 유지한다", async () => {
     vi.mocked(loadPolicies).mockResolvedValue({ status: "available", data: { items: [{ ...policy, questionnaireAvailable: false }], page: 1, pageSize: 20, total: 1, hasNext: false } });
     const html = renderToStaticMarkup(await PoliciesPage({ searchParams: Promise.resolve({}) }));
-    expect(loadPolicies).toHaveBeenCalledWith("", 1, false);
+    expect(loadPolicies).toHaveBeenCalledWith("", 1, false, "");
     expect(html).toContain('href="/policies/123"');
     expect(html).not.toContain('href="/policies/123#policy-questions"');
     expect(html).not.toContain('type="hidden" name="questionsOnly"');

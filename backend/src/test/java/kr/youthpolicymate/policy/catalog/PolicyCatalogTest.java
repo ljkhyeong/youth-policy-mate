@@ -338,7 +338,7 @@ class PolicyCatalogTest {
 
         for (int page = 1; page <= 3; page++) {
             org.mockito.Mockito.clearInvocations(jdbc);
-            var response = checks.check(input, page, "", PolicyCheckResponse.Sort.AGE_MATCH);
+            var response = checks.check(input, page, "", PolicyCheckResponse.Sort.AGE_MATCH, null);
             org.mockito.Mockito.verify(jdbc, org.mockito.Mockito.times(2)).sql(org.mockito.ArgumentMatchers.anyString());
             assertThat(response.page()).isEqualTo(page);
             assertThat(response.total()).isEqualTo(21);
@@ -565,22 +565,22 @@ class PolicyCatalogTest {
         }
         var input = new BasicConditions(java.time.LocalDate.parse("1990-12-31"), "강남구", BasicConditions.EmploymentStatus.NOT_EMPLOYED);
         org.mockito.Mockito.clearInvocations(jdbc);
-        var first = checks.check(input, 1, "", PolicyCheckResponse.Sort.AGE_MATCH);
+        var first = checks.check(input, 1, "", PolicyCheckResponse.Sort.AGE_MATCH, null);
         org.mockito.Mockito.verify(jdbc, org.mockito.Mockito.times(2)).sql(org.mockito.ArgumentMatchers.anyString());
         assertThat(first.total()).isEqualTo(23);
         assertThat(first.items().getFirst().policyNumber()).isEqualTo(KPassRules.NUMBER);
         assertThat(first.items().getFirst().checks().getFirst().outcome()).isEqualTo(kr.youthpolicymate.eligibility.ConditionAssessment.Outcome.MET);
         assertThat(first.items().getFirst().ruleVersion()).isEqualTo(KPassRules.versionAt(AT));
-        var second = checks.check(input, 2, "", PolicyCheckResponse.Sort.AGE_MATCH);
+        var second = checks.check(input, 2, "", PolicyCheckResponse.Sort.AGE_MATCH, null);
         assertThat(second.items()).hasSize(3);
         assertThat(second.items().getLast().policyNumber()).isEqualTo(ExamFeeRules.NUMBER);
         assertThat(second.items().getLast().checks().getFirst().outcome()).isEqualTo(kr.youthpolicymate.eligibility.ConditionAssessment.Outcome.NOT_MET);
         assertThat(first.items()).noneMatch(value -> second.items().stream().anyMatch(next -> value.policyNumber().equals(next.policyNumber())));
-        var search = checks.check(input, 1, "응시료", PolicyCheckResponse.Sort.AGE_MATCH);
+        var search = checks.check(input, 1, "응시료", PolicyCheckResponse.Sort.AGE_MATCH, null);
         assertThat(search.total()).isEqualTo(1);
         assertThat(search.items().getFirst().policyNumber()).isEqualTo(ExamFeeRules.NUMBER);
-        assertThat(checks.check(input, 1, "%_", PolicyCheckResponse.Sort.AGE_MATCH).items()).isEmpty();
-        assertThat(checks.check(input, 1, "", PolicyCheckResponse.Sort.RECENT).items().getFirst().title()).isEqualTo("미검토 정책 1");
+        assertThat(checks.check(input, 1, "%_", PolicyCheckResponse.Sort.AGE_MATCH, null).items()).isEmpty();
+        assertThat(checks.check(input, 1, "", PolicyCheckResponse.Sort.RECENT, null).items().getFirst().title()).isEqualTo("미검토 정책 1");
         var body = mapper.writeValueAsString(input);
         mvc.perform(post("/api/v1/policies/checks").param("q", " 응시료 ").param("sort", "RECENT").contentType("application/json").content(body))
                 .andExpect(status().isOk()).andExpect(header().string("Cache-Control", "no-store"))
@@ -589,7 +589,7 @@ class PolicyCatalogTest {
         mvc.perform(post("/api/v1/policies/checks").param("sort", "SCORE").contentType("application/json").content(body)).andExpect(status().isBadRequest());
         var current = store.find(KPassRules.NUMBER).orElseThrow();
         store.importPolicy(KPassRules.NUMBER, current.content(), "{}", AT.plusSeconds(2), "changed-basic", "changed-basic-hash");
-        var changed = checks.check(input, 1, "K-패스", PolicyCheckResponse.Sort.AGE_MATCH).items().getFirst();
+        var changed = checks.check(input, 1, "K-패스", PolicyCheckResponse.Sort.AGE_MATCH, null).items().getFirst();
         assertThat(changed.checks().getFirst().outcome()).isEqualTo(kr.youthpolicymate.eligibility.ConditionAssessment.Outcome.UNKNOWN);
         assertThat(changed.ruleVersion()).isEmpty();
         assertThat(changed.questionnaireAvailable()).isFalse();
@@ -648,6 +648,100 @@ class PolicyCatalogTest {
                 .andExpect(jsonPath("$.recruitment.status").value("UNKNOWN"));
         mvc.perform(post("/api/v1/policies/checks").contentType("application/json").content(body))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.items[0].recruitment.status").value("UNKNOWN"));
+    }
+
+    @Test @DisplayName("접수 필터를 전체 검색에 적용한 뒤 페이지를 나누고 질문 필터·연령 정렬과 함께 사용한다")
+    void filtersRecruitmentBeforePagination() throws Exception {
+        for (var field : List.of("plcySprtCn", "plcyAplyMthdCn", "etcMttrCn", "addAplyQlfcCndCn", "srngMthdCn", "plcyExplnCn")) item.put(field, "안내");
+        item.put("aplyPrdSeCd", "0057001").put("aplyYmd", "20260901 ~ 20260912");
+        for (int i = 1; i <= 23; i++) {
+            item.put("plcyNo", "90" + i).put("plcyNm", "필터 지원 " + i);
+            save("open-" + i, AT.plusSeconds(i));
+        }
+        saveReviewed(WorkStudyRules.NUMBER, "필터 지원 장학금", WorkStudyRules.CONTENT_HASH);
+        item.put("plcyNo", "991").put("aplyYmd", "20260801 ~ 20260831"); save("closed", AT.plusSeconds(30));
+        item.put("plcyNo", "992").put("aplyPrdSeCd", "0057002").put("aplyYmd", ""); save("rolling", AT.plusSeconds(31));
+        item.put("plcyNo", "993").put("aplyYmd", "20260901 ~ 20260912"); save("unknown", AT.plusSeconds(32));
+        item.put("plcyNo", "994").put("aplyPrdSeCd", "0057001").put("aplyYmd", "20261001 ~ 20261012"); save("before", AT.plusSeconds(33));
+
+        var seen = new java.util.HashSet<String>();
+        for (int page = 1; page <= 3; page++) {
+            org.mockito.Mockito.clearInvocations(jdbc);
+            var result = store.list("필터 지원", page, 10, false, kr.youthpolicymate.policy.RecruitmentStatus.OPEN, AT);
+            org.mockito.Mockito.verify(jdbc, org.mockito.Mockito.times(2)).sql(org.mockito.ArgumentMatchers.anyString());
+            assertThat(result.total()).isEqualTo(24);
+            assertThat(result.hasNext()).isEqualTo(page < 3);
+            assertThat(result.items()).hasSize(page < 3 ? 10 : 4).allSatisfy(policy -> {
+                assertThat(policy.recruitment().status()).isEqualTo(kr.youthpolicymate.policy.RecruitmentStatus.OPEN);
+                assertThat(seen.add(policy.policyNumber())).isTrue();
+            });
+        }
+        mvc.perform(get("/api/v1/policies").param("recruitmentStatus", "OPEN").param("q", "장학금").param("questionsOnly", "true"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.total").value(1))
+                .andExpect(jsonPath("$.items[0].policyNumber").value(WorkStudyRules.NUMBER));
+        for (var state : List.of("CLOSED", "ROLLING", "UNKNOWN", "BEFORE_OPENING")) {
+            mvc.perform(get("/api/v1/policies").param("recruitmentStatus", state)).andExpect(status().isOk())
+                    .andExpect(jsonPath("$.total").value(1)).andExpect(jsonPath("$.items[0].recruitment.status").value(state));
+        }
+        mvc.perform(get("/api/v1/policies").param("recruitmentStatus", "UNTIL_EXHAUSTED"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.total").value(0));
+        var body = mapper.writeValueAsString(new BasicConditions(java.time.LocalDate.parse("2000-01-01"), "강남구", BasicConditions.EmploymentStatus.NOT_EMPLOYED));
+        mvc.perform(post("/api/v1/policies/checks").param("recruitmentStatus", "OPEN").param("page", "2")
+                        .param("q", "필터 지원").param("sort", "RECENT").contentType("application/json").content(body))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.total").value(24)).andExpect(jsonPath("$.items.length()").value(4))
+                .andExpect(jsonPath("$.hasNext").value(false)).andExpect(jsonPath("$.items[0].recruitment.status").value("OPEN"))
+                .andExpect(jsonPath("$.items[0].status").value("NEEDS_REVIEW"));
+        mvc.perform(get("/api/v1/policies").param("recruitmentStatus", "INVALID")).andExpect(status().isBadRequest());
+        mvc.perform(post("/api/v1/policies/checks").param("recruitmentStatus", "INVALID")
+                .contentType("application/json").content(body)).andExpect(status().isBadRequest());
+    }
+
+    @Test @DisplayName("필터와 표시가 서울 자정·정확한 접수 시각 경계에서 함께 바뀌며 원문 변경을 반영한다")
+    void keepsFilterAndDisplayConsistentAtBoundaries() {
+        for (var field : List.of("plcySprtCn", "plcyAplyMthdCn", "etcMttrCn", "addAplyQlfcCndCn", "srngMthdCn", "plcyExplnCn")) item.put(field, "안내");
+        item.put("aplyPrdSeCd", "0057001").put("aplyYmd", "20260906 ~ 20260907");
+        save("dates", AT);
+        for (var time : List.of("2026-09-05T14:59:59.999999Z", "2026-09-05T15:00:00Z", "2026-09-07T14:59:59.999999Z", "2026-09-07T15:00:00Z")) {
+            var now = Instant.parse(time);
+            var expected = PolicyRecruitment.from(NUMBER, 1, "", item, now).status();
+            assertThat(store.list("", 1, 20, false, expected, now).items()).singleElement()
+                    .satisfies(policy -> assertThat(policy.recruitment().status()).isEqualTo(expected));
+        }
+        saveReviewed(MovingFeeRules.NUMBER, "이사비", MovingFeeRules.CONTENT_HASH);
+        for (var now : List.of(MovingFeeRules.OPEN_AT.minusNanos(1000), MovingFeeRules.OPEN_AT,
+                MovingFeeRules.CLOSE_AT.minusNanos(1000), MovingFeeRules.CLOSE_AT)) {
+            var expected = PolicyRecruitment.from(MovingFeeRules.NUMBER, 1, MovingFeeRules.CONTENT_HASH, item, now).status();
+            assertThat(store.list("이사비", 1, 20, true, expected, now).items()).singleElement()
+                    .satisfies(policy -> assertThat(policy.recruitment().status()).isEqualTo(expected));
+        }
+        var current = store.find(MovingFeeRules.NUMBER).orElseThrow();
+        store.importPolicy(MovingFeeRules.NUMBER, current.content(), "{}", AT.plusSeconds(1), "changed-window", "changed-window");
+        assertThat(store.list("이사비", 1, 20, false, kr.youthpolicymate.policy.RecruitmentStatus.UNKNOWN, AT).total()).isOne();
+        assertThat(store.list("이사비", 1, 20, false, kr.youthpolicymate.policy.RecruitmentStatus.CLOSED, AT).total()).isZero();
+    }
+
+    @Test @DisplayName("기존 정책을 삭제하거나 개정을 늘리지 않고 접수 검색 기간을 이전한다")
+    void backfillsRecruitmentForExistingPolicies() throws Exception {
+        var config = org.flywaydb.core.Flyway.configure().dataSource(postgres.getJdbcUrl(), postgres.getUsername(), postgres.getPassword())
+                .schemas("recruitment_backfill");
+        config.target("17").load().migrate();
+        try (var connection = java.sql.DriverManager.getConnection(postgres.getJdbcUrl(), postgres.getUsername(), postgres.getPassword())) {
+            connection.setSchema("recruitment_backfill");
+            var isolated = JdbcClient.create(new org.springframework.jdbc.datasource.SingleConnectionDataSource(connection, true));
+            var normalized = parser.item(item);
+            isolated.sql("INSERT INTO policies(policy_number, current_revision, content_hash, content, last_collected_at) VALUES (:number, 1, :hash, CAST(:content AS jsonb), :at)")
+                    .param("number", MovingFeeRules.NUMBER).param("hash", MovingFeeRules.CONTENT_HASH)
+                    .param("content", mapper.writeValueAsString(normalized.content())).param("at", AT.atOffset(java.time.ZoneOffset.UTC)).update();
+            var id = isolated.sql("INSERT INTO policy_source_snapshots(policy_number, capture_hash, captured_at, raw_policy) VALUES (:number, 'old', :at, CAST(:raw AS jsonb)) RETURNING id")
+                    .param("number", MovingFeeRules.NUMBER).param("at", AT.atOffset(java.time.ZoneOffset.UTC)).param("raw", normalized.rawPolicy()).query(Long.class).single();
+            isolated.sql("INSERT INTO policy_revisions(policy_number, revision, source_snapshot_id, content) SELECT policy_number, 1, :id, content FROM policies")
+                    .param("id", id).update();
+            config.target("latest").load().migrate();
+            var migrated = new PolicyCatalogStore(isolated, mapper, java.time.Clock.fixed(AT, java.time.ZoneOffset.UTC));
+            assertThat(migrated.list("", 1, 20, false, kr.youthpolicymate.policy.RecruitmentStatus.CLOSED, AT).items()).singleElement()
+                    .satisfies(policy -> assertThat(policy.recruitment().status()).isEqualTo(kr.youthpolicymate.policy.RecruitmentStatus.CLOSED));
+            assertThat(migrated.find(MovingFeeRules.NUMBER).orElseThrow().revision()).isOne();
+        }
     }
 
     private void saveReviewed(String number, String title, String hash) {

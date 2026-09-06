@@ -715,6 +715,14 @@
             "type" : "boolean",
             "default" : false
           }
+        }, {
+          "in" : "query",
+          "name" : "recruitmentStatus",
+          "required" : false,
+          "schema" : {
+            "type" : "string",
+            "enum" : [ "BEFORE_OPENING", "OPEN", "CLOSED", "ROLLING", "UNTIL_EXHAUSTED", "UNKNOWN" ]
+          }
         } ],
         "responses" : {
           "200" : {
@@ -748,7 +756,7 @@
             "description" : "정책 저장소 조회 실패"
           }
         },
-        "summary" : "저장된 정책 검색과 현재 공통요건 질문이 있는 정책 필터",
+        "summary" : "정책 검색·질문 제공 여부·접수 상태 필터",
         "tags" : [ "policy-catalog-controller" ]
       }
     },
@@ -784,6 +792,14 @@
             "type" : "string",
             "default" : "AGE_MATCH",
             "enum" : [ "AGE_MATCH", "RECENT" ]
+          }
+        }, {
+          "in" : "query",
+          "name" : "recruitmentStatus",
+          "required" : false,
+          "schema" : {
+            "type" : "string",
+            "enum" : [ "BEFORE_OPENING", "OPEN", "CLOSED", "ROLLING", "UNTIL_EXHAUSTED", "UNKNOWN" ]
           }
         } ],
         "requestBody" : {
@@ -828,7 +844,7 @@
             "description" : "정책 저장소 조회 실패"
           }
         },
-        "summary" : "기본 조건으로 연령 비교·정책 검색·정렬. 조건은 저장하지 않음",
+        "summary" : "기본 조건으로 연령 비교·정책 검색·접수 상태 필터·정렬. 조건은 저장하지 않음",
         "tags" : [ "policy-catalog-controller" ]
       }
     },

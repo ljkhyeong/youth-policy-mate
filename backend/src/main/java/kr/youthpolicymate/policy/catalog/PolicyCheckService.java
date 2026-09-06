@@ -1,6 +1,7 @@
 package kr.youthpolicymate.policy.catalog;
 
 import kr.youthpolicymate.eligibility.EligibilityStatus;
+import kr.youthpolicymate.policy.RecruitmentStatus;
 import static kr.youthpolicymate.eligibility.ConditionAssessment.Outcome.*;
 import org.springframework.context.annotation.Profile;
 import org.springframework.data.domain.PageRequest;
@@ -23,10 +24,10 @@ public class PolicyCheckService {
     public PolicyCheckService(PolicyCatalogStore store, Clock clock) { this.store = store; this.clock = clock; }
 
     @Transactional(readOnly = true, isolation = org.springframework.transaction.annotation.Isolation.REPEATABLE_READ)
-    public PolicyCheckResponse check(BasicConditions input, int page, String query, PolicyCheckResponse.Sort sort) {
+    public PolicyCheckResponse check(BasicConditions input, int page, String query, PolicyCheckResponse.Sort sort, RecruitmentStatus recruitmentStatus) {
         var now = clock.instant();
         input.validate(LocalDate.ofInstant(now, ZoneId.of("Asia/Seoul")));
-        var policies = store.listForCheck(PageRequest.of(page - 1, 20), query, sort, BasicConditionRules.compare(input, now), now);
+        var policies = store.listForCheck(PageRequest.of(page - 1, 20), query, sort, BasicConditionRules.compare(input, now), recruitmentStatus, now);
         var items = new ArrayList<PolicyCheckResponse.Item>();
         for (var source : policies) {
             var policy = source.policy();

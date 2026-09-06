@@ -47,7 +47,7 @@ async function handle(request: NextRequest, context: { params: Promise<{ path: s
       : evaluation ? `/api/v1/policies/${evaluation[1]}/evaluation` : path === "checks" ? "/api/v1/policies/checks" : ["session", "logout"].includes(path) ? `/api/v1/${path}` : `/api/v1/me/${path}`;
     const url = new URL(apiPath, base);
     if (path === "checks") {
-      for (const key of ["page", "q", "sort"]) {
+      for (const key of ["page", "q", "sort", "recruitmentStatus"]) {
         const value = request.nextUrl.searchParams.get(key);
         if (value !== null) url.searchParams.set(key, value);
       }

@@ -1031,6 +1031,7 @@ select {
 .email-current .text-button { display: block; margin-top: .8rem; }
 
 .condition-policy-sort { max-width: 100%; border: 1px solid #cfd5de; border-radius: 10px; background: white; padding: 10px 12px; font-size: 16px; }
+.condition-filter { display: inline-flex; align-items: center; gap: 12px; max-width: 100%; }
 
 .policy-recruitment { margin: 12px 0; }
 .policy-recruitment p { margin: 8px 0 0; color: var(--app-muted); font-size: 13px; line-height: 1.65; font-weight: 400; }

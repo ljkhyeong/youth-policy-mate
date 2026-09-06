@@ -13,21 +13,26 @@ import java.util.Optional;
 @Schema(requiredProperties = {"status", "explanation", "evaluatedAt"})
 public record PolicyRecruitment(RecruitmentStatus status, String explanation, Instant evaluatedAt) {
     static PolicyRecruitment from(String number, long revision, String hash, JsonNode raw, Instant now) {
-        ApplicationPeriod period;
+        var period = period(number, hash, raw);
         var source = PolicyCatalogStore.sourceUrl(number);
         var location = "온통청년 신청기간·추가 안내";
         if (SeoulYouthNetworkRules.NUMBER.equals(number) && SeoulYouthNetworkRules.CONTENT_HASH.equals(hash)) {
-            period = times(SeoulYouthNetworkRules.OPEN_AT, SeoulYouthNetworkRules.CLOSE_AT);
             source = SeoulYouthNetworkRules.SOURCE;
             location = SeoulYouthNetworkRules.SCOPE;
         } else if (MovingFeeRules.NUMBER.equals(number) && MovingFeeRules.CONTENT_HASH.equals(hash)) {
-            period = times(MovingFeeRules.OPEN_AT, MovingFeeRules.CLOSE_AT);
             source = MovingFeeRules.SOURCE;
             location = MovingFeeRules.SCOPE;
-        } else period = PolicyApplicationPeriod.parse(raw);
+        }
         var assessment = new RecruitmentAssessment(new RecruitmentSchedule(number, Long.toString(revision), period,
                 source, location, Optional.empty()), now);
         return new PolicyRecruitment(assessment.status(), assessment.explanation(), now);
+    }
+    static ApplicationPeriod period(String number, String hash, JsonNode raw) {
+        if (SeoulYouthNetworkRules.NUMBER.equals(number) && SeoulYouthNetworkRules.CONTENT_HASH.equals(hash))
+            return times(SeoulYouthNetworkRules.OPEN_AT, SeoulYouthNetworkRules.CLOSE_AT);
+        if (MovingFeeRules.NUMBER.equals(number) && MovingFeeRules.CONTENT_HASH.equals(hash))
+            return times(MovingFeeRules.OPEN_AT, MovingFeeRules.CLOSE_AT);
+        return PolicyApplicationPeriod.parse(raw);
     }
     private static ApplicationPeriod.Times times(Instant open, Instant close) {
         var seoul = ZoneId.of("Asia/Seoul");

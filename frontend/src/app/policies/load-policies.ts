@@ -1,3 +1,4 @@
+import type { RecruitmentFilter } from "@/features/policies/policy-recruitment";
 import type { components } from "@/generated/policy-api";
 
 export type PolicyList = components["schemas"]["PolicyListResponse"];
@@ -20,9 +21,10 @@ async function load<T>(path: string): Promise<Loaded<T>> {
   }
 }
 
-export function loadPolicies(query: string, page: number, questionsOnly = false) {
+export function loadPolicies(query: string, page: number, questionsOnly = false, recruitmentStatus: RecruitmentFilter = "") {
   const search = new URLSearchParams({ q: query, page: String(page), pageSize: "20" });
   if (questionsOnly) search.set("questionsOnly", "true");
+  if (recruitmentStatus) search.set("recruitmentStatus", recruitmentStatus);
   return load<PolicyList>(`/api/v1/policies?${search}`);
 }
 

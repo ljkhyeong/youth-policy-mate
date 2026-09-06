@@ -7,12 +7,13 @@ describe("공개 정책 조회", () => {
   it("검색어는 고정 경로의 인수로 전달하고 공개 응답을 재사용하지 않는다", async () => {
     const fetchMock = vi.fn(async () => Response.json({ items: [], page: 2, pageSize: 20, total: 0, hasNext: false }));
     vi.stubGlobal("fetch", fetchMock);
-    const result = await loadPolicies("장학금&취업", 2, true);
+    const result = await loadPolicies("장학금&취업", 2, true, "OPEN");
     const [address, options] = fetchMock.mock.calls[0] as unknown as [URL, RequestInit];
     expect(address.pathname).toBe("/api/v1/policies");
     expect(address.searchParams.get("q")).toBe("장학금&취업");
     expect(address.searchParams.get("page")).toBe("2");
     expect(address.searchParams.get("questionsOnly")).toBe("true");
+    expect(address.searchParams.get("recruitmentStatus")).toBe("OPEN");
     expect(options.cache).toBe("no-store");
     expect(result.status).toBe("available");
   });

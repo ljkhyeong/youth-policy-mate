@@ -16,6 +16,7 @@ const detail: ExceptionDetail = {
     lastAttemptAt: "2026-09-07T00:00:00Z", policyNumber: "123" },
   rawPolicyJson: '{"plcyNo":9007199254740993,"plcyNm":"<script>unsafe()</script>"}',
   currentPolicy: { policyNumber: "123", revision: 3, collectedAt: "2026-09-07T00:00:00Z",
+    sourceCapturedAt: "2026-09-06T00:00:00Z", previousRevision: null,
     content: { title: "현재 공개 제목", description: "공개 안내", organization: "운영 기관", category: "교육",
       applicationPeriod: "상시", sections: [{ title: "지원 내용", text: "확인된 지원 내용" }],
       links: [], regionCodes: [], sourceModifiedAtText: "" } },
@@ -76,6 +77,39 @@ describe("관리자 수집 예외 화면", () => {
     expect(html).toContain("&lt;script&gt;unsafe()&lt;/script&gt;");
     expect(html).not.toContain("<script>");
     expect(html).toContain('href="/policies/123"');
+    expect(html).toContain("비교할 이전 개정이 없습니다.");
+  });
+
+  it("변경된 필드를 이전·현재로 비교하고 같은 필드는 접어서 표시한다", async () => {
+    const current = detail.currentPolicy!;
+    vi.mocked(loadCollectionException).mockResolvedValue({ status: "available", data: { ...detail,
+      currentPolicy: { ...current, previousRevision: { revision: 2, sourceCapturedAt: "2026-09-05T00:00:00Z",
+        content: { ...current.content, title: "이전 제목 <script>old()</script>",
+          sections: [{ title: "지원 내용", text: "이전 지원 내용" }],
+          links: [{ label: "이전 신청처", url: "https://example.org/old" }] } } },
+    } });
+    const html = renderToStaticMarkup(await CollectionDetailPage({ params: Promise.resolve({ runId: run, itemIndex: "0" }), searchParams: Promise.resolve({}) }));
+    expect(html).toContain("변경된 항목 3개");
+    expect(html).toContain("이전 · 개정 2");
+    expect(html).toContain("현재 · 개정 3");
+    expect(html).toContain("이전 제목 &lt;script&gt;old()&lt;/script&gt;");
+    expect(html).not.toContain("<script>");
+    expect(html).toContain("이전 지원 내용");
+    expect(html).toContain("https://example.org/old");
+    expect(html).toContain("내용 없음");
+    expect(html).toContain('<details class="revision-unchanged"><summary>동일한 항목 6개</summary>');
+    expect(html).toContain("이전 개정 2 · 원본 수집");
+    expect(html).not.toContain("개정 적용 시각");
+  });
+
+  it("개정 번호가 달라도 표시 내용이 같으면 변경 없음을 안내한다", async () => {
+    const current = detail.currentPolicy!;
+    vi.mocked(loadCollectionException).mockResolvedValue({ status: "available", data: { ...detail,
+      currentPolicy: { ...current, previousRevision: { revision: 2, sourceCapturedAt: current.sourceCapturedAt, content: current.content } },
+    } });
+    const html = renderToStaticMarkup(await CollectionDetailPage({ params: Promise.resolve({ runId: run, itemIndex: "0" }), searchParams: Promise.resolve({}) }));
+    expect(html).toContain("표시 항목의 변경이 없습니다.");
+    expect(html).toContain("동일한 항목 9개");
   });
 
   it("정책번호가 없을 때 공개 내용을 임의로 연결하지 않는다", async () => {

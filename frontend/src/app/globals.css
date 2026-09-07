@@ -971,6 +971,14 @@ select {
 .exception-text { white-space: pre-wrap; line-height: 1.8; }
 .exception-section { border-top: 1px solid var(--app-line); margin-top: 20px; padding-top: 20px; }
 .exception-section h4 { font-weight: 700; margin-bottom: 8px; }
+.revision-values { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+.revision-values > div { min-width: 0; padding: 12px; background: #f8fafc; border-radius: 8px; }
+.revision-values dt { font-size: 13px; font-weight: 650; color: var(--app-muted); margin-bottom: 8px; }
+.member-panel .revision-field h3 { font-size: 16px; }
+.revision-list { display: grid; gap: 16px; line-height: 1.8; }
+.revision-unchanged { margin-top: 24px; }
+.revision-unchanged summary { cursor: pointer; padding: 12px 0; font-weight: 650; }
+@media (max-width: 600px) { .revision-values { grid-template-columns: 1fr; } }
 .member-main > header { margin-bottom: 32px; }
 .member-main h1 { font-size: clamp(28px, 5vw, 40px); font-weight: 750; letter-spacing: -.04em; }
 .member-main > header > p:last-child { color: var(--app-muted); margin-top: 12px; }

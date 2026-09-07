@@ -130,6 +130,8 @@ class CollectionExceptionApiTest {
                 .andExpect(jsonPath("$.item.attempts").value(1)).andReturn();
         var body = mapper.readTree(result.getResponse().getContentAsString());
         assertThat(mapper.readTree(body.path("rawPolicyJson").asString())).isEqualTo(source);
+        assertThat(body.at("/currentPolicy/previousRevision").isNull()).isTrue();
+        assertThat(body.at("/currentPolicy/sourceCapturedAt").asString()).isEqualTo(AT.toString());
 
         int index = 1;
         for (var invalid : List.of("null", "17", "{\"plcyNo\":17}", "{\"plcyNo\":\"wrong\"}",
@@ -148,6 +150,39 @@ class CollectionExceptionApiTest {
         assertThat(mapper.readTree(jdbc.sql("SELECT raw_policy::text FROM ontong_collection_items WHERE item_index=0")
                 .query(String.class).single())).isEqualTo(source);
         assertThat(policies.find(policy.number()).orElseThrow().content()).isEqualTo(policy.content());
+    }
+
+    @Test
+    @DisplayName("직전 내부 개정을 같은 정책에서 조회하고 원본 수집 시각과 최신 수집 시각을 구분한다")
+    void readsPreviousRevisionWithItsSource() throws Exception {
+        var parser = new OntongPolicyCapture(mapper);
+        var capture = parser.parse(Files.readString(Path.of("src/test/resources/ontong/list-capture.json")));
+        var source = (tools.jackson.databind.node.ObjectNode) capture.items().getFirst().deepCopy();
+        var number = parser.item(source).number();
+        for (int revision = 1; revision <= 3; revision++) {
+            source.put("plcyNm", "개정 " + revision);
+            var policy = parser.item(source);
+            policies.importPolicy(number, policy.content(), policy.rawPolicy(), AT.plusSeconds(revision),
+                    "revision-" + revision, policy.contentHash());
+        }
+        var current = parser.item(source);
+        policies.importPolicy(number, current.content(), current.rawPolicy(), AT.plusSeconds(4), "unchanged", current.contentHash());
+        source.put("plcyNm", "");
+        var run = page(1);
+        item(run, 0, "INVALID_ITEM", source.toString());
+        mvc.perform(get(ROOT + "/" + run + "/0").with(social(ADMIN)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.currentPolicy.revision").value(3))
+                .andExpect(jsonPath("$.currentPolicy.content.title").value("개정 3"))
+                .andExpect(jsonPath("$.currentPolicy.collectedAt").value(AT.plusSeconds(4).toString()))
+                .andExpect(jsonPath("$.currentPolicy.sourceCapturedAt").value(AT.plusSeconds(3).toString()))
+                .andExpect(jsonPath("$.currentPolicy.previousRevision.revision").value(2))
+                .andExpect(jsonPath("$.currentPolicy.previousRevision.content.title").value("개정 2"))
+                .andExpect(jsonPath("$.currentPolicy.previousRevision.sourceCapturedAt").value(AT.plusSeconds(2).toString()));
+        assertThat(jdbc.sql("SELECT count(*) FROM policy_revisions").query(Long.class).single()).isEqualTo(3);
+        assertThat(jdbc.sql("SELECT count(*) FROM policy_source_snapshots").query(Long.class).single()).isEqualTo(4);
+        assertThat(jdbc.sql("SELECT count(*) FROM ontong_collection_item_attempts").query(Long.class).single()).isZero();
+        assertThat(policies.find(number).orElseThrow().content()).isEqualTo(current.content());
     }
 
     @Test

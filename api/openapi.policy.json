@@ -1337,12 +1337,25 @@
           "policyNumber" : {
             "type" : "string"
           },
+          "previousRevision" : {
+            "anyOf" : [ {
+              "$ref" : "#/components/schemas/CollectionExceptionRevision"
+            }, {
+              "type" : "null"
+            } ],
+            "description" : "같은 정책의 직전 내부 개정. 없으면 null"
+          },
           "revision" : {
             "type" : "integer",
             "format" : "int64"
+          },
+          "sourceCapturedAt" : {
+            "type" : "string",
+            "format" : "date-time",
+            "description" : "현재 개정이 참조하는 원본 수집 시각. 개정 적용 시각이 아님"
           }
         },
-        "required" : [ "collectedAt", "content", "policyNumber", "revision" ]
+        "required" : [ "collectedAt", "content", "policyNumber", "previousRevision", "revision", "sourceCapturedAt" ]
       },
       "CollectionExceptionDetail" : {
         "type" : "object",
@@ -1422,6 +1435,25 @@
           }
         },
         "required" : [ "hasNext", "items", "page", "pageSize" ]
+      },
+      "CollectionExceptionRevision" : {
+        "type" : "object",
+        "properties" : {
+          "content" : {
+            "$ref" : "#/components/schemas/PolicyContent"
+          },
+          "revision" : {
+            "type" : "integer",
+            "format" : "int64",
+            "description" : "서비스 내부 개정 번호"
+          },
+          "sourceCapturedAt" : {
+            "type" : "string",
+            "format" : "date-time",
+            "description" : "개정이 참조하는 원본 수집 시각. 개정 적용 시각이 아님"
+          }
+        },
+        "required" : [ "content", "revision", "sourceCapturedAt" ]
       },
       "CollectionPageFailure" : {
         "type" : "object",

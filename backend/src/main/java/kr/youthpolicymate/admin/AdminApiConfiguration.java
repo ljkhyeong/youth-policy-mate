@@ -21,6 +21,10 @@ class AdminApiConfiguration {
             detail.addProperty("currentPolicy", new Schema<>().description("같은 정책번호의 조회 시점 공개 내용. 없으면 null")
                     .anyOf(List.of(new Schema<>().$ref("#/components/schemas/CollectionExceptionCurrentPolicy"),
                             new Schema<>().types(Set.of("null")))));
+            api.getComponents().getSchemas().get("CollectionExceptionCurrentPolicy")
+                    .addProperty("previousRevision", new Schema<>().description("같은 정책의 직전 내부 개정. 없으면 null")
+                            .anyOf(List.of(new Schema<>().$ref("#/components/schemas/CollectionExceptionRevision"),
+                                    new Schema<>().types(Set.of("null")))));
         };
     }
 }

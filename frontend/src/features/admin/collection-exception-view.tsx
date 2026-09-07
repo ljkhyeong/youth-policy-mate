@@ -74,6 +74,7 @@ export function ExceptionContent({ data }: { data: ExceptionDetail }) {
       </dl>
       <p className="field-help">세부 실패 사유는 저장되어 있지 않습니다. 원본과 현재 내용을 확인해주세요.</p>
     </section>
+    {currentPolicy && <RevisionComparison policy={currentPolicy} />}
     <section className="member-panel" aria-labelledby="current-heading">
       <h2 id="current-heading">현재 공개 내용</h2>
       {currentPolicy ? <>
@@ -97,4 +98,52 @@ export function ExceptionContent({ data }: { data: ExceptionDetail }) {
       <pre className="exception-raw" tabIndex={0} aria-label="수집 원본 JSON">{data.rawPolicyJson}</pre>
     </section>
   </>;
+}
+
+type CurrentPolicy = NonNullable<ExceptionDetail["currentPolicy"]>;
+type PolicyContent = CurrentPolicy["content"];
+const comparisonFields = {
+  title: "정책명", description: "정책 설명", category: "정책 분야", organization: "운영 기관",
+  applicationPeriod: "신청 기간", sections: "상세 안내", links: "공식 링크",
+  regionCodes: "지역 코드", sourceModifiedAtText: "원천 수정 일시",
+} satisfies Record<keyof PolicyContent, string>;
+
+function RevisionComparison({ policy }: { policy: CurrentPolicy }) {
+  const previous = policy.previousRevision;
+  if (!previous) return <section className="member-panel" aria-labelledby="revision-heading">
+    <h2 id="revision-heading">이전 개정 비교</h2><p>비교할 이전 개정이 없습니다.</p>
+  </section>;
+  const fields = Object.keys(comparisonFields) as (keyof PolicyContent)[];
+  const changed = fields.filter(field => JSON.stringify(previous.content[field]) !== JSON.stringify(policy.content[field]));
+  const unchanged = fields.filter(field => !changed.includes(field));
+  return <section className="member-panel" aria-labelledby="revision-heading">
+    <h2 id="revision-heading">이전 개정 비교</h2>
+    <p className="field-help">현재 공개 내용과 직전 내부 개정을 비교합니다. 실패 당시의 내용과는 다를 수 있습니다.</p>
+    <p className="field-help">이전 개정 {previous.revision} · 원본 수집 {dateLabel(previous.sourceCapturedAt)} (서울)<br />
+      현재 개정 {policy.revision} · 원본 수집 {dateLabel(policy.sourceCapturedAt)} (서울)</p>
+    <p>{changed.length ? `변경된 항목 ${changed.length}개` : "표시 항목의 변경이 없습니다."}</p>
+    {changed.map(field => <section className="exception-section revision-field" key={field}>
+      <h3>{comparisonFields[field]}</h3>
+      <dl className="revision-values">
+        <div><dt>이전 · 개정 {previous.revision}</dt><dd><RevisionValue value={previous.content[field]} /></dd></div>
+        <div><dt>현재 · 개정 {policy.revision}</dt><dd><RevisionValue value={policy.content[field]} /></dd></div>
+      </dl>
+    </section>)}
+    {unchanged.length > 0 && <details className="revision-unchanged">
+      <summary>동일한 항목 {unchanged.length}개</summary>
+      {unchanged.map(field => <section className="exception-section revision-field" key={field}>
+        <h3>{comparisonFields[field]}</h3><RevisionValue value={policy.content[field]} />
+      </section>)}
+    </details>}
+  </section>;
+}
+
+function RevisionValue({ value }: { value: PolicyContent[keyof PolicyContent] }) {
+  if (typeof value === "string") return <p className="exception-text">{value || "내용 없음"}</p>;
+  if (!value.length) return <p>내용 없음</p>;
+  return <ul className="revision-list">{value.map((entry, index) => <li key={index}>
+    {typeof entry === "string" ? entry : "text" in entry ? <>
+      <strong>{entry.title}</strong><p className="exception-text">{entry.text}</p>
+    </> : <><strong>{entry.label}</strong><p className="exception-text">{entry.url}</p></>}
+  </li>)}</ul>;
 }

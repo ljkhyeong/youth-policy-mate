@@ -84,12 +84,23 @@ class CollectionExceptionStore {
     private Optional<CollectionExceptions.CurrentPolicy> currentPolicy(String number) {
         if (number == null) return Optional.empty();
         return jdbc.sql("""
-                SELECT policy_number, current_revision, last_collected_at, content::text AS content
-                FROM policies WHERE policy_number = :number AND current_revision > 0
+                SELECT p.policy_number, p.current_revision, p.last_collected_at, p.content::text AS content,
+                       s.captured_at AS source_captured_at, previous.revision AS previous_revision,
+                       previous.content::text AS previous_content, previous_source.captured_at AS previous_captured_at
+                FROM policies p
+                JOIN policy_revisions r ON r.policy_number = p.policy_number AND r.revision = p.current_revision
+                JOIN policy_source_snapshots s ON s.id = r.source_snapshot_id
+                LEFT JOIN policy_revisions previous ON previous.policy_number = p.policy_number AND previous.revision = p.current_revision - 1
+                LEFT JOIN policy_source_snapshots previous_source ON previous_source.id = previous.source_snapshot_id
+                WHERE p.policy_number = :number AND p.current_revision > 0
                 """).param("number", number).query((rs, row) -> new CollectionExceptions.CurrentPolicy(
                         rs.getString("policy_number"), rs.getLong("current_revision"),
                         rs.getObject("last_collected_at", OffsetDateTime.class).toInstant(),
-                        mapper.readValue(rs.getString("content"), PolicyContent.class))).optional();
+                        mapper.readValue(rs.getString("content"), PolicyContent.class),
+                        rs.getObject("source_captured_at", OffsetDateTime.class).toInstant(),
+                        rs.getObject("previous_revision") == null ? null : new CollectionExceptions.Revision(
+                                rs.getLong("previous_revision"), rs.getObject("previous_captured_at", OffsetDateTime.class).toInstant(),
+                                mapper.readValue(rs.getString("previous_content"), PolicyContent.class)))).optional();
     }
 
     private static CollectionExceptions.Item item(ResultSet rs) throws SQLException {

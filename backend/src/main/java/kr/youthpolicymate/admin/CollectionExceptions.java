@@ -44,6 +44,13 @@ public final class CollectionExceptions {
                          @Schema(description = "저장된 수집 항목의 JSON 문자열. 외부 원문이므로 실행하지 않고 텍스트로 표시") String rawPolicyJson,
                          @Schema(types = {"object", "null"}, description = "같은 정책번호의 조회 시점 공개 내용. 없으면 null") CurrentPolicy currentPolicy) {}
 
-    @Schema(name = "CollectionExceptionCurrentPolicy", requiredProperties = {"policyNumber", "revision", "collectedAt", "content"})
-    public record CurrentPolicy(String policyNumber, long revision, Instant collectedAt, PolicyContent content) {}
+    @Schema(name = "CollectionExceptionCurrentPolicy", requiredProperties = {"policyNumber", "revision", "collectedAt", "content", "sourceCapturedAt", "previousRevision"})
+    public record CurrentPolicy(String policyNumber, long revision, Instant collectedAt, PolicyContent content,
+                                @Schema(description = "현재 개정이 참조하는 원본 수집 시각. 개정 적용 시각이 아님") Instant sourceCapturedAt,
+                                @Schema(types = {"object", "null"}, description = "같은 정책의 직전 내부 개정. 없으면 null") Revision previousRevision) {}
+
+    @Schema(name = "CollectionExceptionRevision", requiredProperties = {"revision", "sourceCapturedAt", "content"})
+    public record Revision(@Schema(description = "서비스 내부 개정 번호") long revision,
+                           @Schema(description = "개정이 참조하는 원본 수집 시각. 개정 적용 시각이 아님") Instant sourceCapturedAt,
+                           PolicyContent content) {}
 }

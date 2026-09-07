@@ -340,8 +340,15 @@ export interface components {
             readonly collectedAt: string;
             readonly content: components["schemas"]["PolicyContent"];
             readonly policyNumber: string;
+            /** @description 같은 정책의 직전 내부 개정. 없으면 null */
+            readonly previousRevision: components["schemas"]["CollectionExceptionRevision"] | null;
             /** Format: int64 */
             readonly revision: number;
+            /**
+             * Format: date-time
+             * @description 현재 개정이 참조하는 원본 수집 시각. 개정 적용 시각이 아님
+             */
+            readonly sourceCapturedAt: string;
         };
         readonly CollectionExceptionDetail: {
             /** @description 같은 정책번호의 조회 시점 공개 내용. 없으면 null */
@@ -376,6 +383,19 @@ export interface components {
             readonly page: number;
             /** Format: int32 */
             readonly pageSize: number;
+        };
+        readonly CollectionExceptionRevision: {
+            readonly content: components["schemas"]["PolicyContent"];
+            /**
+             * Format: int64
+             * @description 서비스 내부 개정 번호
+             */
+            readonly revision: number;
+            /**
+             * Format: date-time
+             * @description 개정이 참조하는 원본 수집 시각. 개정 적용 시각이 아님
+             */
+            readonly sourceCapturedAt: string;
         };
         readonly CollectionPageFailure: {
             /** Format: date-time */

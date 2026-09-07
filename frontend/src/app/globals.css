@@ -964,6 +964,13 @@ select {
 
 /* 내 정책과 조건 확인은 기존 한 열 입력 흐름과 같은 간격을 사용한다. */
 .member-main { width: min(100% - 40px, 880px); margin: 48px auto 64px; }
+.exception-main { overflow-wrap: anywhere; }
+.exception-facts { display: grid; grid-template-columns: 100px minmax(0, 1fr); gap: 10px 16px; margin: 20px 0; font-size: 14px; line-height: 1.7; }
+.exception-facts dt { color: var(--app-muted); }
+.exception-raw { max-height: 480px; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; background: #f8fafc; padding: 16px; border: 1px solid var(--app-line); border-radius: 12px; font-size: 12px; line-height: 1.8; }
+.exception-text { white-space: pre-wrap; line-height: 1.8; }
+.exception-section { border-top: 1px solid var(--app-line); margin-top: 20px; padding-top: 20px; }
+.exception-section h4 { font-weight: 700; margin-bottom: 8px; }
 .member-main > header { margin-bottom: 32px; }
 .member-main h1 { font-size: clamp(28px, 5vw, 40px); font-weight: 750; letter-spacing: -.04em; }
 .member-main > header > p:last-child { color: var(--app-muted); margin-top: 12px; }

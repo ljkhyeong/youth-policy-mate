@@ -2,8 +2,9 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { memberApi, type MemberSession } from "@/features/member/member-api";
+import { rememberLoginDestination } from "@/features/member/login-destination";
 
-export function LoginPanel() {
+export function LoginPanel({ admin = false }: { admin?: boolean }) {
   const [session, setSession] = useState<MemberSession | null>(null);
   const [error, setError] = useState("");
   useEffect(() => {
@@ -20,8 +21,9 @@ export function LoginPanel() {
   return <section className="member-panel">
     {error && <p role="alert" className="field-error">{error}</p>}
     {!session && !error && <p role="status">로그인 방법을 확인하고 있어요.</p>}
-    {session?.authenticated ? <Link className="button-primary" href="/my">내 정책으로 이동</Link> : <>
-      {session?.providers.map(provider => <a key={provider.id} className="button-primary button-block" href={provider.url}>{provider.name}로 로그인</a>)}
+    {session?.authenticated ? <a className="button-primary" href={admin ? "/admin/collection-exceptions" : "/my"}>{admin ? "수집 예외 확인" : "내 정책으로 이동"}</a> : <>
+      {session?.providers.map(provider => <a key={provider.id} className="button-primary button-block" href={provider.url}
+        onClick={() => rememberLoginDestination(admin)}>{provider.name}로 로그인</a>)}
       {session?.providers.length === 0 && <div className="availability-note"><div><strong>로그인 기능을 준비 중이에요</strong><p>지금은 로그인 없이 정책 검색과 조건 확인을 이용할 수 있어요.</p></div></div>}
       <p className="data-retention-note">로그인만으로 입력 조건이나 정책을 자동 저장하지 않아요. 저장할 내용을 확인한 뒤 직접 저장해주세요.</p>
     </>}

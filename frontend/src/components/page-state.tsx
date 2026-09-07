@@ -5,6 +5,7 @@ type PageStateProps = {
   kind: "loading" | "empty" | "error" | "not-found";
   title: string;
   description: string;
+  label?: string;
   actions?: ReactNode;
   headingAs?: "h1" | "h2";
   headingRef?: Ref<HTMLHeadingElement>;
@@ -17,7 +18,7 @@ const STATE_LABELS = {
   "not-found": "404 · 페이지 없음",
 };
 
-export function PageState({ kind, title, description, actions, headingAs: Heading = "h2", headingRef }: PageStateProps) {
+export function PageState({ kind, title, description, label, actions, headingAs: Heading = "h2", headingRef }: PageStateProps) {
   const titleId = useId();
   const role = kind === "error" ? "alert" : kind === "not-found" ? undefined : "status";
 
@@ -26,7 +27,7 @@ export function PageState({ kind, title, description, actions, headingAs: Headin
       <div role={role} aria-atomic={role ? true : undefined}>
         <p className={`mb-5 flex items-center gap-3 text-sm font-semibold ${kind === "error" ? "text-rose-800" : "text-teal-800"}`}>
           {kind === "loading" && <span aria-hidden="true" className="size-4 shrink-0 rounded-full border-2 border-teal-200 border-t-teal-800 motion-safe:animate-spin" />}
-          {STATE_LABELS[kind]}
+          {label ?? STATE_LABELS[kind]}
         </p>
         <Heading id={titleId} ref={headingRef} tabIndex={headingRef ? -1 : undefined} className="max-w-xl text-2xl leading-relaxed font-bold tracking-tight sm:text-3xl">
           {title}

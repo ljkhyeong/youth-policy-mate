@@ -1,6 +1,6 @@
 # 관리자 수집 예외 조회
 
-2026-09-07, 코드 `fe88cce` 기준. [PRD 6.2](../PRD/0001_product-baseline/spec.md#62-자동화-실패와-예외)의 항목 처리·페이지 수집 실패 조회 API와 관리 화면을 연결했다. 보정·재처리 API는 아직 없다.
+2026-09-07, 코드 `453a36e` 기준. [PRD 6.2](../PRD/0001_product-baseline/spec.md#62-자동화-실패와-예외)의 항목 처리·페이지 수집 실패 조회와 직전 개정 비교를 연결했다. 보정·재처리 API는 아직 없다.
 
 ## 접근 설정
 
@@ -20,6 +20,8 @@
 - 서버 조회에는 `YPM_SESSION` 쿠키만 고정된 관리자 API로 전달한다. 권한 판단은 Spring이 맡는다. 배포 빌드의 HTML은 `private, no-store`이며 데이터도 `no-store`로 조회한다. 관리 내용을 메타데이터에 넣지 않고 검색 노출을 막는다.
 - 관리자 링크는 전체 페이지 이동을 사용한다. 계정 변경·브라우저 뒤로 가기에는 기존 계정 전환 처리와 서버 조회로 이전 내용을 다시 표시하지 않도록 한다.
 - 상세에 실패 유형·처리 횟수·수집 위치, 현재 공개 내용과 원본을 표시한다. 원본 문자열을 JSON 숫자로 다시 해석하지 않아 큰 숫자를 보존한다. React의 텍스트 렌더링으로 HTML을 실행하지 않는다. 긴 원본은 내부 스크롤과 키보드 이동을 제공한다.
+- 상세의 ‘이전 개정 비교’에서 현재 공개 내용과 직전 내부 개정을 비교한다. 정책명·설명·분야·기관·신청 기간·상세 안내·공식 링크·지역 코드·원천 수정 일시 중 변경된 항목을 먼저 표시한다. 동일한 항목은 기본 접힘이며 키보드로 펼칠 수 있다. PC는 좌우, 모바일은 이전·현재 순서의 세로 배치다.
+- 개정별 원본 수집 시각을 표시한다. 실패 당시 내용이나 개정 적용 시각으로 해석하지 않는다. 이전 개정이 없거나 개정 번호만 다르고 표시 내용이 같으면 각각 비교 없음·변경 없음을 안내한다. 모든 과거 개정을 선택하는 기능은 포함하지 않는다.
 - 관리 화면은 별도 주소로 접근하며 일반 사용자 주 메뉴에 추가하지 않았다.
 
 ## 조회 계약
@@ -27,7 +29,7 @@
 | 요청 | 응답 |
 |---|---|
 | `GET /api/v1/admin/collection-exceptions?page=1&pageSize=20` | 실패 항목, 페이지, 페이지 크기, 다음 페이지 여부 |
-| `GET /api/v1/admin/collection-exceptions/{runId}/{itemIndex}` | 실패 항목, 저장된 원본 JSON 문자열, 같은 정책번호의 현재 공개 내용 |
+| `GET /api/v1/admin/collection-exceptions/{runId}/{itemIndex}` | 실패 항목, 저장된 원본 JSON 문자열, 같은 정책번호의 현재 공개 내용과 직전 개정 |
 | `GET /api/v1/admin/collection-exceptions/pages?page=1&pageSize=20` | 페이지 수집 실패, 페이지, 페이지 크기, 다음 페이지 여부 |
 
 - 페이지는 1~1000, 페이지 크기는 1~50이다. 수집 실행 ID는 UUID, 항목 위치는 0~9다. 입력 오류는 `400 INVALID_COLLECTION_QUERY`다.
@@ -37,6 +39,7 @@
 - 원본의 `plcyNo`가 문자열이고 공백 제거 후 1~100자리 숫자인 경우에만 현재 공개 정책과 연결한다. 제목이 같아도 연결하지 않는다. 정책번호를 확인할 수 없으면 `policyNumber`는 null, 공개 내용이 없으면 `currentPolicy`는 null이다.
 - `rawPolicyJson`은 JSONB에 저장된 항목의 JSON 문자열이다. 수신 당시의 공백·키 순서까지 보존한 바이트 원문은 아니다. 외부 텍스트로 취급하며 화면에서는 HTML이나 스크립트로 실행하지 않아야 한다.
 - 현재 정책은 조회 시점의 공개 내용이다. 실패 당시의 이전 개정과 동일하다고 보장하지 않는다. 원본·공개 개정·처리 횟수·시도 이력은 조회로 바뀌지 않는다.
+- `currentPolicy.sourceCapturedAt`은 현재 개정이 참조하는 원본의 수집 시각이다. `collectedAt`은 정책의 최신 수집 시각이므로 내용 변경 없는 재수집으로 달라질 수 있다. `previousRevision`은 같은 정책의 `현재 개정 - 1`이며 없으면 null이다. 이전 개정은 내부 번호·원본 수집 시각·표시 내용을 반환한다. 두 개정과 원본 참조를 하나의 SQL에서 조회해 비교 중 개정이 섞이지 않게 한다.
 - 페이지 수집 실패는 `FETCH_FAILED`·`INVALID_RESPONSE` 상태의 실행을 요청 순번 역순으로 조회한다. 같은 실행의 상태가 정상으로 바뀌면 제외하지만, 새 실행의 성공이 이전 실패 이력을 지우지는 않는다.
 - 페이지의 오류는 정해진 유형만 반환한다. `HTTP_100`~`HTTP_599` 형식은 `HTTP_ERROR`와 숫자 상태로 분리하고 알 수 없는 코드·임의 문자열은 `UNKNOWN`으로 처리한다. 원본 응답은 읽거나 반환하지 않고 보관 여부만 조회한다. 실패 발생 시각은 저장되어 있지 않아 제공하지 않는다.
 
@@ -44,28 +47,28 @@
 
 `backend/src/main/java/kr/youthpolicymate/admin/`의 컨트롤러·조회 저장소·DTO가 HTTP 계약과 읽기 SQL을 맡는다. `config/AdminAccess.java`는 Spring 설정 바인딩과 요청 권한 판단을 담당한다. 기존 수집 테이블을 사용하므로 DB 변경은 없다. 서버 DTO에서 OpenAPI와 TypeScript를 생성하고 관리자 세션 요구·null 응답을 계약 테스트로 확인한다. 화면은 `frontend/src/app/admin/collection-exceptions/`, 서버 조회·표시는 `frontend/src/features/admin/`에 있다.
 
-남은 범위는 실제 관리자 계정 연결, 이전 개정 비교, 근거를 남기는 보정과 재처리다. 이번 조회는 외부 수집·AI 호출을 실행하지 않는다. 기존 운영 CLI의 [수집·재개](policy-range-collection.md)는 그대로 사용할 수 있다.
+남은 범위는 실제 관리자 계정 연결, 근거를 남기는 보정과 재처리다. 이번 조회는 외부 수집·AI 호출을 실행하지 않는다. 기존 운영 CLI의 [수집·재개](policy-range-collection.md)는 그대로 사용할 수 있다.
 
 ## 검증
 
-코드 `fe88cce`를 Java 25.0.3·Docker PostgreSQL 18.6·Node 25.4.0에서 확인했다. 서버 DTO에서 OpenAPI·TypeScript를 생성한 뒤 아래 검사를 통과했다.
+코드 `453a36e`를 Java 25.0.3·Docker PostgreSQL 18.6·Node 25.4.0에서 확인했다. 서버 DTO에서 OpenAPI·TypeScript를 생성한 뒤 아래 검사를 통과했다.
 
 | 명령 | 확인 범위·결과 | 로컬 로그 |
 |---|---|---|
-| `npm run verify -- test:admin-collection` | 접근 경계·페이지 분리·오류 문자열 비노출·원본 불변·정상 상태 제외 통과 | `.local/verification/1788788537444-6e69d36b.log` |
-| `npm run verify -- check:backend` | 전체 서버 테스트·빌드 통과 | `.local/verification/1788788659754-fc30a5c8.log` |
-| `npm run verify -- check:api-types` | 생성 타입 일치 통과 | `.local/verification/1788788532126-1e9b7450.log` |
-| `npm run verify -- test:web -- src/features/admin` | 관리자 조회·화면 테스트 통과 | `.local/verification/1788788532126-743a59d8.log` |
-| `npm run verify -- test:web -- src/features/admin/collection-exception-pages.test.tsx` | 빈 목록과 오류를 구분하는 단언 보완 후 해당 테스트 통과 | `.local/verification/1788788648781-5bc22eef.log` |
-| `npm run verify -- check:web` | 린트·타입 검사 통과 | `.local/verification/1788788532126-ec715fc8.log` |
-| `npm run verify -- build:web` | 페이지 수집 실패 화면을 포함한 배포 빌드 통과 | `.local/verification/1788788653873-74032298.log` |
+| `npm run verify -- test:admin-collection` | 직전 개정·원본 시각·이전 개정 null·원본과 이력 불변·접근 경계 통과 | `.local/verification/1788789610722-587bdf43.log` |
+| `npm run verify -- test:policy-catalog` | 정책 저장소·현재 API 명세 일치·개정 null 계약 통과 | `.local/verification/1788789658350-5244c86b.log` |
+| `npm run verify -- check:api-types` | 생성 타입 일치 통과 | `.local/verification/1788789605845-6ee7be2d.log` |
+| `npm run verify -- test:web -- src/features/admin` | 변경·동일 항목 구분·변경 없음·이전 개정 없음·텍스트 렌더링 통과 | `.local/verification/1788789605845-0bdb262c.log` |
+| `npm run verify -- check:web` | 린트·타입 검사 통과 | `.local/verification/1788789605845-163a8e27.log` |
+| `npm run verify -- build:web` | 개정 비교 상세를 포함한 배포 빌드 통과 | `.local/verification/1788789655729-ae4ce9a7.log` |
+| `npm run verify -- package:backend` | 로컬 반영용 실행 파일 생성 통과 | `.local/verification/1788789711283-0d494fc2.log` |
 
-웹 검사 이후에는 화면 테스트의 단언만 보완해 해당 테스트를 다시 실행했다. 최종 빌드 이후 변경은 문서뿐이므로 성공한 검사를 반복하지 않았다.
+변경은 관리자 읽기 SQL·응답 계약·화면에 한정되어 관련 검사로 검증했다. 공통 보안 설정·마이그레이션·수집 쓰기 경로는 같으므로 전체 서버 검사는 반복하지 않았다. 이전 전체 서버 검사의 기준은 `fe88cce`, 로그는 `.local/verification/1788788659754-fc30a5c8.log`다. 이번 최종 검증 이후 변경은 문서뿐이다.
 
-최신 서버 빌드로 로컬 API를 재시작한 뒤 상태 조회 `200 UP`, 공개 정책 `200`·40건, 새 관리자 API의 비회원 `401 LOGIN_REQUIRED`·캐시 금지와 실제 페이지의 로그인 안내를 확인했다. 정기 수집·이메일·마감 알림 실행기는 끈 상태다. 실제 서버 로그는 `/tmp/youth-page-failures-backend.log`, 개발 웹 로그는 `/tmp/youth-admin-web.log`다.
+최신 실행 파일로 로컬 API를 재시작한 뒤 상태 조회 `200 UP`, 공개 정책 `200`·40건, 관리자 상세 API의 비회원 `401 LOGIN_REQUIRED`·캐시 금지를 확인했다. 정기 수집·이메일·마감 알림 실행기는 끈 상태다. 실제 서버 로그는 `/tmp/youth-revision-comparison-backend.log`, 개발 웹 로그는 `/tmp/youth-admin-web.log`다.
 
-Playwright와 검증용 응답 서버·배포 빌드로 HTTP 429, 응답 보관 여부에 따른 안내, 누락 시각 표시, 다음 페이지·빈 목록·첫 페이지 복귀를 확인했다. PC 1280px·모바일 390px 이미지를 검토했고 가로 넘침이 없었다. 실제 소셜 제공자에 로그인하거나 관리자 권한을 부여하지 않았다.
+Playwright와 검증용 응답 서버·배포 빌드로 이전·현재 변경 내용, 동일 항목의 키보드 펼치기, 첫 개정의 비교 없음 안내를 확인했다. PC 1280px·모바일 390px 이미지를 검토했고 가로 넘침이 없었다. 콘솔의 누락된 favicon 404 외 앱 오류는 없었다. 실제 소셜 제공자에 로그인하거나 관리자 권한을 부여하지 않았다.
 
-기존 로그인 복귀·계정 변경·원본 상세 코드는 바뀌지 않았다. 해당 경로는 `5286fad`에서 확인한 로그인 후 복귀·일회성 기록 삭제, 상세 복귀, 권한 변경 후 뒤로 가기의 접근 차단, 긴 숫자 보존·HTML 실행 차단·원본 키보드 스크롤 결과를 재사용했다.
+기존 로그인 복귀·계정 변경·원본 상세 처리·페이지 수집 실패 동작은 바뀌지 않았다. `5286fad`의 로그인 복귀·권한 변경·원본 스크롤과 `fe88cce`의 페이지 실패 안내·페이지 이동 브라우저 검증은 반복하지 않았다.
 
 브라우저 기록과 이미지는 `/tmp/youth-admin-ui/`에 있으며 검증용 브라우저·API·웹 서버는 종료했다. 실제 카카오·네이버 계정의 관리자 접근과 운영 데이터의 실패 사례는 별도 검증이 필요하다.

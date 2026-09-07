@@ -40,6 +40,7 @@
     "test:ai-recovery-policy": "./backend/gradlew -p backend test --tests 'kr.youthpolicymate.ingestion.AiReservationRecoveryRetryPolicyTest' --no-daemon",
     "test:ai-recovery-operations": "./backend/gradlew -p backend test --tests 'kr.youthpolicymate.ingestion.AiReservationRecoveryOperationsQueryTest' --no-daemon",
     "test:ai-recovery-work": "./backend/gradlew -p backend test --tests 'kr.youthpolicymate.ingestion.AiReservationRecoveryWork*Test' --no-daemon",
+    "test:member-login": "./backend/gradlew -p backend test --tests 'kr.youthpolicymate.member.OAuthLoginFlowTest' --tests 'kr.youthpolicymate.member.SocialMemberServiceTest' --no-daemon",
     "test:reminders": "./backend/gradlew -p backend test --tests 'kr.youthpolicymate.schedule.*' --no-daemon",
     "check:backend": "./backend/gradlew -p backend build --no-daemon",
     "check:tools": "node --test scripts/*.test.mjs",

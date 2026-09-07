@@ -48,6 +48,16 @@ public class CollectionExceptionController {
         return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(store.list(page, pageSize));
     }
 
+    @GetMapping("/pages")
+    @Operation(operationId = "listCollectionPageFailures", summary = "관리자 전용 페이지 수집 실패 목록",
+            description = "수집 요청 순번 역순. 정상 처리된 페이지는 제외한다. 원본 응답과 임의 오류 문자열을 노출하지 않으며 재처리를 실행하지 않는다.")
+    @ApiResponse(responseCode = "200", content = @Content(schema = @Schema(implementation = CollectionExceptions.PageFailureList.class)))
+    public ResponseEntity<CollectionExceptions.PageFailureList> pageFailures(
+            @RequestParam(defaultValue = "1") @Min(1) @Max(1000) int page,
+            @RequestParam(defaultValue = "20") @Min(1) @Max(50) int pageSize) {
+        return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(store.pageFailures(page, pageSize));
+    }
+
     @GetMapping("/{runId}/{itemIndex}")
     @Operation(operationId = "getCollectionException", summary = "관리자 전용 수집 실패 원본·현재 정책 조회",
             description = "저장된 실패 유형만 제공하며 구체적인 실패 원인을 추정하지 않는다. 원본 수정이나 재처리를 실행하지 않는다.")

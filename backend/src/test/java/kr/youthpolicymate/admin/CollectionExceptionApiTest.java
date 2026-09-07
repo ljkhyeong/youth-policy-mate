@@ -66,7 +66,7 @@ class CollectionExceptionApiTest {
     @Test
     @DisplayName("비회원·일반 회원·다른 인증 방식은 차단하고 등록된 관리자만 조회한다")
     void enforcesAdminBoundary() throws Exception {
-        for (var path : List.of(ROOT, ROOT + "/" + UUID.randomUUID() + "/0")) {
+        for (var path : List.of(ROOT, ROOT + "/pages", ROOT + "/" + UUID.randomUUID() + "/0")) {
             mvc.perform(get(path)).andExpect(status().isUnauthorized())
                     .andExpect(header().string("Cache-Control", containsString("no-store")))
                     .andExpect(jsonPath("$.code").value("LOGIN_REQUIRED"));
@@ -171,6 +171,70 @@ class CollectionExceptionApiTest {
         var run = UUID.randomUUID();
         jdbc.sql("INSERT INTO ontong_collection_pages(run_id, page_number, state) VALUES (:run, :page, 'READY')")
                 .param("run", run).param("page", pageNumber).update();
+        return run;
+    }
+
+    @Test
+    @DisplayName("페이지 실패를 요청 순서로 조회하고 복구된 페이지와 원본 응답은 제외한다")
+    void listsPageFailuresWithoutExposingResponse() throws Exception {
+        var invalid = failedPage(1, "INVALID_RESPONSE", "INVALID_LIST_RESPONSE", "private-response-body");
+        var failed = failedPage(2, "FETCH_FAILED", "HTTP_429", null);
+        jdbc.sql("UPDATE ontong_collection_pages SET dispatch_started_at = :at WHERE run_id = :id")
+                .param("at", AT.atOffset(java.time.ZoneOffset.UTC)).param("id", failed).update();
+        page(3);
+        var first = mvc.perform(get(ROOT + "/pages").with(social(ADMIN)).param("pageSize", "1"))
+                .andExpect(status().isOk()).andExpect(header().string("Cache-Control", "no-store"))
+                .andExpect(jsonPath("$.items.length()").value(1)).andExpect(jsonPath("$.hasNext").value(true))
+                .andExpect(jsonPath("$.items[0].runId").value(failed.toString()))
+                .andExpect(jsonPath("$.items[0].reason").value("HTTP_ERROR"))
+                .andExpect(jsonPath("$.items[0].httpStatus").value(429))
+                .andExpect(jsonPath("$.items[0].dispatchedAt").value(AT.toString()))
+                .andExpect(jsonPath("$.items[0].responseStored").value(false)).andReturn();
+        assertThat(mapper.readTree(first.getResponse().getContentAsString()).at("/items/0/receivedAt").isNull()).isTrue();
+        var second = mvc.perform(get(ROOT + "/pages").with(social(ADMIN)).param("pageSize", "1").param("page", "2"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.hasNext").value(false))
+                .andExpect(jsonPath("$.items[0].runId").value(invalid.toString()))
+                .andExpect(jsonPath("$.items[0].state").value("INVALID_RESPONSE"))
+                .andExpect(jsonPath("$.items[0].reason").value("INVALID_LIST_RESPONSE"))
+                .andExpect(jsonPath("$.items[0].responseStored").value(true))
+                .andExpect(jsonPath("$.items[0].receivedAt").value(AT.toString())).andReturn();
+        assertThat(second.getResponse().getContentAsString()).doesNotContain("private-response-body", "rawBody", "failureCode");
+        assertThat(jdbc.sql("SELECT raw_body FROM ontong_collection_pages WHERE run_id = :id").param("id", invalid)
+                .query(String.class).single()).isEqualTo("private-response-body");
+        assertThat(jdbc.sql("SELECT count(*) FROM ontong_collection_item_attempts").query(Long.class).single()).isZero();
+        jdbc.sql("UPDATE ontong_collection_pages SET state = 'READY', failure_code = NULL WHERE run_id = :id")
+                .param("id", invalid).update();
+        mvc.perform(get(ROOT + "/pages").with(social(ADMIN))).andExpect(jsonPath("$.items.length()").value(1));
+    }
+
+    @Test
+    @DisplayName("알 수 없는 오류 문자열과 잘못된 HTTP 코드는 노출하지 않고 조회 입력을 검증한다")
+    void sanitizesPageFailures() throws Exception {
+        for (var code : java.util.Arrays.asList("private-error-with-key", "HTTP_999", "HTTP_401?private-key", null)) {
+            failedPage(1, "FETCH_FAILED", code, null);
+        }
+        var result = mvc.perform(get(ROOT + "/pages").with(social(ADMIN))).andExpect(status().isOk())
+                .andExpect(jsonPath("$.items.length()").value(4)).andReturn();
+        var body = mapper.readTree(result.getResponse().getContentAsString());
+        for (var item : body.path("items")) {
+            assertThat(item.path("reason").asString()).isEqualTo("UNKNOWN");
+            assertThat(item.get("httpStatus").isNull()).isTrue();
+            assertThat(item.get("dispatchedAt").isNull()).isTrue();
+        }
+        assertThat(result.getResponse().getContentAsString()).doesNotContain("private-", "HTTP_999");
+        mvc.perform(get(ROOT + "/pages").with(social(ADMIN)).param("pageSize", "51"))
+                .andExpect(status().isBadRequest()).andExpect(jsonPath("$.code").value("INVALID_COLLECTION_QUERY"));
+        mvc.perform(post(ROOT + "/pages").with(social(ADMIN)).with(csrf())).andExpect(status().isForbidden());
+        doThrow(new DataAccessResourceFailureException("private-database-error")).when(jdbc).sql(startsWith("SELECT "));
+        mvc.perform(get(ROOT + "/pages").with(social(ADMIN))).andExpect(status().isServiceUnavailable())
+                .andExpect(jsonPath("$.code").value("COLLECTION_UNAVAILABLE"));
+    }
+
+    private UUID failedPage(int number, String state, String code, String raw) {
+        var run = page(number);
+        jdbc.sql("UPDATE ontong_collection_pages SET state = :state, failure_code = :code, raw_body = :raw, received_at = :received WHERE run_id = :id")
+                .param("state", state).param("code", code).param("raw", raw)
+                .param("received", raw == null ? null : AT.atOffset(java.time.ZoneOffset.UTC)).param("id", run).update();
         return run;
     }
 

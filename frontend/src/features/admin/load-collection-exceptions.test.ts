@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cookies } from "next/headers";
-import { collectionPage, loadCollectionException, loadCollectionExceptions } from "./load-collection-exceptions";
+import { collectionPage, loadCollectionException, loadCollectionExceptions, loadCollectionPageFailures } from "./load-collection-exceptions";
 
 vi.mock("next/headers", () => ({ cookies: vi.fn() }));
 const run = "10000000-0000-0000-0000-000000000001";
@@ -8,6 +8,16 @@ beforeEach(() => vi.mocked(cookies).mockResolvedValue({ get: (name: string) => n
 afterEach(() => { vi.unstubAllGlobals(); vi.resetAllMocks(); });
 
 describe("관리자 수집 예외 서버 조회", () => {
+  it("페이지 수집 실패는 전용 API에 페이지 인수와 세션을 전달한다", async () => {
+    const fetch = vi.fn().mockResolvedValue(Response.json({ items: [], page: 2, pageSize: 20, hasNext: false }));
+    vi.stubGlobal("fetch", fetch);
+    expect((await loadCollectionPageFailures(2)).status).toBe("available");
+    const [url, options] = fetch.mock.calls[0];
+    expect(url.pathname).toBe("/api/v1/admin/collection-exceptions/pages");
+    expect(url.searchParams.get("page")).toBe("2");
+    expect(options.headers.Cookie).toBe("YPM_SESSION=fixture-session");
+    expect(options.cache).toBe("no-store");
+  });
   it("관리자 API에 세션 쿠키만 보내고 응답 캐시와 리다이렉트를 허용하지 않는다", async () => {
     const fetch = vi.fn().mockResolvedValue(Response.json({ items: [], page: 2, pageSize: 20, hasNext: false }));
     vi.stubGlobal("fetch", fetch);

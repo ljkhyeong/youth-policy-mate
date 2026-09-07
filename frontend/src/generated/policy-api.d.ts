@@ -24,6 +24,26 @@ export interface paths {
         readonly patch?: never;
         readonly trace?: never;
     };
+    readonly "/api/v1/admin/collection-exceptions/pages": {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header?: never;
+            readonly path?: never;
+            readonly cookie?: never;
+        };
+        /**
+         * 관리자 전용 페이지 수집 실패 목록
+         * @description 수집 요청 순번 역순. 정상 처리된 페이지는 제외한다. 원본 응답과 임의 오류 문자열을 노출하지 않으며 재처리를 실행하지 않는다.
+         */
+        readonly get: operations["listCollectionPageFailures"];
+        readonly put?: never;
+        readonly post?: never;
+        readonly delete?: never;
+        readonly options?: never;
+        readonly head?: never;
+        readonly patch?: never;
+        readonly trace?: never;
+    };
     readonly "/api/v1/admin/collection-exceptions/{runId}/{itemIndex}": {
         readonly parameters: {
             readonly query?: never;
@@ -357,6 +377,33 @@ export interface components {
             /** Format: int32 */
             readonly pageSize: number;
         };
+        readonly CollectionPageFailure: {
+            /** Format: date-time */
+            readonly dispatchedAt: string | null;
+            /** Format: int32 */
+            readonly httpStatus: number | null;
+            /** Format: int32 */
+            readonly pageNumber: number;
+            /** @enum {string} */
+            readonly reason: "API_KEY_MISSING" | "HTTP_ERROR" | "NON_JSON_RESPONSE" | "SECRET_IN_RESPONSE" | "REQUEST_INTERRUPTED" | "REQUEST_OR_RESPONSE_FAILED" | "RESPONSE_STORE_FAILED" | "INVALID_LIST_RESPONSE" | "UNKNOWN";
+            /** Format: date-time */
+            readonly receivedAt: string | null;
+            readonly responseStored: boolean;
+            /** Format: uuid */
+            readonly runId: string;
+            /** Format: date-time */
+            readonly startedAt: string;
+            /** @enum {string} */
+            readonly state: "FETCH_FAILED" | "INVALID_RESPONSE";
+        };
+        readonly CollectionPageFailureList: {
+            readonly hasNext: boolean;
+            readonly items: readonly components["schemas"]["CollectionPageFailure"][];
+            /** Format: int32 */
+            readonly page: number;
+            /** Format: int32 */
+            readonly pageSize: number;
+        };
         readonly LoginProvider: {
             readonly id: string;
             readonly name: string;
@@ -616,6 +663,65 @@ export interface operations {
                 };
                 content: {
                     readonly "*/*": components["schemas"]["CollectionExceptionPage"];
+                };
+            };
+            /** @description 조회 조건 오류 */
+            readonly 400: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "*/*": components["schemas"]["PolicyApiError"];
+                };
+            };
+            /** @description 로그인 필요 */
+            readonly 401: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "*/*": components["schemas"]["PolicyApiError"];
+                };
+            };
+            /** @description 관리자 권한 없음 */
+            readonly 403: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "*/*": components["schemas"]["PolicyApiError"];
+                };
+            };
+            /** @description 수집 이력 조회 실패 */
+            readonly 503: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "*/*": components["schemas"]["PolicyApiError"];
+                };
+            };
+        };
+    };
+    readonly listCollectionPageFailures: {
+        readonly parameters: {
+            readonly query?: {
+                readonly page?: number;
+                readonly pageSize?: number;
+            };
+            readonly header?: never;
+            readonly path?: never;
+            readonly cookie?: never;
+        };
+        readonly requestBody?: never;
+        readonly responses: {
+            /** @description OK */
+            readonly 200: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "*/*": components["schemas"]["CollectionPageFailureList"];
                 };
             };
             /** @description 조회 조건 오류 */

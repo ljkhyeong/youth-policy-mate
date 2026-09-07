@@ -11,6 +11,23 @@ public final class CollectionExceptions {
     private CollectionExceptions() {}
 
     public enum Outcome { INVALID_ITEM, STORE_FAILED }
+    public enum PageState { FETCH_FAILED, INVALID_RESPONSE }
+    public enum PageFailureReason {
+        API_KEY_MISSING, HTTP_ERROR, NON_JSON_RESPONSE, SECRET_IN_RESPONSE, REQUEST_INTERRUPTED,
+        REQUEST_OR_RESPONSE_FAILED, RESPONSE_STORE_FAILED, INVALID_LIST_RESPONSE, UNKNOWN
+    }
+
+    @Schema(name = "CollectionPageFailureList", requiredProperties = {"items", "page", "pageSize", "hasNext"})
+    public record PageFailureList(List<PageFailure> items, int page, int pageSize, boolean hasNext) {}
+
+    @Schema(name = "CollectionPageFailure", requiredProperties = {"runId", "pageNumber", "state", "reason", "httpStatus",
+            "startedAt", "dispatchedAt", "receivedAt", "responseStored"})
+    public record PageFailure(UUID runId, int pageNumber, PageState state, PageFailureReason reason,
+                              @Schema(types = {"integer", "null"}, format = "int32") Integer httpStatus,
+                              Instant startedAt,
+                              @Schema(types = {"string", "null"}, format = "date-time") Instant dispatchedAt,
+                              @Schema(types = {"string", "null"}, format = "date-time") Instant receivedAt,
+                              boolean responseStored) {}
 
     @Schema(name = "CollectionExceptionPage", requiredProperties = {"items", "page", "pageSize", "hasNext"})
     public record Page(List<Item> items, int page, int pageSize, boolean hasNext) {}

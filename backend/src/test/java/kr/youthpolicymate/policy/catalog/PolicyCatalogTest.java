@@ -179,6 +179,7 @@ class PolicyCatalogTest {
         var response = mvc.perform(get("/contract/policy")).andExpect(status().isOk()).andReturn();
         var actual = mapper.readTree(response.getResponse().getContentAsByteArray());
         assertThat(actual.at("/paths/~1api~1v1~1admin~1collection-exceptions/get/security/0/memberSession").isArray()).isTrue();
+        assertThat(actual.at("/paths/~1api~1v1~1admin~1collection-exceptions~1pages/get/security/0/memberSession").isArray()).isTrue();
         assertThat(actual.at("/paths/~1api~1v1~1admin~1collection-exceptions~1{runId}~1{itemIndex}/get/security/0/memberSession").isArray()).isTrue();
         assertThat(actual.at("/components/schemas/CollectionExceptionDetail/properties/currentPolicy/anyOf/1/type").asString()).isEqualTo("null");
         assertThat(actual.at("/components/schemas/PolicySummary/required").valueStream().map(value -> value.asString()))

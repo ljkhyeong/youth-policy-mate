@@ -44,7 +44,8 @@ class SecurityConfiguration {
                         .requestMatchers(HttpMethod.GET, "/api/v1/policies", "/api/v1/policies/*", "/api/v1/policies/*/questions").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/v1/policies/checks", "/api/v1/policies/*/evaluation").permitAll()
                         .requestMatchers("/api/v1/me/**").hasRole("MEMBER")
-                        .requestMatchers(HttpMethod.GET, "/api/v1/admin/collection-exceptions", "/api/v1/admin/collection-exceptions/*/*")
+                        .requestMatchers(HttpMethod.GET, "/api/v1/admin/collection-exceptions", "/api/v1/admin/collection-exceptions/pages",
+                                "/api/v1/admin/collection-exceptions/*/*")
                             .access(adminAccess.authorization())
                         .anyRequest().denyAll())
                 .logout(logout -> logout.logoutUrl("/api/v1/logout").invalidateHttpSession(true)

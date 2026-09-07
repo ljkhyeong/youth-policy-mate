@@ -54,6 +54,33 @@ class CollectionExceptionStore {
                         currentPolicy(detail.item().policyNumber()).orElse(null)));
     }
 
+    CollectionExceptions.PageFailureList pageFailures(int page, int pageSize) {
+        var items = jdbc.sql("""
+                SELECT run_id, page_number, state, failure_code, started_at, dispatch_started_at, received_at,
+                       raw_body IS NOT NULL AS response_stored
+                FROM ontong_collection_pages WHERE state IN ('FETCH_FAILED', 'INVALID_RESPONSE')
+                ORDER BY request_sequence DESC LIMIT :limit OFFSET :offset
+                """).param("limit", pageSize + 1).param("offset", (page - 1) * pageSize)
+                .query((rs, row) -> {
+                    var code = rs.getString("failure_code");
+                    Integer httpStatus = code != null && code.matches("HTTP_[1-5][0-9]{2}") ? Integer.valueOf(code.substring(5)) : null;
+                    var reason = httpStatus != null ? CollectionExceptions.PageFailureReason.HTTP_ERROR : switch (code) {
+                        case "API_KEY_MISSING", "NON_JSON_RESPONSE", "SECRET_IN_RESPONSE", "REQUEST_INTERRUPTED",
+                             "REQUEST_OR_RESPONSE_FAILED", "RESPONSE_STORE_FAILED", "INVALID_LIST_RESPONSE" -> CollectionExceptions.PageFailureReason.valueOf(code);
+                        case null, default -> CollectionExceptions.PageFailureReason.UNKNOWN;
+                    };
+                    var dispatched = rs.getObject("dispatch_started_at", OffsetDateTime.class);
+                    var received = rs.getObject("received_at", OffsetDateTime.class);
+                    return new CollectionExceptions.PageFailure(rs.getObject("run_id", UUID.class), rs.getInt("page_number"),
+                            CollectionExceptions.PageState.valueOf(rs.getString("state")), reason, httpStatus,
+                            rs.getObject("started_at", OffsetDateTime.class).toInstant(),
+                            dispatched == null ? null : dispatched.toInstant(), received == null ? null : received.toInstant(),
+                            rs.getBoolean("response_stored"));
+                }).list();
+        var hasNext = items.size() > pageSize;
+        return new CollectionExceptions.PageFailureList(hasNext ? items.subList(0, pageSize) : items, page, pageSize, hasNext);
+    }
+
     private Optional<CollectionExceptions.CurrentPolicy> currentPolicy(String number) {
         if (number == null) return Optional.empty();
         return jdbc.sql("""

@@ -95,6 +95,92 @@
         "tags" : [ "collection-exception-controller" ]
       }
     },
+    "/api/v1/admin/collection-exceptions/pages" : {
+      "get" : {
+        "description" : "수집 요청 순번 역순. 정상 처리된 페이지는 제외한다. 원본 응답과 임의 오류 문자열을 노출하지 않으며 재처리를 실행하지 않는다.",
+        "operationId" : "listCollectionPageFailures",
+        "parameters" : [ {
+          "in" : "query",
+          "name" : "page",
+          "required" : false,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int32",
+            "default" : 1,
+            "maximum" : 1000,
+            "minimum" : 1
+          }
+        }, {
+          "in" : "query",
+          "name" : "pageSize",
+          "required" : false,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int32",
+            "default" : 20,
+            "maximum" : 50,
+            "minimum" : 1
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/CollectionPageFailureList"
+                }
+              }
+            },
+            "description" : "OK"
+          },
+          "400" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PolicyApiError"
+                }
+              }
+            },
+            "description" : "조회 조건 오류"
+          },
+          "401" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PolicyApiError"
+                }
+              }
+            },
+            "description" : "로그인 필요"
+          },
+          "403" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PolicyApiError"
+                }
+              }
+            },
+            "description" : "관리자 권한 없음"
+          },
+          "503" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PolicyApiError"
+                }
+              }
+            },
+            "description" : "수집 이력 조회 실패"
+          }
+        },
+        "security" : [ {
+          "memberSession" : [ ]
+        } ],
+        "summary" : "관리자 전용 페이지 수집 실패 목록",
+        "tags" : [ "collection-exception-controller" ]
+      }
+    },
     "/api/v1/admin/collection-exceptions/{runId}/{itemIndex}" : {
       "get" : {
         "description" : "저장된 실패 유형만 제공하며 구체적인 실패 원인을 추정하지 않는다. 원본 수정이나 재처리를 실행하지 않는다.",
@@ -1324,6 +1410,70 @@
             "type" : "array",
             "items" : {
               "$ref" : "#/components/schemas/CollectionExceptionItem"
+            }
+          },
+          "page" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "pageSize" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        },
+        "required" : [ "hasNext", "items", "page", "pageSize" ]
+      },
+      "CollectionPageFailure" : {
+        "type" : "object",
+        "properties" : {
+          "dispatchedAt" : {
+            "type" : [ "string", "null" ],
+            "format" : "date-time"
+          },
+          "httpStatus" : {
+            "type" : [ "integer", "null" ],
+            "format" : "int32"
+          },
+          "pageNumber" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "reason" : {
+            "type" : "string",
+            "enum" : [ "API_KEY_MISSING", "HTTP_ERROR", "NON_JSON_RESPONSE", "SECRET_IN_RESPONSE", "REQUEST_INTERRUPTED", "REQUEST_OR_RESPONSE_FAILED", "RESPONSE_STORE_FAILED", "INVALID_LIST_RESPONSE", "UNKNOWN" ]
+          },
+          "receivedAt" : {
+            "type" : [ "string", "null" ],
+            "format" : "date-time"
+          },
+          "responseStored" : {
+            "type" : "boolean"
+          },
+          "runId" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "startedAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "state" : {
+            "type" : "string",
+            "enum" : [ "FETCH_FAILED", "INVALID_RESPONSE" ]
+          }
+        },
+        "required" : [ "dispatchedAt", "httpStatus", "pageNumber", "reason", "receivedAt", "responseStored", "runId", "startedAt", "state" ]
+      },
+      "CollectionPageFailureList" : {
+        "type" : "object",
+        "properties" : {
+          "hasNext" : {
+            "type" : "boolean"
+          },
+          "items" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/CollectionPageFailure"
             }
           },
           "page" : {

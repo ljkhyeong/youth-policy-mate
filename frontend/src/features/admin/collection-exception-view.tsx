@@ -3,11 +3,20 @@ import { PageState } from "@/components/page-state";
 import type { ExceptionDetail, ExceptionPage, LoadFailure } from "./load-collection-exceptions";
 
 export const COLLECTION_PATH = "/admin/collection-exceptions";
+export const PAGE_FAILURES_PATH = `${COLLECTION_PATH}/pages`;
 const outcomeLabels = { INVALID_ITEM: "항목 검증 실패", STORE_FAILED: "저장 실패" } as const;
 const timestamp = new Intl.DateTimeFormat("ko-KR", {
   timeZone: "Asia/Seoul", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit",
 });
 const dateLabel = (value: string | null) => value ? timestamp.format(new Date(value)) : "기록 없음";
+export { dateLabel as collectionTime };
+
+export function CollectionNavigation({ active }: { active: "items" | "pages" }) {
+  return <nav className="policy-filters mb-6" aria-label="수집 예외 종류">
+    <a href={COLLECTION_PATH} aria-current={active === "items" ? "page" : undefined}>항목 처리</a>
+    <a href={PAGE_FAILURES_PATH} aria-current={active === "pages" ? "page" : undefined}>페이지 수집</a>
+  </nav>;
+}
 
 export function CollectionFailure({ status, retryHref }: { status: LoadFailure; retryHref: string }) {
   if (status === "unauthenticated") return <PageState kind="error" label="로그인 필요" title="관리자 계정으로 로그인하세요"
@@ -29,7 +38,7 @@ export function CollectionFailure({ status, retryHref }: { status: LoadFailure; 
 export function ExceptionList({ data }: { data: ExceptionPage }) {
   if (!data.items.length) return <PageState kind="empty" label="실패 항목 없음"
     title={data.page > 1 ? "이 페이지에 남은 실패 항목이 없습니다" : "확인할 실패 항목이 없습니다"}
-    description="현재 항목 검증·저장 실패 목록을 기준으로 합니다. 페이지 요청 실패는 포함하지 않습니다."
+    description="항목 검증·저장 실패 목록입니다. 페이지 요청 실패는 ‘페이지 수집’에서 확인하세요."
     actions={<a className="button-secondary" href={COLLECTION_PATH}>{data.page > 1 ? "첫 페이지 보기" : "새로고침"}</a>} />;
   return <>
     <div className="member-toolbar"><p>{data.page}페이지 · {data.items.length}건</p>

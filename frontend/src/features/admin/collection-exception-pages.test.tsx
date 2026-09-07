@@ -3,12 +3,13 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import CollectionPage from "@/app/admin/collection-exceptions/page";
 import CollectionDetailPage from "@/app/admin/collection-exceptions/[runId]/[itemIndex]/page";
 import PageFailuresPage from "@/app/admin/collection-exceptions/pages/page";
+import PolicyCorrectionsPage from "@/app/admin/collection-exceptions/corrections/page";
 import CollectionReplaysPage from "@/app/admin/collection-exceptions/replays/page";
-import { loadCollectionException, loadCollectionExceptions, loadCollectionPageFailures, loadCollectionReplays, type ExceptionDetail, type PageFailureList } from "./load-collection-exceptions";
+import { loadCollectionException, loadCollectionExceptions, loadCollectionPageFailures, loadCollectionReplays, loadPolicyCorrections, loadCorrectionPolicy, type ExceptionDetail, type CorrectionItem, type PageFailureList } from "./load-collection-exceptions";
 
 vi.mock("./load-collection-exceptions", async importOriginal => ({
   ...await importOriginal<typeof import("./load-collection-exceptions")>(),
-  loadCollectionException: vi.fn(), loadCollectionExceptions: vi.fn(), loadCollectionPageFailures: vi.fn(), loadCollectionReplays: vi.fn(),
+  loadCollectionException: vi.fn(), loadCollectionExceptions: vi.fn(), loadCollectionPageFailures: vi.fn(), loadCollectionReplays: vi.fn(), loadPolicyCorrections: vi.fn(), loadCorrectionPolicy: vi.fn(),
 }));
 afterEach(() => vi.resetAllMocks());
 const run = "10000000-0000-0000-0000-000000000001";
@@ -17,7 +18,7 @@ const detail: ExceptionDetail = {
     lastAttemptAt: "2026-09-07T00:00:00Z", policyNumber: "123" },
   rawPolicyJson: '{"plcyNo":9007199254740993,"plcyNm":"<script>unsafe()</script>"}',
   currentPolicy: { policyNumber: "123", revision: 3, collectedAt: "2026-09-07T00:00:00Z",
-    sourceCapturedAt: "2026-09-06T00:00:00Z", previousRevision: null,
+    sourceCapturedAt: "2026-09-06T00:00:00Z", correctionId: null, previousRevision: null,
     content: { title: "현재 공개 제목", description: "공개 안내", organization: "운영 기관", category: "교육",
       applicationPeriod: "상시", sections: [{ title: "지원 내용", text: "확인된 지원 내용" }],
       links: [], regionCodes: [], sourceModifiedAtText: "" } },
@@ -105,7 +106,7 @@ describe("관리자 수집 예외 화면", () => {
   it("변경된 필드를 이전·현재로 비교하고 같은 필드는 접어서 표시한다", async () => {
     const current = detail.currentPolicy!;
     vi.mocked(loadCollectionException).mockResolvedValue({ status: "available", data: { ...detail,
-      currentPolicy: { ...current, previousRevision: { revision: 2, sourceCapturedAt: "2026-09-05T00:00:00Z",
+      currentPolicy: { ...current, previousRevision: { revision: 2, correctionId: null, sourceCapturedAt: "2026-09-05T00:00:00Z",
         content: { ...current.content, title: "이전 제목 <script>old()</script>",
           sections: [{ title: "지원 내용", text: "이전 지원 내용" }],
           links: [{ label: "이전 신청처", url: "https://example.org/old" }] } } },
@@ -127,7 +128,7 @@ describe("관리자 수집 예외 화면", () => {
   it("개정 번호가 달라도 표시 내용이 같으면 변경 없음을 안내한다", async () => {
     const current = detail.currentPolicy!;
     vi.mocked(loadCollectionException).mockResolvedValue({ status: "available", data: { ...detail,
-      currentPolicy: { ...current, previousRevision: { revision: 2, sourceCapturedAt: current.sourceCapturedAt, content: current.content } },
+      currentPolicy: { ...current, previousRevision: { revision: 2, correctionId: null, sourceCapturedAt: current.sourceCapturedAt, content: current.content } },
     } });
     const html = renderToStaticMarkup(await CollectionDetailPage({ params: Promise.resolve({ runId: run, itemIndex: "0" }), searchParams: Promise.resolve({}) }));
     expect(html).toContain("표시 항목의 변경이 없습니다.");
@@ -164,5 +165,34 @@ describe("관리자 수집 예외 화면", () => {
     const html = renderToStaticMarkup(await CollectionPage({ searchParams: Promise.resolve({ page: "2" }) }));
     expect(html).toContain("이 페이지에 남은 실패 항목이 없습니다");
     expect(html).toContain("첫 페이지 보기");
+  });
+});
+
+
+describe("정책 보정 화면", () => {
+  it("보정 충돌의 원본과 작업 사유를 안전하게 표시하고 함께 반영될 내용을 제공한다", async () => {
+    const item: CorrectionItem = { id: run, policyNumber: "123", field: "TITLE", value: "보정 제목", reason: "<script>검토 사유</script>",
+      actorId: run, requestedRevision: 1, appliedRevision: 2, createdAt: "2026-09-08T00:00:00Z", status: "CONFLICT",
+      sourceValue: "이전 원본", reviewSnapshotId: 3, reviewValue: "새 원본", currentRevision: 2, reviewContent: detail.currentPolicy!.content,
+      resolution: null, resolvedBy: null, resolvedReason: null, resolvedRevision: null, resolvedAt: null };
+    vi.mocked(loadPolicyCorrections).mockResolvedValue({ status: "available", data: { items: [item], page: 1, pageSize: 20, hasNext: false } });
+    vi.mocked(loadCorrectionPolicy).mockResolvedValue({ status: "available", data: { ...detail.currentPolicy!, correctionId: run } });
+    const html = renderToStaticMarkup(await PolicyCorrectionsPage({ searchParams: Promise.resolve({ policyNumber: "123" }) }));
+    expect(html).toContain("이미 보정이 적용되어 있습니다");
+    expect(html).toContain("새 원본 확인 필요");
+    expect(html).toContain("반영할 원본 내용 확인");
+    expect(html).toContain("확인된 지원 내용");
+    expect(html).toContain("&lt;script&gt;검토 사유&lt;/script&gt;");
+    expect(html).not.toContain("<script>");
+    expect(html).toContain("보정 유지");
+    expect(html).toContain("보정 해제 · 원본 적용");
+  });
+
+  it("보정 조회에 실패하면 입력 폼과 빈 이력을 표시하지 않는다", async () => {
+    vi.mocked(loadPolicyCorrections).mockResolvedValue({ status: "forbidden" });
+    const html = renderToStaticMarkup(await PolicyCorrectionsPage({ searchParams: Promise.resolve({}) }));
+    expect(html).toContain("관리자 권한이 없습니다");
+    expect(html).not.toContain("보정 적용</button>");
+    expect(html).not.toContain("이 페이지에 보정 이력이 없습니다");
   });
 });

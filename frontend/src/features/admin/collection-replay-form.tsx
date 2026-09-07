@@ -63,6 +63,7 @@ export function CollectionReplayForm({ runId, itemIndex, attempts }: { runId: st
     {result && <div role="status">
       <p><strong>{replayLabels[result.outcome]}</strong>{result.policyRevision !== null && ` · 처리 후 개정 ${result.policyRevision}`}</p>
       {result.outcome === "INVALID_ITEM" && <p>원본이 검증을 통과하지 못했습니다. 원본과 처리 규칙을 확인해주세요.</p>}
+      {result.outcome === "CORRECTION_CONFLICT" && <p>보정 관리에서 새 원본과 보정 값을 확인한 뒤 다시 처리해주세요.</p>}
       {result.outcome === "STALE" && <p>더 최신 수집이 있어 현재 정책을 유지했습니다.</p>}
     </div>}
     {message && <p role="alert">{message}</p>}

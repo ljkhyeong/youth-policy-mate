@@ -97,3 +97,20 @@ describe("개인 API 중계", () => {
     expect(fetch).toHaveBeenCalledTimes(1);
   });
 });
+
+
+it("정책 보정은 지정한 생성·해소 POST만 관리자 API로 보낸다", async () => {
+  const fetch = vi.fn().mockImplementation(() => Promise.resolve(Response.json({ status: "ACTIVE" })));
+  vi.stubGlobal("fetch", fetch);
+  const paths = ["policy-corrections", "policy-corrections/10000000-0000-0000-0000-000000000001/resolutions"];
+  for (const path of paths) {
+    await POST(new NextRequest(`${base}/api/member/${path}`, { method: "POST", headers: { origin: base, cookie: "YPM_SESSION=admin", "X-CSRF-TOKEN": "confirmed" }, body: "{}" }), context(path));
+    expect((await GET(new NextRequest(`${base}/api/member/${path}`), context(path))).status).toBe(404);
+  }
+  expect(fetch.mock.calls.map(call => call[0].pathname)).toEqual(paths.map(path => `/api/v1/admin/${path}`));
+  expect(fetch.mock.calls[1][1].headers.Cookie).toBe("YPM_SESSION=admin");
+  expect(fetch.mock.calls[1][1].headers["X-CSRF-TOKEN"]).toBe("confirmed");
+  const invalid = "policy-corrections/not-an-id/resolutions";
+  expect((await POST(new NextRequest(`${base}/api/member/${invalid}`, { method: "POST", headers: { origin: base } }), context(invalid))).status).toBe(404);
+  expect(fetch).toHaveBeenCalledTimes(2);
+});

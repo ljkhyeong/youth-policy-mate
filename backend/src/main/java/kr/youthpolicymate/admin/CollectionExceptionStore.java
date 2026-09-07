@@ -24,7 +24,7 @@ class CollectionExceptionStore {
             """;
     private static final String FAILURES = """
             FROM ontong_collection_items i JOIN ontong_collection_pages p ON p.run_id = i.run_id
-            WHERE i.outcome IN ('INVALID_ITEM', 'STORE_FAILED')
+            WHERE i.outcome IN ('INVALID_ITEM', 'STORE_FAILED', 'CORRECTION_CONFLICT')
             """;
     private final JdbcClient jdbc;
     private final ObjectMapper mapper;
@@ -81,11 +81,11 @@ class CollectionExceptionStore {
         return new CollectionExceptions.PageFailureList(hasNext ? items.subList(0, pageSize) : items, page, pageSize, hasNext);
     }
 
-    private Optional<CollectionExceptions.CurrentPolicy> currentPolicy(String number) {
+    Optional<CollectionExceptions.CurrentPolicy> currentPolicy(String number) {
         if (number == null) return Optional.empty();
         return jdbc.sql("""
                 SELECT p.policy_number, p.current_revision, p.last_collected_at, p.content::text AS content,
-                       s.captured_at AS source_captured_at, previous.revision AS previous_revision,
+                       s.captured_at AS source_captured_at, r.correction_id, previous.correction_id AS previous_correction_id, previous.revision AS previous_revision,
                        previous.content::text AS previous_content, previous_source.captured_at AS previous_captured_at
                 FROM policies p
                 JOIN policy_revisions r ON r.policy_number = p.policy_number AND r.revision = p.current_revision
@@ -97,10 +97,10 @@ class CollectionExceptionStore {
                         rs.getString("policy_number"), rs.getLong("current_revision"),
                         rs.getObject("last_collected_at", OffsetDateTime.class).toInstant(),
                         mapper.readValue(rs.getString("content"), PolicyContent.class),
-                        rs.getObject("source_captured_at", OffsetDateTime.class).toInstant(),
+                        rs.getObject("source_captured_at", OffsetDateTime.class).toInstant(), rs.getObject("correction_id", UUID.class),
                         rs.getObject("previous_revision") == null ? null : new CollectionExceptions.Revision(
                                 rs.getLong("previous_revision"), rs.getObject("previous_captured_at", OffsetDateTime.class).toInstant(),
-                                mapper.readValue(rs.getString("previous_content"), PolicyContent.class)))).optional();
+                                mapper.readValue(rs.getString("previous_content"), PolicyContent.class), rs.getObject("previous_correction_id", UUID.class)))).optional();
     }
 
     private static CollectionExceptions.Item item(ResultSet rs) throws SQLException {

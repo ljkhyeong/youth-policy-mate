@@ -6,18 +6,20 @@ import { CollectionReplayForm } from "./collection-replay-form";
 export const COLLECTION_PATH = "/admin/collection-exceptions";
 export const PAGE_FAILURES_PATH = `${COLLECTION_PATH}/pages`;
 export const REPLAYS_PATH = `${COLLECTION_PATH}/replays`;
-const outcomeLabels = { INVALID_ITEM: "항목 검증 실패", STORE_FAILED: "저장 실패" } as const;
+export const CORRECTIONS_PATH = `${COLLECTION_PATH}/corrections`;
+const outcomeLabels = { INVALID_ITEM: "항목 검증 실패", STORE_FAILED: "저장 실패", CORRECTION_CONFLICT: "보정 충돌" } as const;
 const timestamp = new Intl.DateTimeFormat("ko-KR", {
   timeZone: "Asia/Seoul", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit",
 });
 const dateLabel = (value: string | null) => value ? timestamp.format(new Date(value)) : "기록 없음";
 export { dateLabel as collectionTime };
 
-export function CollectionNavigation({ active }: { active: "items" | "pages" | "replays" }) {
+export function CollectionNavigation({ active }: { active: "items" | "pages" | "replays" | "corrections" }) {
   return <nav className="policy-filters mb-6" aria-label="수집 예외 종류">
     <a href={COLLECTION_PATH} aria-current={active === "items" ? "page" : undefined}>항목 처리</a>
     <a href={PAGE_FAILURES_PATH} aria-current={active === "pages" ? "page" : undefined}>페이지 수집</a>
     <a href={REPLAYS_PATH} aria-current={active === "replays" ? "page" : undefined}>재처리 이력</a>
+    <a href={CORRECTIONS_PATH} aria-current={active === "corrections" ? "page" : undefined}>보정 관리</a>
   </nav>;
 }
 
@@ -41,7 +43,7 @@ export function CollectionFailure({ status, retryHref }: { status: LoadFailure; 
 export function ExceptionList({ data }: { data: ExceptionPage }) {
   if (!data.items.length) return <PageState kind="empty" label="실패 항목 없음"
     title={data.page > 1 ? "이 페이지에 남은 실패 항목이 없습니다" : "확인할 실패 항목이 없습니다"}
-    description="항목 검증·저장 실패 목록입니다. 페이지 요청 실패는 ‘페이지 수집’에서 확인하세요."
+    description="항목 검증·저장 실패와 보정 충돌 목록입니다. 페이지 요청 실패는 ‘페이지 수집’에서 확인하세요."
     actions={<a className="button-secondary" href={COLLECTION_PATH}>{data.page > 1 ? "첫 페이지 보기" : "새로고침"}</a>} />;
   return <>
     <div className="member-toolbar"><p>{data.page}페이지 · {data.items.length}건</p>
@@ -75,13 +77,14 @@ export function ExceptionContent({ data }: { data: ExceptionDetail }) {
         <dt>수집 위치</dt><dd>{item.pageNumber}페이지 · {item.itemIndex + 1}번째 항목</dd>
         <dt>수집 실행 ID</dt><dd>{item.runId}</dd>
       </dl>
-      <p className="field-help">세부 실패 사유는 저장되어 있지 않습니다. 원본과 현재 내용을 확인해주세요.</p>
+      <p className="field-help">{item.outcome === "CORRECTION_CONFLICT" ? "보정한 항목의 새 원본을 확인해야 합니다. 보정 관리에서 충돌을 해소한 뒤 이 항목을 재처리해주세요." : "세부 실패 사유는 저장되어 있지 않습니다. 원본과 현재 내용을 확인해주세요."}</p>
     </section>
     {currentPolicy && <RevisionComparison policy={currentPolicy} />}
     <section className="member-panel" aria-labelledby="current-heading">
       <h2 id="current-heading">현재 공개 내용</h2>
       {currentPolicy ? <>
         <h3>{currentPolicy.content.title}</h3>
+        {currentPolicy.correctionId && <p>관리자 보정 적용</p>}
         <p className="field-help">현재 개정 {currentPolicy.revision} · 수집 {dateLabel(currentPolicy.collectedAt)} (서울)</p>
         <p className="field-help">조회 시점의 내용이며 실패 당시의 이전 개정과 다를 수 있습니다.</p>
         <p className="exception-text">{currentPolicy.content.description}</p>
@@ -93,7 +96,8 @@ export function ExceptionContent({ data }: { data: ExceptionDetail }) {
         {currentPolicy.content.sections.map((section, index) => <section className="exception-section" key={index}>
           <h4>{section.title}</h4><p className="exception-text">{section.text}</p>
         </section>)}
-        <a className="text-link" href={`/policies/${currentPolicy.policyNumber}`}>공개 정책 상세 보기</a>
+        <div className="form-actions"><a className="text-link" href={`/policies/${currentPolicy.policyNumber}`}>공개 정책 상세 보기</a>
+          <a className="text-link" href={`${CORRECTIONS_PATH}?policyNumber=${currentPolicy.policyNumber}`}>정책 보정 관리</a></div>
       </> : <p>{item.policyNumber ? "같은 정책번호로 공개된 내용이 없습니다." : "정책번호를 확인할 수 없어 공개 내용과 연결하지 않았습니다."}</p>}
     </section>
     <section className="member-panel" aria-labelledby="raw-heading">

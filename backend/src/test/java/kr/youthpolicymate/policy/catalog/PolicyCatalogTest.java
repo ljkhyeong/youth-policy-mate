@@ -61,6 +61,7 @@ class PolicyCatalogTest {
     void prepare() throws Exception {
         org.mockito.Mockito.when(clock.instant()).thenReturn(AT);
         jdbc.sql("DELETE FROM policy_revisions").update();
+        jdbc.sql("DELETE FROM policy_corrections").update();
         jdbc.sql("DELETE FROM policy_source_snapshots").update();
         jdbc.sql("DELETE FROM policies").update();
         parser = new OntongPolicyCapture(mapper);
@@ -184,6 +185,10 @@ class PolicyCatalogTest {
         assertThat(actual.at("/components/schemas/CollectionExceptionDetail/properties/currentPolicy/anyOf/1/type").asString()).isEqualTo("null");
         assertThat(actual.at("/components/schemas/CollectionExceptionCurrentPolicy/properties/previousRevision/anyOf/1/type").asString()).isEqualTo("null");
         assertThat(actual.at("/paths/~1api~1v1~1admin~1collection-exceptions~1{runId}~1{itemIndex}~1replays/post/security/0/memberSession").isArray()).isTrue();
+        for (var path : java.util.List.of("~1api~1v1~1admin~1policy-corrections", "~1api~1v1~1admin~1policy-corrections~1{id}~1resolutions")) {
+            assertThat(actual.at("/paths/" + path + "/post/security/0/memberSession").isArray()).isTrue();
+            assertThat(actual.at("/paths/" + path + "/post/responses/200/content/*~1*/schema/$ref").asString()).isEqualTo("#/components/schemas/PolicyCorrectionItem");
+        }
         assertThat(actual.at("/components/schemas/PolicySummary/required").valueStream().map(value -> value.asString()))
                 .contains("questionnaireAvailable");
         assertThat(actual.at("/components/schemas/PolicyCheckItem/required").valueStream().map(value -> value.asString()))
@@ -742,7 +747,7 @@ class PolicyCatalogTest {
             isolated.sql("INSERT INTO policy_revisions(policy_number, revision, source_snapshot_id, content) SELECT policy_number, 1, :id, content FROM policies")
                     .param("id", id).update();
             config.target("latest").load().migrate();
-            var migrated = new PolicyCatalogStore(isolated, mapper, java.time.Clock.fixed(AT, java.time.ZoneOffset.UTC));
+            var migrated = new PolicyCatalogStore(isolated, mapper, java.time.Clock.fixed(AT, java.time.ZoneOffset.UTC), new PolicyCorrectionStore(isolated, mapper));
             assertThat(migrated.list("", 1, 20, false, kr.youthpolicymate.policy.RecruitmentStatus.CLOSED, AT).items()).singleElement()
                     .satisfies(policy -> assertThat(policy.recruitment().status()).isEqualTo(kr.youthpolicymate.policy.RecruitmentStatus.CLOSED));
             assertThat(migrated.find(MovingFeeRules.NUMBER).orElseThrow().revision()).isOne();

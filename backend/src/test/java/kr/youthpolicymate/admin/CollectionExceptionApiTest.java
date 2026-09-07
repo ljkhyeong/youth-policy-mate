@@ -60,6 +60,7 @@ class CollectionExceptionApiTest {
         jdbc.sql("DELETE FROM ontong_collection_items").update();
         jdbc.sql("DELETE FROM ontong_collection_pages").update();
         jdbc.sql("DELETE FROM policy_revisions").update();
+        jdbc.sql("DELETE FROM policy_corrections").update();
         jdbc.sql("DELETE FROM policy_source_snapshots").update();
         jdbc.sql("DELETE FROM policies").update();
     }

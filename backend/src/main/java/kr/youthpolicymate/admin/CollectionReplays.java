@@ -13,7 +13,7 @@ import java.util.UUID;
 public final class CollectionReplays {
     private CollectionReplays() {}
 
-    public enum Outcome { APPLIED, UNCHANGED, REPLAYED, STALE, INVALID_ITEM }
+    public enum Outcome { APPLIED, UNCHANGED, REPLAYED, STALE, INVALID_ITEM, CORRECTION_CONFLICT }
 
     @Schema(name = "CollectionReplayRequest", requiredProperties = {"requestId", "expectedAttempts", "reason"})
     public record Request(@NotNull UUID requestId, @NotNull @Min(0) Integer expectedAttempts,

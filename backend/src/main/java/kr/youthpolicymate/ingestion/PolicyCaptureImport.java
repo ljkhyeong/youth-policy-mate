@@ -38,10 +38,12 @@ public final class PolicyCaptureImport {
                     var item = parser.item(capture.items().get(index));
                     var result = store.importPolicy(item.number(), item.content(), item.rawPolicy(),
                             capture.capturedAt(), capture.hash(), item.contentHash());
+                    if (result == PolicyCatalogStore.ImportResult.CORRECTION_CONFLICT) failures++;
                     System.out.println("정책 " + item.number() + ": " + switch (result) {
                         case APPLIED -> "새 개정 저장";
                         case UNCHANGED -> "같은 내용 확인";
                         case REPLAYED -> "이미 반영한 캡처";
+                        case CORRECTION_CONFLICT -> "보정 충돌·현재 내용 유지";
                         case STALE -> "오래된 캡처 보관·현재 내용 유지";
                     });
                 } catch (RuntimeException exception) {

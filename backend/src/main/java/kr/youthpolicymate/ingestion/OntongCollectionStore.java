@@ -143,7 +143,7 @@ public class OntongCollectionStore {
     public List<Integer> pending(UUID runId) {
         return jdbc.sql("""
                 SELECT item_index FROM ontong_collection_items WHERE run_id = :id
-                AND outcome IN ('PENDING', 'INVALID_ITEM', 'STORE_FAILED') ORDER BY item_index
+                AND outcome IN ('PENDING', 'INVALID_ITEM', 'STORE_FAILED', 'CORRECTION_CONFLICT') ORDER BY item_index
                 """).param("id", runId).query(Integer.class).list();
     }
 
@@ -177,7 +177,7 @@ public class OntongCollectionStore {
                 .param("id", runId).param("index", index).query(String.class).single();
     }
 
-    private boolean retryable(String outcome) { return List.of("PENDING", "INVALID_ITEM", "STORE_FAILED").contains(outcome); }
+    private boolean retryable(String outcome) { return List.of("PENDING", "INVALID_ITEM", "STORE_FAILED", "CORRECTION_CONFLICT").contains(outcome); }
 
     private void finishItem(UUID runId, int index, String number, String outcome) {
         int attempt = jdbc.sql("""
@@ -197,7 +197,7 @@ public class OntongCollectionStore {
                 SELECT p.run_id, p.page_number, p.state, p.failure_code, p.started_at, p.received_at,
                     p.total_count, p.item_count,
                     count(i.*) FILTER (WHERE i.outcome IN ('APPLIED','UNCHANGED','REPLAYED','STALE')) AS done,
-                    count(i.*) FILTER (WHERE i.outcome IN ('INVALID_ITEM','STORE_FAILED')) AS failed
+                    count(i.*) FILTER (WHERE i.outcome IN ('INVALID_ITEM','STORE_FAILED','CORRECTION_CONFLICT')) AS failed
                 FROM ontong_collection_pages p LEFT JOIN ontong_collection_items i ON p.run_id = i.run_id
                 WHERE (:all OR p.run_id = :id)
                 GROUP BY p.request_sequence ORDER BY p.request_sequence DESC LIMIT 10

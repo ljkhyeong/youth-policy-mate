@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cookies } from "next/headers";
-import { collectionPage, loadCollectionException, loadCollectionExceptions, loadCollectionPageFailures } from "./load-collection-exceptions";
+import { collectionPage, loadCollectionException, loadCollectionExceptions, loadCollectionPageFailures, loadPolicyCorrections, loadCorrectionPolicy } from "./load-collection-exceptions";
 
 vi.mock("next/headers", () => ({ cookies: vi.fn() }));
 const run = "10000000-0000-0000-0000-000000000001";
@@ -59,4 +59,14 @@ describe("관리자 수집 예외 서버 조회", () => {
     expect(await loadCollectionExceptions(1)).toEqual({ status: "unavailable" });
     expect(await loadCollectionExceptions(1)).toEqual({ status: "unavailable" });
   });
+});
+
+
+it("보정 이력과 공개 정책을 고정 관리자 경로에서 읽고 잘못된 정책번호는 거절한다", async () => {
+  const fetch = vi.fn().mockResolvedValue(Response.json({})); vi.stubGlobal("fetch", fetch);
+  await loadPolicyCorrections(2);
+  await loadCorrectionPolicy("123");
+  expect(fetch.mock.calls.map(call => call[0].pathname)).toEqual(["/api/v1/admin/policy-corrections", "/api/v1/admin/policy-corrections/policies/123"]);
+  expect(await loadCorrectionPolicy("../me")).toEqual({ status: "invalid" });
+  expect(fetch).toHaveBeenCalledTimes(2);
 });

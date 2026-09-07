@@ -460,6 +460,345 @@
         "tags" : [ "collection-exception-controller" ]
       }
     },
+    "/api/v1/admin/policy-corrections" : {
+      "get" : {
+        "operationId" : "listPolicyCorrections",
+        "parameters" : [ {
+          "in" : "query",
+          "name" : "page",
+          "required" : false,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int32",
+            "default" : 1,
+            "maximum" : 1000,
+            "minimum" : 1
+          }
+        }, {
+          "in" : "query",
+          "name" : "pageSize",
+          "required" : false,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int32",
+            "default" : 20,
+            "maximum" : 50,
+            "minimum" : 1
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PolicyCorrectionPage"
+                }
+              }
+            },
+            "description" : "OK"
+          },
+          "400" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PolicyApiError"
+                }
+              }
+            },
+            "description" : "입력 오류"
+          },
+          "401" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PolicyApiError"
+                }
+              }
+            },
+            "description" : "로그인 필요"
+          },
+          "403" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PolicyApiError"
+                }
+              }
+            },
+            "description" : "관리자 권한 없음"
+          },
+          "503" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PolicyApiError"
+                }
+              }
+            },
+            "description" : "보정 처리 또는 조회 실패"
+          }
+        },
+        "security" : [ {
+          "memberSession" : [ ]
+        } ],
+        "summary" : "관리자 정책 보정·충돌·해제 이력",
+        "tags" : [ "policy-correction-controller" ]
+      },
+      "post" : {
+        "description" : "정책당 한 항목을 보정하며 원본을 유지한다. 같은 요청 ID·입력·작업자는 기존 결과를 반환한다.",
+        "operationId" : "createPolicyCorrection",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/PolicyCorrectionRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PolicyCorrectionItem"
+                }
+              }
+            },
+            "description" : "OK"
+          },
+          "400" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PolicyApiError"
+                }
+              }
+            },
+            "description" : "입력 오류"
+          },
+          "401" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PolicyApiError"
+                }
+              }
+            },
+            "description" : "로그인 필요"
+          },
+          "403" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PolicyApiError"
+                }
+              }
+            },
+            "description" : "관리자 권한 없음"
+          },
+          "409" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PolicyApiError"
+                }
+              }
+            },
+            "description" : "개정 변경·진행 중 보정·요청 ID 충돌"
+          },
+          "503" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PolicyApiError"
+                }
+              }
+            },
+            "description" : "보정 처리 또는 조회 실패"
+          }
+        },
+        "security" : [ {
+          "memberSession" : [ ]
+        } ],
+        "summary" : "공개 정책의 정책명 또는 운영 기관 보정",
+        "tags" : [ "policy-correction-controller" ]
+      }
+    },
+    "/api/v1/admin/policy-corrections/policies/{number}" : {
+      "get" : {
+        "operationId" : "getCorrectionPolicy",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "number",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "pattern" : "[0-9]{1,100}"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/CollectionExceptionCurrentPolicy"
+                }
+              }
+            },
+            "description" : "OK"
+          },
+          "400" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PolicyApiError"
+                }
+              }
+            },
+            "description" : "입력 오류"
+          },
+          "401" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PolicyApiError"
+                }
+              }
+            },
+            "description" : "로그인 필요"
+          },
+          "403" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PolicyApiError"
+                }
+              }
+            },
+            "description" : "관리자 권한 없음"
+          },
+          "404" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PolicyApiError"
+                }
+              }
+            },
+            "description" : "공개 정책 없음"
+          },
+          "503" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PolicyApiError"
+                }
+              }
+            },
+            "description" : "보정 처리 또는 조회 실패"
+          }
+        },
+        "security" : [ {
+          "memberSession" : [ ]
+        } ],
+        "summary" : "보정할 공개 정책의 현재 내용 조회",
+        "tags" : [ "policy-correction-controller" ]
+      }
+    },
+    "/api/v1/admin/policy-corrections/{id}/resolutions" : {
+      "post" : {
+        "description" : "조회한 현재 개정과 검토 원본 ID가 같을 때만 처리한다. KEEP은 충돌 상태에서만 허용한다. 처리 후 남은 수집 실패 항목은 별도로 재처리한다.",
+        "operationId" : "resolvePolicyCorrection",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/PolicyCorrectionResolution"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PolicyCorrectionItem"
+                }
+              }
+            },
+            "description" : "OK"
+          },
+          "400" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PolicyApiError"
+                }
+              }
+            },
+            "description" : "입력 오류"
+          },
+          "401" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PolicyApiError"
+                }
+              }
+            },
+            "description" : "로그인 필요"
+          },
+          "403" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PolicyApiError"
+                }
+              }
+            },
+            "description" : "관리자 권한 없음"
+          },
+          "409" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PolicyApiError"
+                }
+              }
+            },
+            "description" : "개정·검토 원본 변경 또는 요청 ID 충돌"
+          },
+          "503" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PolicyApiError"
+                }
+              }
+            },
+            "description" : "보정 처리 또는 조회 실패"
+          }
+        },
+        "security" : [ {
+          "memberSession" : [ ]
+        } ],
+        "summary" : "정책 보정 해제 또는 새 원본 기준 보정 유지",
+        "tags" : [ "policy-correction-controller" ]
+      }
+    },
     "/api/v1/logout" : {
       "post" : {
         "operationId" : "logoutMember",
@@ -1521,6 +1860,10 @@
           "content" : {
             "$ref" : "#/components/schemas/PolicyContent"
           },
+          "correctionId" : {
+            "type" : [ "string", "null" ],
+            "format" : "uuid"
+          },
           "policyNumber" : {
             "type" : "string"
           },
@@ -1542,7 +1885,7 @@
             "description" : "현재 개정이 참조하는 원본 수집 시각. 개정 적용 시각이 아님"
           }
         },
-        "required" : [ "collectedAt", "content", "policyNumber", "previousRevision", "revision", "sourceCapturedAt" ]
+        "required" : [ "collectedAt", "content", "correctionId", "policyNumber", "previousRevision", "revision", "sourceCapturedAt" ]
       },
       "CollectionExceptionDetail" : {
         "type" : "object",
@@ -1583,7 +1926,7 @@
           },
           "outcome" : {
             "type" : "string",
-            "enum" : [ "INVALID_ITEM", "STORE_FAILED" ]
+            "enum" : [ "INVALID_ITEM", "STORE_FAILED", "CORRECTION_CONFLICT" ]
           },
           "pageNumber" : {
             "type" : "integer",
@@ -1629,6 +1972,10 @@
           "content" : {
             "$ref" : "#/components/schemas/PolicyContent"
           },
+          "correctionId" : {
+            "type" : [ "string", "null" ],
+            "format" : "uuid"
+          },
           "revision" : {
             "type" : "integer",
             "format" : "int64",
@@ -1640,7 +1987,7 @@
             "description" : "개정이 참조하는 원본 수집 시각. 개정 적용 시각이 아님"
           }
         },
-        "required" : [ "content", "revision", "sourceCapturedAt" ]
+        "required" : [ "content", "correctionId", "revision", "sourceCapturedAt" ]
       },
       "CollectionPageFailure" : {
         "type" : "object",
@@ -1770,7 +2117,7 @@
           },
           "outcome" : {
             "type" : "string",
-            "enum" : [ "APPLIED", "UNCHANGED", "REPLAYED", "STALE", "INVALID_ITEM" ]
+            "enum" : [ "APPLIED", "UNCHANGED", "REPLAYED", "STALE", "INVALID_ITEM", "CORRECTION_CONFLICT" ]
           },
           "policyNumber" : {
             "type" : [ "string", "null" ]
@@ -2129,6 +2476,169 @@
           }
         },
         "required" : [ "applicationPeriod", "category", "description", "links", "organization", "regionCodes", "sections", "sourceModifiedAtText", "title" ]
+      },
+      "PolicyCorrectionItem" : {
+        "type" : "object",
+        "properties" : {
+          "actorId" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "appliedRevision" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "createdAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "currentRevision" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "field" : {
+            "type" : "string",
+            "enum" : [ "TITLE", "ORGANIZATION" ]
+          },
+          "id" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "policyNumber" : {
+            "type" : "string"
+          },
+          "reason" : {
+            "type" : "string"
+          },
+          "requestedRevision" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "resolution" : {
+            "type" : [ "string", "null" ]
+          },
+          "resolvedAt" : {
+            "type" : [ "string", "null" ],
+            "format" : "date-time"
+          },
+          "resolvedBy" : {
+            "type" : [ "string", "null" ],
+            "format" : "uuid"
+          },
+          "resolvedReason" : {
+            "type" : [ "string", "null" ]
+          },
+          "resolvedRevision" : {
+            "type" : [ "integer", "null" ],
+            "format" : "int64"
+          },
+          "reviewContent" : {
+            "$ref" : "#/components/schemas/PolicyContent"
+          },
+          "reviewSnapshotId" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "reviewValue" : {
+            "type" : "string"
+          },
+          "sourceValue" : {
+            "type" : "string"
+          },
+          "status" : {
+            "type" : "string",
+            "enum" : [ "ACTIVE", "CONFLICT", "RELEASED" ]
+          },
+          "value" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "actorId", "appliedRevision", "createdAt", "currentRevision", "field", "id", "policyNumber", "reason", "requestedRevision", "resolution", "resolvedAt", "resolvedBy", "resolvedReason", "resolvedRevision", "reviewContent", "reviewSnapshotId", "reviewValue", "sourceValue", "status", "value" ]
+      },
+      "PolicyCorrectionPage" : {
+        "type" : "object",
+        "properties" : {
+          "hasNext" : {
+            "type" : "boolean"
+          },
+          "items" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/PolicyCorrectionItem"
+            }
+          },
+          "page" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "pageSize" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        },
+        "required" : [ "hasNext", "items", "page", "pageSize" ]
+      },
+      "PolicyCorrectionRequest" : {
+        "type" : "object",
+        "properties" : {
+          "expectedRevision" : {
+            "type" : "integer",
+            "format" : "int64",
+            "minimum" : 0
+          },
+          "field" : {
+            "type" : "string",
+            "enum" : [ "TITLE", "ORGANIZATION" ]
+          },
+          "policyNumber" : {
+            "type" : "string",
+            "pattern" : "[0-9]{1,100}"
+          },
+          "reason" : {
+            "type" : "string",
+            "maxLength" : 500,
+            "minLength" : 0
+          },
+          "requestId" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "value" : {
+            "type" : "string",
+            "maxLength" : 500,
+            "minLength" : 0
+          }
+        },
+        "required" : [ "expectedRevision", "field", "policyNumber", "reason", "requestId", "value" ]
+      },
+      "PolicyCorrectionResolution" : {
+        "type" : "object",
+        "properties" : {
+          "action" : {
+            "type" : "string",
+            "enum" : [ "KEEP", "USE_SOURCE" ]
+          },
+          "expectedRevision" : {
+            "type" : "integer",
+            "format" : "int64",
+            "minimum" : 0
+          },
+          "reason" : {
+            "type" : "string",
+            "maxLength" : 500,
+            "minLength" : 0
+          },
+          "requestId" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "reviewSnapshotId" : {
+            "type" : "integer",
+            "format" : "int64",
+            "minimum" : 0
+          }
+        },
+        "required" : [ "action", "expectedRevision", "reason", "requestId", "reviewSnapshotId" ]
       },
       "PolicyDeadline" : {
         "type" : "object",

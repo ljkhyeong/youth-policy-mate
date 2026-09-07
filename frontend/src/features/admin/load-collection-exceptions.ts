@@ -13,7 +13,7 @@ async function load<T>(path: string): Promise<Loaded<T>> {
   if (!session) return { status: "unauthenticated" };
   try {
     const base = process.env.POLICY_API_BASE_URL || "http://127.0.0.1:8080";
-    const response = await fetch(new URL(`/api/v1/admin/collection-exceptions${path}`, base), {
+    const response = await fetch(new URL(`/api/v1/admin/${path}`, base), {
       cache: "no-store", redirect: "error", signal: AbortSignal.timeout(8000),
       headers: { Accept: "application/json", Cookie: `YPM_SESSION=${session.value}` },
     });
@@ -32,20 +32,33 @@ export function collectionPage(value: string | string[] | undefined): number {
 }
 
 export function loadCollectionExceptions(page: number) {
-  return load<ExceptionPage>(`?page=${page}&pageSize=20`);
+  return load<ExceptionPage>(`collection-exceptions?page=${page}&pageSize=20`);
 }
 
 export function loadCollectionPageFailures(page: number) {
-  return load<PageFailureList>(`/pages?page=${page}&pageSize=20`);
+  return load<PageFailureList>(`collection-exceptions/pages?page=${page}&pageSize=20`);
 }
 
 export function loadCollectionReplays(page: number) {
-  return load<ReplayPage>(`/replays?page=${page}&pageSize=20`);
+  return load<ReplayPage>(`collection-exceptions/replays?page=${page}&pageSize=20`);
 }
 
 export function loadCollectionException(runId: string, itemIndex: string): Promise<Loaded<ExceptionDetail>> {
   if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(runId) || !/^[0-9]$/.test(itemIndex)) {
     return Promise.resolve({ status: "missing" });
   }
-  return load<ExceptionDetail>(`/${runId}/${itemIndex}`);
+  return load<ExceptionDetail>(`collection-exceptions/${runId}/${itemIndex}`);
+}
+
+export type CorrectionItem = components["schemas"]["PolicyCorrectionItem"];
+export type CorrectionPage = components["schemas"]["PolicyCorrectionPage"];
+export type CorrectionPolicy = components["schemas"]["CollectionExceptionCurrentPolicy"];
+
+export function loadPolicyCorrections(page: number) {
+  return load<CorrectionPage>(`policy-corrections?page=${page}&pageSize=20`);
+}
+
+export function loadCorrectionPolicy(number: string): Promise<Loaded<CorrectionPolicy>> {
+  if (!/^[0-9]{1,100}$/.test(number)) return Promise.resolve({ status: "invalid" });
+  return load<CorrectionPolicy>(`policy-corrections/policies/${number}`);
 }

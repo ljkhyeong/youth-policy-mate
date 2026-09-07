@@ -38,7 +38,7 @@ class CollectionReplayService {
                 throw new CollectionReplays.Changed();
             return replay;
         }
-        if (!List.of("INVALID_ITEM", "STORE_FAILED").contains(item.outcome()) || item.attempts() != request.expectedAttempts())
+        if (!List.of("INVALID_ITEM", "STORE_FAILED", "CORRECTION_CONFLICT").contains(item.outcome()) || item.attempts() != request.expectedAttempts())
             throw new CollectionReplays.Changed();
 
         collection.applyStoredItem(runId, index);

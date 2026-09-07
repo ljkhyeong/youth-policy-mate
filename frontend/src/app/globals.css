@@ -614,7 +614,7 @@ select {
     font-weight: 700;
   }
 
-  .form-field :where(input, select) {
+  .form-field :where(input, select, textarea) {
     display: block;
     width: 100%;
     min-width: 0;
@@ -628,7 +628,7 @@ select {
     font-size: 16px;
   }
 
-  .form-field :where(input, select):focus {
+  .form-field :where(input, select, textarea):focus {
     border-color: var(--app-blue);
     background: white;
   }

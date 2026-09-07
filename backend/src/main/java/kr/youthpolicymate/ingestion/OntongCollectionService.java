@@ -36,20 +36,32 @@ public class OntongCollectionService {
 
     public void applyStored(UUID runId) {
         var page = store.page(runId);
-        if (page.rawBody() == null) throw new OntongApiClient.Failure("RESPONSE_NOT_STORED");
-        OntongPolicyCapture.Parsed parsed;
-        try {
-            parsed = parser.parseResponse(page.rawBody(), page.receivedAt());
-            if (parsed.page() != page.number() || parsed.pageSize() != 10) throw new IllegalArgumentException();
-        } catch (IllegalArgumentException exception) {
-            store.failed(runId, "INVALID_LIST_RESPONSE", true);
-            throw new OntongApiClient.Failure("INVALID_LIST_RESPONSE");
-        }
+        var parsed = readStored(page);
         store.prepare(runId, parsed);
         for (int index : store.pending(runId)) {
             try { store.apply(page, parsed, index); }
             catch (RuntimeException exception) { store.itemFailed(runId, index); }
         }
         if (!store.pending(runId).isEmpty()) throw new OntongApiClient.Failure("ITEMS_REQUIRE_REPROCESSING");
+    }
+
+    public void applyStoredItem(UUID runId, int index) {
+        var page = store.page(runId);
+        var parsed = readStored(page);
+        if (index >= parsed.items().size()) throw new OntongApiClient.Failure("ITEM_NOT_STORED");
+        store.apply(page, parsed, index);
+    }
+
+    private OntongPolicyCapture.Parsed readStored(OntongCollectionStore.Page page) {
+        if (page.rawBody() == null) throw new OntongApiClient.Failure("RESPONSE_NOT_STORED");
+        OntongPolicyCapture.Parsed parsed;
+        try {
+            parsed = parser.parseResponse(page.rawBody(), page.receivedAt());
+            if (parsed.page() != page.number() || parsed.pageSize() != 10) throw new IllegalArgumentException();
+        } catch (IllegalArgumentException exception) {
+            store.failed(page.runId(), "INVALID_LIST_RESPONSE", true);
+            throw new OntongApiClient.Failure("INVALID_LIST_RESPONSE");
+        }
+        return parsed;
     }
 }

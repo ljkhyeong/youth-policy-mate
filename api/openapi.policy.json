@@ -85,7 +85,7 @@
                 }
               }
             },
-            "description" : "수집 이력 조회 실패"
+            "description" : "수집 처리 또는 이력 조회 실패"
           }
         },
         "security" : [ {
@@ -171,13 +171,98 @@
                 }
               }
             },
-            "description" : "수집 이력 조회 실패"
+            "description" : "수집 처리 또는 이력 조회 실패"
           }
         },
         "security" : [ {
           "memberSession" : [ ]
         } ],
         "summary" : "관리자 전용 페이지 수집 실패 목록",
+        "tags" : [ "collection-exception-controller" ]
+      }
+    },
+    "/api/v1/admin/collection-exceptions/replays" : {
+      "get" : {
+        "operationId" : "listCollectionReplays",
+        "parameters" : [ {
+          "in" : "query",
+          "name" : "page",
+          "required" : false,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int32",
+            "default" : 1,
+            "maximum" : 1000,
+            "minimum" : 1
+          }
+        }, {
+          "in" : "query",
+          "name" : "pageSize",
+          "required" : false,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int32",
+            "default" : 20,
+            "maximum" : 50,
+            "minimum" : 1
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/CollectionReplayPage"
+                }
+              }
+            },
+            "description" : "OK"
+          },
+          "400" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PolicyApiError"
+                }
+              }
+            },
+            "description" : "조회 조건 오류"
+          },
+          "401" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PolicyApiError"
+                }
+              }
+            },
+            "description" : "로그인 필요"
+          },
+          "403" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PolicyApiError"
+                }
+              }
+            },
+            "description" : "관리자 권한 없음"
+          },
+          "503" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PolicyApiError"
+                }
+              }
+            },
+            "description" : "수집 처리 또는 이력 조회 실패"
+          }
+        },
+        "security" : [ {
+          "memberSession" : [ ]
+        } ],
+        "summary" : "관리자 수집 항목 재처리 이력",
         "tags" : [ "collection-exception-controller" ]
       }
     },
@@ -263,13 +348,115 @@
                 }
               }
             },
-            "description" : "수집 이력 조회 실패"
+            "description" : "수집 처리 또는 이력 조회 실패"
           }
         },
         "security" : [ {
           "memberSession" : [ ]
         } ],
         "summary" : "관리자 전용 수집 실패 원본·현재 정책 조회",
+        "tags" : [ "collection-exception-controller" ]
+      }
+    },
+    "/api/v1/admin/collection-exceptions/{runId}/{itemIndex}/replays" : {
+      "post" : {
+        "description" : "같은 요청 ID·항목·작업자·사유·처리 횟수는 기존 결과를 반환한다. 원본 수정이나 외부 수집을 실행하지 않는다.",
+        "operationId" : "replayCollectionItem",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "runId",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        }, {
+          "in" : "path",
+          "name" : "itemIndex",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int32",
+            "maximum" : 9,
+            "minimum" : 0
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/CollectionReplayRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/CollectionReplayResult"
+                }
+              }
+            },
+            "description" : "OK"
+          },
+          "400" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PolicyApiError"
+                }
+              }
+            },
+            "description" : "조회 조건 오류"
+          },
+          "401" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PolicyApiError"
+                }
+              }
+            },
+            "description" : "로그인 필요"
+          },
+          "403" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PolicyApiError"
+                }
+              }
+            },
+            "description" : "관리자 권한 없음"
+          },
+          "409" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PolicyApiError"
+                }
+              }
+            },
+            "description" : "처리 상태 변경 또는 저장 원본 재처리 불가"
+          },
+          "503" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PolicyApiError"
+                }
+              }
+            },
+            "description" : "수집 처리 또는 이력 조회 실패"
+          }
+        },
+        "security" : [ {
+          "memberSession" : [ ]
+        } ],
+        "summary" : "관리자 사유를 남기고 저장 원본의 실패 항목 하나를 재처리",
         "tags" : [ "collection-exception-controller" ]
       }
     },
@@ -1518,6 +1705,98 @@
           }
         },
         "required" : [ "hasNext", "items", "page", "pageSize" ]
+      },
+      "CollectionReplayPage" : {
+        "type" : "object",
+        "properties" : {
+          "hasNext" : {
+            "type" : "boolean"
+          },
+          "items" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/CollectionReplayResult"
+            }
+          },
+          "page" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "pageSize" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        },
+        "required" : [ "hasNext", "items", "page", "pageSize" ]
+      },
+      "CollectionReplayRequest" : {
+        "type" : "object",
+        "properties" : {
+          "expectedAttempts" : {
+            "type" : "integer",
+            "format" : "int32",
+            "minimum" : 0
+          },
+          "reason" : {
+            "type" : "string",
+            "maxLength" : 500,
+            "minLength" : 0
+          },
+          "requestId" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        },
+        "required" : [ "expectedAttempts", "reason", "requestId" ]
+      },
+      "CollectionReplayResult" : {
+        "type" : "object",
+        "properties" : {
+          "actorId" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "attempt" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "expectedAttempts" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "itemIndex" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "outcome" : {
+            "type" : "string",
+            "enum" : [ "APPLIED", "UNCHANGED", "REPLAYED", "STALE", "INVALID_ITEM" ]
+          },
+          "policyNumber" : {
+            "type" : [ "string", "null" ]
+          },
+          "policyRevision" : {
+            "type" : [ "integer", "null" ],
+            "format" : "int64",
+            "description" : "처리 후 개정. 반영하지 않은 결과는 null"
+          },
+          "processedAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "reason" : {
+            "type" : "string"
+          },
+          "requestId" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "runId" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        },
+        "required" : [ "actorId", "attempt", "expectedAttempts", "itemIndex", "outcome", "policyNumber", "policyRevision", "processedAt", "reason", "requestId", "runId" ]
       },
       "LoginProvider" : {
         "type" : "object",

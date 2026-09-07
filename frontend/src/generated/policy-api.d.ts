@@ -44,6 +44,23 @@ export interface paths {
         readonly patch?: never;
         readonly trace?: never;
     };
+    readonly "/api/v1/admin/collection-exceptions/replays": {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header?: never;
+            readonly path?: never;
+            readonly cookie?: never;
+        };
+        /** 관리자 수집 항목 재처리 이력 */
+        readonly get: operations["listCollectionReplays"];
+        readonly put?: never;
+        readonly post?: never;
+        readonly delete?: never;
+        readonly options?: never;
+        readonly head?: never;
+        readonly patch?: never;
+        readonly trace?: never;
+    };
     readonly "/api/v1/admin/collection-exceptions/{runId}/{itemIndex}": {
         readonly parameters: {
             readonly query?: never;
@@ -58,6 +75,26 @@ export interface paths {
         readonly get: operations["getCollectionException"];
         readonly put?: never;
         readonly post?: never;
+        readonly delete?: never;
+        readonly options?: never;
+        readonly head?: never;
+        readonly patch?: never;
+        readonly trace?: never;
+    };
+    readonly "/api/v1/admin/collection-exceptions/{runId}/{itemIndex}/replays": {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header?: never;
+            readonly path?: never;
+            readonly cookie?: never;
+        };
+        readonly get?: never;
+        readonly put?: never;
+        /**
+         * 관리자 사유를 남기고 저장 원본의 실패 항목 하나를 재처리
+         * @description 같은 요청 ID·항목·작업자·사유·처리 횟수는 기존 결과를 반환한다. 원본 수정이나 외부 수집을 실행하지 않는다.
+         */
+        readonly post: operations["replayCollectionItem"];
         readonly delete?: never;
         readonly options?: never;
         readonly head?: never;
@@ -424,6 +461,46 @@ export interface components {
             /** Format: int32 */
             readonly pageSize: number;
         };
+        readonly CollectionReplayPage: {
+            readonly hasNext: boolean;
+            readonly items: readonly components["schemas"]["CollectionReplayResult"][];
+            /** Format: int32 */
+            readonly page: number;
+            /** Format: int32 */
+            readonly pageSize: number;
+        };
+        readonly CollectionReplayRequest: {
+            /** Format: int32 */
+            readonly expectedAttempts: number;
+            readonly reason: string;
+            /** Format: uuid */
+            readonly requestId: string;
+        };
+        readonly CollectionReplayResult: {
+            /** Format: uuid */
+            readonly actorId: string;
+            /** Format: int32 */
+            readonly attempt: number;
+            /** Format: int32 */
+            readonly expectedAttempts: number;
+            /** Format: int32 */
+            readonly itemIndex: number;
+            /** @enum {string} */
+            readonly outcome: "APPLIED" | "UNCHANGED" | "REPLAYED" | "STALE" | "INVALID_ITEM";
+            readonly policyNumber: string | null;
+            /**
+             * Format: int64
+             * @description 처리 후 개정. 반영하지 않은 결과는 null
+             */
+            readonly policyRevision: number | null;
+            /** Format: date-time */
+            readonly processedAt: string;
+            readonly reason: string;
+            /** Format: uuid */
+            readonly requestId: string;
+            /** Format: uuid */
+            readonly runId: string;
+        };
         readonly LoginProvider: {
             readonly id: string;
             readonly name: string;
@@ -712,7 +789,7 @@ export interface operations {
                     readonly "*/*": components["schemas"]["PolicyApiError"];
                 };
             };
-            /** @description 수집 이력 조회 실패 */
+            /** @description 수집 처리 또는 이력 조회 실패 */
             readonly 503: {
                 headers: {
                     readonly [name: string]: unknown;
@@ -771,7 +848,66 @@ export interface operations {
                     readonly "*/*": components["schemas"]["PolicyApiError"];
                 };
             };
-            /** @description 수집 이력 조회 실패 */
+            /** @description 수집 처리 또는 이력 조회 실패 */
+            readonly 503: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "*/*": components["schemas"]["PolicyApiError"];
+                };
+            };
+        };
+    };
+    readonly listCollectionReplays: {
+        readonly parameters: {
+            readonly query?: {
+                readonly page?: number;
+                readonly pageSize?: number;
+            };
+            readonly header?: never;
+            readonly path?: never;
+            readonly cookie?: never;
+        };
+        readonly requestBody?: never;
+        readonly responses: {
+            /** @description OK */
+            readonly 200: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "*/*": components["schemas"]["CollectionReplayPage"];
+                };
+            };
+            /** @description 조회 조건 오류 */
+            readonly 400: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "*/*": components["schemas"]["PolicyApiError"];
+                };
+            };
+            /** @description 로그인 필요 */
+            readonly 401: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "*/*": components["schemas"]["PolicyApiError"];
+                };
+            };
+            /** @description 관리자 권한 없음 */
+            readonly 403: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "*/*": components["schemas"]["PolicyApiError"];
+                };
+            };
+            /** @description 수집 처리 또는 이력 조회 실패 */
             readonly 503: {
                 headers: {
                     readonly [name: string]: unknown;
@@ -839,7 +975,79 @@ export interface operations {
                     readonly "*/*": components["schemas"]["PolicyApiError"];
                 };
             };
-            /** @description 수집 이력 조회 실패 */
+            /** @description 수집 처리 또는 이력 조회 실패 */
+            readonly 503: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "*/*": components["schemas"]["PolicyApiError"];
+                };
+            };
+        };
+    };
+    readonly replayCollectionItem: {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header?: never;
+            readonly path: {
+                readonly runId: string;
+                readonly itemIndex: number;
+            };
+            readonly cookie?: never;
+        };
+        readonly requestBody: {
+            readonly content: {
+                readonly "application/json": components["schemas"]["CollectionReplayRequest"];
+            };
+        };
+        readonly responses: {
+            /** @description OK */
+            readonly 200: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "*/*": components["schemas"]["CollectionReplayResult"];
+                };
+            };
+            /** @description 조회 조건 오류 */
+            readonly 400: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "*/*": components["schemas"]["PolicyApiError"];
+                };
+            };
+            /** @description 로그인 필요 */
+            readonly 401: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "*/*": components["schemas"]["PolicyApiError"];
+                };
+            };
+            /** @description 관리자 권한 없음 */
+            readonly 403: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "*/*": components["schemas"]["PolicyApiError"];
+                };
+            };
+            /** @description 처리 상태 변경 또는 저장 원본 재처리 불가 */
+            readonly 409: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "*/*": components["schemas"]["PolicyApiError"];
+                };
+            };
+            /** @description 수집 처리 또는 이력 조회 실패 */
             readonly 503: {
                 headers: {
                     readonly [name: string]: unknown;

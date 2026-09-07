@@ -3,11 +3,12 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import CollectionPage from "@/app/admin/collection-exceptions/page";
 import CollectionDetailPage from "@/app/admin/collection-exceptions/[runId]/[itemIndex]/page";
 import PageFailuresPage from "@/app/admin/collection-exceptions/pages/page";
-import { loadCollectionException, loadCollectionExceptions, loadCollectionPageFailures, type ExceptionDetail, type PageFailureList } from "./load-collection-exceptions";
+import CollectionReplaysPage from "@/app/admin/collection-exceptions/replays/page";
+import { loadCollectionException, loadCollectionExceptions, loadCollectionPageFailures, loadCollectionReplays, type ExceptionDetail, type PageFailureList } from "./load-collection-exceptions";
 
 vi.mock("./load-collection-exceptions", async importOriginal => ({
   ...await importOriginal<typeof import("./load-collection-exceptions")>(),
-  loadCollectionException: vi.fn(), loadCollectionExceptions: vi.fn(), loadCollectionPageFailures: vi.fn(),
+  loadCollectionException: vi.fn(), loadCollectionExceptions: vi.fn(), loadCollectionPageFailures: vi.fn(), loadCollectionReplays: vi.fn(),
 }));
 afterEach(() => vi.resetAllMocks());
 const run = "10000000-0000-0000-0000-000000000001";
@@ -23,6 +24,27 @@ const detail: ExceptionDetail = {
 };
 
 describe("관리자 수집 예외 화면", () => {
+  it("재처리 이력의 사유는 텍스트로 표시하고 반영하지 않은 결과에 개정을 붙이지 않는다", async () => {
+    vi.mocked(loadCollectionReplays).mockResolvedValue({ status: "available", data: { page: 2, pageSize: 20, hasNext: true,
+      items: [{ requestId: run, runId: run, itemIndex: 0, actorId: run, expectedAttempts: 1, attempt: 2,
+        reason: "<script>사유</script>", outcome: "STALE", policyNumber: "123", policyRevision: null, processedAt: "2026-09-07T00:00:00Z" }] } });
+    const html = renderToStaticMarkup(await CollectionReplaysPage({ searchParams: Promise.resolve({ page: "2" }) }));
+    expect(loadCollectionReplays).toHaveBeenCalledWith(2);
+    expect(html).toContain("최신 정책 유지");
+    expect(html).toContain("반영 없음");
+    expect(html).toContain("&lt;script&gt;사유&lt;/script&gt;");
+    expect(html).not.toContain("<script>");
+    expect(html).toContain('href="/admin/collection-exceptions/replays?page=3"');
+    expect(html).toContain('href="/admin/collection-exceptions/replays?page=1"');
+  });
+
+  it("재처리 이력의 조회 장애를 빈 이력과 구분한다", async () => {
+    vi.mocked(loadCollectionReplays).mockResolvedValue({ status: "unavailable" });
+    const html = renderToStaticMarkup(await CollectionReplaysPage({ searchParams: Promise.resolve({ page: "2" }) }));
+    expect(html).toContain("수집 예외를 불러오지 못했습니다");
+    expect(html).not.toContain("재처리 이력이 없습니다");
+    expect(html).toContain('href="/admin/collection-exceptions/replays?page=2"');
+  });
   it("페이지 실패의 HTTP 상태·응답 보관 여부를 구분하고 전용 목록의 페이지를 유지한다", async () => {
     const item: PageFailureList["items"][number] = { runId: run, pageNumber: 7, state: "FETCH_FAILED", reason: "HTTP_ERROR",
       httpStatus: 429, startedAt: "2026-09-07T00:00:00Z", dispatchedAt: null, receivedAt: null, responseStored: false };

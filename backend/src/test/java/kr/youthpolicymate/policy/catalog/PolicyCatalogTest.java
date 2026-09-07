@@ -183,6 +183,7 @@ class PolicyCatalogTest {
         assertThat(actual.at("/paths/~1api~1v1~1admin~1collection-exceptions~1{runId}~1{itemIndex}/get/security/0/memberSession").isArray()).isTrue();
         assertThat(actual.at("/components/schemas/CollectionExceptionDetail/properties/currentPolicy/anyOf/1/type").asString()).isEqualTo("null");
         assertThat(actual.at("/components/schemas/CollectionExceptionCurrentPolicy/properties/previousRevision/anyOf/1/type").asString()).isEqualTo("null");
+        assertThat(actual.at("/paths/~1api~1v1~1admin~1collection-exceptions~1{runId}~1{itemIndex}~1replays/post/security/0/memberSession").isArray()).isTrue();
         assertThat(actual.at("/components/schemas/PolicySummary/required").valueStream().map(value -> value.asString()))
                 .contains("questionnaireAvailable");
         assertThat(actual.at("/components/schemas/PolicyCheckItem/required").valueStream().map(value -> value.asString()))

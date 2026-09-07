@@ -4,6 +4,7 @@ import type { components } from "@/generated/policy-api";
 export type ExceptionPage = components["schemas"]["CollectionExceptionPage"];
 export type ExceptionDetail = components["schemas"]["CollectionExceptionDetail"];
 export type PageFailureList = components["schemas"]["CollectionPageFailureList"];
+export type ReplayPage = components["schemas"]["CollectionReplayPage"];
 export type LoadFailure = "unauthenticated" | "forbidden" | "missing" | "invalid" | "unavailable";
 type Loaded<T> = { status: "available"; data: T } | { status: LoadFailure };
 
@@ -36,6 +37,10 @@ export function loadCollectionExceptions(page: number) {
 
 export function loadCollectionPageFailures(page: number) {
   return load<PageFailureList>(`/pages?page=${page}&pageSize=20`);
+}
+
+export function loadCollectionReplays(page: number) {
+  return load<ReplayPage>(`/replays?page=${page}&pageSize=20`);
 }
 
 export function loadCollectionException(runId: string, itemIndex: string): Promise<Loaded<ExceptionDetail>> {

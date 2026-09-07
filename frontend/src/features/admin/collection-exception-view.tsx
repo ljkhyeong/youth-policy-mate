@@ -1,9 +1,11 @@
 // 관리자 화면은 전체 이동으로 이전 조회 결과를 재사용하지 않는다.
 import { PageState } from "@/components/page-state";
 import type { ExceptionDetail, ExceptionPage, LoadFailure } from "./load-collection-exceptions";
+import { CollectionReplayForm } from "./collection-replay-form";
 
 export const COLLECTION_PATH = "/admin/collection-exceptions";
 export const PAGE_FAILURES_PATH = `${COLLECTION_PATH}/pages`;
+export const REPLAYS_PATH = `${COLLECTION_PATH}/replays`;
 const outcomeLabels = { INVALID_ITEM: "항목 검증 실패", STORE_FAILED: "저장 실패" } as const;
 const timestamp = new Intl.DateTimeFormat("ko-KR", {
   timeZone: "Asia/Seoul", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit",
@@ -11,10 +13,11 @@ const timestamp = new Intl.DateTimeFormat("ko-KR", {
 const dateLabel = (value: string | null) => value ? timestamp.format(new Date(value)) : "기록 없음";
 export { dateLabel as collectionTime };
 
-export function CollectionNavigation({ active }: { active: "items" | "pages" }) {
+export function CollectionNavigation({ active }: { active: "items" | "pages" | "replays" }) {
   return <nav className="policy-filters mb-6" aria-label="수집 예외 종류">
     <a href={COLLECTION_PATH} aria-current={active === "items" ? "page" : undefined}>항목 처리</a>
     <a href={PAGE_FAILURES_PATH} aria-current={active === "pages" ? "page" : undefined}>페이지 수집</a>
+    <a href={REPLAYS_PATH} aria-current={active === "replays" ? "page" : undefined}>재처리 이력</a>
   </nav>;
 }
 
@@ -97,6 +100,7 @@ export function ExceptionContent({ data }: { data: ExceptionDetail }) {
       <h2 id="raw-heading">수집 원본</h2>
       <pre className="exception-raw" tabIndex={0} aria-label="수집 원본 JSON">{data.rawPolicyJson}</pre>
     </section>
+    <CollectionReplayForm runId={item.runId} itemIndex={item.itemIndex} attempts={item.attempts} />
   </>;
 }
 

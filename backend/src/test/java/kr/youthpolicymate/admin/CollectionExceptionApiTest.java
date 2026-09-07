@@ -55,6 +55,7 @@ class CollectionExceptionApiTest {
 
     @BeforeEach
     void clear() {
+        jdbc.sql("DELETE FROM admin_collection_replays").update();
         jdbc.sql("DELETE FROM ontong_collection_item_attempts").update();
         jdbc.sql("DELETE FROM ontong_collection_items").update();
         jdbc.sql("DELETE FROM ontong_collection_pages").update();

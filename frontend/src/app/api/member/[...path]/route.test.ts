@@ -7,6 +7,22 @@ const context = (path: string) => ({ params: Promise.resolve({ path: path.split(
 afterEach(() => vi.unstubAllGlobals());
 
 describe("개인 API 중계", () => {
+  it("관리자 항목 재처리는 지정 경로의 POST만 허용하고 세션·CSRF를 전달한다", async () => {
+    const fetch = vi.fn().mockImplementation(() => Promise.resolve(Response.json({ outcome: "APPLIED" })));
+    vi.stubGlobal("fetch", fetch);
+    const path = "collection-replays/10000000-0000-0000-0000-000000000001/0";
+    const body = '{"reason":"저장 오류 조치"}';
+    await POST(new NextRequest(`${base}/api/member/${path}`, { method: "POST", headers: {
+      origin: base, cookie: "YPM_SESSION=admin", "X-CSRF-TOKEN": "confirmed",
+    }, body }), context(path));
+    expect(fetch.mock.calls[0][0].pathname).toBe("/api/v1/admin/collection-exceptions/10000000-0000-0000-0000-000000000001/0/replays");
+    expect(fetch.mock.calls[0][1].headers.Cookie).toBe("YPM_SESSION=admin");
+    expect(fetch.mock.calls[0][1].headers["X-CSRF-TOKEN"]).toBe("confirmed");
+    expect(fetch.mock.calls[0][1].body).toBe(body);
+    expect((await GET(new NextRequest(`${base}/api/member/${path}`), context(path))).status).toBe(404);
+    expect((await POST(new NextRequest(`${base}/api/member/${path}`, { method: "POST", headers: { origin: "https://other.example" } }), context(path))).status).toBe(403);
+    expect(fetch).toHaveBeenCalledTimes(1);
+  });
   it("허용되지 않은 경로와 다른 출처의 변경 요청은 서버에 보내지 않는다", async () => {
     const fetch = vi.fn(); vi.stubGlobal("fetch", fetch);
     expect((await GET(new NextRequest(`${base}/api/member/actuator/env`), context("actuator/env"))).status).toBe(404);

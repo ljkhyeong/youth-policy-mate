@@ -2759,7 +2759,7 @@
             "items" : {
               "$ref" : "#/components/schemas/PolicyAnswer"
             },
-            "maxItems" : 10,
+            "maxItems" : 20,
             "minItems" : 0
           },
           "revision" : {

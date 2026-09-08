@@ -14,7 +14,7 @@ import static kr.youthpolicymate.policy.catalog.PolicyQuestions.*;
 public final class MovingFeeRules {
     public static final String NUMBER = "20260614005400213232";
     public static final String CONTENT_HASH = "e3f828c1c37c1ecddde5a2dc59065e1179642d0fd7be3e919ec8cb9b07441c42";
-    public static final String VERSION = "moving-fee-2026-h1-v3";
+    public static final String VERSION = "moving-fee-2026-h1-v4";
     public static final String SOURCE = "https://youth.seoul.go.kr/bbs/view.do?key=2303300002&pstSn=2604010002";
     public static final String SCOPE = "2026년 상반기 서울 청년 중개보수·이사비 지원 조건";
     static final Instant OPEN_AT = Instant.parse("2026-04-01T01:00:00Z");
@@ -50,12 +50,21 @@ public final class MovingFeeRules {
                             new Option("BOTH", "중개보수·이사비 모두 받았어요"), new Option("UNKNOWN", "지원 기관·항목 확인 중"))),
             new Question("requestedCost", "이 공고 기준으로 확인할 비용은 무엇인가요?",
                     "중개보수·이사비 중 한 가지만 신청할 수도 있어요. 다른 기관에서 한 종류 비용을 받았다면 다른 비용만 확인해주세요.",
-                    List.of(new Option("BROKERAGE", "중개보수만"), new Option("MOVING", "이사비만"), new Option("BOTH", "중개보수·이사비 모두"), new Option("UNKNOWN", "아직 정하지 않았어요"))));
+                    List.of(new Option("BROKERAGE", "중개보수만"), new Option("MOVING", "이사비만"), new Option("BOTH", "중개보수·이사비 모두"), new Option("UNKNOWN", "아직 정하지 않았어요"))),
+            new Question("parentRental", "신청 당시 임차한 집이 부모님 소유였나요?",
+                    "부모 소유 주택을 임차하면 참여 대상에서 제외돼요. 부모와 함께 살았는지가 아니라 임차주택의 소유자를 확인해주세요.",
+                    List.of(new Option("CLEAR", "부모 소유 주택이 아니었어요"), new Option("RESTRICTED", "부모 소유 주택이었어요"), new Option("UNKNOWN", "소유 관계 확인 중"))),
+            new Question("benefitReceipt", "신청 당시 생계·의료·주거급여를 받고 있었나요?",
+                    "세 급여 중 하나라도 받고 있었다면 참여 대상에서 제외돼요. 교육급여만 받는 경우는 이 수급 제한에 포함하지 않아요.",
+                    List.of(new Option("CLEAR", "세 급여 모두 받지 않았어요"), new Option("RESTRICTED", "한 가지 이상 받고 있었어요"), new Option("UNKNOWN", "수급 종류·시점 확인 중"))),
+            new Question("excludedResidency", "신청 당시 외국인·재외국민에 해당했나요?",
+                    "공고는 외국인·재외국민을 지원 대상에서 제외해요. 해당 여부가 불분명하면 담당 기관에서 확인해주세요. 국적명이나 증빙서류는 입력하지 않아요.",
+                    List.of(new Option("CLEAR", "둘 다 해당하지 않았어요"), new Option("RESTRICTED", "외국인 또는 재외국민이었어요"), new Option("UNKNOWN", "해당 여부 확인 중"))));
 
     public static boolean appliesAt(Instant now) { return now.atZone(ZoneId.of("Asia/Seoul")).getYear() == 2026; }
     public static Questionnaire questionnaire(long revision, Instant now) {
         return new Questionnaire(NUMBER, revision, VERSION, true, SCOPE,
-                periodNotice(now) + " 연령·이사·계약·주택·소득·중복지원 조건을 확인해요. 증빙과 선발 심사 등은 별도 확인이 필요해요.", SOURCE, QUESTIONS);
+                periodNotice(now) + " 연령·이사·계약·주택·소득·중복지원과 공고의 참여 제한을 확인해요. 증빙과 선발 심사 등은 별도 확인이 필요해요.", SOURCE, QUESTIONS);
     }
     static Check ageCheck(LocalDate birthDate) {
         return birthCheck(birthDate.isBefore(LocalDate.of(1986, 1, 1)) || birthDate.isAfter(LocalDate.of(2007, 12, 31)) ? "OUTSIDE" : "IN_RANGE");
@@ -74,7 +83,13 @@ public final class MovingFeeRules {
                 check("housingCost", "주택 거래금액", values.get("housingCost"), "WITHIN_LIMIT", "OUTSIDE", "전·월세 주택의 보증금 + 월세 × 100이 2억 원 이하여야 해요."),
                 check("income", "건강보험료 기준 소득", values.get("income"), "WITHIN_LIMIT", "ABOVE_LIMIT",
                         "2026년 3월 건강보험료 고지금액(장기요양보험료 제외)이 공고 2쪽의 가구원 수·가입 유형별 중위소득 150% 기준 이하여야 해요. 피부양자는 주소가 분리돼도 부양자의 고지금액으로 비교해요. 조회가 어려우면 기관에서 대체 소득 증빙을 확인해야 해요."),
-                duplicateSupportCheck(values.get("seoulSupport"), values.get("otherSupport"), values.get("requestedCost")));
+                duplicateSupportCheck(values.get("seoulSupport"), values.get("otherSupport"), values.get("requestedCost")),
+                check("parentRental", "부모 소유 주택 임차 제한", values.get("parentRental"), "CLEAR", "RESTRICTED",
+                        "공고 3쪽은 부모 소유 주택을 임차하는 경우를 참여 제한 대상으로 정해요. 부모와의 동거 여부와 구분해요."),
+                check("benefitReceipt", "생계·의료·주거급여 수급 제한", values.get("benefitReceipt"), "CLEAR", "RESTRICTED",
+                        "공고 3쪽은 생계·의료·주거급여 수급자를 참여 제한 대상으로 정해요. 교육급여만 받는 경우는 이 세 급여 수급에 포함하지 않아요."),
+                check("excludedResidency", "외국인·재외국민 제한", values.get("excludedResidency"), "CLEAR", "RESTRICTED",
+                        "공고 2쪽은 외국인·재외국민을 지원 대상에서 제외해요. 신청 당시 해당 여부를 확인해요."));
         var evidence = new SourceEvidence(SOURCE, SCOPE, Optional.empty());
         var conditions = IntStream.range(0, checks.size()).mapToObj(i -> {
             var check = checks.get(i);
@@ -85,13 +100,24 @@ public final class MovingFeeRules {
         var remaining = List.of(
                 "보험료·가구원 수·가입 유형은 입력한 답변으로 비교했어요. 증빙 인정 여부와 소득 심사는 담당 기관에서 확인해주세요.",
                 "지원 기관·항목과 수혜 이력의 증빙을 확인해주세요. 다른 비용의 중복지원 조건이 충족돼도 실제 인정 비용과 지급액은 별도 심사예요.",
-                "부모 소유 주택 임차, 생계·의료·주거급여 수급, 외국인·재외국민 여부 등 참여 제한을 확인해주세요.",
-                "2024.1.1.~2026.4.14. 지출한 인정 비용과 증빙을 확인해주세요. 재계약·중도 퇴실 중개보수나 청소·택배비 등은 지원하지 않아요.",
+                costNotice(values.get("requestedCost")),
+                "참여 제한은 입력한 답변으로 확인했어요. 증빙 적격 여부와 기타 사업 취지에 따른 제한은 담당 기관에서 확인해주세요.",
                 "생애 1회·최대 40만 원 실비 지원이며 우선선발·소득 순 심사를 거쳐요. 실제 선정과 지급은 공식 결과를 확인해주세요.");
         var review = PolicyReview.incomplete(remaining.stream().map(message -> new PolicyReview.PendingIssue(message, evidence)).toList());
         return new Evaluation(NUMBER, revision, VERSION, new EligibilityDecision(basis, review, conditions).status(),
                 new EligibilityDecision(basis, PolicyReview.complete(), conditions).status(), SCOPE,
-                periodNotice(now) + " 입력한 조건의 비교 결과이며, 참여 제한·증빙·선발 심사는 별도예요.", remaining, SOURCE, now, checks);
+                periodNotice(now) + " 입력한 조건의 비교 결과이며, 증빙·기타 참여 제한·선발 심사는 별도예요.", remaining, SOURCE, now, checks);
+    }
+    private static String costNotice(String requested) {
+        var period = "2024.1.1.~2026.4.14. 지출을 마친 비용과 증빙을 확인해주세요. ";
+        var brokerage = "중개보수는 임대차계약 체결 비용을 확인하며, 재계약·중도 퇴실로 발생한 비용은 제외돼요.";
+        var moving = "이사비는 개인용달·(반)포장이사·사다리차 이용비 등을 확인해요. 청소·택배·대중교통·택시·렌터카 비용은 제외돼요.";
+        return period + switch (requested == null ? "" : requested) {
+            case "BROKERAGE" -> brokerage;
+            case "MOVING" -> moving;
+            case "BOTH" -> brokerage + " " + moving;
+            default -> "확인할 비용을 선택하면 중개보수·이사비의 인정 범위와 제외 항목을 안내해요.";
+        };
     }
     private static Check duplicateSupportCheck(String seoul, String other, String requested) {
         ConditionAssessment.Outcome outcome;

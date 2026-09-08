@@ -39,7 +39,7 @@ public final class PolicyQuestions {
     public record Answer(@NotBlank @Size(max = 60) String questionId, @NotBlank @Size(max = 40) String value) {}
     @Schema(name = "PolicyEvaluationRequest", requiredProperties = {"revision", "ruleVersion", "answers"})
     public record Request(@Positive long revision, @NotBlank @Size(max = 80) String ruleVersion,
-                          @NotNull @Size(max = 10) List<@Valid Answer> answers) {
+                          @NotNull @Size(max = 20) List<@Valid Answer> answers) {
         @Override public String toString() { return "PolicyEvaluationRequest[답변 내용 제외]"; }
     }
     @Schema(name = "PolicyEvaluation", requiredProperties = {"policyNumber", "revision", "ruleVersion", "status", "commonCriteriaStatus", "scope", "explanation", "remainingChecks", "sourceUrl", "evaluatedAt", "checks"})

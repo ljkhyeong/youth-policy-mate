@@ -31,6 +31,7 @@ public class PolicyQuestionService {
                 case SeoulYouthNetworkRules.NUMBER -> SeoulYouthNetworkRules.questionnaire(policy.revision(), now);
                 case MovingFeeRules.NUMBER -> MovingFeeRules.questionnaire(policy.revision(), now);
                 case YouthTomorrowSavingsRules.NUMBER -> YouthTomorrowSavingsRules.questionnaire(policy.revision(), now);
+                case GuaranteeFeeRules.NUMBER -> GuaranteeFeeRules.questionnaire(policy.revision());
                 default -> throw new IllegalStateException("등록한 정책의 질문 구현이 필요합니다.");
             };
         }
@@ -58,6 +59,10 @@ public class PolicyQuestionService {
             return new PolicyQuestions.Questionnaire(number, policy.revision(), "", false, YouthTomorrowSavingsRules.SCOPE,
                     "이 질문은 2026년 5월 신규 모집 기준이에요. 새 모집의 질문은 아직 제공하지 않아요.", YouthTomorrowSavingsRules.SOURCE, List.of());
         }
+        if (GuaranteeFeeRules.NUMBER.equals(number) && GuaranteeFeeRules.CONTENT_HASH.equals(hash)) {
+            return new PolicyQuestions.Questionnaire(number, policy.revision(), "", false, GuaranteeFeeRules.SCOPE,
+                    "올해 보증료 지원 기준의 질문은 아직 제공하지 않아요. 공식 안내를 확인해주세요.", GuaranteeFeeRules.SOURCE, List.of());
+        }
         return new PolicyQuestions.Questionnaire(number, policy.revision(), "", false, "신청 조건 확인",
                 "이 정책의 조건 확인 질문은 아직 제공하지 않아요. 공식 안내를 확인해주세요.", PolicyCatalogStore.sourceUrl(number), List.of());
     }
@@ -74,6 +79,7 @@ public class PolicyQuestionService {
             case SeoulYouthNetworkRules.NUMBER -> SeoulYouthNetworkRules.evaluate(questions.revision(), request, now);
             case MovingFeeRules.NUMBER -> MovingFeeRules.evaluate(questions.revision(), request, now);
             case YouthTomorrowSavingsRules.NUMBER -> YouthTomorrowSavingsRules.evaluate(questions.revision(), request, now);
+            case GuaranteeFeeRules.NUMBER -> GuaranteeFeeRules.evaluate(questions.revision(), request, now);
             default -> throw new PolicyChangedException();
         };
     }

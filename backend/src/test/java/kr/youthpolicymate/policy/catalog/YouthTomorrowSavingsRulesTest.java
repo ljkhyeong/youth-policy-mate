@@ -88,6 +88,16 @@ class YouthTomorrowSavingsRulesTest {
                 .isInstanceOf(IllegalArgumentException.class);
     }
 
+    @Test @DisplayName("기본 생년월일은 모집 출생일 범위의 양 끝 날짜를 포함하고 하루 밖은 불충족으로 비교한다")
+    void comparesBirthDateBoundariesForBasicConditions() {
+        var cases = java.util.Map.of("1986-04-30", NOT_MET, "1986-05-01", MET, "2011-05-31", MET, "2011-06-01", NOT_MET);
+        cases.forEach((date, expected) -> {
+            var result = YouthTomorrowSavingsRules.ageCheck(java.time.LocalDate.parse(date));
+            assertThat(result.outcome()).as(date).isEqualTo(expected);
+            assertThat(result.evidence()).contains("2026년 5월", "1986.5.1.~2011.5.31.");
+        });
+    }
+
     private Evaluation evaluate(String age, String work, String income, String household, String participation) {
         return YouthTomorrowSavingsRules.evaluate(1, new Request(1, YouthTomorrowSavingsRules.VERSION, List.of(
                 new Answer("birthRange", age), new Answer("workType", work), new Answer("monthlyIncome", income),

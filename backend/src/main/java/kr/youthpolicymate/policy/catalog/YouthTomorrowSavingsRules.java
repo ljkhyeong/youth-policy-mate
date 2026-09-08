@@ -59,14 +59,12 @@ public final class YouthTomorrowSavingsRules {
         var household = values.get("householdIncome");
         var duplicate = values.getOrDefault("duplicateParticipation", "UNKNOWN");
         var checks = List.of(
-                check("모집 기준 출생일", provided("birthRange", values), "IN_RANGE".equals(birth) ? MET : "OUTSIDE_RANGE".equals(birth) ? NOT_MET : UNKNOWN,
-                        "2026년 5월 모집은 1986.5.1.~2011.5.31. 출생자가 대상이에요. 신청 월에 만 15세 또는 만 40세가 되는 사람을 포함해요.",
-                        "현재 만 나이가 아닌 2026년 5월 모집의 출생일 범위를 확인해주세요."),
+                birthCheck(birth),
                 workIncomeCheck(values),
-                check("가구 소득인정액", provided("householdIncome", values), "UP_TO_50_CONFIRMED".equals(household) ? MET : "OVER_50_CONFIRMED".equals(household) ? NOT_MET : UNKNOWN,
+                check("가구 소득인정액", provided("householdIncome", household), "UP_TO_50_CONFIRMED".equals(household) ? MET : "OVER_50_CONFIRMED".equals(household) ? NOT_MET : UNKNOWN,
                         "신규 가입은 신청 당시 가구 소득인정액이 2026년 기준 중위소득 50% 이하여야 해요. 가입 후 소득 유지 기준과 달라요.",
                         "주민센터에서 가구 범위와 소득·재산을 반영한 소득인정액을 확인해주세요."),
-                check("중복참여 제한", provided("duplicateParticipation", values), switch (duplicate) {
+                check("중복참여 제한", provided("duplicateParticipation", values.get("duplicateParticipation")), switch (duplicate) {
                     case "NO_HISTORY", "ALLOWED_CONFIRMED" -> MET;
                     case "RESTRICTED_CONFIRMED" -> NOT_MET;
                     default -> UNKNOWN;
@@ -90,6 +88,17 @@ public final class YouthTomorrowSavingsRules {
                 periodNotice(now) + " 신규 가입 조건만 비교했어요.", remaining, SOURCE, now, checks);
     }
 
+    static Check ageCheck(LocalDate birthDate) {
+        return birthCheck(birthDate.isBefore(LocalDate.of(1986, 5, 1)) || birthDate.isAfter(LocalDate.of(2011, 5, 31))
+                ? "OUTSIDE_RANGE" : "IN_RANGE");
+    }
+
+    private static Check birthCheck(String birth) {
+        return check("모집 기준 출생일", provided("birthRange", birth), "IN_RANGE".equals(birth) ? MET : "OUTSIDE_RANGE".equals(birth) ? NOT_MET : UNKNOWN,
+                "2026년 5월 모집은 1986.5.1.~2011.5.31. 출생자가 대상이에요. 신청 월에 만 15세 또는 만 40세가 되는 사람을 포함해요.",
+                "현재 만 나이가 아닌 2026년 5월 모집의 출생일 범위를 확인해주세요.");
+    }
+
     private static Check workIncomeCheck(Map<String, String> values) {
         var work = values.getOrDefault("workType", "UNKNOWN");
         var amount = values.getOrDefault("monthlyIncome", "UNKNOWN");
@@ -102,7 +111,7 @@ public final class YouthTomorrowSavingsRules {
             case "EXCLUDED_ONLY", "UNPAID_ONLY", "NO_WORK" -> NOT_MET;
             default -> UNKNOWN;
         };
-        return check("본인 근로·사업소득", provided("workType", values) + " · " + provided("monthlyIncome", values), outcome,
+        return check("본인 근로·사업소득", provided("workType", values.get("workType")) + " · " + provided("monthlyIncome", values.get("monthlyIncome")), outcome,
                 "신청 당시 인정되는 근로활동과 본인 세전 근로·사업소득 월 10만 원 이상이 필요해요. 자활근로는 인정하지만 근로장학금·실업급여·육아휴직급여만으로는 가입할 수 없어요.",
                 "PUBLIC_WORK_PENDING".equals(work) ? "인건비 지원 방식·별도 채용 등에 따른 소득 인정 여부를 주민센터에서 확인해주세요."
                         : "신청 당시 근로활동과 인정되는 월 소득을 증빙으로 확인해주세요. 확인 중인 소득을 0원으로 처리하지 않아요.");
@@ -114,9 +123,9 @@ public final class YouthTomorrowSavingsRules {
         return (today.isBefore(LocalDate.of(2026, 5, 4)) ? "접수 전이에요. " : "") + "이 모집의 접수 기간은 2026년 5월 4~20일이에요.";
     }
 
-    private static String provided(String id, Map<String, String> values) {
+    private static String provided(String id, String value) {
         return QUESTIONS.stream().filter(q -> q.id().equals(id)).flatMap(q -> q.options().stream())
-                .filter(option -> option.value().equals(values.get(id))).map(Option::label).findFirst().orElse("미응답");
+                .filter(option -> option.value().equals(value)).map(Option::label).findFirst().orElse("미응답");
     }
 
     private static Check check(String label, String provided, ConditionAssessment.Outcome outcome, String evidence, String unknownReason) {

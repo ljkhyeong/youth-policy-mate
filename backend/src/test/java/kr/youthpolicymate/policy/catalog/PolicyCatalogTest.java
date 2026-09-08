@@ -886,6 +886,53 @@ class PolicyCatalogTest {
         assertThat(changed.questionnaireAvailable()).isFalse();
     }
 
+    @Test @DisplayName("저축계좌 연령을 검색·정렬에 반영하고 마감·원문 차이·다른 조건 미확인을 유지한다")
+    void comparesTomorrowSavingsAgeInBasicConditions() throws Exception {
+        for (var field : List.of("plcySprtCn", "plcyAplyMthdCn", "etcMttrCn", "addAplyQlfcCndCn", "srngMthdCn", "plcyExplnCn")) item.put(field, "안내");
+        item.put("aplyPrdSeCd", "0057001").put("aplyYmd", "20260504 ~ 20260520");
+        var number = YouthTomorrowSavingsRules.NUMBER;
+        saveReviewed(number, "청년내일저축계좌", YouthTomorrowSavingsRules.CONTENT_HASH);
+        item.put("plcyNo", "99882").put("plcyNm", "연령 미검토 정책");
+        save("tomorrow-age-order", AT.plusSeconds(1));
+        var input = new BasicConditions(java.time.LocalDate.parse("2011-05-31"), "강남구", BasicConditions.EmploymentStatus.NOT_EMPLOYED);
+        var result = checks.check(input, 1, "", PolicyCheckResponse.Sort.AGE_MATCH, kr.youthpolicymate.policy.RecruitmentStatus.CLOSED);
+        assertThat(result.items()).extracting(PolicyCheckResponse.Item::policyNumber).containsExactly(number, "99882");
+        var savings = result.items().getFirst();
+        assertThat(savings.ruleVersion()).isEqualTo(YouthTomorrowSavingsRules.VERSION);
+        assertThat(savings.sourceUrl()).isEqualTo(YouthTomorrowSavingsRules.SOURCE);
+        assertThat(savings.explanation()).contains("접수가 마감", "소득·출생일 기준이 달라", "2026년 사업 지침");
+        assertThat(savings.checks()).extracting(PolicyCheckResponse.Check::outcome).containsExactly(
+                kr.youthpolicymate.eligibility.ConditionAssessment.Outcome.MET,
+                kr.youthpolicymate.eligibility.ConditionAssessment.Outcome.UNKNOWN,
+                kr.youthpolicymate.eligibility.ConditionAssessment.Outcome.UNKNOWN,
+                kr.youthpolicymate.eligibility.ConditionAssessment.Outcome.UNKNOWN);
+        mvc.perform(post("/api/v1/policies/checks").param("q", "청년내일").param("recruitmentStatus", "CLOSED")
+                        .contentType("application/json").content(mapper.writeValueAsString(input)))
+                .andExpect(status().isOk()).andExpect(header().string("Cache-Control", "no-store"))
+                .andExpect(jsonPath("$.total").value(1)).andExpect(jsonPath("$.items[0].status").value("NEEDS_REVIEW"))
+                .andExpect(jsonPath("$.items[0].questionnaireAvailable").value(true))
+                .andExpect(jsonPath("$.items[0].checks[0].evidence").value(savings.checks().getFirst().evidence()));
+        assertThat(checks.check(input, 1, "", PolicyCheckResponse.Sort.RECENT, null).items())
+                .extracting(PolicyCheckResponse.Item::policyNumber).containsExactly("99882", number);
+        var outside = new BasicConditions(java.time.LocalDate.parse("2011-06-01"), input.district(), input.employmentStatus());
+        var outsideResult = checks.check(outside, 1, "", PolicyCheckResponse.Sort.AGE_MATCH, null);
+        assertThat(outsideResult.items()).extracting(PolicyCheckResponse.Item::policyNumber).containsExactly("99882", number);
+        assertThat(outsideResult.items().getLast().checks().getFirst().outcome())
+                .isEqualTo(kr.youthpolicymate.eligibility.ConditionAssessment.Outcome.NOT_MET);
+
+        org.mockito.Mockito.when(clock.instant()).thenReturn(Instant.parse("2026-12-31T15:00:00Z"));
+        var expired = checks.check(input, 1, "청년내일", PolicyCheckResponse.Sort.AGE_MATCH, null).items().getFirst();
+        assertThat(expired.ruleVersion()).isEmpty();
+        assertThat(expired.checks().getFirst().outcome()).isEqualTo(kr.youthpolicymate.eligibility.ConditionAssessment.Outcome.UNKNOWN);
+        org.mockito.Mockito.when(clock.instant()).thenReturn(AT);
+        var current = store.find(number).orElseThrow();
+        store.importPolicy(number, current.content(), "{}", AT.plusSeconds(2), "tomorrow-age-changed", "changed-tomorrow-age");
+        var changed = checks.check(input, 1, "청년내일", PolicyCheckResponse.Sort.AGE_MATCH, null).items().getFirst();
+        assertThat(changed.ruleVersion()).isEmpty();
+        assertThat(changed.checks().getFirst().outcome()).isEqualTo(kr.youthpolicymate.eligibility.ConditionAssessment.Outcome.UNKNOWN);
+        assertThat(changed.questionnaireAvailable()).isFalse();
+    }
+
     private void saveReviewed(String number, String title, String hash) {
         // 인공 본문과 검토 해시로 조회·질문 연결만 검사한다. 공식 조건의 정확성 검사가 아니다.
         var source = item.deepCopy();

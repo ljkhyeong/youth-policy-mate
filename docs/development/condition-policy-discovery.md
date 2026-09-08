@@ -12,12 +12,15 @@
 | 서울 중개보수·이사비 지원 상반기 | 1986.1.1.~2007.12.31. 출생 | 신청 당시 전입·계약·주택·소득 등 |
 | 청년주택드림청약통장 | 오늘 서울 날짜에 가입할 때의 만 19~34세 | 만 35세 이상 병역기간 차감, 실제 가입일·무주택·소득·기존 통장 등 |
 | 청년내일저축계좌 | 2026년 5월 모집의 1986.5.1.~2011.5.31. 출생 | 근로·가구소득·참여 이력·증빙 등 |
+| 햇살론유스 | 오늘 서울 날짜에 보증신청할 때의 만 19~34세 | 실제 신청일·이용 대상·소득·생애 한도·보증과 대출 심사 등 |
 
-정책별 추가 질문과 같은 연령 비교 함수를 사용한다. 기준의 출처는 [응시료](exam-fee-questions.md), [K-패스](kpass-questions.md), [청년정책네트워크](seoul-youth-network-questions.md), [이사비](moving-fee-questions.md), [청약통장](youth-housing-savings-questions.md), [저축계좌](youth-tomorrow-savings-questions.md)에 있다. 검토된 원문 해시가 일치하고 2026년 안에 있을 때만 적용한다. 검토되지 않은 정책·바뀐 원문·다음 해에는 연령을 미확인으로 남긴다. 국가근로장학금은 기본 조건만으로 비교하지 않는다.
+정책별 추가 질문과 같은 연령 비교 함수를 사용한다. 기준의 출처는 [응시료](exam-fee-questions.md), [K-패스](kpass-questions.md), [청년정책네트워크](seoul-youth-network-questions.md), [이사비](moving-fee-questions.md), [청약통장](youth-housing-savings-questions.md), [저축계좌](youth-tomorrow-savings-questions.md), [햇살론유스](haetsalron-youth-questions.md)에 있다. 검토된 원문 해시가 일치하고 2026년 안에 있을 때만 적용한다. 검토되지 않은 정책·바뀐 원문·다음 해에는 연령을 미확인으로 남긴다. 국가근로장학금·보증료 지원은 기본 조건만으로 비교하지 않는다.
 
 청약통장은 기존 상세 질문의 연령 규칙을 재사용한다. 서울 날짜의 오늘 가입을 가정해 만 19~34세를 충족, 만 19세 미만을 불충족으로 비교한다. 만 35세 이상은 병역기간을 추정하지 않고 추가 확인으로 남긴다. 결과에 만 나이·서울 기준일과 실제 가입일이 다르면 재확인이 필요하다는 안내를 표시한다. 상세 질문의 연령 답변을 자동으로 채우지 않는다. 미확인 사유는 각 정책의 설명을 사용해 병역기간 차감과 연령 연장을 구분한다.
 
 저축계좌는 상세 질문과 같은 출생일 비교 함수를 사용한다. 2026년 5월 모집 기준으로 양 끝 날짜를 포함하며 오늘의 만 나이를 대입하지 않는다. 결과와 정렬에 같은 비교값을 사용하고 모집 마감·수집 안내와의 소득 및 출생일 기준 차이를 함께 표시한다. 다른 조건은 추가 확인으로 남기고 상세 질문의 답변을 자동으로 채우지 않는다.
+
+햇살론유스는 오늘 보증신청을 가정한 서울 날짜·만 나이를 표시한다. 만 19~34세만 연령 충족이며 실제 신청일 재확인을 안내한다. 군입대 예정자의 추가 거치기간을 연령 상한 연장으로 적용하지 않는다. 이용 대상·소득·생애 보증한도와 최종 심사는 별도 질문·확인 항목으로 남긴다.
 
 연령 외 조건은 현재 입력만으로 확정하지 않는다. 서울 자치구 입력은 과거 모집 신청 당시의 주소·전입 이력을 증명하지 않으며, 주된 취업상태는 다른 취업·학력·소득 조건을 대신하지 않는다. 모든 항목의 전체 자격은 `NEEDS_REVIEW`다. 마감된 공고는 결과와 질문에 해당 회차·마감을 표시한다.
 
@@ -33,20 +36,10 @@
 
 ## 검증
 
-코드 리비전 `5ab882d`의 저축계좌 기본 연령 비교를 확인했다. 아래는 이 단계의 검증이며 후속 질문 추가 검증은 [보증료 지원](guarantee-fee-questions.md#검증)에 있다. 저장소 루트에서 아래 JDK 경로를 `JAVA_HOME`으로 지정했다.
+최신 연령 비교 코드 `5675733`에서 햇살론유스의 만 19세·35세 경계, 서울 자정·연도 경계, 연령 충족 우선·최근 수집순 정렬과 원문 변경 시 비교 중단을 확인했다. 기존 PostgreSQL 정책 API 검사와 실제 생성 계약 비교·서버 패키징이 통과했다. 명령·로그·재사용한 웹 검사 범위는 [햇살론유스 검증](haetsalron-youth-questions.md#검증)에 있다.
 
-| 실행 | 확인 범위·결과 | 로컬 로그 |
-|---|---|---|
-| `npm run verify -- test:policy-catalog -- --tests 'kr.youthpolicymate.policy.catalog.YouthTomorrowSavingsRulesTest'` | PostgreSQL 정책 API·저축계좌 규칙·계약 검사 통과. 출생일 양 끝 경계, 검색·연령 및 최근 수집순 정렬·마감 필터, 원문·검토 연도 변경과 다른 조건 미확인 유지 확인 | `.local/verification/1788871532033-9b1fbce1.log` |
-| `npm run verify -- package:backend` | 서버 실행 파일 생성, 테스트 반복 없음 | `.local/verification/1788871606871-abe77fc5.log` |
-
-웹 소스·계약·의존성·설정은 바꾸지 않았다. `676fe5d`의 [웹 검사·빌드 결과](policy-source-notices.md#검증)를 재사용했으며 API 재생성과 전체 서버 검사·원격 CI는 실행하지 않았다. DB 스키마·수집 원문·인증·외부 연동도 변경하지 않았다.
-
-브라우저에서 실제 로컬 저축계좌 정책과 검증용 생년월일로 2011.5.31. 충족·2011.6.1. 불충족을 확인했다. 전체 자격 추가 확인, 출생일 기준·모집 마감·수집 안내 차이, 검색·마감 필터 병용과 상세 질문 이동 링크를 확인했다. 입력은 주소에 포함되지 않았다. 데스크톱과 390px 모바일에서 가로 넘침이 없었으며 화면은 `/tmp/youth-admin-ui/savings-age-desktop.png`, `/tmp/youth-admin-ui/savings-age-mobile.png`에 보관했다. 검증용 입력은 지웠다.
+실제 로컬 정책으로 기본 조건 검색, 연령·기준일·전체 자격 추가 확인 표시, 상세 질문 이동을 확인했다. 조건 입력을 URL에 넣지 않으며 질문을 자동으로 채우지 않는다. PC·모바일 질문 결과와 입력 삭제도 확인했다. 이전 정책의 날짜·예외 검증은 각 정책 문서와 Git 이력에서 확인한다.
 
 ## 로컬 실행 상태
 
-- 웹: 저장소 루트의 `npm run dev:web`, 127.0.0.1:3000, `/tmp/youth-source-notices-web-server.log`.
-- 서버: 저장소 루트에서 JDK 25의 `bin/java -jar backend/build/libs/youth-policy-mate-0.0.1-SNAPSHOT.jar --spring.profiles.active=local`, 127.0.0.1:8080, `/tmp/youth-guarantee-backend.log`.
-- 서버 시작 시 `REMINDERS_ENABLED=false EMAIL_ENABLED=false ONTONG_COLLECTION_SCHEDULE_ENABLED=false`를 지정했다.
-- JDK 경로는 `/Users/lim/.gradle/jdks/eclipse_adoptium-25-aarch64-os_x.2/jdk-25.0.3+9/Contents/Home`이다. 서버·DB 검증은 Docker와 Gradle 캐시에 접근 가능한 승인된 환경을 사용했다. 다음 작업에서 프로세스 상태를 확인한다.
+현재 실행 명령·JDK 경로·로그는 [햇살론유스의 로컬 실행 상태](haetsalron-youth-questions.md#로컬-실행-상태)에 있다. 정기 수집·알림·이메일 발송은 비활성화이며 다음 작업에서 프로세스 상태를 확인한다.

@@ -46,6 +46,4 @@ API 구조·생성 타입·웹 소스·의존성·설정은 `676fe5d` 이후 같
 
 ## 로컬 실행 상태
 
-- Spring 8080: 저장소 루트에서 위 JDK의 `bin/java -jar backend/build/libs/youth-policy-mate-0.0.1-SNAPSHOT.jar --spring.profiles.active=local`, `/tmp/youth-guarantee-backend.log`.
-- Next.js 3000: 저장소 루트의 `npm run dev:web`, `/tmp/youth-source-notices-web-server.log`.
-- 서버에 `REMINDERS_ENABLED=false EMAIL_ENABLED=false ONTONG_COLLECTION_SCHEDULE_ENABLED=false`를 지정했다. 다음 작업에서는 현재 프로세스를 확인한다.
+현재 실행 명령·로그는 [개인 조건 탐색의 실행 상태](condition-policy-discovery.md#로컬-실행-상태)에서 확인한다. 정기 수집·알림·이메일 발송은 비활성화다.

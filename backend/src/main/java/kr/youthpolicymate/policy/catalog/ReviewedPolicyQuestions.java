@@ -18,6 +18,7 @@ final class ReviewedPolicyQuestions {
         if (MovingFeeRules.appliesAt(now)) hashes.put(MovingFeeRules.NUMBER, MovingFeeRules.CONTENT_HASH);
         if (YouthTomorrowSavingsRules.appliesAt(now)) hashes.put(YouthTomorrowSavingsRules.NUMBER, YouthTomorrowSavingsRules.CONTENT_HASH);
         if (GuaranteeFeeRules.appliesAt(now)) hashes.put(GuaranteeFeeRules.NUMBER, GuaranteeFeeRules.CONTENT_HASH);
+        if (HaetsalronYouthRules.appliesAt(now)) hashes.put(HaetsalronYouthRules.NUMBER, HaetsalronYouthRules.CONTENT_HASH);
         return hashes;
     }
 }

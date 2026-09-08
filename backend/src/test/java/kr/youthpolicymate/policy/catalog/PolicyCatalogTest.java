@@ -981,6 +981,73 @@ class PolicyCatalogTest {
                 .andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("POLICY_CHANGED"));
     }
 
+    @Test @DisplayName("햇살론유스 질문·내 조건 정렬을 연결하고 개정·원문·연도 변경 시 모두 중단한다")
+    void providesReviewedHaetsalronYouthQuestionsAndAge() throws Exception {
+        var number = HaetsalronYouthRules.NUMBER;
+        saveReviewed(number, "햇살론유스", HaetsalronYouthRules.CONTENT_HASH);
+        var path = "/api/v1/policies/" + number;
+        mvc.perform(get(path + "/questions")).andExpect(status().isOk())
+                .andExpect(jsonPath("$.available").value(true)).andExpect(jsonPath("$.questions.length()").value(5))
+                .andExpect(jsonPath("$.ruleVersion").value(HaetsalronYouthRules.VERSION));
+        mvc.perform(get("/api/v1/policies").param("questionsOnly", "true").param("q", "햇살론"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.total").value(1))
+                .andExpect(jsonPath("$.items[0].questionnaireAvailable").value(true));
+        var request = new PolicyQuestions.Request(1, HaetsalronYouthRules.VERSION, List.of(
+                new PolicyQuestions.Answer("age", "AGE_19_TO_34"), new PolicyQuestions.Answer("applicantType", "YOUNG_BUSINESS"),
+                new PolicyQuestions.Answer("incomeBasis", "CONFIRMED"), new PolicyQuestions.Answer("annualIncome", "UP_TO_35M"),
+                new PolicyQuestions.Answer("lifetimeLimit", "REMAINING_CONFIRMED")));
+        var body = mapper.writeValueAsString(request);
+        mvc.perform(post(path + "/evaluation").contentType("application/json").content(body))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.commonCriteriaStatus").value("ELIGIBLE"))
+                .andExpect(jsonPath("$.status").value("NEEDS_REVIEW")).andExpect(jsonPath("$.checks.length()").value(4));
+        for (var stale : List.of(new PolicyQuestions.Request(2, request.ruleVersion(), request.answers()),
+                new PolicyQuestions.Request(1, "haetsalron-youth-2026-v0", request.answers()))) {
+            mvc.perform(post(path + "/evaluation").contentType("application/json").content(mapper.writeValueAsString(stale)))
+                    .andExpect(status().isConflict());
+        }
+        item.put("plcyNo", "99883").put("plcyNm", "연령 미검토 정책");
+        save("haetsalron-age-order", AT.plusSeconds(1));
+        var input = new BasicConditions(java.time.LocalDate.parse("2000-01-01"), "강남구", BasicConditions.EmploymentStatus.NOT_EMPLOYED);
+        assertThat(checks.check(input, 1, "", PolicyCheckResponse.Sort.AGE_MATCH, null).items())
+                .extracting(PolicyCheckResponse.Item::policyNumber).containsExactly(number, "99883");
+        assertThat(checks.check(input, 1, "", PolicyCheckResponse.Sort.RECENT, null).items())
+                .extracting(PolicyCheckResponse.Item::policyNumber).containsExactly("99883", number);
+        var older = new BasicConditions(java.time.LocalDate.parse("1980-01-01"), input.district(), input.employmentStatus());
+        assertThat(checks.check(older, 1, "", PolicyCheckResponse.Sort.AGE_MATCH, null).items())
+                .extracting(PolicyCheckResponse.Item::policyNumber).containsExactly("99883", number);
+        mvc.perform(post("/api/v1/policies/checks").param("q", "햇살론").contentType("application/json")
+                        .content(mapper.writeValueAsString(input)))
+                .andExpect(status().isOk()).andExpect(header().string("Cache-Control", "no-store"))
+                .andExpect(jsonPath("$.items[0].ruleVersion").value(HaetsalronYouthRules.VERSION))
+                .andExpect(jsonPath("$.items[0].explanation").value(org.hamcrest.Matchers.containsString("오늘(서울 날짜) 보증")))
+                .andExpect(jsonPath("$.items[0].checks[0].outcome").value("MET"))
+                .andExpect(jsonPath("$.items[0].checks[1].outcome").value("UNKNOWN"))
+                .andExpect(jsonPath("$.items[0].checks[2].outcome").value("UNKNOWN"))
+                .andExpect(jsonPath("$.items[0].checks[3].outcome").value("UNKNOWN"))
+                .andExpect(jsonPath("$.items[0].status").value("NEEDS_REVIEW"))
+                .andExpect(jsonPath("$.items[0].questionnaireAvailable").value(true));
+        org.mockito.Mockito.when(clock.instant()).thenReturn(Instant.parse("2026-12-31T15:00:00Z"));
+        mvc.perform(get(path + "/questions")).andExpect(status().isOk()).andExpect(jsonPath("$.available").value(false));
+        mvc.perform(get("/api/v1/policies").param("questionsOnly", "true"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.total").value(0));
+        var expired = checks.check(input, 1, "햇살론", PolicyCheckResponse.Sort.AGE_MATCH, null).items().getFirst();
+        assertThat(expired.ruleVersion()).isEmpty();
+        assertThat(expired.checks().getFirst().outcome()).isEqualTo(kr.youthpolicymate.eligibility.ConditionAssessment.Outcome.UNKNOWN);
+        mvc.perform(post(path + "/evaluation").contentType("application/json").content(body)).andExpect(status().isConflict());
+        org.mockito.Mockito.when(clock.instant()).thenReturn(AT);
+        var current = store.find(number).orElseThrow();
+        store.importPolicy(number, current.content(), "{}", AT.plusSeconds(2), "changed-haetsalron", "changed-hash");
+        mvc.perform(get(path + "/questions")).andExpect(status().isOk()).andExpect(jsonPath("$.available").value(false));
+        mvc.perform(get("/api/v1/policies").param("questionsOnly", "true"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.total").value(0));
+        var changed = checks.check(input, 1, "햇살론", PolicyCheckResponse.Sort.AGE_MATCH, null).items().getFirst();
+        assertThat(changed.ruleVersion()).isEmpty();
+        assertThat(changed.checks().getFirst().outcome()).isEqualTo(kr.youthpolicymate.eligibility.ConditionAssessment.Outcome.UNKNOWN);
+        assertThat(changed.questionnaireAvailable()).isFalse();
+        mvc.perform(post(path + "/evaluation").contentType("application/json").content(body))
+                .andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("POLICY_CHANGED"));
+    }
+
     private void saveReviewed(String number, String title, String hash) {
         // 인공 본문과 검토 해시로 조회·질문 연결만 검사한다. 공식 조건의 정확성 검사가 아니다.
         var source = item.deepCopy();

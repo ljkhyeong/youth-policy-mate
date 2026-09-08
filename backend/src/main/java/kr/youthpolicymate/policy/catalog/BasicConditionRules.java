@@ -29,6 +29,10 @@ final class BasicConditionRules {
                 new Comparison(YouthTomorrowSavingsRules.CONTENT_HASH, YouthTomorrowSavingsRules.VERSION, YouthTomorrowSavingsRules.SOURCE,
                         YouthTomorrowSavingsRules.ageCheck(birth), YouthTomorrowSavingsRules.periodNotice(now)
                                 + " 수집 안내와 소득·출생일 기준이 달라 2026년 사업 지침을 적용했어요."));
+        if (HaetsalronYouthRules.appliesAt(now)) comparisons.put(HaetsalronYouthRules.NUMBER,
+                new Comparison(HaetsalronYouthRules.CONTENT_HASH, HaetsalronYouthRules.VERSION, HaetsalronYouthRules.SOURCE,
+                        HaetsalronYouthRules.ageCheck(birth, now),
+                        "오늘(서울 날짜) 보증을 신청하는 경우의 연령만 비교했어요. 실제 신청일이 다르면 다시 확인해주세요."));
         return comparisons;
     }
 

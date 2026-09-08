@@ -24,13 +24,13 @@
 
 ## 연결과 변경 처리
 
-`YouthTomorrowSavingsRules`의 규칙 버전은 `youth-tomorrow-savings-2026-v1`, 검토한 해시는 `f3709a60376cdaf861ee232c1fc411292f2d3bdcb28c807ca87190a19698733c`다. 목록·내 조건의 질문 표시는 기존 `ReviewedPolicyQuestions`를 통해 연결한다. 기본 연령 자동 비교 범위는 변경하지 않는다.
+`YouthTomorrowSavingsRules`의 규칙 버전은 `youth-tomorrow-savings-2026-v1`, 검토한 해시는 `f3709a60376cdaf861ee232c1fc411292f2d3bdcb28c807ca87190a19698733c`다. 목록·내 조건의 질문 표시는 기존 `ReviewedPolicyQuestions`를 통해 연결한다. 후속 코드 `5ab882d`에서 같은 출생일 비교를 [내 조건의 연령 결과와 정렬](condition-policy-discovery.md)에 연결했다. 상세 질문의 동작과 규칙 버전은 유지했다.
 
 기존 질문·평가 DTO와 웹 폼을 재사용한다. 답변은 평가할 때만 보내며 저장하지 않는다. 정책 개정·내용 해시·규칙 버전이 바뀌면 이전 답변을 409로 거절한다. 서울 날짜로 2027년이 되면 질문·목록 필터에서 제외하고 새 모집 안내로 바꾼다. 2026년 접수 마감을 표시하되 마감 자체로 개인 조건을 불충족 처리하지 않는다.
 
 ## 검증
 
-저장소 루트에서 `JAVA_HOME=/Users/lim/.gradle/jdks/eclipse_adoptium-25-aarch64-os_x.2/jdk-25.0.3+9/Contents/Home`으로 실행했다. 최종 코드의 결과다.
+저장소 루트에서 `JAVA_HOME=/Users/lim/.gradle/jdks/eclipse_adoptium-25-aarch64-os_x.2/jdk-25.0.3+9/Contents/Home`으로 실행했다. 아래는 질문 구현 `9bda935`의 결과이며, 후속 연령 연결 검증은 [개인 조건 탐색](condition-policy-discovery.md#검증)에 있다.
 
 | 명령 | 결과·로그 |
 |---|---|
@@ -43,4 +43,4 @@
 
 API 구조·생성 타입·웹 소스·의존성·설정은 이전 `676fe5d` 검증 이후 같다. [기존 웹 테스트·타입·린트·빌드](policy-source-notices.md#검증)는 재사용했다. 이번 변경으로 전체 서버 검사나 원격 CI는 실행하지 않았다. 모바일 점검에서 긴 선택지가 잘려 문구를 줄이고 무급근로를 분리한 뒤 위 관련 검사만 다시 실행했다.
 
-로컬 서버는 Spring 8080(`/tmp/youth-savings-backend.log`), Next.js 3000(`/tmp/youth-source-notices-web-server.log`)을 사용한다. 정기 수집·알림·이메일 발송은 비활성화다.
+현재 로컬 서버 실행 명령·로그는 [개인 조건 탐색의 실행 상태](condition-policy-discovery.md#로컬-실행-상태)에 있다. 정기 수집·알림·이메일 발송은 비활성화다.

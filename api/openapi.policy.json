@@ -2674,11 +2674,18 @@
             "format" : "int64",
             "description" : "서비스 내부 적용 개정 번호"
           },
+          "sourceNotices" : {
+            "type" : "array",
+            "description" : "현재 수집 내용에서 확인한 조건 충돌 안내. 빈 배열은 검토 완료를 뜻하지 않는다.",
+            "items" : {
+              "$ref" : "#/components/schemas/PolicySourceNotice"
+            }
+          },
           "sourceUrl" : {
             "type" : "string"
           }
         },
-        "required" : [ "collectedAt", "content", "policyNumber", "recruitment", "revision", "sourceUrl" ]
+        "required" : [ "collectedAt", "content", "policyNumber", "recruitment", "revision", "sourceNotices", "sourceUrl" ]
       },
       "PolicyEvaluatedCheck" : {
         "type" : "object",
@@ -2886,6 +2893,24 @@
           }
         },
         "required" : [ "evaluatedAt", "explanation", "status" ]
+      },
+      "PolicySourceNotice" : {
+        "type" : "object",
+        "properties" : {
+          "description" : {
+            "type" : "string"
+          },
+          "sourceLabel" : {
+            "type" : "string"
+          },
+          "sourceUrl" : {
+            "type" : "string"
+          },
+          "title" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "description", "sourceLabel", "sourceUrl", "title" ]
       },
       "PolicySummary" : {
         "type" : "object",

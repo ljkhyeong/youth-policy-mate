@@ -164,6 +164,38 @@ class PolicyCatalogTest {
     }
 
     @Test
+    @DisplayName("충돌 안내는 검토한 정책 내용에만 붙이고 원문과 질문 제공 범위를 유지한다")
+    void exposesReviewedSourceNoticeWithoutChangingOriginal() throws Exception {
+        var number = PolicySourceNotice.SAVINGS_NUMBER;
+        item.put("addAplyQlfcCndCn", "가구 소득인정액 기준 중위소득 100% 이하");
+        item.put("earnEtcCn", "가구 소득인정액 기준 중위소득 50% 이하");
+        saveReviewed(number, "청년내일저축계좌", PolicySourceNotice.SAVINGS_CONTENT_HASH);
+        var original = store.source(number).orElseThrow();
+        var content = store.find(number).orElseThrow().content();
+
+        mvc.perform(get("/api/v1/policies/" + number)).andExpect(status().isOk())
+                .andExpect(jsonPath("$.sourceNotices.length()").value(1))
+                .andExpect(jsonPath("$.sourceNotices[0].title").value("소득 기준 확인 필요"))
+                .andExpect(jsonPath("$.sourceNotices[0].sourceUrl")
+                        .value("https://www.bokjiro.go.kr/ssis-tbu/cms/pc/customer/notice/1309680_1141.html"));
+        assertThat(store.source(number).orElseThrow()).isEqualTo(original);
+        assertThat(store.find(number).orElseThrow().content()).isEqualTo(content);
+        assertThat(content.sections()).extracting(PolicyContent.TextSection::text)
+                .contains("가구 소득인정액 기준 중위소득 100% 이하", "가구 소득인정액 기준 중위소득 50% 이하");
+        assertThat(questions.questions(number).available()).isFalse();
+
+        item.put("plcyNo", number).put("earnEtcCn", "소득 기준이 변경된 안내");
+        save("changed-income", AT.plusSeconds(1));
+        mvc.perform(get("/api/v1/policies/" + number)).andExpect(status().isOk())
+                .andExpect(jsonPath("$.revision").value(2))
+                .andExpect(jsonPath("$.sourceNotices").isEmpty());
+
+        saveReviewed(NUMBER, "다른 정책", PolicySourceNotice.SAVINGS_CONTENT_HASH);
+        mvc.perform(get("/api/v1/policies/" + NUMBER)).andExpect(status().isOk())
+                .andExpect(jsonPath("$.sourceNotices").isEmpty());
+    }
+
+    @Test
     @DisplayName("잘못된 검색은 400으로 거절하고 쓰기·관리·개발 경로는 계속 차단한다")
     void rejectsInvalidAndPrivateRequests() throws Exception {
         mvc.perform(get("/api/v1/policies").param("questionsOnly", "invalid")).andExpect(status().isBadRequest());

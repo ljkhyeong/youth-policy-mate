@@ -251,7 +251,8 @@ public class PolicyCatalogStore {
                 mapper.readValue(rs.getString("content"), PolicyContent.class),
                 sourceUrl(number),
                 rs.getObject("last_collected_at", OffsetDateTime.class).toInstant(),
-                PolicyRecruitment.from(number, rs.getLong("current_revision"), rs.getString("content_hash"), raw, now));
+                PolicyRecruitment.from(number, rs.getLong("current_revision"), rs.getString("content_hash"), raw, now),
+                PolicySourceNotice.forContent(number, rs.getString("content_hash")));
     }
 
     static String sourceUrl(String number) {

@@ -39,11 +39,16 @@ export function PolicyArticle({ policy }: { policy: Detail }) {
         <PolicyRecruitment recruitment={policy.recruitment} />
       </div>
     </header>
+    {policy.sourceNotices.map((notice) => <aside className="policy-notice" key={notice.sourceUrl} aria-label={notice.title}>
+      <strong>{notice.title}</strong>
+      <p>{notice.description}</p>
+      <p><a className="text-link" href={notice.sourceUrl} target="_blank" rel="noopener noreferrer">{notice.sourceLabel} <span aria-hidden="true">↗</span><span className="sr-only"> (새 창)</span></a></p>
+    </aside>)}
     <SavePolicyButton key={policy.policyNumber} policyNumber={policy.policyNumber} />
     <PolicyQuestionnaire key={`${policy.policyNumber}-${policy.revision}`} policyNumber={policy.policyNumber} />
     <aside className="policy-notice">
       <strong>신청 자격은 추가 확인이 필요해요</strong>
-      <p>아래는 공식 정책 안내예요. 신청 조건과 예외를 확인해주세요.</p>
+      <p>아래는 온통청년에서 수집한 안내예요. 신청 조건과 예외는 해당 모집 공고에서 확인해주세요.</p>
     </aside>
     <div className="policy-sections">
       {content.sections.map((section, index) => <section key={index}>

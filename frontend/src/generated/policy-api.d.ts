@@ -752,6 +752,8 @@ export interface components {
              * @description 서비스 내부 적용 개정 번호
              */
             readonly revision: number;
+            /** @description 현재 수집 내용에서 확인한 조건 충돌 안내. 빈 배열은 검토 완료를 뜻하지 않는다. */
+            readonly sourceNotices: readonly components["schemas"]["PolicySourceNotice"][];
             readonly sourceUrl: string;
         };
         readonly PolicyEvaluatedCheck: {
@@ -825,6 +827,12 @@ export interface components {
             readonly explanation: string;
             /** @enum {string} */
             readonly status: "BEFORE_OPENING" | "OPEN" | "CLOSED" | "ROLLING" | "UNTIL_EXHAUSTED" | "UNKNOWN";
+        };
+        readonly PolicySourceNotice: {
+            readonly description: string;
+            readonly sourceLabel: string;
+            readonly sourceUrl: string;
+            readonly title: string;
         };
         readonly PolicySummary: {
             readonly applicationPeriod: string;

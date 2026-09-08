@@ -33,7 +33,7 @@
 
 ## 검증
 
-최신 코드 리비전 `5ab882d`의 저축계좌 기본 연령 비교를 확인했다. 이후 변경은 문서뿐이다. 저장소 루트에서 아래 JDK 경로를 `JAVA_HOME`으로 지정했다.
+코드 리비전 `5ab882d`의 저축계좌 기본 연령 비교를 확인했다. 아래는 이 단계의 검증이며 후속 질문 추가 검증은 [보증료 지원](guarantee-fee-questions.md#검증)에 있다. 저장소 루트에서 아래 JDK 경로를 `JAVA_HOME`으로 지정했다.
 
 | 실행 | 확인 범위·결과 | 로컬 로그 |
 |---|---|---|
@@ -47,6 +47,6 @@
 ## 로컬 실행 상태
 
 - 웹: 저장소 루트의 `npm run dev:web`, 127.0.0.1:3000, `/tmp/youth-source-notices-web-server.log`.
-- 서버: 저장소 루트에서 JDK 25의 `bin/java -jar backend/build/libs/youth-policy-mate-0.0.1-SNAPSHOT.jar --spring.profiles.active=local`, 127.0.0.1:8080, `/tmp/youth-savings-age-backend.log`.
+- 서버: 저장소 루트에서 JDK 25의 `bin/java -jar backend/build/libs/youth-policy-mate-0.0.1-SNAPSHOT.jar --spring.profiles.active=local`, 127.0.0.1:8080, `/tmp/youth-guarantee-backend.log`.
 - 서버 시작 시 `REMINDERS_ENABLED=false EMAIL_ENABLED=false ONTONG_COLLECTION_SCHEDULE_ENABLED=false`를 지정했다.
 - JDK 경로는 `/Users/lim/.gradle/jdks/eclipse_adoptium-25-aarch64-os_x.2/jdk-25.0.3+9/Contents/Home`이다. 서버·DB 검증은 Docker와 Gradle 캐시에 접근 가능한 승인된 환경을 사용했다. 다음 작업에서 프로세스 상태를 확인한다.

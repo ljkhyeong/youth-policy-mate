@@ -610,19 +610,25 @@ class PolicyCatalogTest {
         saveReviewed(MovingFeeRules.NUMBER, "이사비 지원", MovingFeeRules.CONTENT_HASH);
         var path = "/api/v1/policies/" + MovingFeeRules.NUMBER;
         mvc.perform(get(path + "/questions")).andExpect(status().isOk()).andExpect(jsonPath("$.available").value(true))
-                .andExpect(jsonPath("$.questions.length()").value(6)).andExpect(jsonPath("$.questions[5].id").value("income"))
+                .andExpect(jsonPath("$.questions.length()").value(9)).andExpect(jsonPath("$.questions[8].id").value("requestedCost"))
                 .andExpect(jsonPath("$.reason").value(org.hamcrest.Matchers.containsString("상반기 접수는")));
         mvc.perform(get("/api/v1/policies").param("questionsOnly", "true").param("q", "이사비"))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.total").value(1));
         var request = new PolicyQuestions.Request(1, MovingFeeRules.VERSION, List.of(new PolicyQuestions.Answer("birthRange", "IN_RANGE"),
-                new PolicyQuestions.Answer("income", "WITHIN_LIMIT")));
+                new PolicyQuestions.Answer("move", "COMPLETED"), new PolicyQuestions.Answer("contract", "ALL"),
+                new PolicyQuestions.Answer("homeOwnership", "NO_HOME"), new PolicyQuestions.Answer("housingCost", "WITHIN_LIMIT"),
+                new PolicyQuestions.Answer("income", "WITHIN_LIMIT"), new PolicyQuestions.Answer("seoulSupport", "NONE"),
+                new PolicyQuestions.Answer("otherSupport", "BROKERAGE_ONLY"), new PolicyQuestions.Answer("requestedCost", "MOVING")));
         var body = mapper.writeValueAsString(request);
         mvc.perform(post(path + "/evaluation").contentType("application/json").content(body))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.checks[0].outcome").value("MET"))
                 .andExpect(jsonPath("$.checks[5].outcome").value("MET"))
+                .andExpect(jsonPath("$.checks[6].outcome").value("MET"))
+                .andExpect(jsonPath("$.commonCriteriaStatus").value("ELIGIBLE"))
                 .andExpect(jsonPath("$.status").value("NEEDS_REVIEW"));
         for (var stale : List.of(new PolicyQuestions.Request(2, request.ruleVersion(), request.answers()),
                 new PolicyQuestions.Request(1, "moving-fee-2026-h1-v1", request.answers()),
+                new PolicyQuestions.Request(1, "moving-fee-2026-h1-v2", request.answers()),
                 new PolicyQuestions.Request(1, "moving-fee-2026-h2-v1", request.answers()))) {
             mvc.perform(post(path + "/evaluation").contentType("application/json").content(mapper.writeValueAsString(stale))).andExpect(status().isConflict());
         }

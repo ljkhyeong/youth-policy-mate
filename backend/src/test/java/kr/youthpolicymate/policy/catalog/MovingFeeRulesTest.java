@@ -2,8 +2,12 @@ package kr.youthpolicymate.policy.catalog;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.stream.Stream;
+import kr.youthpolicymate.eligibility.ConditionAssessment.Outcome;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import static kr.youthpolicymate.policy.catalog.PolicyQuestions.*;
 import static kr.youthpolicymate.eligibility.ConditionAssessment.Outcome.*;
 import static kr.youthpolicymate.eligibility.EligibilityStatus.*;
@@ -31,7 +35,7 @@ class MovingFeeRulesTest {
         assertThat(evaluate("OWNS_NO_EXCEPTION").checks().get(3).outcome()).isEqualTo(NOT_MET);
         var request = new Request(1, MovingFeeRules.VERSION, List.of(new Answer("homeOwnership", "EXCEPTION_PENDING"), new Answer("move", "OUTSIDE")));
         var result = MovingFeeRules.evaluate(1, request, NOW);
-        assertThat(result.checks()).extracting(Check::outcome).containsExactly(UNKNOWN, NOT_MET, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN);
+        assertThat(result.checks()).extracting(Check::outcome).containsExactly(UNKNOWN, NOT_MET, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN);
         assertThat(result.status()).isEqualTo(NEEDS_REVIEW);
     }
 
@@ -39,32 +43,77 @@ class MovingFeeRulesTest {
     void comparesConfirmedIncomeAgainstTheNotice() {
         var within = evaluate("NO_HOME", "WITHIN_LIMIT");
         var above = evaluate("NO_HOME", "ABOVE_LIMIT");
-        assertThat(within.checks().getLast().outcome()).isEqualTo(MET);
-        assertThat(above.checks().getLast().outcome()).isEqualTo(NOT_MET);
+        assertThat(within.checks().get(5).outcome()).isEqualTo(MET);
+        assertThat(above.checks().get(5).outcome()).isEqualTo(NOT_MET);
         assertThat(above.commonCriteriaStatus()).isEqualTo(INELIGIBLE);
         assertThat(above.status()).isEqualTo(NEEDS_REVIEW);
-        assertThat(within.checks().getLast().evidence()).contains("2026년 3월", "장기요양보험료 제외", "150%", "피부양자", "부양자");
+        assertThat(within.checks().get(5).evidence()).contains("2026년 3월", "장기요양보험료 제외", "150%", "피부양자", "부양자");
     }
 
     @Test @DisplayName("부양자 보험료·가구 기준·대체 증빙 미확인은 0원이나 소득 초과로 바꾸지 않는다")
     void preservesIncomeUncertaintyAndItsReason() {
         for (var pending : List.of("DEPENDENT_PENDING", "HOUSEHOLD_PENDING", "DOCUMENTS_PENDING", "UNKNOWN")) {
             var result = evaluate("NO_HOME", pending);
-            assertThat(result.checks().getLast().outcome()).isEqualTo(UNKNOWN);
+            assertThat(result.checks().get(5).outcome()).isEqualTo(UNKNOWN);
             assertThat(result.commonCriteriaStatus()).isEqualTo(NEEDS_REVIEW);
             assertThat(result.checks().subList(0, 5)).extracting(Check::outcome).containsOnly(MET);
         }
-        assertThat(evaluate("NO_HOME", "DEPENDENT_PENDING").checks().getLast().explanation()).contains("0원", "부양자", "2026년 3월");
-        assertThat(evaluate("NO_HOME", "HOUSEHOLD_PENDING").checks().getLast().explanation()).contains("가구원 수", "가입 유형");
-        assertThat(evaluate("NO_HOME", "DOCUMENTS_PENDING").checks().getLast().explanation()).contains("대체 소득 증빙");
+        assertThat(evaluate("NO_HOME", "DEPENDENT_PENDING").checks().get(5).explanation()).contains("0원", "부양자", "2026년 3월");
+        assertThat(evaluate("NO_HOME", "HOUSEHOLD_PENDING").checks().get(5).explanation()).contains("가구원 수", "가입 유형");
+        assertThat(evaluate("NO_HOME", "DOCUMENTS_PENDING").checks().get(5).explanation()).contains("대체 소득 증빙");
         assertThat(evaluate("OWNS_NO_EXCEPTION", "DOCUMENTS_PENDING").checks().get(3).outcome()).isEqualTo(NOT_MET);
+    }
+
+    @ParameterizedTest(name = "타 기관 {0}, 신청 비용 {1}: {2}")
+    @CsvSource({
+            "BROKERAGE_ONLY, MOVING, MET", "MOVING_ONLY, BROKERAGE, MET",
+            "BROKERAGE_ONLY, BROKERAGE, NOT_MET", "MOVING_ONLY, MOVING, NOT_MET",
+            "BROKERAGE_ONLY, BOTH, UNKNOWN", "MOVING_ONLY, BOTH, UNKNOWN",
+            "BOTH, BROKERAGE, NOT_MET", "BOTH, MOVING, NOT_MET", "NONE, BOTH, MET"
+    })
+    @DisplayName("타 기관 한쪽 비용 지원은 신청 비용별로 비교하며 일부 중복을 전체 불충족으로 바꾸지 않는다")
+    void comparesOtherSupportByRequestedCost(String other, String requested, Outcome outcome) {
+        var result = evaluate("NO_HOME", "WITHIN_LIMIT", "NONE", other, requested);
+        assertThat(result.checks().getLast().outcome()).isEqualTo(outcome);
+        assertThat(result.commonCriteriaStatus()).isEqualTo(switch (outcome) {
+            case MET -> ELIGIBLE; case NOT_MET -> INELIGIBLE; case UNKNOWN -> NEEDS_REVIEW;
+        });
+        assertThat(result.status()).isEqualTo(NEEDS_REVIEW);
+        assertThat(result.checks().subList(0, 6)).extracting(Check::outcome).containsOnly(MET);
+        if ("BROKERAGE_ONLY".equals(other)) assertThat(result.checks().getLast().explanation()).contains("이사비");
+        if ("MOVING_ONLY".equals(other)) assertThat(result.checks().getLast().explanation()).contains("중개보수");
+    }
+
+    @Test @DisplayName("서울시 재수혜 제한은 타 기관 예외로 면제하지 않고 다른 조건도 유지한다")
+    void keepsSeoulLifetimeLimitSeparate() {
+        var result = evaluate("EXCEPTION_PENDING", "WITHIN_LIMIT", "RECEIVED", "BROKERAGE_ONLY", "MOVING");
+        assertThat(result.checks().getLast().outcome()).isEqualTo(NOT_MET);
+        assertThat(result.checks().getLast().explanation()).contains("생애 1회", "서울시 재수혜");
+        assertThat(result.checks().get(3).outcome()).isEqualTo(UNKNOWN);
+        assertThat(evaluate("NO_HOME", "WITHIN_LIMIT", "RECEIVED", null, null).checks().getLast().outcome()).isEqualTo(NOT_MET);
+        assertThat(evaluate("NO_HOME", "WITHIN_LIMIT", null, "BOTH", null).checks().getLast().outcome()).isEqualTo(NOT_MET);
+    }
+
+    @Test @DisplayName("지원 이력·신청 비용 미확인은 제한 없음으로 바꾸지 않고 필요한 다음 답변을 안내한다")
+    void keepsMissingSupportAnswersUnknown() {
+        for (var missing : new String[] {null, "UNKNOWN"}) {
+            assertThat(evaluate("NO_HOME", "WITHIN_LIMIT", missing, "NONE", "MOVING").checks().getLast().outcome()).isEqualTo(UNKNOWN);
+            assertThat(evaluate("NO_HOME", "WITHIN_LIMIT", "NONE", missing, "MOVING").checks().getLast().outcome()).isEqualTo(UNKNOWN);
+            var cost = evaluate("NO_HOME", "WITHIN_LIMIT", "NONE", "BROKERAGE_ONLY", missing);
+            assertThat(cost.checks().getLast().outcome()).isEqualTo(UNKNOWN);
+            assertThat(cost.checks().getLast().explanation()).contains("신청 비용을 선택");
+        }
+        assertThat(evaluate("NO_HOME", "WITHIN_LIMIT", "NONE", "NONE", null).checks().getLast().outcome()).isEqualTo(MET);
+        assertThat(evaluate("NO_HOME", "WITHIN_LIMIT", "NONE", "BROKERAGE_ONLY", "BOTH").checks().getLast().explanation())
+                .contains("중개보수는 중복", "이사비만 선택");
     }
 
     @Test @DisplayName("미응답을 미확인으로 남기며 공통 답변 검증을 적용한다")
     void handlesUnknownAndInvalidAnswers() {
         var result = MovingFeeRules.evaluate(1, new Request(1, MovingFeeRules.VERSION, List.of()), NOW);
         assertThat(result.checks()).extracting(Check::outcome).containsOnly(UNKNOWN);
-        assertThat(result.checks()).extracting(Check::providedValue).containsOnly("미응답");
+        assertThat(result.checks().subList(0, 6)).extracting(Check::providedValue).containsOnly("미응답");
+        assertThat(result.checks().getLast().providedValue()).isEqualTo("서울시 사업: 미응답 / 타 기관: 미응답 / 확인할 비용: 미응답");
         for (var answers : List.of(List.of(new Answer("income", "LOW")), List.of(new Answer("move", "SEOUL")),
                 List.of(new Answer("move", "COMPLETED"), new Answer("move", "OUTSIDE")))) {
             assertThatThrownBy(() -> MovingFeeRules.evaluate(1, new Request(1, MovingFeeRules.VERSION, answers), NOW)).isInstanceOf(IllegalArgumentException.class);
@@ -86,8 +135,13 @@ class MovingFeeRulesTest {
         return evaluate(home, "WITHIN_LIMIT");
     }
     private Evaluation evaluate(String home, String income) {
-        return MovingFeeRules.evaluate(1, new Request(1, MovingFeeRules.VERSION, List.of(new Answer("birthRange", "IN_RANGE"),
+        return evaluate(home, income, "NONE", "NONE", "BOTH");
+    }
+    private Evaluation evaluate(String home, String income, String seoul, String other, String requested) {
+        var answers = Stream.of(new Answer("birthRange", "IN_RANGE"),
                 new Answer("move", "COMPLETED"), new Answer("contract", "ALL"), new Answer("homeOwnership", home),
-                new Answer("housingCost", "WITHIN_LIMIT"), new Answer("income", income))), NOW);
+                new Answer("housingCost", "WITHIN_LIMIT"), new Answer("income", income), new Answer("seoulSupport", seoul),
+                new Answer("otherSupport", other), new Answer("requestedCost", requested)).filter(answer -> answer.value() != null).toList();
+        return MovingFeeRules.evaluate(1, new Request(1, MovingFeeRules.VERSION, answers), NOW);
     }
 }

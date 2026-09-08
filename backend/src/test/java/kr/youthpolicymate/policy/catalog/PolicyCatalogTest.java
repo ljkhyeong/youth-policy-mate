@@ -164,25 +164,25 @@ class PolicyCatalogTest {
     }
 
     @Test
-    @DisplayName("충돌 안내는 검토한 정책 내용에만 붙이고 원문과 질문 제공 범위를 유지한다")
+    @DisplayName("충돌 안내는 검토한 정책 내용에만 붙이고 원문을 유지한다")
     void exposesReviewedSourceNoticeWithoutChangingOriginal() throws Exception {
-        var number = PolicySourceNotice.SAVINGS_NUMBER;
+        var number = YouthTomorrowSavingsRules.NUMBER;
         item.put("addAplyQlfcCndCn", "가구 소득인정액 기준 중위소득 100% 이하");
         item.put("earnEtcCn", "가구 소득인정액 기준 중위소득 50% 이하");
-        saveReviewed(number, "청년내일저축계좌", PolicySourceNotice.SAVINGS_CONTENT_HASH);
+        saveReviewed(number, "청년내일저축계좌", YouthTomorrowSavingsRules.CONTENT_HASH);
         var original = store.source(number).orElseThrow();
         var content = store.find(number).orElseThrow().content();
 
         mvc.perform(get("/api/v1/policies/" + number)).andExpect(status().isOk())
-                .andExpect(jsonPath("$.sourceNotices.length()").value(1))
+                .andExpect(jsonPath("$.sourceNotices.length()").value(2))
                 .andExpect(jsonPath("$.sourceNotices[0].title").value("소득 기준 확인 필요"))
                 .andExpect(jsonPath("$.sourceNotices[0].sourceUrl")
-                        .value("https://www.bokjiro.go.kr/ssis-tbu/cms/pc/customer/notice/1309680_1141.html"));
+                        .value("https://www.bokjiro.go.kr/ssis-tbu/cms/pc/customer/notice/1309680_1141.html"))
+                .andExpect(jsonPath("$.sourceNotices[1].title").value("출생일 기준 확인 필요"));
         assertThat(store.source(number).orElseThrow()).isEqualTo(original);
         assertThat(store.find(number).orElseThrow().content()).isEqualTo(content);
         assertThat(content.sections()).extracting(PolicyContent.TextSection::text)
                 .contains("가구 소득인정액 기준 중위소득 100% 이하", "가구 소득인정액 기준 중위소득 50% 이하");
-        assertThat(questions.questions(number).available()).isFalse();
 
         item.put("plcyNo", number).put("earnEtcCn", "소득 기준이 변경된 안내");
         save("changed-income", AT.plusSeconds(1));
@@ -190,9 +190,51 @@ class PolicyCatalogTest {
                 .andExpect(jsonPath("$.revision").value(2))
                 .andExpect(jsonPath("$.sourceNotices").isEmpty());
 
-        saveReviewed(NUMBER, "다른 정책", PolicySourceNotice.SAVINGS_CONTENT_HASH);
+        saveReviewed(NUMBER, "다른 정책", YouthTomorrowSavingsRules.CONTENT_HASH);
         mvc.perform(get("/api/v1/policies/" + NUMBER)).andExpect(status().isOk())
                 .andExpect(jsonPath("$.sourceNotices").isEmpty());
+    }
+
+    @Test
+    @DisplayName("청년내일저축계좌 질문·목록·답변을 연결하고 새해·개정·규칙·원문 변경 후 제출을 막는다")
+    void providesReviewedYouthTomorrowSavingsQuestions() throws Exception {
+        var number = YouthTomorrowSavingsRules.NUMBER;
+        saveReviewed(number, "청년내일저축계좌", YouthTomorrowSavingsRules.CONTENT_HASH);
+        var path = "/api/v1/policies/" + number;
+        mvc.perform(get(path + "/questions")).andExpect(status().isOk())
+                .andExpect(jsonPath("$.available").value(true)).andExpect(jsonPath("$.questions.length()").value(5))
+                .andExpect(jsonPath("$.ruleVersion").value(YouthTomorrowSavingsRules.VERSION));
+        mvc.perform(get("/api/v1/policies").param("questionsOnly", "true").param("q", "청년내일저축"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.total").value(1))
+                .andExpect(jsonPath("$.items[0].questionnaireAvailable").value(true));
+        var request = new PolicyQuestions.Request(1, YouthTomorrowSavingsRules.VERSION, List.of(
+                new PolicyQuestions.Answer("birthRange", "IN_RANGE"), new PolicyQuestions.Answer("workType", "SELF_RELIANCE"),
+                new PolicyQuestions.Answer("monthlyIncome", "AT_LEAST_100K"), new PolicyQuestions.Answer("householdIncome", "UP_TO_50_CONFIRMED"),
+                new PolicyQuestions.Answer("duplicateParticipation", "ALLOWED_CONFIRMED")));
+        var body = mapper.writeValueAsString(request);
+        mvc.perform(post(path + "/evaluation").contentType("application/json").content(body))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.commonCriteriaStatus").value("ELIGIBLE"))
+                .andExpect(jsonPath("$.status").value("NEEDS_REVIEW")).andExpect(jsonPath("$.checks.length()").value(4));
+        for (var stale : List.of(new PolicyQuestions.Request(2, request.ruleVersion(), request.answers()),
+                new PolicyQuestions.Request(1, "youth-tomorrow-savings-2026-v0", request.answers()))) {
+            mvc.perform(post(path + "/evaluation").contentType("application/json").content(mapper.writeValueAsString(stale)))
+                    .andExpect(status().isConflict());
+        }
+        org.mockito.Mockito.when(clock.instant()).thenReturn(Instant.parse("2026-12-31T15:00:00Z"));
+        mvc.perform(get(path + "/questions")).andExpect(status().isOk())
+                .andExpect(jsonPath("$.available").value(false)).andExpect(jsonPath("$.questions").isEmpty());
+        mvc.perform(get("/api/v1/policies").param("questionsOnly", "true"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.total").value(0));
+        mvc.perform(post(path + "/evaluation").contentType("application/json").content(body)).andExpect(status().isConflict());
+
+        org.mockito.Mockito.when(clock.instant()).thenReturn(AT);
+        var current = store.find(number).orElseThrow();
+        store.importPolicy(number, current.content(), "{}", AT.plusSeconds(1), "changed-tomorrow-savings", "changed-hash");
+        mvc.perform(get(path + "/questions")).andExpect(status().isOk()).andExpect(jsonPath("$.available").value(false));
+        mvc.perform(get("/api/v1/policies").param("questionsOnly", "true"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.total").value(0));
+        mvc.perform(post(path + "/evaluation").contentType("application/json").content(body))
+                .andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("POLICY_CHANGED"));
     }
 
     @Test

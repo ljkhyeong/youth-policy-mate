@@ -13,9 +13,10 @@ export function RecruitmentOptions() {
     <option key={value} value={value}>{label}</option>)}</>;
 }
 
-export function PolicyRecruitment({ recruitment }: { recruitment: Recruitment }) {
+export function PolicyRecruitment({ recruitment, compact = false }: { recruitment: Recruitment; compact?: boolean }) {
   return <div className="policy-recruitment" role="group" aria-label="접수 상태">
     <span className="recruitment-badge" data-status={recruitment.status}>{recruitmentLabels[recruitment.status]}</span>
-    <p>{recruitment.explanation}</p>
+    {compact ? <details className="recruitment-explanation"><summary>상태 안내</summary><p>{recruitment.explanation}</p></details>
+      : <p>{recruitment.explanation}</p>}
   </div>;
 }

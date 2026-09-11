@@ -106,11 +106,10 @@ export function ConditionForm({ today }: { today: string }) {
         </div>
       ) : (
         <form ref={formRef} onSubmit={submit} noValidate method="post" autoComplete="off">
-          <ConditionMemberControls onLoad={loadSaved} onSuggestBirthDate={suggestBirthDate} />
           <div className="form-heading">
             <h2>기본 조건</h2>
-            <p>세 항목을 입력한 뒤 한 번 더 확인할 수 있어요.</p>
           </div>
+          <ConditionMemberControls onLoad={loadSaved} onSuggestBirthDate={suggestBirthDate} />
           {Object.values(errors).some(Boolean) && <p role="alert" className="form-error-summary">표시된 입력 항목을 확인해주세요.</p>}
 
           {/* 기본 폼 제출로 개인정보가 전송되지 않도록 name을 두지 않고 화면 상태만 사용한다. */}

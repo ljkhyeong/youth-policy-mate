@@ -26,26 +26,27 @@ export default async function PoliciesPage({ searchParams }: { searchParams: Pro
     return `/policies?${search}`;
   };
 
-  return <SiteShell active="policies"><main id="main-content" className="policies-main">
-    <header className="policies-heading"><p className="page-label">서울 청년 정책</p><h1>필요한 지원을 찾아보세요</h1><p>지원 내용부터 신청 방법까지, 로그인 없이 살펴보세요.</p></header>
-    <form id="policy-search-form" className="policy-search" action="/policies" role="search">
-      {questionsOnly && <input type="hidden" name="questionsOnly" value="true" />}
-      <label htmlFor="policy-query" className="sr-only">정책 제목과 설명 검색</label>
-      <input key={query} id="policy-query" type="search" name="q" defaultValue={query} maxLength={80} placeholder="장학금, 일자리, 주거…" />
-      <button type="submit" className="button-primary">검색</button>
-    </form>
-    <div className="member-toolbar">
-      <label htmlFor="policy-recruitment-status">접수 상태</label>
-      <select key={recruitmentStatus} id="policy-recruitment-status" name="recruitmentStatus" form="policy-search-form"
-        className="condition-policy-sort" defaultValue={recruitmentStatus}><RecruitmentOptions /></select>
-      <button type="submit" form="policy-search-form" className="button-secondary">필터 적용</button>
-    </div>
-    <nav className="policy-filters" aria-label="조건 확인 질문 필터">
-      <Link href={pageHref(1, false)} aria-current={!questionsOnly ? "page" : undefined}>전체 정책</Link>
-      <Link href={pageHref(1, true)} aria-current={questionsOnly ? "page" : undefined}>조건 확인 질문 있음</Link>
-    </nav>
-    <p className="field-help">질문에 답하면 일부 신청 조건을 확인할 수 있어요. 최종 자격과 접수 기간은 별도로 확인해주세요.</p>
-    <p className="policy-coverage">일부 정책만 제공해요. 찾는 정책이 없으면 <a href="https://www.youthcenter.go.kr/" target="_blank" rel="noopener noreferrer">온통청년<span className="sr-only"> (새 창)</span></a>에서 확인해주세요.</p>
+  return <SiteShell active="policies"><main id="main-content" className="policies-main policy-catalog">
+    <header className="policies-heading"><div><p className="page-label">서울 청년 정책</p><h1>정책 찾기</h1></div><Link href="/conditions" className="text-link">내 조건으로 확인하기</Link></header>
+    <section className="policy-search-panel" aria-label="정책 검색과 필터">
+      <form id="policy-search-form" className="policy-search" action="/policies" role="search">
+        {questionsOnly && <input type="hidden" name="questionsOnly" value="true" />}
+        <label htmlFor="policy-query" className="sr-only">정책 제목과 설명 검색</label>
+        <input key={query} id="policy-query" type="search" name="q" defaultValue={query} maxLength={80} placeholder="장학금, 일자리, 주거…" />
+        <div className="policy-status-filter">
+          <label htmlFor="policy-recruitment-status" className="sr-only">접수 상태</label>
+          <select key={recruitmentStatus} id="policy-recruitment-status" name="recruitmentStatus" form="policy-search-form"
+            className="condition-policy-sort" defaultValue={recruitmentStatus}><RecruitmentOptions /></select>
+        </div>
+        <button type="submit" className="button-primary">검색</button>
+      </form>
+      <nav className="policy-filters" aria-label="조건 확인 질문 필터">
+        <Link href={pageHref(1, false)} aria-current={!questionsOnly ? "page" : undefined}>전체 정책</Link>
+        <Link href={pageHref(1, true)} aria-current={questionsOnly ? "page" : undefined}>조건 확인 질문 있음</Link>
+      </nav>
+      {questionsOnly && <p className="field-help">질문으로 일부 신청 조건을 비교해요. 최종 자격과 접수 기간은 별도로 확인해주세요.</p>}
+    </section>
+    <p className="policy-coverage">일부 정책을 제공해요. 더 많은 정책은 <a href="https://www.youthcenter.go.kr/" target="_blank" rel="noopener noreferrer">온통청년<span className="sr-only"> (새 창)</span></a>에서 확인하세요.</p>
     {result.status === "available" ? <>
       <div className="policy-results-heading"><p role="status">{query ? `‘${query}’ 검색 결과` : questionsOnly ? "조건 확인 질문이 있는 정책" : "전체 정책"} {recruitmentStatus && ` · ${recruitmentLabels[recruitmentStatus]}`} <strong>{result.data.total}건</strong></p>{(query || questionsOnly || recruitmentStatus) && <Link href="/policies" className="text-link">검색·필터 초기화</Link>}</div>
       {result.data.items.length > 0 ? <div className="policy-list">{result.data.items.map(policy => <PolicyCard key={policy.policyNumber} policy={policy} />)}</div>

@@ -43,7 +43,7 @@ export function PolicyArticle({ policy }: { policy: Detail }) {
         <a href="#policy-questions">내 조건 확인</a>
       </nav>
     </header>
-    {policy.sourceNotices.map((notice) => <aside className="policy-notice" key={notice.sourceUrl} aria-label={notice.title}>
+    {policy.sourceNotices.map((notice) => <aside className="policy-notice" key={`${notice.sourceUrl}:${notice.title}`} aria-label={notice.title}>
       <strong>{notice.title}</strong>
       <p>{notice.description}</p>
       <p><a className="text-link" href={notice.sourceUrl} target="_blank" rel="noopener noreferrer">{notice.sourceLabel} <span aria-hidden="true">↗</span><span className="sr-only"> (새 창)</span></a></p>

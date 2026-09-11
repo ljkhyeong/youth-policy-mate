@@ -13,7 +13,7 @@ type PageStateProps = {
 
 const STATE_LABELS = {
   loading: "불러오는 중",
-  empty: "검색 결과 없음",
+  empty: "표시할 내용 없음",
   error: "화면 불러오기 실패",
   "not-found": "404 · 페이지 없음",
 };

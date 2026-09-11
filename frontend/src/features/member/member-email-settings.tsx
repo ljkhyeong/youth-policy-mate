@@ -9,11 +9,11 @@ function errorText(failure: unknown) {
       case "EMAIL_RATE_LIMITED": return "인증 메일은 1분 간격, 시간당 최대 3회 요청할 수 있어요. 잠시 후 다시 요청해주세요.";
       case "EMAIL_CODE_INVALID": return "인증 코드가 틀렸거나 만료됐어요. 5회 실패했다면 새 코드를 요청해주세요.";
       case "EMAIL_NOT_VERIFIED": return "이메일 인증을 먼저 완료해주세요.";
-      case "EMAIL_UNAVAILABLE": return "이메일 알림은 준비 중이에요. ‘알림’ 탭은 이용할 수 있어요.";
+      case "EMAIL_UNAVAILABLE": return "현재 이메일 알림을 이용할 수 없어요. ‘알림’ 탭은 이용할 수 있어요.";
     }
     return failure.message;
   }
-  return "이메일 설정을 처리하지 못했어요. 다시 시도해주세요.";
+  return "이메일 설정 요청을 완료하지 못했어요. 다시 시도해주세요.";
 }
 
 export function MemberEmailSettings({ csrf }: { csrf: string }) {
@@ -67,7 +67,7 @@ export function MemberEmailSettings({ csrf }: { csrf: string }) {
     {notice && <p role="status">{notice}</p>}
     {!settings && !error && <p role="status">이메일 설정을 불러오고 있어요.</p>}
     {settings && <>
-      {!settings.available && <p className="field-help">이메일 알림은 준비 중이에요. ‘마감 일정’과 ‘알림’ 탭은 이용할 수 있어요.</p>}
+      {!settings.available && <p className="field-help">현재 이메일 알림을 이용할 수 없어요. ‘마감 일정’과 ‘알림’ 탭은 이용할 수 있어요.</p>}
       {settings.addressRegistered && <div className="email-current">
         <p><strong>{settings.address || "등록한 이메일 주소"}</strong></p>
         <p>{settings.verified ? "이메일 인증 완료" : "이메일 인증 필요"} · {settings.enabled ? "이메일 알림 켜짐" : "이메일 알림 꺼짐"}</p>

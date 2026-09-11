@@ -7,7 +7,7 @@ export default async function CollectionReplaysPage({ searchParams }: { searchPa
   const page = collectionPage((await searchParams).page);
   const result = await loadCollectionReplays(page);
   return <>
-    <header><p className="page-label">운영 관리</p><h1>수집 예외</h1><p>관리자가 실행한 재처리 사유와 결과를 확인합니다.</p></header>
+    <header><p className="page-label">운영 관리</p><h1>수집 오류·보정</h1><p>관리자가 실행한 재처리 사유와 결과를 확인합니다.</p></header>
     <CollectionNavigation active="replays" />
     {result.status !== "available" ? <CollectionFailure status={result.status} retryHref={`${REPLAYS_PATH}?page=${page}`} />
       : !result.data.items.length ? <PageState kind="empty" title="재처리 이력이 없습니다"
@@ -21,7 +21,7 @@ export default async function CollectionReplaysPage({ searchParams }: { searchPa
               <p className="exception-text">{item.reason}</p>
               <dl className="exception-facts">
                 <dt>기록 시각</dt><dd>{collectionTime(item.processedAt)} (서울)</dd>
-                <dt>처리 후 개정</dt><dd>{item.policyRevision ?? "반영 없음"}</dd>
+                <dt>처리 후 버전</dt><dd>{item.policyRevision ?? "반영 없음"}</dd>
                 <dt>작업자 ID</dt><dd>{item.actorId}</dd>
                 <dt>수집 위치</dt><dd>{item.runId} · {item.itemIndex + 1}번째 항목</dd>
                 <dt>재처리 요청 ID</dt><dd>{item.requestId}</dd>

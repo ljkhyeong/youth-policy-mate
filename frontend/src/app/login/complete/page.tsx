@@ -12,5 +12,5 @@ export default function LoginComplete() {
     announceAccountChange();
     window.location.replace(destination);
   }, []);
-  return <main className="member-main"><p role="status">로그인한 화면으로 이동하고 있어요.</p></main>;
+  return <main className="member-main"><p role="status">로그인을 마쳤어요. 잠시만 기다려주세요.</p></main>;
 }

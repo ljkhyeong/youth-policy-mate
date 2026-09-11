@@ -20,7 +20,7 @@ export function SiteShell({ children, active }: { children: React.ReactNode; act
       </header>
       {children}
       <footer className="app-footer">
-        실제 신청 가능 여부는 공식 신청처에서 마지막으로 확인해주세요.
+        신청 자격과 접수 여부는 공식 신청처에서 확인해주세요.
       </footer>
       <nav aria-label="모바일 주 메뉴" className="mobile-tabbar">
         <NavLink href="/" active={active === "home"} icon="home">홈</NavLink>

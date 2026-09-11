@@ -11,7 +11,7 @@ export default async function PolicyCorrectionsPage({ searchParams }: { searchPa
   const number = typeof query.policyNumber === "string" ? query.policyNumber.trim() : "";
   const [result, policy] = await Promise.all([loadPolicyCorrections(page), number ? loadCorrectionPolicy(number) : null]);
   return <>
-    <header><p className="page-label">운영 관리</p><h1>수집 예외</h1><p>정책명·운영 기관을 수정하고, 새 수집 원본과 충돌한 내용을 확인합니다.</p></header>
+    <header><p className="page-label">운영 관리</p><h1>수집 오류·보정</h1><p>정책명·운영 기관을 수정하고, 새 수집 원본과 충돌한 내용을 확인합니다.</p></header>
     <CollectionNavigation active="corrections" />
     {result.status !== "available" ? <CollectionFailure status={result.status} retryHref={CORRECTIONS_PATH} /> : <>
       <section className="member-panel" aria-labelledby="correction-heading">
@@ -23,7 +23,7 @@ export default async function PolicyCorrectionsPage({ searchParams }: { searchPa
           <button className="button-secondary" type="submit">공개 정책 조회</button>
         </form>
         {policy?.status === "available" ? <>
-          <h3>{policy.data.content.title}</h3><p className="field-help">현재 개정 {policy.data.revision}</p>
+          <h3>{policy.data.content.title}</h3><p className="field-help">현재 버전 {policy.data.revision}</p>
           {policy.data.correctionId ? <p>이미 보정이 적용되어 있습니다. 아래 이력에서 보정을 해제하거나 충돌을 처리해주세요.</p>
             : <PolicyCorrectionForm policy={policy.data} />}
         </> : policy && (policy.status === "missing" || policy.status === "invalid"
@@ -52,7 +52,7 @@ function CorrectionCard({ item }: { item: CorrectionItem }) {
       <dt>보정 전 원본</dt><dd>{item.sourceValue || "내용 없음"}</dd>
       <dt>보정 값</dt><dd>{item.value}</dd>
       <dt>보정 사유</dt><dd>{item.reason}</dd>
-      <dt>적용 개정</dt><dd>{item.appliedRevision}</dd>
+      <dt>적용 버전</dt><dd>{item.appliedRevision}</dd>
       <dt>작업자 ID</dt><dd>{item.actorId}</dd>
       <dt>기록 시각</dt><dd>{collectionTime(item.createdAt)} (서울)</dd>
     </dl>
@@ -73,7 +73,7 @@ function CorrectionCard({ item }: { item: CorrectionItem }) {
     </>}
     {item.status !== "RELEASED" ? <PolicyCorrectionForm correction={item} /> : <dl className="exception-facts">
       <dt>처리 결과</dt><dd>{item.resolution === "KEEP" ? "새 원본 기준 보정 유지" : "보정 해제 · 원본 적용"}</dd>
-      <dt>처리 사유</dt><dd>{item.resolvedReason}</dd><dt>처리 후 개정</dt><dd>{item.resolvedRevision}</dd>
+      <dt>처리 사유</dt><dd>{item.resolvedReason}</dd><dt>처리 후 버전</dt><dd>{item.resolvedRevision}</dd>
       <dt>처리자 ID</dt><dd>{item.resolvedBy}</dd><dt>처리 시각</dt><dd>{collectionTime(item.resolvedAt)} (서울)</dd>
     </dl>}
   </li>;

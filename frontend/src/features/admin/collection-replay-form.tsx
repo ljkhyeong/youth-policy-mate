@@ -40,7 +40,7 @@ export function CollectionReplayForm({ runId, itemIndex, attempts }: { runId: st
             : "재처리 사유와 입력 길이를 확인해주세요.");
       } else {
         setUncertain(true);
-        setMessage("처리 결과를 확인하지 못했습니다. 같은 요청으로 결과를 다시 확인해주세요.");
+        setMessage("처리 결과를 확인하지 못했습니다. 아래 ‘재처리 결과 다시 확인’을 눌러주세요.");
       }
     } finally { setBusy(false); }
   }
@@ -61,7 +61,7 @@ export function CollectionReplayForm({ runId, itemIndex, attempts }: { runId: st
       </button>
     </form>
     {result && <div role="status">
-      <p><strong>{replayLabels[result.outcome]}</strong>{result.policyRevision !== null && ` · 처리 후 개정 ${result.policyRevision}`}</p>
+      <p><strong>{replayLabels[result.outcome]}</strong>{result.policyRevision !== null && ` · 처리 후 버전 ${result.policyRevision}`}</p>
       {result.outcome === "INVALID_ITEM" && <p>원본이 검증을 통과하지 못했습니다. 원본과 처리 규칙을 확인해주세요.</p>}
       {result.outcome === "CORRECTION_CONFLICT" && <p>보정 관리에서 새 원본과 보정 값을 확인한 뒤 다시 처리해주세요.</p>}
       {result.outcome === "STALE" && <p>이후에 수집한 내용이 있어 현재 공개 내용을 유지했습니다.</p>}

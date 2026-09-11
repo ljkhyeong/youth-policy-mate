@@ -15,9 +15,9 @@ const dateLabel = (value: string | null) => value ? timestamp.format(new Date(va
 export { dateLabel as collectionTime };
 
 export function CollectionNavigation({ active }: { active: "items" | "pages" | "replays" | "corrections" }) {
-  return <nav className="policy-filters mb-6" aria-label="수집 예외 종류">
-    <a href={COLLECTION_PATH} aria-current={active === "items" ? "page" : undefined}>항목 처리</a>
-    <a href={PAGE_FAILURES_PATH} aria-current={active === "pages" ? "page" : undefined}>페이지 수집</a>
+  return <nav className="policy-filters mb-6" aria-label="수집 오류·보정 메뉴">
+    <a href={COLLECTION_PATH} aria-current={active === "items" ? "page" : undefined}>항목 오류</a>
+    <a href={PAGE_FAILURES_PATH} aria-current={active === "pages" ? "page" : undefined}>페이지 오류</a>
     <a href={REPLAYS_PATH} aria-current={active === "replays" ? "page" : undefined}>재처리 이력</a>
     <a href={CORRECTIONS_PATH} aria-current={active === "corrections" ? "page" : undefined}>보정 관리</a>
   </nav>;
@@ -25,10 +25,10 @@ export function CollectionNavigation({ active }: { active: "items" | "pages" | "
 
 export function CollectionFailure({ status, retryHref }: { status: LoadFailure; retryHref: string }) {
   if (status === "unauthenticated") return <PageState kind="error" label="로그인 필요" title="관리자 계정으로 로그인하세요"
-    description="지정된 관리자만 수집 예외를 확인할 수 있습니다."
+    description="관리자만 수집 오류와 보정 내역을 확인할 수 있습니다."
     actions={<a className="button-primary" href="/login?next=admin">로그인</a>} />;
   if (status === "forbidden") return <PageState kind="error" label="접근 제한" title="관리자 권한이 없습니다"
-    description="현재 계정으로는 수집 예외를 확인할 수 없습니다. 관리자 계정과 권한 설정을 확인해주세요."
+    description="관리자 계정과 권한 설정을 확인해주세요."
     actions={<a className="button-secondary" href="/my">내 계정 확인</a>} />;
   if (status === "missing") return <PageState kind="empty" label="항목 없음" title="현재 실패 목록에 없는 항목입니다"
     description="재처리가 완료됐거나 존재하지 않는 항목입니다. 최신 목록을 확인해주세요."
@@ -36,14 +36,14 @@ export function CollectionFailure({ status, retryHref }: { status: LoadFailure; 
   if (status === "invalid") return <PageState kind="error" label="조회 조건 오류" title="조회 주소를 확인해주세요"
     description="실패 목록에서 항목을 다시 선택해주세요."
     actions={<a className="button-primary" href={COLLECTION_PATH}>실패 목록 보기</a>} />;
-  return <PageState kind="error" title="수집 예외를 불러오지 못했습니다" description="잠시 후 다시 시도해주세요."
+  return <PageState kind="error" title="수집 오류·보정 내역을 불러오지 못했습니다" description="잠시 후 다시 시도해주세요."
     actions={<a className="button-primary" href={retryHref}>다시 불러오기</a>} />;
 }
 
 export function ExceptionList({ data }: { data: ExceptionPage }) {
   if (!data.items.length) return <PageState kind="empty" label="실패 항목 없음"
     title={data.page > 1 ? "이 페이지에 남은 실패 항목이 없습니다" : "확인할 실패 항목이 없습니다"}
-    description="항목 검증·저장 실패와 보정 충돌 목록입니다. 페이지 요청 실패는 ‘페이지 수집’에서 확인하세요."
+    description="항목 검증·저장 실패와 보정 충돌 목록입니다. 페이지 요청 실패는 ‘페이지 오류’에서 확인하세요."
     actions={<a className="button-secondary" href={COLLECTION_PATH}>{data.page > 1 ? "첫 페이지 보기" : "새로고침"}</a>} />;
   return <>
     <div className="member-toolbar"><p>{data.page}페이지 · {data.items.length}건</p>
@@ -85,8 +85,8 @@ export function ExceptionContent({ data }: { data: ExceptionDetail }) {
       {currentPolicy ? <>
         <h3>{currentPolicy.content.title}</h3>
         {currentPolicy.correctionId && <p>관리자 보정 적용</p>}
-        <p className="field-help">현재 개정 {currentPolicy.revision} · 수집 {dateLabel(currentPolicy.collectedAt)} (서울)</p>
-        <p className="field-help">조회 시점의 내용이며 실패 당시의 이전 개정과 다를 수 있습니다.</p>
+        <p className="field-help">현재 버전 {currentPolicy.revision} · 수집 {dateLabel(currentPolicy.collectedAt)} (서울)</p>
+        <p className="field-help">현재 공개 내용이며 수집 실패 당시 내용과 다를 수 있습니다.</p>
         <p className="exception-text">{currentPolicy.content.description}</p>
         <dl className="exception-facts">
           <dt>운영 기관</dt><dd>{currentPolicy.content.organization}</dd>
@@ -119,22 +119,22 @@ const comparisonFields = {
 function RevisionComparison({ policy }: { policy: CurrentPolicy }) {
   const previous = policy.previousRevision;
   if (!previous) return <section className="member-panel" aria-labelledby="revision-heading">
-    <h2 id="revision-heading">이전 개정 비교</h2><p>비교할 이전 개정이 없습니다.</p>
+    <h2 id="revision-heading">이전 버전 비교</h2><p>비교할 이전 버전이 없습니다.</p>
   </section>;
   const fields = Object.keys(comparisonFields) as (keyof PolicyContent)[];
   const changed = fields.filter(field => JSON.stringify(previous.content[field]) !== JSON.stringify(policy.content[field]));
   const unchanged = fields.filter(field => !changed.includes(field));
   return <section className="member-panel" aria-labelledby="revision-heading">
-    <h2 id="revision-heading">이전 개정 비교</h2>
-    <p className="field-help">현재 공개 내용과 바로 이전 개정을 비교합니다. 수집 실패 당시 내용과는 다를 수 있습니다.</p>
-    <p className="field-help">이전 개정 {previous.revision} · 원본 수집 {dateLabel(previous.sourceCapturedAt)} (서울)<br />
-      현재 개정 {policy.revision} · 원본 수집 {dateLabel(policy.sourceCapturedAt)} (서울)</p>
+    <h2 id="revision-heading">이전 버전 비교</h2>
+    <p className="field-help">현재 공개 내용과 바로 이전 버전을 비교합니다. 수집 실패 당시 내용과는 다를 수 있습니다.</p>
+    <p className="field-help">이전 버전 {previous.revision} · 원본 수집 {dateLabel(previous.sourceCapturedAt)} (서울)<br />
+      현재 버전 {policy.revision} · 원본 수집 {dateLabel(policy.sourceCapturedAt)} (서울)</p>
     <p>{changed.length ? `변경된 항목 ${changed.length}개` : "표시 항목의 변경이 없습니다."}</p>
     {changed.map(field => <section className="exception-section revision-field" key={field}>
       <h3>{comparisonFields[field]}</h3>
       <dl className="revision-values">
-        <div><dt>이전 · 개정 {previous.revision}</dt><dd><RevisionValue value={previous.content[field]} /></dd></div>
-        <div><dt>현재 · 개정 {policy.revision}</dt><dd><RevisionValue value={policy.content[field]} /></dd></div>
+        <div><dt>이전 · 버전 {previous.revision}</dt><dd><RevisionValue value={previous.content[field]} /></dd></div>
+        <div><dt>현재 · 버전 {policy.revision}</dt><dd><RevisionValue value={policy.content[field]} /></dd></div>
       </dl>
     </section>)}
     {unchanged.length > 0 && <details className="revision-unchanged">

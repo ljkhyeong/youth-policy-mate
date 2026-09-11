@@ -25,7 +25,7 @@ export default function HomePage() {
           </section>
 
           <section className="start-panel" aria-labelledby="start-title">
-            <h2 id="start-title">내 조건으로 확인하기</h2>
+            <h2 id="start-title">정책별 연령 비교</h2>
             <p className="start-description">생년월일로 연령 조건을 비교하고, 정책별 질문으로 다른 조건도 확인하세요.</p>
             <ul className="condition-list" aria-label="입력할 기본 조건">
               <li><strong>생년월일</strong><small>양력 기준</small></li>

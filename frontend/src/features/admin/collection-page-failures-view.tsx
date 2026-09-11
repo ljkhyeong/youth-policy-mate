@@ -18,7 +18,7 @@ const reasons: Record<PageFailure["reason"], string> = {
 export function CollectionPageFailures({ data }: { data: PageFailureList }) {
   if (!data.items.length) return <PageState kind="empty" label="페이지 수집 실패 없음"
     title={data.page > 1 ? "이 페이지에 남은 수집 실패가 없습니다" : "확인할 페이지 수집 실패가 없습니다"}
-    description="항목별 검증·저장 실패는 ‘항목 처리’에서 확인하세요."
+    description="항목별 검증·저장 실패는 ‘항목 오류’에서 확인하세요."
     actions={<a className="button-secondary" href={PAGE_FAILURES_PATH}>{data.page > 1 ? "첫 페이지 보기" : "새로고침"}</a>} />;
   return <>
     <div className="member-toolbar"><p>{data.page}페이지 · {data.items.length}건</p>
@@ -37,7 +37,7 @@ export function CollectionPageFailures({ data }: { data: PageFailureList }) {
           <dt>수집 실행 ID</dt><dd>{item.runId}</dd>
         </dl>
         <p className="field-help">{item.responseStored
-          ? "보관된 응답을 검토한 뒤 재처리할 수 있습니다. 응답 자체가 잘못된 경우 새 수집이 필요할 수 있습니다."
+          ? "저장된 응답을 확인한 뒤 재처리하세요. 응답 내용이 잘못됐으면 다시 수집해야 할 수 있습니다."
           : "저장된 응답이 없습니다. 기존 요청의 종료 여부와 호출량을 확인한 뒤 다시 수집해주세요."}</p>
       </li>)}
     </ul>

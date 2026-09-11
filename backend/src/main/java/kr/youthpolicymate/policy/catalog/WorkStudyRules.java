@@ -22,9 +22,9 @@ public final class WorkStudyRules {
     private static final List<Question> QUESTIONS = List.of(
             new Question("nationality", "대한민국 국적을 가지고 있나요?", "국적과 거주지는 다른 조건이에요.", YES_NO),
             new Question("enrollment", "2026년 2학기 지원 대상 대학의 재학생 또는 입학예정자인가요?", "학교명이나 학번은 입력하지 않아요. 지원 대상 여부는 대학 안내에서 확인해주세요.", YES_NO),
-            new Question("grade", "직전학기 백분위 성적은 어느 구간인가요?", "평점 4.5점 등을 임의로 환산하지 말고 대학이 제공한 100점 기준을 사용해주세요.",
+            new Question("grade", "직전학기 성적은 100점 기준으로 몇 점인가요?", "대학이 제공한 백분위 성적을 확인해주세요. 4.5점 만점 평점을 직접 환산하지 마세요.",
                     List.of(new Option("AT_LEAST_70", "70점 이상"), new Option("BELOW_70", "70점 미만"), new Option("NOT_ISSUED", "직전학기 성적이 없어요"), new Option("UNKNOWN", "모르겠어요"))),
-            new Question("gradeException", "성적 기준의 적용 제외를 확인받았나요?", "일부 대상자는 성적 기준을 제외할 수 있어요. 해당 사유나 증빙은 이 서비스에 제출하지 않아요.", EXCEPTION),
+            new Question("gradeException", "성적 기준의 적용 제외를 확인받았나요?", "성적 기준을 적용받지 않는 대상인지 재단이나 대학에서 확인해주세요. 사유·증빙은 이곳에 제출하지 않아요.", EXCEPTION),
             new Question("income", "한국장학재단에서 확인한 2026년 2학기 학자금 지원구간은 몇 구간인가요?", "월급이나 가구 소득액으로 직접 환산하지 않아요.",
                     List.of(new Option("UP_TO_9", "기초·차상위 또는 1~9구간"), new Option("ABOVE_9", "9구간 초과"), new Option("NOT_CALCULATED", "아직 산정되지 않았어요"), new Option("UNKNOWN", "모르겠어요"))),
             new Question("incomeException", "학자금 지원구간 기준의 적용 제외를 확인받았나요?", "위기가구·일부 근로유형은 예외가 있어요. 재단이나 대학에서 적용 제외 여부를 확인해주세요.", EXCEPTION));
@@ -53,7 +53,7 @@ public final class WorkStudyRules {
         }
         var basis = new EvaluationBasis(NUMBER, Long.toString(revision), VERSION, now);
         var common = new EligibilityDecision(basis, PolicyReview.complete(), conditions).status();
-        var remaining = List.of("소속 대학의 해당 학기 선발요건·참여 제한·중복 참여 기준", "소속 대학의 이번 신청 차수 운영 여부와 제출서류·가구원 동의 일정");
+        var remaining = List.of("대학의 2026년 2학기 선발요건·참여 제한·중복 참여 기준을 확인해주세요.", "대학이 이번 차수에 신청을 받는지, 서류 제출·가구원 동의 기한은 언제인지 확인해주세요.");
         var whole = new EligibilityDecision(basis, PolicyReview.incomplete(remaining.stream()
                 .map(message -> new PolicyReview.PendingIssue(message, evidence)).toList()), conditions);
         return new Evaluation(NUMBER, revision, VERSION, whole.status(), common, SCOPE,
@@ -69,7 +69,7 @@ public final class WorkStudyRules {
         var outcome = passing.equals(value) || "CONFIRMED".equals(exception) ? MET
                 : failing.equals(value) && "NONE".equals(exception) ? NOT_MET : UNKNOWN;
         var explanation = passing.equals(value) ? "입력한 구간은 이 기준을 충족해요." : "CONFIRMED".equals(exception)
-                ? "적용 제외를 확인받았다는 답변에 따라 이 기준은 적용하지 않았어요."
+                ? "재단이나 대학에서 적용 제외를 확인받았다는 답변을 반영했어요."
                 : outcome == NOT_MET ? "입력한 구간은 지원 기준에 맞지 않고, 적용 제외 대상에도 해당하지 않아요."
                 : "성적·학자금 지원구간이나 적용 제외 여부를 확인한 뒤 다시 답해주세요.";
         var option = QUESTIONS.stream().flatMap(q -> q.options().stream()).filter(o -> o.value().equals(value)).findFirst();

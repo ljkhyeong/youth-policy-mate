@@ -48,8 +48,8 @@ public final class MovingFeeRules {
                     "신청 전까지 2022.1.1. 이후 서울 전입·서울 내 이사로 받은 지원을 확인해주세요. 자치구·중앙부처·LH·SH 등을 포함해요. 생필품비 등 지원 항목이 불명확하면 기관에서 확인해주세요.",
                     List.of(new Option("NONE", "받은 적 없어요"), new Option("BROKERAGE_ONLY", "중개보수만 받았어요"), new Option("MOVING_ONLY", "이사비만 받았어요"),
                             new Option("BOTH", "중개보수·이사비 모두 받았어요"), new Option("UNKNOWN", "지원 기관·항목 확인 중"))),
-            new Question("requestedCost", "이 공고 기준으로 확인할 비용은 무엇인가요?",
-                    "중개보수·이사비 중 한 가지만 신청할 수도 있어요. 다른 기관에서 한 종류 비용을 받았다면 다른 비용만 확인해주세요.",
+            new Question("requestedCost", "지원받으려는 비용은 무엇인가요?",
+                    "중개보수·이사비 중 한 가지만 신청해도 돼요. 다른 기관에서 지원받은 비용은 제외하고 선택해주세요.",
                     List.of(new Option("BROKERAGE", "중개보수만"), new Option("MOVING", "이사비만"), new Option("BOTH", "중개보수·이사비 모두"), new Option("UNKNOWN", "아직 정하지 않았어요"))),
             new Question("parentRental", "신청 당시 임차한 집이 부모님 소유였나요?",
                     "부모 소유 주택을 임차하면 참여 대상에서 제외돼요. 부모와 함께 살았는지가 아니라 임차주택의 소유자를 확인해주세요.",
@@ -99,9 +99,9 @@ public final class MovingFeeRules {
         var basis = new EvaluationBasis(NUMBER, Long.toString(revision), VERSION, now);
         var remaining = List.of(
                 "보험료·가구원 수·가입 유형은 입력한 답변으로 비교했어요. 증빙 인정 여부와 소득 심사는 담당 기관에서 확인해주세요.",
-                "지원 기관·항목과 수혜 이력의 증빙을 확인해주세요. 다른 비용의 중복지원 조건이 충족돼도 실제 인정 비용과 지급액은 별도 심사예요.",
+                "어느 기관에서 어떤 비용을 지원받았는지 증빙을 확인해주세요. 중복지원 제한에 해당하지 않아도 비용과 지급액은 심사로 결정돼요.",
                 costNotice(values.get("requestedCost")),
-                "참여 제한은 입력한 답변으로 확인했어요. 증빙 적격 여부와 기타 사업 취지에 따른 제한은 담당 기관에서 확인해주세요.",
+                "제출할 증빙서류가 인정되는지, 그 밖의 참여 제한이 있는지는 담당 기관에서 확인해주세요.",
                 "생애 1회·최대 40만 원 실비 지원이며 우선선발·소득 순 심사를 거쳐요. 실제 선정과 지급은 공식 결과를 확인해주세요.");
         var review = PolicyReview.incomplete(remaining.stream().map(message -> new PolicyReview.PendingIssue(message, evidence)).toList());
         return new Evaluation(NUMBER, revision, VERSION, new EligibilityDecision(basis, review, conditions).status(),
@@ -124,19 +124,19 @@ public final class MovingFeeRules {
         String explanation;
         if ("RECEIVED".equals(seoul)) {
             outcome = NOT_MET;
-            explanation = "서울시 이 사업은 생애 1회 지원해요. 타 기관의 한쪽 비용 지원 예외를 서울시 재수혜에 적용하지 않아요.";
+            explanation = "서울시 이 사업에서 이미 지원받았다면 다른 비용도 다시 지원받을 수 없어요. 생애 1회 지원이에요.";
         } else if ("BOTH".equals(other)) {
             outcome = NOT_MET;
-            explanation = "타 기관에서 두 비용을 모두 지원받아 중복지원 조건을 충족하지 않아요.";
+            explanation = "다른 기관에서 중개보수와 이사비를 모두 지원받아 중복지원 제한에 해당해요.";
         } else if (!"NONE".equals(seoul) || other == null || "UNKNOWN".equals(other)) {
             outcome = UNKNOWN;
-            explanation = "서울시 사업 수혜 여부와 타 기관의 지원 항목을 확인해주세요. 기관이나 항목이 불명확하면 지원 이력 없음으로 판단하지 않아요.";
+            explanation = "서울시 사업에서 지원받았는지, 다른 기관에서는 어떤 비용을 지원받았는지 확인해주세요.";
         } else if ("NONE".equals(other)) {
             outcome = MET;
             explanation = "입력한 답변에는 이전 지원 이력이 없어요. 신청 비용의 인정 여부는 별도 확인이 필요해요.";
         } else if (requested == null || "UNKNOWN".equals(requested)) {
             outcome = UNKNOWN;
-            explanation = "이미 지원받은 비용과 비교할 신청 비용을 선택해주세요.";
+            explanation = "이번에 지원받으려는 비용을 선택해주세요.";
         } else {
             var receivedLabel = "BROKERAGE_ONLY".equals(other) ? "중개보수" : "이사비";
             var remainingLabel = "BROKERAGE_ONLY".equals(other) ? "이사비" : "중개보수";
@@ -153,7 +153,7 @@ public final class MovingFeeRules {
             }
         }
         return new Check("중복지원 제한", "서울시 사업: " + providedValue("seoulSupport", seoul)
-                + " / 타 기관: " + providedValue("otherSupport", other) + " / 확인할 비용: " + providedValue("requestedCost", requested),
+                + " / 타 기관: " + providedValue("otherSupport", other) + " / 신청할 비용: " + providedValue("requestedCost", requested),
                 outcome, explanation, "서울시 이 사업은 생애 1회예요. 공고는 2022.1.1. 이후 서울 전입·서울 내 이사에 대한 서울시·타 기관 지원 이력을 확인해요. 타 기관에서 한 종류 비용만 받았다면 다른 비용에 한해 지원을 확인할 수 있어요. 근거: 공고 1·3쪽.");
     }
     static String periodNotice(Instant now) {

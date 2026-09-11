@@ -23,8 +23,8 @@ class MovingFeeRulesTest {
         assertThat(result.status()).isEqualTo(NEEDS_REVIEW);
         assertThat(result.checks()).extracting(Check::outcome).containsOnly(MET);
         assertThat(result.remainingChecks()).anyMatch(s -> s.contains("증빙 인정"))
-                .anyMatch(s -> s.contains("다른 비용"))
-                .anyMatch(s -> s.contains("증빙 적격"));
+                .anyMatch(s -> s.contains("비용과 지급액은 심사"))
+                .anyMatch(s -> s.contains("증빙서류가 인정되는지"));
         assertThat(result.explanation()).contains("상반기", "마감");
     }
 
@@ -88,7 +88,7 @@ class MovingFeeRulesTest {
     void keepsSeoulLifetimeLimitSeparate() {
         var result = evaluate("EXCEPTION_PENDING", "WITHIN_LIMIT", "RECEIVED", "BROKERAGE_ONLY", "MOVING");
         assertThat(result.checks().get(6).outcome()).isEqualTo(NOT_MET);
-        assertThat(result.checks().get(6).explanation()).contains("생애 1회", "서울시 재수혜");
+        assertThat(result.checks().get(6).explanation()).contains("생애 1회", "다른 비용도 다시 지원받을 수 없어요");
         assertThat(result.checks().get(3).outcome()).isEqualTo(UNKNOWN);
         assertThat(evaluate("NO_HOME", "WITHIN_LIMIT", "RECEIVED", null, null).checks().get(6).outcome()).isEqualTo(NOT_MET);
         assertThat(evaluate("NO_HOME", "WITHIN_LIMIT", null, "BOTH", null).checks().get(6).outcome()).isEqualTo(NOT_MET);
@@ -101,7 +101,7 @@ class MovingFeeRulesTest {
             assertThat(evaluate("NO_HOME", "WITHIN_LIMIT", "NONE", missing, "MOVING").checks().get(6).outcome()).isEqualTo(UNKNOWN);
             var cost = evaluate("NO_HOME", "WITHIN_LIMIT", "NONE", "BROKERAGE_ONLY", missing);
             assertThat(cost.checks().get(6).outcome()).isEqualTo(UNKNOWN);
-            assertThat(cost.checks().get(6).explanation()).contains("신청 비용을 선택");
+            assertThat(cost.checks().get(6).explanation()).contains("지원받으려는 비용을 선택");
         }
         assertThat(evaluate("NO_HOME", "WITHIN_LIMIT", "NONE", "NONE", null).checks().get(6).outcome()).isEqualTo(MET);
         assertThat(evaluate("NO_HOME", "WITHIN_LIMIT", "NONE", "BROKERAGE_ONLY", "BOTH").checks().get(6).explanation())
@@ -139,7 +139,7 @@ class MovingFeeRulesTest {
         var result = MovingFeeRules.evaluate(1, new Request(1, MovingFeeRules.VERSION, List.of()), NOW);
         assertThat(result.checks()).extracting(Check::outcome).containsOnly(UNKNOWN);
         assertThat(result.checks().subList(0, 6)).extracting(Check::providedValue).containsOnly("미응답");
-        assertThat(result.checks().get(6).providedValue()).isEqualTo("서울시 사업: 미응답 / 타 기관: 미응답 / 확인할 비용: 미응답");
+        assertThat(result.checks().get(6).providedValue()).isEqualTo("서울시 사업: 미응답 / 타 기관: 미응답 / 신청할 비용: 미응답");
         assertThat(result.checks().subList(7, 10)).extracting(Check::providedValue).containsOnly("미응답");
         for (var answers : List.of(List.of(new Answer("income", "LOW")), List.of(new Answer("move", "SEOUL")),
                 List.of(new Answer("move", "COMPLETED"), new Answer("move", "OUTSIDE")))) {

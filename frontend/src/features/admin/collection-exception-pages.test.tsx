@@ -25,7 +25,7 @@ const detail: ExceptionDetail = {
 };
 
 describe("관리자 수집 예외 화면", () => {
-  it("재처리 이력의 사유는 텍스트로 표시하고 반영하지 않은 결과에 개정을 붙이지 않는다", async () => {
+  it("재처리 이력의 사유는 텍스트로 표시하고 반영하지 않은 결과에 버전을 붙이지 않는다", async () => {
     vi.mocked(loadCollectionReplays).mockResolvedValue({ status: "available", data: { page: 2, pageSize: 20, hasNext: true,
       items: [{ requestId: run, runId: run, itemIndex: 0, actorId: run, expectedAttempts: 1, attempt: 2,
         reason: "<script>사유</script>", outcome: "STALE", policyNumber: "123", policyRevision: null, processedAt: "2026-09-07T00:00:00Z" }] } });
@@ -42,7 +42,7 @@ describe("관리자 수집 예외 화면", () => {
   it("재처리 이력의 조회 장애를 빈 이력과 구분한다", async () => {
     vi.mocked(loadCollectionReplays).mockResolvedValue({ status: "unavailable" });
     const html = renderToStaticMarkup(await CollectionReplaysPage({ searchParams: Promise.resolve({ page: "2" }) }));
-    expect(html).toContain("수집 예외를 불러오지 못했습니다");
+    expect(html).toContain("수집 오류·보정 내역을 불러오지 못했습니다");
     expect(html).not.toContain("재처리 이력이 없습니다");
     expect(html).toContain('href="/admin/collection-exceptions/replays?page=2"');
   });
@@ -58,7 +58,7 @@ describe("관리자 수집 예외 화면", () => {
     expect(html).toContain("HTTP 429");
     expect(html).toContain("보관된 응답 없음");
     expect(html).toContain("응답 저장됨");
-    expect(html).toContain("보관된 응답을 검토한 뒤 재처리할 수 있습니다.");
+    expect(html).toContain("저장된 응답을 확인한 뒤 재처리하세요.");
     expect(html).toContain('href="/admin/collection-exceptions/pages?page=3"');
     expect(html).toContain('href="/admin/collection-exceptions/pages?page=1"');
     expect(html).toContain('href="/admin/collection-exceptions"');
@@ -73,7 +73,7 @@ describe("관리자 수집 예외 화면", () => {
     expect(empty).toContain('href="/admin/collection-exceptions/pages"');
     vi.mocked(loadCollectionPageFailures).mockResolvedValue({ status: "unavailable" });
     const failed = renderToStaticMarkup(await PageFailuresPage(props));
-    expect(failed).toContain("수집 예외를 불러오지 못했습니다");
+    expect(failed).toContain("수집 오류·보정 내역을 불러오지 못했습니다");
     expect(failed).toContain('href="/admin/collection-exceptions/pages?page=2"');
     expect(failed).not.toContain("이 페이지에 남은 수집 실패가 없습니다");
   });
@@ -100,7 +100,7 @@ describe("관리자 수집 예외 화면", () => {
     expect(html).toContain("&lt;script&gt;unsafe()&lt;/script&gt;");
     expect(html).not.toContain("<script>");
     expect(html).toContain('href="/policies/123"');
-    expect(html).toContain("비교할 이전 개정이 없습니다.");
+    expect(html).toContain("비교할 이전 버전이 없습니다.");
   });
 
   it("변경된 필드를 이전·현재로 비교하고 같은 필드는 접어서 표시한다", async () => {
@@ -113,19 +113,19 @@ describe("관리자 수집 예외 화면", () => {
     } });
     const html = renderToStaticMarkup(await CollectionDetailPage({ params: Promise.resolve({ runId: run, itemIndex: "0" }), searchParams: Promise.resolve({}) }));
     expect(html).toContain("변경된 항목 3개");
-    expect(html).toContain("이전 · 개정 2");
-    expect(html).toContain("현재 · 개정 3");
+    expect(html).toContain("이전 · 버전 2");
+    expect(html).toContain("현재 · 버전 3");
     expect(html).toContain("이전 제목 &lt;script&gt;old()&lt;/script&gt;");
     expect(html).not.toContain("<script>");
     expect(html).toContain("이전 지원 내용");
     expect(html).toContain("https://example.org/old");
     expect(html).toContain("내용 없음");
     expect(html).toContain('<details class="revision-unchanged"><summary>동일한 항목 6개</summary>');
-    expect(html).toContain("이전 개정 2 · 원본 수집");
-    expect(html).not.toContain("개정 적용 시각");
+    expect(html).toContain("이전 버전 2 · 원본 수집");
+    expect(html).not.toContain("버전 적용 시각");
   });
 
-  it("개정 번호가 달라도 표시 내용이 같으면 변경 없음을 안내한다", async () => {
+  it("버전 번호가 달라도 표시 내용이 같으면 변경 없음을 안내한다", async () => {
     const current = detail.currentPolicy!;
     vi.mocked(loadCollectionException).mockResolvedValue({ status: "available", data: { ...detail,
       currentPolicy: { ...current, previousRevision: { revision: 2, correctionId: null, sourceCapturedAt: current.sourceCapturedAt, content: current.content } },
@@ -147,7 +147,7 @@ describe("관리자 수집 예외 화면", () => {
   it.each([
     ["unauthenticated", "관리자 계정으로 로그인하세요"],
     ["forbidden", "관리자 권한이 없습니다"],
-    ["unavailable", "수집 예외를 불러오지 못했습니다"],
+    ["unavailable", "수집 오류·보정 내역을 불러오지 못했습니다"],
     ["missing", "현재 실패 목록에 없는 항목입니다"],
   ] as const)("%s 상태를 빈 실패 목록과 구분한다", async (status, title) => {
     vi.mocked(loadCollectionExceptions).mockResolvedValue({ status });

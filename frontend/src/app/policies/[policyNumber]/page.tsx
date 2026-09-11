@@ -25,6 +25,6 @@ export default async function PolicyPage({ params }: Props) {
   return <SiteShell active="policies"><main id="main-content" className="policies-main">
     <Link href="/policies" className="text-link policy-back">← 정책 목록</Link>
     {result.status === "available" ? <PolicyArticle policy={result.data} />
-      : <PageState kind="error" title="정책 내용을 불러오지 못했어요" description="잠시 후 다시 불러와주세요. 정책 삭제 여부는 아직 확인할 수 없어요." actions={<RetryPolicies />} />}
+      : <PageState kind="error" title="정책 내용을 불러오지 못했어요" description="잠시 후 다시 불러와주세요." actions={<RetryPolicies />} />}
   </main></SiteShell>;
 }

@@ -4,7 +4,7 @@ import { AccountTransitions } from "@/features/member/account-transitions";
 
 export const metadata: Metadata = {
   title: "청년정책메이트",
-  description: "내 조건에 맞는 서울 청년 정책을 간단하게 확인하고 관리하는 웹앱입니다.",
+  description: "서울 청년 정책의 지원 내용과 신청 조건을 확인하고, 관심 정책과 마감일을 관리하세요.",
   robots: { index: false, follow: false },
 };
 

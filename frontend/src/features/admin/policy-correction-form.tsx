@@ -47,7 +47,7 @@ export function PolicyCorrectionForm({ policy, correction }: Props) {
             : "보정 값과 사유를 확인해주세요. 현재 값과 같은 값은 적용할 수 없습니다.");
       } else {
         setUncertain(true);
-        setMessage("처리 결과를 확인하지 못했습니다. 같은 요청으로 결과를 다시 확인해주세요.");
+        setMessage("처리 결과를 확인하지 못했습니다. 아래 ‘처리 결과 다시 확인’을 눌러주세요.");
       }
     } finally { setBusy(false); }
   }
@@ -68,7 +68,7 @@ export function PolicyCorrectionForm({ policy, correction }: Props) {
         {correction.status === "CONFLICT" && <option value="KEEP">보정 유지</option>}
         <option value="USE_SOURCE">보정 해제 · 원본 적용</option>
       </select>
-      <p className="field-help">{correction.status === "CONFLICT" ? "새 수집 원본을 기준으로 처리합니다. 다른 항목의 변경도 함께 반영됩니다." : "보정을 해제하고 현재 개정의 원본 값을 적용합니다."}</p>
+      <p className="field-help">{correction.status === "CONFLICT" ? "새 수집 원본을 기준으로 처리합니다. 다른 항목의 변경도 함께 반영됩니다." : "보정을 해제하고 현재 버전의 원본 값을 적용합니다."}</p>
     </div>}
     <div className="form-field"><label htmlFor={`${id}-reason`}>{policy ? "보정 사유" : "처리 사유"}</label>
       <textarea id={`${id}-reason`} required maxLength={500} rows={2} value={reason} readOnly={locked} onChange={event => setReason(event.target.value)} />

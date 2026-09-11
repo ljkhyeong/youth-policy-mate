@@ -33,6 +33,10 @@ final class BasicConditionRules {
                 new Comparison(HaetsalronYouthRules.CONTENT_HASH, HaetsalronYouthRules.VERSION, HaetsalronYouthRules.SOURCE,
                         HaetsalronYouthRules.ageCheck(birth, now),
                         "오늘(서울 날짜) 보증을 신청하는 경우의 연령만 비교했어요. 실제 신청일이 다르면 다시 확인해주세요."));
+        if (MisoYouthFutureRules.appliesAt(now)) comparisons.put(MisoYouthFutureRules.NUMBER,
+                new Comparison(MisoYouthFutureRules.CONTENT_HASH, MisoYouthFutureRules.VERSION, MisoYouthFutureRules.SOURCE,
+                        MisoYouthFutureRules.ageCheck(birth, now),
+                        "오늘(서울 날짜) 대출을 신청하는 경우의 연령만 비교했어요. 실제 신청일이 다르면 다시 확인해주세요."));
         return comparisons;
     }
 

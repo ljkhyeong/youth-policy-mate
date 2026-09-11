@@ -1048,6 +1048,51 @@ class PolicyCatalogTest {
                 .andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("POLICY_CHANGED"));
     }
 
+    @Test @DisplayName("청년 미래이음 대출을 질문·연령 검색에 연결하고 원문·적용 기간 변경 시 중단한다")
+    void providesReviewedMisoYouthQuestionsAndAge() throws Exception {
+        var number = MisoYouthFutureRules.NUMBER;
+        saveReviewed(number, "청년 미래이음 대출", MisoYouthFutureRules.CONTENT_HASH);
+        var path = "/api/v1/policies/" + number;
+        mvc.perform(get(path + "/questions")).andExpect(status().isOk())
+                .andExpect(jsonPath("$.available").value(true)).andExpect(jsonPath("$.questions.length()").value(5))
+                .andExpect(jsonPath("$.ruleVersion").value(MisoYouthFutureRules.VERSION));
+        mvc.perform(get("/api/v1/policies").param("questionsOnly", "true").param("q", "미래이음"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.total").value(1));
+        var request = new PolicyQuestions.Request(1, MisoYouthFutureRules.VERSION, List.of(
+                new PolicyQuestions.Answer("age", "AGE_19_TO_34"), new PolicyQuestions.Answer("employment", "EARLY_BUSINESS"),
+                new PolicyQuestions.Answer("welfare", "YES")));
+        var body = mapper.writeValueAsString(request);
+        mvc.perform(post(path + "/evaluation").contentType("application/json").content(body))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.commonCriteriaStatus").value("ELIGIBLE"))
+                .andExpect(jsonPath("$.status").value("NEEDS_REVIEW")).andExpect(jsonPath("$.checks.length()").value(3));
+        var stale = new PolicyQuestions.Request(2, request.ruleVersion(), request.answers());
+        mvc.perform(post(path + "/evaluation").contentType("application/json").content(mapper.writeValueAsString(stale)))
+                .andExpect(status().isConflict());
+        var input = new BasicConditions(java.time.LocalDate.parse("2000-01-01"), "강남구", BasicConditions.EmploymentStatus.NOT_EMPLOYED);
+        mvc.perform(post("/api/v1/policies/checks").param("q", "미래이음").contentType("application/json").content(mapper.writeValueAsString(input)))
+                .andExpect(status().isOk()).andExpect(header().string("Cache-Control", "no-store"))
+                .andExpect(jsonPath("$.items[0].ruleVersion").value(MisoYouthFutureRules.VERSION))
+                .andExpect(jsonPath("$.items[0].checks[0].outcome").value("MET"))
+                .andExpect(jsonPath("$.items[0].checks[1].outcome").value("UNKNOWN"))
+                .andExpect(jsonPath("$.items[0].questionnaireAvailable").value(true));
+        for (var outside : List.of("2026-03-30T14:59:59Z", "2026-12-31T15:00:00Z")) {
+            org.mockito.Mockito.when(clock.instant()).thenReturn(Instant.parse(outside));
+            mvc.perform(get(path + "/questions")).andExpect(status().isOk()).andExpect(jsonPath("$.available").value(false));
+            mvc.perform(get("/api/v1/policies").param("questionsOnly", "true"))
+                    .andExpect(status().isOk()).andExpect(jsonPath("$.total").value(0));
+            assertThat(checks.check(input, 1, "미래이음", PolicyCheckResponse.Sort.AGE_MATCH, null).items().getFirst().ruleVersion()).isEmpty();
+            mvc.perform(post(path + "/evaluation").contentType("application/json").content(body)).andExpect(status().isConflict());
+        }
+        org.mockito.Mockito.when(clock.instant()).thenReturn(AT);
+        var current = store.find(number).orElseThrow();
+        store.importPolicy(number, current.content(), "{}", AT.plusSeconds(1), "changed-miso-youth", "changed-hash");
+        mvc.perform(get(path + "/questions")).andExpect(status().isOk()).andExpect(jsonPath("$.available").value(false));
+        mvc.perform(get("/api/v1/policies").param("questionsOnly", "true"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.total").value(0));
+        assertThat(checks.check(input, 1, "미래이음", PolicyCheckResponse.Sort.AGE_MATCH, null).items().getFirst().ruleVersion()).isEmpty();
+        mvc.perform(post(path + "/evaluation").contentType("application/json").content(body)).andExpect(status().isConflict());
+    }
+
     private void saveReviewed(String number, String title, String hash) {
         // 인공 본문과 검토 해시로 조회·질문 연결만 검사한다. 공식 조건의 정확성 검사가 아니다.
         var source = item.deepCopy();

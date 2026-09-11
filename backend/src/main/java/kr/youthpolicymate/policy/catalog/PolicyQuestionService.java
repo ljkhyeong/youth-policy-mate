@@ -33,6 +33,7 @@ public class PolicyQuestionService {
                 case YouthTomorrowSavingsRules.NUMBER -> YouthTomorrowSavingsRules.questionnaire(policy.revision(), now);
                 case GuaranteeFeeRules.NUMBER -> GuaranteeFeeRules.questionnaire(policy.revision());
                 case HaetsalronYouthRules.NUMBER -> HaetsalronYouthRules.questionnaire(policy.revision());
+                case MisoYouthFutureRules.NUMBER -> MisoYouthFutureRules.questionnaire(policy.revision());
                 default -> throw new IllegalStateException("등록한 정책의 질문 구현이 필요합니다.");
             };
         }
@@ -68,6 +69,10 @@ public class PolicyQuestionService {
             return new PolicyQuestions.Questionnaire(number, policy.revision(), "", false, HaetsalronYouthRules.SCOPE,
                     "올해 보증 기준의 질문은 아직 제공하지 않아요. 공식 안내를 확인해주세요.", HaetsalronYouthRules.SOURCE, List.of());
         }
+        if (MisoYouthFutureRules.NUMBER.equals(number) && MisoYouthFutureRules.CONTENT_HASH.equals(hash)) {
+            return new PolicyQuestions.Questionnaire(number, policy.revision(), "", false, MisoYouthFutureRules.SCOPE,
+                    "검토한 2026년 3월 31일 이후 기준의 질문만 제공해요. 현재 적용 기준은 공식 안내를 확인해주세요.", MisoYouthFutureRules.SOURCE, List.of());
+        }
         return new PolicyQuestions.Questionnaire(number, policy.revision(), "", false, "신청 조건 확인",
                 "이 정책의 조건 확인 질문은 아직 제공하지 않아요. 공식 안내를 확인해주세요.", PolicyCatalogStore.sourceUrl(number), List.of());
     }
@@ -86,6 +91,7 @@ public class PolicyQuestionService {
             case YouthTomorrowSavingsRules.NUMBER -> YouthTomorrowSavingsRules.evaluate(questions.revision(), request, now);
             case GuaranteeFeeRules.NUMBER -> GuaranteeFeeRules.evaluate(questions.revision(), request, now);
             case HaetsalronYouthRules.NUMBER -> HaetsalronYouthRules.evaluate(questions.revision(), request, now);
+            case MisoYouthFutureRules.NUMBER -> MisoYouthFutureRules.evaluate(questions.revision(), request, now);
             default -> throw new PolicyChangedException();
         };
     }

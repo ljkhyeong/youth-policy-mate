@@ -1,12 +1,12 @@
 # 작업 인계
 
-2026-09-08 기준. 개발 이력은 Git과 [개발 문서](docs/development/)에서 확인한다.
+2026-09-11 기준. 개발 이력은 Git과 [개발 문서](docs/development/)에서 확인한다.
 
 ## 현재 작업
 
 - 이전 누적 작업은 `1b7fbdd`로 로컬·원격 `main`에 반영했고 [웹·전체 서버 CI](https://github.com/ljkhyeong/youth-policy-mate/actions/runs/34222499053)를 통과했다.
-- 현재 `codex/policy-source-notices`의 `5675733`에서 햇살론유스 조건 질문과 기본 연령 비교를 추가했다. 연령·이용 대상·소득·남은 생애 보증한도를 비교하며 서류·유형·한도 미확인과 최종 보증·대출 심사를 구분한다.
-- 이번 검증의 명령·로그·실제 화면·제약은 [햇살론유스 질문](docs/development/haetsalron-youth-questions.md#검증)에 있다. 로컬 변경은 커밋했으며 이번 브랜치는 원격에 반영하지 않았다.
+- 현재 `codex/policy-source-notices`의 `d4405c9`에서 홈·정책 목록·상세의 탐색과 정보 배치를 개선했다. 파란색·모바일 하단 탐색은 유지하고 검색·필터를 통합했으며 로그인 안내의 폭과 고정 헤더 아래 초점을 수정했다.
+- 웹 테스트·린트·타입·빌드와 대표 화면·키보드 검증을 마쳤다. 명령·로그·검증 범위는 [화면 디자인 점검](docs/development/interface-design-review.md)에 있다. 로컬 변경은 커밋했으며 이번 브랜치는 원격에 반영하지 않았다.
 
 ## 구현·검증 범위
 
@@ -18,7 +18,7 @@
 - 회원 기능: OAuth 로그인 코드, 관심 정책 저장·해제, 일정·서비스 내 알림을 연결했다. 테스트 제공자와 실제 HTTP·DB로 코드 교환부터 관리자 접근·세션 종료까지 확인했다. 로컬 카카오·네이버 ID/Secret과 관리자 ID가 없어 실제 제공자 로그인은 미검증이다. [회원 기능](docs/development/member-policy-flow.md)
 - 이메일: 주소 확인·동의·암호화 저장·Outbox·SMTP 어댑터를 구현했다. 실제 공급자·발신 도메인은 미정이며 외부 수신함 전달은 미검증이다. [이메일 구현과 설정](docs/development/member-email-reminders.md)
 - AI: 후보 개정 검사·비용 예약·DB 복구 흐름은 내부 모델과 테스트용 공급자로 검증했다. 실제 AI 호출·청구·운영 작업자는 미연결이다. [AI 요청 판단](docs/development/ai-request-admission.md)·[복구 실행](docs/development/ai-reservation-recovery-work-runs.md)
-- 검증 기준: `1b7fbdd`의 전체 CI 이후 상세 충돌 안내와 정책 질문·기본 연령 비교를 확대했다. `5675733`의 햇살론유스 규칙·PostgreSQL 정책 API·서버 패키징과 실제 화면을 확인했다. API 구조·생성 타입·웹 코드는 `676fe5d` 검증 이후 같아 해당 웹 검사를 재사용한다. 이후 변경은 문서뿐이며 DB V20·실제 정책 데이터는 유지했다.
+- 검증 기준: `1b7fbdd`의 전체 CI 이후 상세 충돌 안내와 정책 질문·기본 연령 비교를 확대했다. `5675733`의 햇살론유스 규칙·PostgreSQL 정책 API·서버 패키징 검증은 [햇살론유스 질문](docs/development/haetsalron-youth-questions.md#검증)에 있다. 최신 웹 검증은 `d4405c9`의 화면 개선에 적용했다. API 구조·생성 타입·서버 코드·DB V20·실제 정책 데이터는 이번 화면 작업에서 변경하지 않았다.
 - 검증 도구의 성공·실패·실행 중 변경 시나리오와 기존 도구 검사를 통과했다. 컴파일·패키징 명령의 Gradle 실행 계획에 테스트 실행이 없음을 확인했다. `npm run verify -- status`에서 실행 기록을 확인한다. 검증 도구를 정리할 당시에는 앱 기능을 변경하지 않아 전체 앱 테스트를 재실행하지 않았다.
 
 ## 남은 작업

@@ -1,10 +1,10 @@
 # 화면 문구 정리
 
-2026-09-11 기준. 문구 변경은 `bb501c3`, 기존 연도 경계 테스트 보완은 `c4a6824`에 반영했다. 표현 기준은 [PRD 3.4](../PRD/0001_product-baseline/spec.md#34-화면-문구)를 따른다.
+2026-09-12, 코드 `73a41c3` 기준. 표현 기준은 [PRD 3.4](../PRD/0001_product-baseline/spec.md#34-화면-문구)를 따른다.
 
 ## 적용 범위
 
-홈·정책 목록과 상세·기본 조건·정책별 질문·로그인·내 정책·이메일·관리자 수집 예외 화면을 점검했다. 추상적인 안내, 긴 선택지, 중복된 심사 설명을 줄였다. 공개 화면에서 사용하는 서버의 질문·결과·접수 상태 설명도 함께 수정했다. 개발 전용 예시 화면과 수집한 정책 원문은 유지했다.
+홈·정책 목록과 상세·기본 조건·정책별 질문·로그인·내 정책·이메일·관리자 화면을 점검했다. 추상적인 안내, 긴 선택지, 중복된 심사 설명을 줄였다. 공개 화면에서 사용하는 서버의 질문·결과·접수 상태 설명도 함께 수정했다. 개발 전용 예시 화면과 수집한 정책 원문은 유지했다.
 
 | 이전 표현 | 현재 표현 |
 |---|---|
@@ -19,39 +19,40 @@
 | 원천 수정 일시 | 온통청년 수정일 |
 | 응답 확보 실패 / 발송 시작 | 페이지 수집 실패 / 요청 전송 |
 | 사유를 기록하고 재처리 | 재처리 |
+| 수집 예외 / 항목 처리 / 페이지 수집 | 수집 오류·보정 / 항목 오류 / 페이지 오류 |
+| 이전 개정 비교 | 이전 버전 비교 |
+| 같은 요청으로 결과를 다시 확인해주세요 | 아래 ‘재처리 결과 다시 확인’을 눌러주세요 |
+| 로그인이 만료됐어요 | 로그인이 필요해요 |
+| 이 공고 기준으로 확인할 비용은 무엇인가요? | 지원받으려는 비용은 무엇인가요? |
 
 - 기본 조건은 현재 연령만 자동 비교한다는 점을 홈·입력·결과에 명시했다. 거주·취업·소득과 최종 신청 자격은 추가 확인으로 유지한다.
 - 결과 상단의 공통 심사 안내와 정책별 설명이 반복되지 않도록 공통 문장을 제거했다. 정책별 비교 범위와 최종 자격·남은 확인 사항은 유지한다.
 - 이메일 수신 해제 시 취소 대상이 대기 중인 이메일임을 명시했다. 서비스 내 알림 유지와 발송 중 이메일의 취소 제한은 그대로 안내한다.
+- 오류는 확인된 상태와 다음 행동만 안내한다. 인증되지 않은 요청을 로그인 만료로 단정하거나, 이용 불가 상태를 기능 준비 중으로 설명하지 않는다. 처리 결과가 불명확하면 실제 화면의 재확인 버튼을 안내한다.
+- 이사비·국가근로장학금·청년내일저축계좌 도움말에 확인할 비용·증빙·기관을 명시했다. 중복지원 제한과 소득·성적 기준의 의미는 유지했다.
 - 질문 ID·답변 값·판정 기준·API 구조·DB는 변경하지 않았다. 공식 용어, 금액·날짜·예외·출처는 유지했다. 질문 문구만 바뀌었으므로 규칙 버전도 유지한다.
 
 ## 검증
 
-기준 리비전은 `bb501c3`이다. 아래 검증 이후 앱 코드는 변경하지 않았으며 문서·커밋만으로 검사를 반복하지 않았다.
+기준 리비전은 `73a41c3`이다. 아래 검증 이후 앱 코드는 변경하지 않았으며 문서·커밋만으로 검사를 반복하지 않았다.
 
 | 범위 | 명령과 결과 |
 |---|---|
-| 웹 | `npm run verify -- test:web`에서 정책 목록의 이전 문구를 검사하는 1건이 실패했다. 기대 문구 수정 후 `npm run verify -- test:web -- src/app/policies/page.test.tsx` 통과. 나머지 테스트의 성공 결과를 재사용했다. |
-| 결과·관리자 후속 문구 | `npm run verify -- test:web -- src/features/eligibility/policy-questionnaire.test.tsx`, `npm run verify -- test:web -- src/features/admin/collection-exception-pages.test.tsx` 통과. |
-| 정책 질문·접수 상태 | `npm run verify -- test:policy-questions -- --tests 'kr.youthpolicymate.policy.Recruitment*Test'`에서 기존 `BasicConditionRulesTest`의 고정 정책 수 5개만 실패했다. 연도 경계 확인 목적에 맞게 만료 전 결과 존재·만료 후 빈 결과를 검사하도록 보완했다. |
-| 실패 범위·API | 아래 Gradle 명령으로 실패 클래스와 문구가 바뀐 API 검증을 실행했다. 첫 실행에서 청약통장 API의 이전 문구 기대값 1개가 남아 있어 수정했고, 해당 메서드와 `PolicyRecruitmentTest`만 재실행해 통과했다. |
-| 로컬 반영 | `npm run verify -- package:backend` 통과. 자동 수집·알림·이메일을 끈 로컬 서버에 반영했다. 웹은 기존 개발 서버의 자동 반영을 사용했다. |
+| 웹 | `npm run verify -- test:web` 전체 통과. 기존 관리자 렌더링 검증을 포함한다. 로그: `.local/verification/1789163088622-89b0d852.log`. |
+| 정책 질문 | 아래 명령으로 문구가 바뀐 세 정책의 기존 규칙 검사와 서버 패키징 통과. 로그: `/tmp/youth-copy2-backend-test.log`. |
+| 로컬 반영 | `npm run dev:web`와 새 서버 패키지를 실행했다. 서버는 `local` 프로필에서 자동 수집·알림·이메일을 껐다. 로그: `/tmp/youth-copy2-web.log`, `/tmp/youth-copy2-backend.log`. |
 
 ```sh
-# 기존 npm 스크립트의 전체 RulesTest 선택을 피하고 실패 범위만 재실행했다.
 ./backend/gradlew -p backend test \
-  --tests 'kr.youthpolicymate.policy.catalog.BasicConditionRulesTest' \
-  --tests 'kr.youthpolicymate.policy.catalog.PolicyCatalogTest.comparesHousingAgeInBasicConditions' \
-  --tests 'kr.youthpolicymate.policy.catalog.PolicyCatalogTest.providesReviewedHaetsalronYouthQuestionsAndAge' --no-daemon
-
-./backend/gradlew -p backend test \
-  --tests 'kr.youthpolicymate.policy.catalog.PolicyCatalogTest.comparesHousingAgeInBasicConditions' \
-  --tests 'kr.youthpolicymate.policy.catalog.PolicyRecruitmentTest' --no-daemon
+  --tests 'kr.youthpolicymate.policy.catalog.MovingFeeRulesTest' \
+  --tests 'kr.youthpolicymate.policy.catalog.WorkStudyRulesTest' \
+  --tests 'kr.youthpolicymate.policy.catalog.YouthTomorrowSavingsRulesTest' \
+  bootJar --no-daemon
 ```
 
-두 명령의 `JAVA_HOME`은 `/Users/lim/.gradle/jdks/eclipse_adoptium-25-aarch64-os_x.2/jdk-25.0.3+9/Contents/Home`이다. 두 번째 실행만으로 전체 서버 검증을 통과했다고 보지 않는다.
+`JAVA_HOME`은 `/Users/lim/.gradle/jdks/eclipse_adoptium-25-aarch64-os_x.2/jdk-25.0.3+9/Contents/Home`이다. 기존 npm 스크립트는 전체 `RulesTest`를 선택하므로 이번 변경 범위를 직접 지정했다.
 
-- npm 실행 기록: `.local/verification/1789135941413-3e1122c6.log`(웹 최초), `1789136050147-58483e9d.log`(목록), `1789136304354-b76d9d28.log`(결과), `1789136407070-5fce1804.log`(관리자), `1789135961152-9ff28486.log`(규칙 최초), `1789136148747-f03ee795.log`(패키징).
-- Gradle 재실행 로그: `/tmp/youth-copy-backend-retry.log`, `/tmp/youth-copy-backend-final.log`. 첫 실행에서 통과한 BasicConditionRulesTest·햇살론유스 API 결과는 재사용했다.
-- 브라우저: 홈·목록·조건·로그인·내 정책·관리자 접근 안내를 390px·1280px에서 확인했다. 미래이음 대출 질문·결과·답변 삭제와 기본 조건 입력·연령 비교를 확인했다. K-패스·응시료·청약통장·햇살론유스 질문도 모바일에서 문구 표시와 가로 넘침을 확인했다. 기록과 화면은 `/tmp/youth-copy-ui/`에 있다.
-- 실제 회원·관리자 로그인 후 화면과 이메일 외부 전달은 이번 브라우저 검증에 포함하지 않았다. 관리자 화면은 기존 렌더링 테스트로 확인했다. 문구만 변경해 전체 서버 검사·웹 빌드·원격 CI는 재실행하지 않았다.
+- 브라우저: 홈·로그인·관리자 접근 안내를 390px·1280px에서, 이사비·국가근로장학금·저축계좌 질문을 390px에서 확인했다. 이사비의 서울시 지원 이력 답변에 따른 제한 설명과 최종 자격의 추가 확인 상태도 확인했다. 가로 넘침은 없었다. 기록과 화면: `/tmp/youth-copy2-ui/pages.log`, 같은 디렉터리의 PNG.
+- 시험 응답으로 이메일 이용 불가·회원 요청의 로그인 필요(401)·요청 실패(503) 문구를 확인했다. 도구 실행 환경에 `URL`이 없어 경로 추출을 문자열 방식으로 바꾼 뒤 통과했다. 최종 로그: `/tmp/youth-copy2-ui/failure-states-final.log`.
+- 변경 없는 다른 정책·접수 상태·API는 `bb501c3`에서 확인한 범위를 재사용했다. 관련 기록: `.local/verification/1789135961152-9ff28486.log`, `/tmp/youth-copy-backend-retry.log`, `/tmp/youth-copy-backend-final.log`. 기존 연도 경계 테스트 보완은 `c4a6824`에 있다.
+- 실제 회원·관리자 제공자 로그인과 이메일 외부 전달은 미검증이다. 문구만 변경해 전체 서버 검사·웹 빌드·원격 CI는 재실행하지 않았다.

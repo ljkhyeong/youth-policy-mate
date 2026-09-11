@@ -91,3 +91,11 @@ tasks.register('exportPreviewOpenApi', Test) {
     systemProperty 'preview.contract.update', 'true'
     outputs.upToDateWhen { false }
 }
+
+tasks.register('managePolicyRules', JavaExec) {
+    description = '공고 규칙 초안·적용 버전·재검토 상태를 관리한다.'
+    group = 'application'
+    classpath = sourceSets.main.runtimeClasspath
+    mainClass = 'kr.youthpolicymate.policy.catalog.PolicyRuleCommand'
+    workingDir = rootProject.file('..')
+}

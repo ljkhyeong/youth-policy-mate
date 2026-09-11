@@ -47,7 +47,7 @@ class WorkStudyRulesTest {
         assertThat(result.commonCriteriaStatus()).isEqualTo(NEEDS_REVIEW);
         assertThat(result.checks().get(2).outcome()).isEqualTo(UNKNOWN);
         assertThat(result.checks().get(3).outcome()).isEqualTo(UNKNOWN);
-        var empty = WorkStudyRules.evaluate(2, new Request(2, WorkStudyRules.VERSION, List.of()), NOW);
+        var empty = PolicyRuleFixtures.work().evaluate(2, new Request(2, WorkStudyRules.VERSION, List.of()), NOW);
         assertThat(empty.checks()).extracting(Check::outcome).containsOnly(UNKNOWN);
     }
 
@@ -63,13 +63,13 @@ class WorkStudyRulesTest {
     void rejectsInvalidAnswers() {
         for (var answers : List.of(List.of(new Answer("salary", "5000000")), List.of(new Answer("income", "salary")),
                 List.of(new Answer("income", "UP_TO_9"), new Answer("income", "ABOVE_9")))) {
-            assertThatThrownBy(() -> WorkStudyRules.evaluate(2, new Request(2, WorkStudyRules.VERSION, answers), NOW))
+            assertThatThrownBy(() -> PolicyRuleFixtures.work().evaluate(2, new Request(2, WorkStudyRules.VERSION, answers), NOW))
                     .isInstanceOf(IllegalArgumentException.class);
         }
     }
 
     private Evaluation evaluate(String nationality, String grade, String gradeException, String income, String incomeException) {
-        return WorkStudyRules.evaluate(2, new Request(2, WorkStudyRules.VERSION, List.of(new Answer("nationality", nationality),
+        return PolicyRuleFixtures.work().evaluate(2, new Request(2, WorkStudyRules.VERSION, List.of(new Answer("nationality", nationality),
                 new Answer("enrollment", "YES"), new Answer("grade", grade), new Answer("gradeException", gradeException),
                 new Answer("income", income), new Answer("incomeException", incomeException))), NOW);
     }

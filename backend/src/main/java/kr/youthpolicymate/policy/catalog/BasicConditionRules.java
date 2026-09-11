@@ -11,8 +11,6 @@ final class BasicConditionRules {
     static Map<String, Comparison> compare(BasicConditions input, Instant now) {
         var comparisons = new LinkedHashMap<String, Comparison>();
         var birth = input.birthDate();
-        if (ExamFeeRules.appliesAt(now)) comparisons.put(ExamFeeRules.NUMBER,
-                new Comparison(ExamFeeRules.CONTENT_HASH, ExamFeeRules.VERSION, ExamFeeRules.SOURCE, ExamFeeRules.ageCheck(birth), ""));
         if (KPassRules.appliesAt(now)) comparisons.put(KPassRules.NUMBER,
                 new Comparison(KPassRules.CONTENT_HASH, KPassRules.versionAt(now), KPassRules.SOURCE, KPassRules.ageCheck(birth, now), ""));
         if (SeoulYouthNetworkRules.appliesAt(now)) comparisons.put(SeoulYouthNetworkRules.NUMBER,

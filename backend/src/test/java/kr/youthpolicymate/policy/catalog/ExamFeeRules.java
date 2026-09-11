@@ -9,7 +9,7 @@ import java.util.Optional;
 import static kr.youthpolicymate.eligibility.ConditionAssessment.Outcome.*;
 import static kr.youthpolicymate.policy.catalog.PolicyQuestions.*;
 
-/** 공식 2026년 안내의 지원 공통요건을 비교한다. 시험 응시자격과 실시간 예산은 별도 확인한다. */
+/** 이전 결과 비교용 고정 자료. 공식 2026년 안내의 지원 공통요건을 비교한다. 시험 응시자격과 실시간 예산은 별도 확인한다. */
 public final class ExamFeeRules {
     public static final String NUMBER = "20260527005400113224";
     public static final String CONTENT_HASH = "7d7880c52f4f696225afd12d0871c41bf155ab568dd7b72f3d34b7f76b800d56";

@@ -368,6 +368,23 @@ export interface paths {
         readonly patch?: never;
         readonly trace?: never;
     };
+    readonly "/api/v1/policies/{number}/question-prefill": {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header?: never;
+            readonly path?: never;
+            readonly cookie?: never;
+        };
+        readonly get?: never;
+        readonly put?: never;
+        /** 확인한 생년월일을 현재 공고의 출생일 답변으로 변환. 저장하지 않음 */
+        readonly post: operations["prefillPolicyAnswers"];
+        readonly delete?: never;
+        readonly options?: never;
+        readonly head?: never;
+        readonly patch?: never;
+        readonly trace?: never;
+    };
     readonly "/api/v1/policies/{number}/questions": {
         readonly parameters: {
             readonly query?: never;
@@ -803,6 +820,16 @@ export interface components {
         readonly PolicyOfficialLink: {
             readonly label: string;
             readonly url: string;
+        };
+        readonly PolicyPrefill: {
+            readonly answers: readonly components["schemas"]["PolicyAnswer"][];
+        };
+        readonly PolicyPrefillRequest: {
+            /** Format: date */
+            readonly birthDate: string;
+            /** Format: int64 */
+            readonly revision: number;
+            readonly ruleVersion: string;
         };
         readonly PolicyQuestion: {
             readonly help: string;
@@ -2262,6 +2289,68 @@ export interface operations {
                 };
             };
             /** @description 질문·답변 형식 오류 */
+            readonly 400: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "*/*": components["schemas"]["PolicyApiError"];
+                };
+            };
+            /** @description 정책 없음 */
+            readonly 404: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "*/*": components["schemas"]["PolicyApiError"];
+                };
+            };
+            /** @description 정책 개정 또는 질문 변경 */
+            readonly 409: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "*/*": components["schemas"]["PolicyApiError"];
+                };
+            };
+            /** @description 정책 저장소 조회 실패 */
+            readonly 503: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "*/*": components["schemas"]["PolicyApiError"];
+                };
+            };
+        };
+    };
+    readonly prefillPolicyAnswers: {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header?: never;
+            readonly path: {
+                readonly number: string;
+            };
+            readonly cookie?: never;
+        };
+        readonly requestBody: {
+            readonly content: {
+                readonly "application/json": components["schemas"]["PolicyPrefillRequest"];
+            };
+        };
+        readonly responses: {
+            /** @description OK */
+            readonly 200: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "*/*": components["schemas"]["PolicyPrefill"];
+                };
+            };
+            /** @description 생년월일 형식 오류 */
             readonly 400: {
                 headers: {
                     readonly [name: string]: unknown;

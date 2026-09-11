@@ -42,6 +42,13 @@ public final class PolicyQuestions {
                           @NotNull @Size(max = 20) List<@Valid Answer> answers) {
         @Override public String toString() { return "PolicyEvaluationRequest[답변 내용 제외]"; }
     }
+    @Schema(name = "PolicyPrefillRequest", requiredProperties = {"revision", "ruleVersion", "birthDate"})
+    public record PrefillRequest(@Positive long revision, @NotBlank @Size(max = 80) String ruleVersion,
+                                 @NotNull java.time.LocalDate birthDate) {
+        @Override public String toString() { return "PolicyPrefillRequest[생년월일 제외]"; }
+    }
+    @Schema(name = "PolicyPrefill", requiredProperties = {"answers"})
+    public record Prefill(List<Answer> answers) {}
     @Schema(name = "PolicyEvaluation", requiredProperties = {"policyNumber", "revision", "ruleVersion", "status", "commonCriteriaStatus", "scope", "explanation", "remainingChecks", "sourceUrl", "evaluatedAt", "checks"})
     public record Evaluation(String policyNumber, long revision, String ruleVersion, EligibilityStatus status,
                              EligibilityStatus commonCriteriaStatus, String scope, String explanation, List<String> remainingChecks,

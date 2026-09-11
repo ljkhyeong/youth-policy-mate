@@ -1715,6 +1715,83 @@
         "tags" : [ "policy-question-controller" ]
       }
     },
+    "/api/v1/policies/{number}/question-prefill" : {
+      "post" : {
+        "operationId" : "prefillPolicyAnswers",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "number",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/PolicyPrefillRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PolicyPrefill"
+                }
+              }
+            },
+            "description" : "OK"
+          },
+          "400" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PolicyApiError"
+                }
+              }
+            },
+            "description" : "생년월일 형식 오류"
+          },
+          "404" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PolicyApiError"
+                }
+              }
+            },
+            "description" : "정책 없음"
+          },
+          "409" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PolicyApiError"
+                }
+              }
+            },
+            "description" : "정책 개정 또는 질문 변경"
+          },
+          "503" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PolicyApiError"
+                }
+              }
+            },
+            "description" : "정책 저장소 조회 실패"
+          }
+        },
+        "summary" : "확인한 생년월일을 현재 공고의 출생일 답변으로 변환. 저장하지 않음",
+        "tags" : [ "policy-question-controller" ]
+      }
+    },
     "/api/v1/policies/{number}/questions" : {
       "get" : {
         "operationId" : "getPolicyQuestions",
@@ -2821,6 +2898,38 @@
           }
         },
         "required" : [ "label", "url" ]
+      },
+      "PolicyPrefill" : {
+        "type" : "object",
+        "properties" : {
+          "answers" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/PolicyAnswer"
+            }
+          }
+        },
+        "required" : [ "answers" ]
+      },
+      "PolicyPrefillRequest" : {
+        "type" : "object",
+        "properties" : {
+          "birthDate" : {
+            "type" : "string",
+            "format" : "date"
+          },
+          "revision" : {
+            "type" : "integer",
+            "format" : "int64",
+            "minimum" : 0
+          },
+          "ruleVersion" : {
+            "type" : "string",
+            "maxLength" : 80,
+            "minLength" : 0
+          }
+        },
+        "required" : [ "birthDate", "revision", "ruleVersion" ]
       },
       "PolicyQuestion" : {
         "type" : "object",

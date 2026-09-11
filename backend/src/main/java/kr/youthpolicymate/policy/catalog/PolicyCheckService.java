@@ -27,7 +27,7 @@ public class PolicyCheckService {
     public PolicyCheckResponse check(BasicConditions input, int page, String query, PolicyCheckResponse.Sort sort, RecruitmentStatus recruitmentStatus) {
         var now = clock.instant();
         input.validate(LocalDate.ofInstant(now, ZoneId.of("Asia/Seoul")));
-        var policies = store.listForCheck(PageRequest.of(page - 1, 20), query, sort, BasicConditionRules.compare(input, now), recruitmentStatus, now);
+        var policies = store.listForCheck(PageRequest.of(page - 1, 20), query, sort, input, recruitmentStatus, now);
         var items = new ArrayList<PolicyCheckResponse.Item>();
         for (var source : policies) {
             var policy = source.policy();

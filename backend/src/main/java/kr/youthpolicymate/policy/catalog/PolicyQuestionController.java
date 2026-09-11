@@ -30,5 +30,13 @@ public class PolicyQuestionController {
     public ResponseEntity<PolicyQuestions.Evaluation> evaluate(@PathVariable String number, @RequestBody @Valid PolicyQuestions.Request input) {
         return privateResponse(service.evaluate(number, input));
     }
+    @PostMapping(value = "/question-prefill", consumes = "application/json")
+    @Operation(operationId = "prefillPolicyAnswers", summary = "확인한 생년월일을 현재 공고의 출생일 답변으로 변환. 저장하지 않음")
+    @ApiResponse(responseCode = "200", content = @Content(schema = @Schema(implementation = PolicyQuestions.Prefill.class)))
+    @ApiResponse(responseCode = "400", description = "생년월일 형식 오류", content = @Content(schema = @Schema(implementation = PolicyApiError.class)))
+    @ApiResponse(responseCode = "409", description = "정책 개정 또는 질문 변경", content = @Content(schema = @Schema(implementation = PolicyApiError.class)))
+    public ResponseEntity<PolicyQuestions.Prefill> prefill(@PathVariable String number, @RequestBody @Valid PolicyQuestions.PrefillRequest input) {
+        return privateResponse(service.prefill(number, input));
+    }
     private <T> ResponseEntity<T> privateResponse(T body) { return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(body); }
 }

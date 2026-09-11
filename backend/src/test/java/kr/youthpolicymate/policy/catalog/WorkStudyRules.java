@@ -9,7 +9,7 @@ import java.util.Optional;
 import static kr.youthpolicymate.eligibility.ConditionAssessment.Outcome.*;
 import static kr.youthpolicymate.policy.catalog.PolicyQuestions.*;
 
-/** 2026 국가근로장학금의 검토한 공통요건만 비교한다. 대학의 개별 심사를 대신하지 않는다. */
+/** 이전 결과 비교용 고정 자료. 2026 국가근로장학금의 검토한 공통요건만 비교한다. 대학의 개별 심사를 대신하지 않는다. */
 public final class WorkStudyRules {
     public static final String NUMBER = "20260821005400113348";
     public static final String CONTENT_HASH = "a1523aaa7fc8ac8097c70cf4830048c9c6f8430464864823206778f7c82c5e5d";

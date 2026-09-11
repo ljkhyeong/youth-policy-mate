@@ -40,26 +40,26 @@ class ExamFeeRulesTest {
         assertThat(restoring.checks().get(2).outcome()).isEqualTo(UNKNOWN);
         assertThat(restoring.checks().get(2).explanation()).contains("복구됐는지 확인");
         assertThat(evaluate("UNKNOWN", "UNKNOWN", "UNKNOWN").checks()).extracting(Check::outcome).containsOnly(UNKNOWN);
-        assertThat(ExamFeeRules.evaluate(1, new Request(1, ExamFeeRules.VERSION, List.of()), NOW).checks()).extracting(Check::outcome).containsOnly(UNKNOWN);
+        assertThat(PolicyRuleFixtures.exam().evaluate(1, new Request(1, ExamFeeRules.VERSION, List.of()), NOW).checks()).extracting(Check::outcome).containsOnly(UNKNOWN);
     }
     @Test @DisplayName("검토한 연도는 서울 자정으로 구분하며 다음 해에 출생일과 연간 한도를 재사용하지 않는다")
     void boundsReviewedYearInSeoul() {
-        assertThat(ExamFeeRules.appliesAt(Instant.parse("2025-12-31T14:59:59Z"))).isFalse();
-        assertThat(ExamFeeRules.appliesAt(Instant.parse("2025-12-31T15:00:00Z"))).isTrue();
-        assertThat(ExamFeeRules.appliesAt(Instant.parse("2026-12-31T14:59:59Z"))).isTrue();
-        assertThat(ExamFeeRules.appliesAt(Instant.parse("2026-12-31T15:00:00Z"))).isFalse();
-        assertThatThrownBy(() -> ExamFeeRules.evaluate(1, new Request(1, ExamFeeRules.VERSION, List.of()), Instant.parse("2026-12-31T15:00:00Z")))
+        assertThat(PolicyRuleFixtures.exam().appliesAt(Instant.parse("2025-12-31T14:59:59Z"))).isFalse();
+        assertThat(PolicyRuleFixtures.exam().appliesAt(Instant.parse("2025-12-31T15:00:00Z"))).isTrue();
+        assertThat(PolicyRuleFixtures.exam().appliesAt(Instant.parse("2026-12-31T14:59:59Z"))).isTrue();
+        assertThat(PolicyRuleFixtures.exam().appliesAt(Instant.parse("2026-12-31T15:00:00Z"))).isFalse();
+        assertThatThrownBy(() -> PolicyRuleFixtures.exam().evaluate(1, new Request(1, ExamFeeRules.VERSION, List.of()), Instant.parse("2026-12-31T15:00:00Z")))
                 .isInstanceOf(IllegalArgumentException.class);
     }
     @Test @DisplayName("다른 정책의 질문·임의의 횟수·같은 질문의 중복 답변은 거절한다")
     void rejectsUnsupportedAndDuplicateAnswers() {
         for (var answers : List.of(List.of(new Answer("income", "UP_TO_9")), List.of(new Answer("remainingUses", "FOUR")),
                 List.of(new Answer("remainingUses", "ONE"), new Answer("remainingUses", "ZERO")))) {
-            assertThatThrownBy(() -> ExamFeeRules.evaluate(1, new Request(1, ExamFeeRules.VERSION, answers), NOW)).isInstanceOf(IllegalArgumentException.class);
+            assertThatThrownBy(() -> PolicyRuleFixtures.exam().evaluate(1, new Request(1, ExamFeeRules.VERSION, answers), NOW)).isInstanceOf(IllegalArgumentException.class);
         }
     }
     private Evaluation evaluate(String birth, String exam, String remaining) {
-        return ExamFeeRules.evaluate(1, new Request(1, ExamFeeRules.VERSION,
+        return PolicyRuleFixtures.exam().evaluate(1, new Request(1, ExamFeeRules.VERSION,
                 List.of(new Answer("birthRange", birth), new Answer("exam", exam), new Answer("remainingUses", remaining))), NOW);
     }
 }

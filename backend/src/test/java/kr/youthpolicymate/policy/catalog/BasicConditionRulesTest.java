@@ -12,8 +12,8 @@ class BasicConditionRulesTest {
 
     @Test @DisplayName("출생연도 기준·공고일 기준·현재 만 나이를 구분하고 양 끝 날짜를 포함한다")
     void usesEachPolicyReferenceDate() {
-        assertThat(ExamFeeRules.ageCheck(LocalDate.parse("1991-01-01")).outcome()).isEqualTo(MET);
-        assertThat(ExamFeeRules.ageCheck(LocalDate.parse("1990-12-31")).outcome()).isEqualTo(NOT_MET);
+        assertThat(PolicyRuleFixtures.exam().compareBirth(LocalDate.parse("1991-01-01")).age().outcome()).isEqualTo(MET);
+        assertThat(PolicyRuleFixtures.exam().compareBirth(LocalDate.parse("1990-12-31")).age().outcome()).isEqualTo(NOT_MET);
         assertThat(KPassRules.ageCheck(LocalDate.parse("2007-09-06"), NOW).outcome()).isEqualTo(MET);
         assertThat(KPassRules.ageCheck(LocalDate.parse("2007-09-07"), NOW).outcome()).isEqualTo(NOT_MET);
         assertThat(KPassRules.ageCheck(LocalDate.parse("1980-01-01"), NOW).outcome()).isEqualTo(MET);

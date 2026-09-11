@@ -31,6 +31,7 @@ public class PolicyCatalogStore {
     private final ObjectMapper mapper;
     private final java.time.Clock clock;
     private final PolicyCorrectionStore corrections;
+    private final PolicyRuleStore rules;
     private static final String SOURCE_JOIN = """
             LEFT JOIN policy_revisions r ON r.policy_number = p.policy_number AND r.revision = p.current_revision
             LEFT JOIN policy_source_snapshots s ON s.id = r.source_snapshot_id
@@ -43,14 +44,19 @@ public class PolicyCatalogStore {
                 'srngMthdCn', s.raw_policy->'srngMthdCn', 'plcyExplnCn', s.raw_policy->'plcyExplnCn') AS raw_policy
             """;
 
-    public PolicyCatalogStore(JdbcClient jdbc, ObjectMapper mapper, java.time.Clock clock, PolicyCorrectionStore corrections) {
-        this.jdbc = jdbc; this.mapper = mapper; this.clock = clock; this.corrections = corrections;
+    public PolicyCatalogStore(JdbcClient jdbc, ObjectMapper mapper, java.time.Clock clock, PolicyCorrectionStore corrections, PolicyRuleStore rules) {
+        this.jdbc = jdbc; this.mapper = mapper; this.clock = clock; this.corrections = corrections; this.rules = rules;
     }
 
     Optional<QuestionVersion> questionVersion(String number) {
-        return jdbc.sql("SELECT current_revision, content_hash FROM policies WHERE policy_number = :number AND current_revision > 0")
+        return jdbc.sql("""
+                SELECT p.current_revision, p.content_hash, v.definition::text FROM policies p
+                LEFT JOIN policy_rule_heads h ON h.policy_number = p.policy_number
+                LEFT JOIN policy_rule_versions v ON v.id = h.version_id
+                WHERE p.policy_number = :number AND p.current_revision > 0
+                """)
                 .param("number", number).query((rs, row) -> new QuestionVersion(rs.getLong("current_revision"),
-                        rs.getString("content_hash"))).optional();
+                        rs.getString("content_hash"), rs.getString("definition") == null ? null : mapper.readValue(rs.getString("definition"), PolicyRuleDefinition.class))).optional();
     }
 
     @Transactional
@@ -142,7 +148,7 @@ public class PolicyCatalogStore {
 
     @Transactional(readOnly = true, isolation = org.springframework.transaction.annotation.Isolation.REPEATABLE_READ)
     public PolicyListResponse list(String query, int page, int pageSize, boolean questionsOnly, RecruitmentStatus recruitmentStatus, Instant now) {
-        var reviewed = ReviewedPolicyQuestions.contentHashesAt(now);
+        var reviewed = reviewedHashes(rules.published(), now);
         var parameters = new HashMap<String, Object>();
         parameters.put("query", query);
         // strpos는 검색어의 %·_를 패턴으로 해석하지 않고 바인딩한 문자열 그대로 검색한다.
@@ -180,6 +186,15 @@ public class PolicyCatalogStore {
         return new PolicyListResponse(items, page, pageSize, total, (long) page * pageSize < total);
     }
 
+    private Map<String, String> reviewedHashes(java.util.List<PolicyRuleDefinition> definitions, Instant now) {
+        var reviewed = ReviewedPolicyQuestions.contentHashesAt(now);
+        for (var definition : definitions) {
+            reviewed.remove(definition.policyNumber());
+            if (definition.appliesAt(now)) reviewed.put(definition.policyNumber(), definition.contentHash());
+        }
+        return reviewed;
+    }
+
     private static String recruitmentFilter(RecruitmentStatus status, Instant now, Map<String, Object> parameters) {
         if (status == null) return "";
         parameters.put("recruitmentNow", now.atOffset(ZoneOffset.UTC));
@@ -203,8 +218,17 @@ public class PolicyCatalogStore {
 
     @Transactional(readOnly = true, isolation = org.springframework.transaction.annotation.Isolation.REPEATABLE_READ)
     public Page<CheckSource> listForCheck(PageRequest page, String query, PolicyCheckResponse.Sort sort,
-                                         Map<String, BasicConditionRules.Comparison> comparisons, RecruitmentStatus recruitmentStatus, Instant now) {
-        var reviewed = ReviewedPolicyQuestions.contentHashesAt(now);
+                                         BasicConditions input, RecruitmentStatus recruitmentStatus, Instant now) {
+        var definitions = rules.published();
+        var reviewed = reviewedHashes(definitions, now);
+        var comparisons = BasicConditionRules.compare(input, now);
+        for (var definition : definitions) {
+            comparisons.remove(definition.policyNumber());
+            if (definition.appliesAt(now)) {
+                var comparison = definition.compareBirth(input.birthDate());
+                if (comparison != null) comparisons.put(definition.policyNumber(), comparison);
+            }
+        }
         var parameters = new HashMap<String, Object>();
         parameters.put("query", query);
         var where = " WHERE p.current_revision > 0 AND (:query = '' OR strpos(lower((p.content->>'title') || ' ' || (p.content->>'description')), lower(:query)) > 0)";
@@ -269,6 +293,6 @@ public class PolicyCatalogStore {
 
     public enum ImportResult { APPLIED, UNCHANGED, REPLAYED, STALE, CORRECTION_CONFLICT }
     record CheckSource(PolicyDetailResponse policy, JsonNode raw, boolean questionnaireAvailable, BasicConditionRules.Comparison comparison) {}
-    record QuestionVersion(long revision, String contentHash) {}
+    record QuestionVersion(long revision, String contentHash, PolicyRuleDefinition definition) {}
     private record Current(long revision, String hash, OffsetDateTime collectedAt, long requestSequence) {}
 }

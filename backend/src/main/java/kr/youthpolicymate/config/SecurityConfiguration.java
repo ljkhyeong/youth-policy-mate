@@ -25,7 +25,7 @@ class SecurityConfiguration {
             ObjectProvider<InMemoryClientRegistrationRepository> registrations, ObjectProvider<SocialMemberService> social,
             ObjectProvider<OAuth2AuthorizedClientService> authorizedClients) throws Exception {
         http
-                .csrf(csrf -> csrf.ignoringRequestMatchers("/api/v1/policies/checks", "/api/v1/policies/*/evaluation"))
+                .csrf(csrf -> csrf.ignoringRequestMatchers("/api/v1/policies/checks", "/api/v1/policies/*/evaluation", "/api/v1/policies/*/question-prefill"))
                 .requestCache(cache -> cache.disable())
                 .exceptionHandling(errors -> errors
                         .authenticationEntryPoint((request, response, exception) -> {
@@ -42,7 +42,7 @@ class SecurityConfiguration {
                         .requestMatchers(HttpMethod.GET, "/actuator/health").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/session", "/oauth2/authorization/*", "/login/oauth2/code/*").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/policies", "/api/v1/policies/*", "/api/v1/policies/*/questions").permitAll()
-                        .requestMatchers(HttpMethod.POST, "/api/v1/policies/checks", "/api/v1/policies/*/evaluation").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/v1/policies/checks", "/api/v1/policies/*/evaluation", "/api/v1/policies/*/question-prefill").permitAll()
                         .requestMatchers("/api/v1/me/**").hasRole("MEMBER")
                         .requestMatchers(HttpMethod.POST, "/api/v1/admin/collection-exceptions/*/*/replays",
                                 "/api/v1/admin/policy-corrections", "/api/v1/admin/policy-corrections/*/resolutions")

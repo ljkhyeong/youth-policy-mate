@@ -19,13 +19,14 @@ public class PolicyQuestionService {
         return questionsAt(number, clock.instant());
     }
     private PolicyQuestions.Questionnaire questionsAt(String number, Instant now) {
-        var policy = store.questionVersion(number).orElseThrow(PolicyNotFoundException::new);
+        return questionsAt(number, store.questionVersion(number).orElseThrow(PolicyNotFoundException::new), now);
+    }
+    private PolicyQuestions.Questionnaire questionsAt(String number, PolicyCatalogStore.QuestionVersion policy, Instant now) {
+        if (policy.definition() != null) return policy.definition().questionnaire(policy.revision(), policy.contentHash(), now);
         var hash = policy.contentHash();
         var reviewedHash = ReviewedPolicyQuestions.contentHashesAt(now).get(number);
         if (reviewedHash != null && reviewedHash.equals(hash)) {
             return switch (number) {
-                case WorkStudyRules.NUMBER -> WorkStudyRules.questionnaire(policy.revision());
-                case ExamFeeRules.NUMBER -> ExamFeeRules.questionnaire(policy.revision());
                 case KPassRules.NUMBER -> KPassRules.questionnaire(policy.revision(), now);
                 case YouthHousingSavingsRules.NUMBER -> YouthHousingSavingsRules.questionnaire(policy.revision());
                 case SeoulYouthNetworkRules.NUMBER -> SeoulYouthNetworkRules.questionnaire(policy.revision(), now);
@@ -37,10 +38,6 @@ public class PolicyQuestionService {
                 case FutureYouthJobsRules.NUMBER -> FutureYouthJobsRules.questionnaire(policy.revision(), now);
                 default -> throw new IllegalStateException("등록한 정책의 질문 구현이 필요합니다.");
             };
-        }
-        if (ExamFeeRules.NUMBER.equals(number) && ExamFeeRules.CONTENT_HASH.equals(hash)) {
-            return new PolicyQuestions.Questionnaire(number, policy.revision(), "", false, ExamFeeRules.SCOPE,
-                    "올해 지원 기준의 질문은 아직 제공하지 않아요. 공식 안내를 확인해주세요.", ExamFeeRules.SOURCE, List.of());
         }
         if (KPassRules.NUMBER.equals(number) && KPassRules.CONTENT_HASH.equals(hash)) {
             return new PolicyQuestions.Questionnaire(number, policy.revision(), "", false, KPassRules.SCOPE,
@@ -84,11 +81,11 @@ public class PolicyQuestionService {
     @Transactional(readOnly = true, isolation = org.springframework.transaction.annotation.Isolation.REPEATABLE_READ)
     public PolicyQuestions.Evaluation evaluate(String number, PolicyQuestions.Request request) {
         var now = clock.instant();
-        var questions = questionsAt(number, now);
+        var policy = store.questionVersion(number).orElseThrow(PolicyNotFoundException::new);
+        var questions = questionsAt(number, policy, now);
         if (!questions.available() || request.revision() != questions.revision() || !request.ruleVersion().equals(questions.ruleVersion())) throw new PolicyChangedException();
+        if (policy.definition() != null) return policy.definition().evaluate(policy.revision(), request, now);
         return switch (number) {
-            case WorkStudyRules.NUMBER -> WorkStudyRules.evaluate(questions.revision(), request, now);
-            case ExamFeeRules.NUMBER -> ExamFeeRules.evaluate(questions.revision(), request, now);
             case KPassRules.NUMBER -> KPassRules.evaluate(questions.revision(), request, now);
             case YouthHousingSavingsRules.NUMBER -> YouthHousingSavingsRules.evaluate(questions.revision(), request, now);
             case SeoulYouthNetworkRules.NUMBER -> SeoulYouthNetworkRules.evaluate(questions.revision(), request, now);
@@ -100,6 +97,17 @@ public class PolicyQuestionService {
             case FutureYouthJobsRules.NUMBER -> FutureYouthJobsRules.evaluate(questions.revision(), request, now);
             default -> throw new PolicyChangedException();
         };
+    }
+    @Transactional(readOnly = true, isolation = org.springframework.transaction.annotation.Isolation.REPEATABLE_READ)
+    public PolicyQuestions.Prefill prefill(String number, PolicyQuestions.PrefillRequest input) {
+        var now = clock.instant();
+        if (input.birthDate().getYear() < 1 || input.birthDate().isAfter(now.atZone(java.time.ZoneId.of("Asia/Seoul")).toLocalDate()))
+            throw new IllegalArgumentException("생년월일을 확인해주세요.");
+        var policy = store.questionVersion(number).orElseThrow(PolicyNotFoundException::new);
+        var questions = questionsAt(number, policy, now);
+        if (!questions.available() || input.revision() != questions.revision() || !input.ruleVersion().equals(questions.ruleVersion()))
+            throw new PolicyChangedException();
+        return new PolicyQuestions.Prefill(policy.definition() == null ? List.of() : policy.definition().prefill(input.birthDate()));
     }
     public static class PolicyChangedException extends RuntimeException {}
 }

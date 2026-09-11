@@ -49,6 +49,8 @@ class PolicyCatalogTest {
     @org.springframework.test.context.bean.override.mockito.MockitoSpyBean JdbcClient jdbc;
     @Autowired PolicyCheckService checks;
     @Autowired PolicyQuestionService questions;
+    @Autowired PolicyRuleStore rules;
+    @Autowired jakarta.validation.Validator validator;
     @Autowired ObjectMapper mapper;
     @Autowired MockMvc mvc;
     @org.springframework.test.context.bean.override.mockito.MockitoBean java.time.Clock clock;
@@ -60,12 +62,91 @@ class PolicyCatalogTest {
     @BeforeEach
     void prepare() throws Exception {
         org.mockito.Mockito.when(clock.instant()).thenReturn(AT);
+        jdbc.sql("UPDATE policy_rule_heads SET version_id = 'ba390000-0000-4000-8000-000000000001' WHERE policy_number = '20260527005400113224'").update();
+        jdbc.sql("DELETE FROM policy_rule_versions WHERE created_by = 'rule-test'").update();
         jdbc.sql("DELETE FROM policy_revisions").update();
         jdbc.sql("DELETE FROM policy_corrections").update();
         jdbc.sql("DELETE FROM policy_source_snapshots").update();
         jdbc.sql("DELETE FROM policies").update();
         parser = new OntongPolicyCapture(mapper);
         item = (ObjectNode) parser.parse(Files.readString(Path.of("src/test/resources/ontong/list-capture.json"))).items().getFirst();
+    }
+
+    @Test @DisplayName("새 연도 기준을 데이터로 적용하면 서버 재시작 없이 질문·정렬·자동 답변이 함께 바뀐다")
+    void publishesNextYearWithoutCodeChange() throws Exception {
+        saveReviewed(ExamFeeRules.NUMBER, "응시료 지원", ExamFeeRules.CONTENT_HASH);
+        var old = questions.questions(ExamFeeRules.NUMBER);
+        var json = (ObjectNode) mapper.readTree(mapper.writeValueAsString(PolicyRuleFixtures.exam())
+                .replace("1991", "1992").replace("1990", "1991").replace("2026년", "2027년"));
+        json.put("ruleVersion", "exam-2027-test").put("validFrom", "2026-12-31T15:00:00Z").put("validUntil", "2027-12-31T15:00:00Z");
+        json.put("scope", "2027년 검증용 공고");
+        ((ObjectNode) json.get("birthBinding")).put("minimumInclusive", "1992-01-01");
+        var next = mapper.treeToValue(json, PolicyRuleDefinition.class);
+        var id = rules.draft(next, "rule-test", "연도 변경 동작 검증");
+        assertThatThrownBy(() -> rules.publish(id, old.ruleVersion(), "rule-test")).isInstanceOf(IllegalStateException.class).hasMessageContaining("기간");
+        org.mockito.Mockito.when(clock.instant()).thenReturn(Instant.parse("2027-01-01T00:00:00Z"));
+        assertThat(questions.questions(ExamFeeRules.NUMBER).available()).isFalse();
+        assertThat(rules.status()).anySatisfy(state -> { assertThat(state.ruleVersion()).isEqualTo(old.ruleVersion()); assertThat(state.state()).contains("만료"); });
+        rules.publish(id, old.ruleVersion(), "rule-test");
+        assertThat(questions.questions(ExamFeeRules.NUMBER).scope()).isEqualTo("2027년 검증용 공고");
+        assertThatThrownBy(() -> questions.evaluate(ExamFeeRules.NUMBER, new PolicyQuestions.Request(1, old.ruleVersion(), List.of())))
+                .isInstanceOf(PolicyQuestionService.PolicyChangedException.class);
+        var birth = java.time.LocalDate.parse("1991-12-31");
+        var prefill = questions.prefill(ExamFeeRules.NUMBER, new PolicyQuestions.PrefillRequest(1, next.ruleVersion(), birth));
+        var evaluated = questions.evaluate(ExamFeeRules.NUMBER, new PolicyQuestions.Request(1, next.ruleVersion(), prefill.answers()));
+        var compared = checks.check(new BasicConditions(birth, "강남구", BasicConditions.EmploymentStatus.OTHER), 1, "", PolicyCheckResponse.Sort.AGE_MATCH, null);
+        assertThat(evaluated.checks().getFirst().outcome()).isEqualTo(kr.youthpolicymate.eligibility.ConditionAssessment.Outcome.NOT_MET);
+        assertThat(compared.items().getFirst().checks().getFirst().outcome()).isEqualTo(evaluated.checks().getFirst().outcome());
+        assertThat(compared.items().getFirst().ruleVersion()).isEqualTo(next.ruleVersion());
+        assertThat(store.list("", 1, 20, true, null, clock.instant()).total()).isOne();
+        assertThatThrownBy(() -> rules.publish(id, next.ruleVersion(), "rule-test")).hasMessageContaining("이미 적용");
+        assertThatThrownBy(() -> jdbc.sql("UPDATE policy_rule_versions SET definition = '{}'::jsonb WHERE id = :id").param("id", id).update())
+                .isInstanceOf(org.springframework.dao.DataAccessException.class);
+    }
+
+    @Test @DisplayName("같은 직전 버전을 대상으로 동시에 적용하면 하나만 성공하고 원문 변경 시 적용·제출을 차단한다")
+    void protectsRulePublication() throws Exception {
+        saveReviewed(ExamFeeRules.NUMBER, "응시료 지원", ExamFeeRules.CONTENT_HASH);
+        var json = (ObjectNode) mapper.valueToTree(PolicyRuleFixtures.exam());
+        var ids = new java.util.ArrayList<java.util.UUID>();
+        for (int i = 0; i < 2; i++) {
+            json.put("ruleVersion", "concurrent-" + i);
+            ids.add(rules.draft(mapper.treeToValue(json, PolicyRuleDefinition.class), "rule-test", "동시 적용 검증"));
+        }
+        var gate = new CountDownLatch(1);
+        try (var executor = Executors.newFixedThreadPool(2)) {
+            var futures = ids.stream().map(id -> executor.submit(() -> {
+                gate.await();
+                try { rules.publish(id, ExamFeeRules.VERSION, "rule-test"); return true; }
+                catch (IllegalStateException changed) { return false; }
+            })).toList();
+            gate.countDown();
+            int successes = 0;
+            for (var future : futures) if (future.get(10, TimeUnit.SECONDS)) successes++;
+            assertThat(successes).isOne();
+        }
+        var current = questions.questions(ExamFeeRules.NUMBER);
+        jdbc.sql("UPDATE policies SET content_hash = repeat('a', 64) WHERE policy_number = :number").param("number", ExamFeeRules.NUMBER).update();
+        assertThat(questions.questions(ExamFeeRules.NUMBER).available()).isFalse();
+        assertThat(rules.status()).anySatisfy(state -> { assertThat(state.ruleVersion()).isEqualTo(current.ruleVersion()); assertThat(state.state()).contains("원문 변경"); });
+        assertThatThrownBy(() -> questions.prefill(ExamFeeRules.NUMBER, new PolicyQuestions.PrefillRequest(1, current.ruleVersion(), java.time.LocalDate.parse("2000-01-01"))))
+                .isInstanceOf(PolicyQuestionService.PolicyChangedException.class);
+        assertThatThrownBy(() -> rules.publish(ids.getFirst(), current.ruleVersion(), "rule-test")).hasMessageContaining("원문이 바뀌");
+        assertThat(store.list("", 1, 20, true, null, AT).total()).isZero();
+    }
+
+    @Test @DisplayName("출생일 답변 API는 로그인 없이 사용하고 미래 날짜·오래된 버전을 거부하며 저장하지 않는다")
+    void prefillsBirthWithVersionGuard() throws Exception {
+        saveReviewed(ExamFeeRules.NUMBER, "응시료 지원", ExamFeeRules.CONTENT_HASH);
+        var path = "/api/v1/policies/" + ExamFeeRules.NUMBER + "/question-prefill";
+        var body = mapper.createObjectNode().put("revision", 1).put("ruleVersion", ExamFeeRules.VERSION).put("birthDate", "1991-01-01");
+        mvc.perform(post(path).contentType("application/json").content(mapper.writeValueAsString(body)))
+                .andExpect(status().isOk()).andExpect(header().string("Cache-Control", "no-store"))
+                .andExpect(jsonPath("$.answers[0].value").value("ON_OR_AFTER_1991_01_01"));
+        body.put("birthDate", "2027-01-01");
+        mvc.perform(post(path).contentType("application/json").content(mapper.writeValueAsString(body))).andExpect(status().isBadRequest());
+        body.put("birthDate", "2000-01-01").put("ruleVersion", "old");
+        mvc.perform(post(path).contentType("application/json").content(mapper.writeValueAsString(body))).andExpect(status().isConflict());
     }
 
     @Test
@@ -369,7 +450,7 @@ class PolicyCatalogTest {
         mvc.perform(post(path + "/evaluation").contentType("application/json").content(body)).andExpect(status().isOk())
                 .andExpect(jsonPath("$.evaluatedAt").value("2026-12-31T14:59:59Z"));
         mvc.perform(get(path + "/questions")).andExpect(status().isOk()).andExpect(jsonPath("$.available").value(false))
-                .andExpect(jsonPath("$.reason").value(org.hamcrest.Matchers.containsString("올해")));
+                .andExpect(jsonPath("$.reason").value(org.hamcrest.Matchers.containsString("적용 기간")));
         mvc.perform(post(path + "/evaluation").contentType("application/json").content(body)).andExpect(status().isConflict());
         mvc.perform(get("/api/v1/policies").param("questionsOnly", "true"))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.total").value(0));
@@ -404,8 +485,8 @@ class PolicyCatalogTest {
     }
 
     @Test
-    @DisplayName("조건 확인은 SELECT 두 번으로 정렬·페이지·현재 개정의 원문을 반환한다")
-    void loadsConditionPageWithTwoQueries() {
+    @DisplayName("조건 확인은 규칙 조회 한 번과 SELECT 두 번으로 정렬·페이지·현재 개정의 원문을 반환한다")
+    void loadsConditionPageWithThreeQueries() {
         var numbers = new java.util.ArrayList<String>();
         for (int index = 1; index <= 21; index++) {
             var number = "900000000000000000%02d".formatted(index);
@@ -423,7 +504,7 @@ class PolicyCatalogTest {
         for (int page = 1; page <= 3; page++) {
             org.mockito.Mockito.clearInvocations(jdbc);
             var response = checks.check(input, page, "", PolicyCheckResponse.Sort.AGE_MATCH, null);
-            org.mockito.Mockito.verify(jdbc, org.mockito.Mockito.times(2)).sql(org.mockito.ArgumentMatchers.anyString());
+            org.mockito.Mockito.verify(jdbc, org.mockito.Mockito.times(3)).sql(org.mockito.ArgumentMatchers.anyString());
             assertThat(response.page()).isEqualTo(page);
             assertThat(response.total()).isEqualTo(21);
             assertThat(response.hasNext()).isEqualTo(page == 1);
@@ -650,7 +731,7 @@ class PolicyCatalogTest {
         var input = new BasicConditions(java.time.LocalDate.parse("1990-12-31"), "강남구", BasicConditions.EmploymentStatus.NOT_EMPLOYED);
         org.mockito.Mockito.clearInvocations(jdbc);
         var first = checks.check(input, 1, "", PolicyCheckResponse.Sort.AGE_MATCH, null);
-        org.mockito.Mockito.verify(jdbc, org.mockito.Mockito.times(2)).sql(org.mockito.ArgumentMatchers.anyString());
+        org.mockito.Mockito.verify(jdbc, org.mockito.Mockito.times(3)).sql(org.mockito.ArgumentMatchers.anyString());
         assertThat(first.total()).isEqualTo(23);
         assertThat(first.items().getFirst().policyNumber()).isEqualTo(KPassRules.NUMBER);
         assertThat(first.items().getFirst().checks().getFirst().outcome()).isEqualTo(kr.youthpolicymate.eligibility.ConditionAssessment.Outcome.MET);
@@ -734,7 +815,7 @@ class PolicyCatalogTest {
         mvc.perform(get("/api/v1/policies")).andExpect(status().isOk())
                 .andExpect(jsonPath("$.items[0].recruitment.status").value("OPEN"))
                 .andExpect(jsonPath("$.items[0].recruitment.evaluatedAt").value(AT.toString()));
-        org.mockito.Mockito.verify(jdbc, org.mockito.Mockito.times(2)).sql(org.mockito.ArgumentMatchers.anyString());
+        org.mockito.Mockito.verify(jdbc, org.mockito.Mockito.times(3)).sql(org.mockito.ArgumentMatchers.anyString());
         mvc.perform(get("/api/v1/policies/" + number)).andExpect(status().isOk())
                 .andExpect(jsonPath("$.recruitment.status").value("OPEN"));
         mvc.perform(post("/api/v1/policies/checks").contentType("application/json").content(body))
@@ -768,7 +849,7 @@ class PolicyCatalogTest {
         for (int page = 1; page <= 3; page++) {
             org.mockito.Mockito.clearInvocations(jdbc);
             var result = store.list("필터 지원", page, 10, false, kr.youthpolicymate.policy.RecruitmentStatus.OPEN, AT);
-            org.mockito.Mockito.verify(jdbc, org.mockito.Mockito.times(2)).sql(org.mockito.ArgumentMatchers.anyString());
+            org.mockito.Mockito.verify(jdbc, org.mockito.Mockito.times(3)).sql(org.mockito.ArgumentMatchers.anyString());
             assertThat(result.total()).isEqualTo(24);
             assertThat(result.hasNext()).isEqualTo(page < 3);
             assertThat(result.items()).hasSize(page < 3 ? 10 : 4).allSatisfy(policy -> {
@@ -837,7 +918,7 @@ class PolicyCatalogTest {
             isolated.sql("INSERT INTO policy_revisions(policy_number, revision, source_snapshot_id, content) SELECT policy_number, 1, :id, content FROM policies")
                     .param("id", id).update();
             config.target("latest").load().migrate();
-            var migrated = new PolicyCatalogStore(isolated, mapper, java.time.Clock.fixed(AT, java.time.ZoneOffset.UTC), new PolicyCorrectionStore(isolated, mapper));
+            var migrated = new PolicyCatalogStore(isolated, mapper, java.time.Clock.fixed(AT, java.time.ZoneOffset.UTC), new PolicyCorrectionStore(isolated, mapper), new PolicyRuleStore(isolated, mapper, validator, java.time.Clock.fixed(AT, java.time.ZoneOffset.UTC)));
             assertThat(migrated.list("", 1, 20, false, kr.youthpolicymate.policy.RecruitmentStatus.CLOSED, AT).items()).singleElement()
                     .satisfies(policy -> assertThat(policy.recruitment().status()).isEqualTo(kr.youthpolicymate.policy.RecruitmentStatus.CLOSED));
             assertThat(migrated.find(MovingFeeRules.NUMBER).orElseThrow().revision()).isOne();
@@ -853,7 +934,7 @@ class PolicyCatalogTest {
         var input = new BasicConditions(java.time.LocalDate.parse("2000-01-01"), "강남구", BasicConditions.EmploymentStatus.NOT_EMPLOYED);
         org.mockito.Mockito.clearInvocations(jdbc);
         var result = checks.check(input, 1, "", PolicyCheckResponse.Sort.AGE_MATCH, kr.youthpolicymate.policy.RecruitmentStatus.ROLLING);
-        org.mockito.Mockito.verify(jdbc, org.mockito.Mockito.times(2)).sql(org.mockito.ArgumentMatchers.anyString());
+        org.mockito.Mockito.verify(jdbc, org.mockito.Mockito.times(3)).sql(org.mockito.ArgumentMatchers.anyString());
         var housing = result.items().getFirst();
         assertThat(housing.policyNumber()).isEqualTo(YouthHousingSavingsRules.NUMBER);
         assertThat(housing.ruleVersion()).isEqualTo(YouthHousingSavingsRules.VERSION);
@@ -1181,7 +1262,7 @@ class PolicyCatalogTest {
                 assertThat(isolated.sql("SELECT count(*) FROM policy_source_snapshots").query(Long.class).single()).isEqualTo(2);
                 assertThat(isolated.sql("SELECT count(*) FROM policy_revisions").query(Long.class).single()).isEqualTo(2);
                 if (reviewed) {
-                    var migrated = new PolicyCatalogStore(isolated, mapper, java.time.Clock.fixed(AT, java.time.ZoneOffset.UTC), new PolicyCorrectionStore(isolated, mapper));
+                    var migrated = new PolicyCatalogStore(isolated, mapper, java.time.Clock.fixed(AT, java.time.ZoneOffset.UTC), new PolicyCorrectionStore(isolated, mapper), new PolicyRuleStore(isolated, mapper, validator, java.time.Clock.fixed(AT, java.time.ZoneOffset.UTC)));
                     var beforeOpen = Instant.parse("2026-05-10T00:00:00Z");
                     assertThat(migrated.list("", 1, 20, false, kr.youthpolicymate.policy.RecruitmentStatus.BEFORE_OPENING, beforeOpen).items())
                             .singleElement().satisfies(policy -> {

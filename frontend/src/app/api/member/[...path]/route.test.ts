@@ -59,6 +59,27 @@ describe("개인 API 중계", () => {
     expect(fetch).toHaveBeenCalledTimes(2);
   });
 
+  it("생년월일 답변 변환은 본문만 전달하고 쿠키·CSRF·쿼리·응답 쿠키를 제외한다", async () => {
+    const fetch = vi.fn().mockResolvedValue(Response.json({ answers: [] }, { headers: { "Set-Cookie": "YPM_SESSION=unexpected" } }));
+    vi.stubGlobal("fetch", fetch);
+    const path = "policy-prefill/123";
+    const body = JSON.stringify({ revision: 1, ruleVersion: "reviewed", birthDate: "2000-01-01" });
+    const response = await POST(new NextRequest(`${base}/api/member/${path}?birthDate=2000-01-01`, {
+      method: "POST", headers: { origin: base, cookie: "YPM_SESSION=private", "X-CSRF-TOKEN": "private" }, body,
+    }), context(path));
+    const [url, request] = fetch.mock.calls[0];
+    expect(url.pathname).toBe("/api/v1/policies/123/question-prefill");
+    expect(url.search).toBe("");
+    expect(request.body).toBe(body);
+    expect(request.headers).not.toHaveProperty("Cookie");
+    expect(request.headers).not.toHaveProperty("X-CSRF-TOKEN");
+    expect(response.headers.get("set-cookie")).toBeNull();
+    expect(response.headers.get("cache-control")).toBe("no-store");
+    expect((await GET(new NextRequest(`${base}/api/member/${path}`), context(path))).status).toBe(404);
+    expect((await POST(new NextRequest(`${base}/api/member/${path}`, { method: "POST" }), context(path))).status).toBe(403);
+    expect(fetch).toHaveBeenCalledTimes(1);
+  });
+
   it("이메일 확인과 동의는 회원 경로로만 전달하고 확인 코드 조회는 허용하지 않는다", async () => {
     const fetch = vi.fn().mockImplementation(() => Promise.resolve(new Response(null, { status: 204 })));
     vi.stubGlobal("fetch", fetch);

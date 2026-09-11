@@ -5,20 +5,20 @@
 ## 현재 작업
 
 - 이전 누적 작업은 `1b7fbdd`로 로컬·원격 `main`에 반영했고 [웹·전체 서버 CI](https://github.com/ljkhyeong/youth-policy-mate/actions/runs/34222499053)를 통과했다.
-- 현재 `codex/policy-source-notices`의 `73a41c3`에서 공개 화면·정책 질문·알림·관리자 문구를 정리했다. 연령 비교 범위와 이메일 취소 대상을 명시하고, 오류 안내에 실제 버튼과 확인된 상태를 사용했다. 이사비·장학금·저축계좌 도움말은 확인할 항목과 기관을 구체적으로 적었다. 판정 기준·API·DB는 유지했다.
-- 웹 전체·변경한 세 정책의 규칙 검사·서버 패키징과 로컬 화면 확인을 마쳤다. 로그인 필요·요청 실패·이메일 이용 불가 문구는 시험 응답으로 확인했다. 명령·로그·이전 결과 재사용·미실행 범위는 [화면 문구 정리](docs/development/ui-wording.md)에 있다. 이번 브랜치는 원격에 반영하지 않았다.
+- 현재 `codex/policy-source-notices`의 `130d8de`에서 미래 청년 일자리(서울영커리언스 점프업)의 2026년 5월 모집 질문과 기본 연령 비교를 추가했다. 근로·재학·사업자등록 예외를 구분하고 수집 안내와 공식 공고의 차이를 표시한다. V21은 검토한 정책의 검색용 접수 시작일만 수정한다.
+- 관련 서버 규칙·PostgreSQL 정책 API·계약 일치·마이그레이션·웹 검사·린트·타입 검사와 PC·모바일 흐름을 확인했다. 같은 출처의 여러 안내가 중복 항목으로 처리되던 문제는 `1c988f3`에서 수정했다. 명령·로그·재사용·미실행 범위는 [미래 청년 일자리 검증](docs/development/future-youth-jobs-questions.md#연결과-검증)에 있다. 미커밋 변경 없이 인계하며 이번 브랜치는 원격에 반영하지 않았다.
 
 ## 구현·검증 범위
 
 - 정책 조회: 로컬 수집 40건의 검색·상세·원문 링크를 제공한다. 검토된 원문 충돌은 상세에서 별도 안내하며 빈 안내 목록이 검토 완료를 뜻하지 않는다. 서울 대상 전체 정책을 수집한 상태는 아니다. [조회](docs/development/policy-catalog.md)·[수집과 재개](docs/development/policy-range-collection.md)·[충돌 안내](docs/development/policy-source-notices.md)
 - 관리자 수집 예외: `/admin/collection-exceptions`에서 원본·직전 개정 비교와 사유를 남기는 항목 재처리를 제공한다. `/pages`는 페이지 실패, `/replays`는 재처리 이력, `/corrections`는 보정 관리다. 정책명·운영 기관 중 한 항목을 원본과 분리해 보정하고, 새 원본과 충돌하면 현재 내용을 유지한 뒤 관리자가 해소한다. V19·V20에 작업자·사유·적용 개정을 기록하며 같은 요청은 한 번만 처리한다. 실제 관리자 계정 연결은 남아 있다. [설정과 계약](docs/development/admin-collection-exceptions.md)·[보정 범위](docs/development/policy-corrections.md)
-- 조건 질문: 국가근로장학금·응시료 지원·K-패스·청년주택드림청약통장·서울청년정책네트워크·상반기 이사비 지원·청년내일저축계좌·전세보증금반환보증 보증료 지원·햇살론유스·청년 미래이음 대출을 제공한다. 정책별 소득·중복지원·참여 제한·보증한도의 미확인을 구분한다. 실제 증빙·기타 제한·선발은 기관 심사가 필요하며 전체 자격은 추가 확인으로 유지한다. [질문 탐색](docs/development/policy-question-discovery.md)·[이사비](docs/development/moving-fee-questions.md)·[저축계좌](docs/development/youth-tomorrow-savings-questions.md)·[보증료](docs/development/guarantee-fee-questions.md)·[햇살론유스](docs/development/haetsalron-youth-questions.md)·[미래이음](docs/development/miso-youth-future-questions.md)
+- 조건 질문: 국가근로장학금·응시료 지원·K-패스·청년주택드림청약통장·서울청년정책네트워크·상반기 이사비 지원·청년내일저축계좌·전세보증금반환보증 보증료 지원·햇살론유스·청년 미래이음 대출·미래 청년 일자리 5월 모집을 제공한다. 정책별 소득·중복지원·참여 제한·보증한도의 미확인을 구분한다. 실제 증빙·기타 제한·선발은 기관 심사가 필요하며 전체 자격은 추가 확인으로 유지한다. [질문 탐색](docs/development/policy-question-discovery.md)·[이사비](docs/development/moving-fee-questions.md)·[저축계좌](docs/development/youth-tomorrow-savings-questions.md)·[보증료](docs/development/guarantee-fee-questions.md)·[햇살론유스](docs/development/haetsalron-youth-questions.md)·[미래이음](docs/development/miso-youth-future-questions.md)·[미래 청년 일자리](docs/development/future-youth-jobs-questions.md)
 - 접수 상태: 목록·상세·내 조건에서 날짜형·시각형·상시·마감·미확인을 구분하며 공개 목록과 내 조건을 상태별로 검색한다. 검색·질문 필터·정렬과 함께 전체 결과에 적용한 뒤 페이지를 나눈다. Flyway V18로 기존 정책의 검색용 기간을 이전했다. 기존 마감 알림과 원문 해석을 공유한다. 날짜 충돌·회차·소진 안내를 임의로 접수 중으로 바꾸지 않는다.
-- 개인 조건 탐색: 청년 미래이음 대출을 포함한 8개 정책의 연령을 비교하고 전체 정책에서 검색·정렬한다. 정책별 기준일·출생일 범위·병역 예외를 구분하며 햇살론유스·청년 미래이음 대출은 오늘 보증·대출신청을 가정한다. 거주·취업·소득은 추가 확인으로 남긴다. 검색·페이지 이동·오류 재시도·모바일 화면을 로컬 실제 정책으로 확인했다.
+- 개인 조건 탐색: 미래 청년 일자리를 포함한 9개 정책의 연령을 비교하고 전체 정책에서 검색·정렬한다. 정책별 기준일·출생일 범위·병역 예외를 구분하며 햇살론유스·청년 미래이음 대출은 오늘 보증·대출신청을 가정한다. 거주·취업·소득은 추가 확인으로 남긴다. 검색·페이지 이동·오류 재시도·모바일 화면을 로컬 실제 정책으로 확인했다.
 - 회원 기능: OAuth 로그인 코드, 관심 정책 저장·해제, 일정·서비스 내 알림을 연결했다. 테스트 제공자와 실제 HTTP·DB로 코드 교환부터 관리자 접근·세션 종료까지 확인했다. 로컬 카카오·네이버 ID/Secret과 관리자 ID가 없어 실제 제공자 로그인은 미검증이다. [회원 기능](docs/development/member-policy-flow.md)
 - 이메일: 주소 확인·동의·암호화 저장·Outbox·SMTP 어댑터를 구현했다. 실제 공급자·발신 도메인은 미정이며 외부 수신함 전달은 미검증이다. [이메일 구현과 설정](docs/development/member-email-reminders.md)
 - AI: 후보 개정 검사·비용 예약·DB 복구 흐름은 내부 모델과 테스트용 공급자로 검증했다. 실제 AI 호출·청구·운영 작업자는 미연결이다. [AI 요청 판단](docs/development/ai-request-admission.md)·[복구 실행](docs/development/ai-reservation-recovery-work-runs.md)
-- 검증 기준: `1b7fbdd`의 전체 CI 이후 정책 질문·기본 연령 비교와 화면 구성을 개선했다. 최신 `73a41c3`의 문구 변경은 [문구 검증](docs/development/ui-wording.md) 범위에서 확인했다. API 구조·생성 타입·의존성·설정·DB V20·실제 정책 데이터는 유지했다. 전체 CI와 웹 빌드는 문구 변경만으로 반복하지 않았다.
+- 검증 기준: `1b7fbdd`의 전체 CI 이후 정책 질문·기본 연령 비교와 화면 구성을 개선했다. 최신 기능 `130d8de`는 [미래 청년 일자리 검증](docs/development/future-youth-jobs-questions.md#연결과-검증), 앞선 문구 정리는 [문구 검증](docs/development/ui-wording.md) 범위에서 확인했다. API 구조·생성 타입·의존성·설정은 유지했고 로컬 DB는 V21이다. 미변경 범위의 성공 결과를 재사용했으며 전체 CI와 웹 빌드는 재실행하지 않았다.
 - 검증 도구의 성공·실패·실행 중 변경 시나리오와 기존 도구 검사를 통과했다. 컴파일·패키징 명령의 Gradle 실행 계획에 테스트 실행이 없음을 확인했다. `npm run verify -- status`에서 실행 기록을 확인한다. 검증 도구를 정리할 당시에는 앱 기능을 변경하지 않아 전체 앱 테스트를 재실행하지 않았다.
 
 ## 남은 작업

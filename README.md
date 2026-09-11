@@ -17,7 +17,7 @@
 
 2026-09-06에 [접수 상태 표시](docs/development/policy-recruitment-display.md)를 연결했습니다. 정책 목록·상세·내 조건 결과에서 접수 기간·접수 전·마감·상시·기간 미확인을 구분하고 계산 근거를 표시합니다. 마감 알림과 원문 해석을 공유합니다.
 
-2026-09-11 기준 [개인 조건 기반 정책 탐색](docs/development/condition-policy-discovery.md)에서 청년 미래이음 대출을 포함한 8개 정책의 연령을 비교하고 전체 정책에서 검색·정렬합니다. [청년 미래이음 대출 질문](docs/development/miso-youth-future-questions.md) 추가로 질문 제공 범위는 **10개 정책**입니다. 연령·취창업 상태와 신용·수급·근로장려금의 선택 요건을 비교하며 실제 대출 심사는 별도 확인으로 남깁니다. [햇살론유스](docs/development/haetsalron-youth-questions.md)와 [전세보증금반환보증 보증료 지원](docs/development/guarantee-fee-questions.md)의 조건 질문도 제공합니다.
+2026-09-12 기준 [개인 조건 기반 정책 탐색](docs/development/condition-policy-discovery.md)에서 9개 정책의 연령을 비교하고 전체 정책에서 검색·정렬합니다. [미래 청년 일자리 5월 모집 질문](docs/development/future-youth-jobs-questions.md) 추가로 질문 제공 범위는 **11개 정책**입니다. 근로시간·계약기간, 재학·사업자등록 예외를 구분하며 증빙과 최종 선발은 기관 확인으로 남깁니다. 수집 안내와 공식 공고의 신청기간·재학 예외·참고 링크 차이도 표시합니다.
 
 2026-09-05에 [서울청년정책네트워크 하반기 모집 질문](docs/development/seoul-youth-network-questions.md)을 추가했습니다. 공고의 출생일 범위·군복무 연장, 서울 거주 또는 대학·직장 생활권, 연임·위촉 제한을 구분합니다. 이미 마감한 모집임을 질문과 결과에 표시하며, 당시 질문 제공은 **5개 정책**이었습니다. 서버 전체 448건과 빌드가 통과했습니다.
 

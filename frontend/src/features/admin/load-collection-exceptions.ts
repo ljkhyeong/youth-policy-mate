@@ -62,3 +62,15 @@ export function loadCorrectionPolicy(number: string): Promise<Loaded<CorrectionP
   if (!/^[0-9]{1,100}$/.test(number)) return Promise.resolve({ status: "invalid" });
   return load<CorrectionPolicy>(`policy-corrections/policies/${number}`);
 }
+
+export type RuleReviewPage = components["schemas"]["PolicyRuleReviewPage"];
+export type RuleReviewDetail = components["schemas"]["PolicyRuleReviewDetail"];
+
+export function loadRuleReviews(page: number, filter: string, query: string) {
+  return load<RuleReviewPage>(`policy-rule-reviews?${new URLSearchParams({ page: String(page), pageSize: "20", filter, query })}`);
+}
+
+export function loadRuleReview(number: string): Promise<Loaded<RuleReviewDetail>> {
+  if (!/^[0-9]{1,100}$/.test(number)) return Promise.resolve({ status: "missing" });
+  return load<RuleReviewDetail>(`policy-rule-reviews/${number}`);
+}

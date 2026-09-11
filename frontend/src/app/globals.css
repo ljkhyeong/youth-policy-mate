@@ -953,6 +953,15 @@ select {
 .condition-policy-sort { max-width: 100%; border: 1px solid #cfd5de; border-radius: 10px; background: white; padding: 10px 12px; font-size: 16px; }
 .condition-filter { display: inline-flex; align-items: center; gap: 12px; max-width: 100%; }
 
+.rule-review-search { display: grid; gap: 12px; }
+.rule-review-field { display: grid; gap: 8px; min-width: 0; }
+.rule-review-search label { font-weight: 650; }
+.rule-review-search input, .rule-review-search select { width: 100%; min-width: 0; min-height: 48px; border: 1px solid var(--app-line); border-radius: 10px; background: var(--app-surface); padding: 10px 12px; color: inherit; font: inherit; }
+.rule-review-search :is(input, select):focus-visible { outline: 3px solid var(--app-blue); outline-offset: 2px; }
+.rule-review-search .form-actions { display: flex; flex-direction: row; align-items: center; gap: 16px; margin: 0; padding: 0; border: 0; }
+.rule-review-search .button-primary { width: auto; margin: 0; }
+@media (min-width: 760px) { .rule-review-search { grid-template-columns: minmax(0, 1fr) 160px auto; align-items: end; } }
+
 @layer components {
 .policy-recruitment { margin: 12px 0; }
 .policy-recruitment p { margin: 8px 0 0; color: var(--app-muted); font-size: 13px; line-height: 1.65; font-weight: 400; }

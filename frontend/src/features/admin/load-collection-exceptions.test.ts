@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cookies } from "next/headers";
-import { collectionPage, loadCollectionException, loadCollectionExceptions, loadCollectionPageFailures, loadPolicyCorrections, loadCorrectionPolicy } from "./load-collection-exceptions";
+import { collectionPage, loadCollectionException, loadCollectionExceptions, loadCollectionPageFailures, loadPolicyCorrections, loadCorrectionPolicy, loadRuleReviews, loadRuleReview } from "./load-collection-exceptions";
 
 vi.mock("next/headers", () => ({ cookies: vi.fn() }));
 const run = "10000000-0000-0000-0000-000000000001";
@@ -8,6 +8,19 @@ beforeEach(() => vi.mocked(cookies).mockResolvedValue({ get: (name: string) => n
 afterEach(() => { vi.unstubAllGlobals(); vi.resetAllMocks(); });
 
 describe("관리자 수집 예외 서버 조회", () => {
+  it("조건 검토의 검색어를 인코딩하고 잘못된 정책번호는 전송하지 않는다", async () => {
+    const fetch = vi.fn().mockResolvedValue(Response.json({ items: [] })); vi.stubGlobal("fetch", fetch);
+    await loadRuleReviews(2, "SOURCE_CHANGED", "청년 & 지원");
+    const [url, options] = fetch.mock.calls[0];
+    expect(url.pathname).toBe("/api/v1/admin/policy-rule-reviews");
+    expect(Object.fromEntries(url.searchParams)).toEqual({ page: "2", pageSize: "20", filter: "SOURCE_CHANGED", query: "청년 & 지원" });
+    expect(options.cache).toBe("no-store");
+    expect(options.headers.Cookie).toBe("YPM_SESSION=fixture-session");
+    expect(await loadRuleReview("../me")).toEqual({ status: "missing" });
+    expect(fetch).toHaveBeenCalledTimes(1);
+    await loadRuleReview("123");
+    expect(fetch.mock.calls[1][0].pathname).toBe("/api/v1/admin/policy-rule-reviews/123");
+  });
   it("페이지 수집 실패는 전용 API에 페이지 인수와 세션을 전달한다", async () => {
     const fetch = vi.fn().mockResolvedValue(Response.json({ items: [], page: 2, pageSize: 20, hasNext: false }));
     vi.stubGlobal("fetch", fetch);

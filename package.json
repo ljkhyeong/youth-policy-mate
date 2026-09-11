@@ -19,7 +19,7 @@
     "collect:policy": "./backend/gradlew -p backend collectPolicyPage --no-daemon",
     "test:policy-collection": "./backend/gradlew -p backend test --tests 'kr.youthpolicymate.ingestion.Ontong*Test' --tests 'kr.youthpolicymate.policy.catalog.PolicyCatalogTest' --no-daemon",
     "test:policy-catalog": "./backend/gradlew -p backend test --tests 'kr.youthpolicymate.ingestion.OntongPolicyCaptureTest' --tests 'kr.youthpolicymate.policy.catalog.PolicyCatalogTest' --no-daemon",
-    "test:admin-collection": "./backend/gradlew -p backend test --tests 'kr.youthpolicymate.admin.CollectionExceptionApiTest' --tests 'kr.youthpolicymate.admin.CollectionReplayApiTest' --tests 'kr.youthpolicymate.admin.PolicyCorrectionApiTest' --tests 'kr.youthpolicymate.config.AdminAccessTest' --no-daemon",
+    "test:admin-collection": "./backend/gradlew -p backend test --tests 'kr.youthpolicymate.admin.CollectionExceptionApiTest' --tests 'kr.youthpolicymate.admin.CollectionReplayApiTest' --tests 'kr.youthpolicymate.admin.PolicyCorrectionApiTest' --tests 'kr.youthpolicymate.admin.PolicyRuleReviewApiTest' --tests 'kr.youthpolicymate.config.AdminAccessTest' --no-daemon",
     "check:api-types": "npm run check:api-types --workspace frontend",
     "test:preview-api": "./backend/gradlew -p backend test --tests 'kr.youthpolicymate.devpreview.*' --no-daemon",
     "build:web": "npm run build --workspace frontend",

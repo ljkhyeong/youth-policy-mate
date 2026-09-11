@@ -799,6 +799,193 @@
         "tags" : [ "policy-correction-controller" ]
       }
     },
+    "/api/v1/admin/policy-rule-reviews" : {
+      "get" : {
+        "description" : "원문 변경·기간 만료·조건 미등록 순서. 상태 필터와 검색을 전체 결과에 적용한 뒤 페이지를 나눈다.",
+        "operationId" : "listPolicyRuleReviews",
+        "parameters" : [ {
+          "in" : "query",
+          "name" : "page",
+          "required" : false,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int32",
+            "default" : 1,
+            "maximum" : 1000,
+            "minimum" : 1
+          }
+        }, {
+          "in" : "query",
+          "name" : "pageSize",
+          "required" : false,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int32",
+            "default" : 20,
+            "maximum" : 50,
+            "minimum" : 1
+          }
+        }, {
+          "in" : "query",
+          "name" : "filter",
+          "required" : false,
+          "schema" : {
+            "type" : "string",
+            "default" : "REVIEW",
+            "enum" : [ "REVIEW", "ALL", "SOURCE_CHANGED", "EXPIRED", "MISSING", "SCHEDULED", "ACTIVE" ]
+          }
+        }, {
+          "in" : "query",
+          "name" : "query",
+          "required" : false,
+          "schema" : {
+            "type" : "string",
+            "default" : "",
+            "maxLength" : 100,
+            "minLength" : 0
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PolicyRuleReviewPage"
+                }
+              }
+            },
+            "description" : "OK"
+          },
+          "400" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PolicyApiError"
+                }
+              }
+            },
+            "description" : "조회 조건 오류"
+          },
+          "401" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PolicyApiError"
+                }
+              }
+            },
+            "description" : "로그인 필요"
+          },
+          "403" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PolicyApiError"
+                }
+              }
+            },
+            "description" : "관리자 권한 없음"
+          },
+          "503" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PolicyApiError"
+                }
+              }
+            },
+            "description" : "조회 실패"
+          }
+        },
+        "security" : [ {
+          "memberSession" : [ ]
+        } ],
+        "summary" : "공고 조건 검토 목록",
+        "tags" : [ "policy-rule-review-controller" ]
+      }
+    },
+    "/api/v1/admin/policy-rule-reviews/{number}" : {
+      "get" : {
+        "description" : "현재 공개 개정과 직전 개정을 비교한다. 직전 개정은 규칙의 검토 원문과 다를 수 있다. 조회로 규칙을 적용하지 않는다.",
+        "operationId" : "getPolicyRuleReview",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "number",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "pattern" : "[0-9]{1,100}"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PolicyRuleReviewDetail"
+                }
+              }
+            },
+            "description" : "OK"
+          },
+          "400" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PolicyApiError"
+                }
+              }
+            },
+            "description" : "조회 조건 오류"
+          },
+          "401" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PolicyApiError"
+                }
+              }
+            },
+            "description" : "로그인 필요"
+          },
+          "403" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PolicyApiError"
+                }
+              }
+            },
+            "description" : "관리자 권한 없음"
+          },
+          "404" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PolicyApiError"
+                }
+              }
+            },
+            "description" : "정책 없음"
+          },
+          "503" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PolicyApiError"
+                }
+              }
+            },
+            "description" : "조회 실패"
+          }
+        },
+        "security" : [ {
+          "memberSession" : [ ]
+        } ],
+        "summary" : "공고 변경점·원본·질문 검토",
+        "tags" : [ "policy-rule-review-controller" ]
+      }
+    },
     "/api/v1/logout" : {
       "post" : {
         "operationId" : "logoutMember",
@@ -3002,6 +3189,147 @@
           }
         },
         "required" : [ "evaluatedAt", "explanation", "status" ]
+      },
+      "PolicyRuleReviewDetail" : {
+        "type" : "object",
+        "properties" : {
+          "checkedAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "currentPolicy" : {
+            "$ref" : "#/components/schemas/CollectionExceptionCurrentPolicy"
+          },
+          "item" : {
+            "$ref" : "#/components/schemas/PolicyRuleReviewItem"
+          },
+          "rawPolicyJson" : {
+            "type" : "string"
+          },
+          "versions" : {
+            "type" : "array",
+            "description" : "현재 지정 버전 우선, 그 외 최근 20개 버전",
+            "items" : {
+              "$ref" : "#/components/schemas/PolicyRuleReviewVersion"
+            }
+          }
+        },
+        "required" : [ "checkedAt", "currentPolicy", "item", "rawPolicyJson", "versions" ]
+      },
+      "PolicyRuleReviewItem" : {
+        "type" : "object",
+        "properties" : {
+          "collectedAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "draftCount" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "policyNumber" : {
+            "type" : "string"
+          },
+          "revision" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "status" : {
+            "type" : "string",
+            "enum" : [ "SOURCE_CHANGED", "EXPIRED", "MISSING", "SCHEDULED", "ACTIVE" ]
+          },
+          "title" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "collectedAt", "draftCount", "policyNumber", "revision", "status", "title" ]
+      },
+      "PolicyRuleReviewPage" : {
+        "type" : "object",
+        "properties" : {
+          "checkedAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "hasNext" : {
+            "type" : "boolean"
+          },
+          "items" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/PolicyRuleReviewItem"
+            }
+          },
+          "page" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "pageSize" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "total" : {
+            "type" : "integer",
+            "format" : "int64"
+          }
+        },
+        "required" : [ "checkedAt", "hasNext", "items", "page", "pageSize", "total" ]
+      },
+      "PolicyRuleReviewVersion" : {
+        "type" : "object",
+        "properties" : {
+          "changeReason" : {
+            "type" : "string"
+          },
+          "createdAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "id" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "questions" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/PolicyQuestion"
+            }
+          },
+          "reason" : {
+            "type" : "string"
+          },
+          "remainingChecks" : {
+            "type" : "array",
+            "items" : {
+              "type" : "string"
+            }
+          },
+          "ruleVersion" : {
+            "type" : "string"
+          },
+          "scope" : {
+            "type" : "string"
+          },
+          "sourceMatches" : {
+            "type" : "boolean"
+          },
+          "sourceUrl" : {
+            "type" : "string"
+          },
+          "state" : {
+            "type" : "string",
+            "enum" : [ "CURRENT", "DRAFT", "PREVIOUS" ]
+          },
+          "validFrom" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "validUntil" : {
+            "type" : "string",
+            "format" : "date-time"
+          }
+        },
+        "required" : [ "changeReason", "createdAt", "id", "questions", "reason", "remainingChecks", "ruleVersion", "scope", "sourceMatches", "sourceUrl", "state", "validFrom", "validUntil" ]
       },
       "PolicySourceNotice" : {
         "type" : "object",

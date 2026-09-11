@@ -14,18 +14,19 @@ const timestamp = new Intl.DateTimeFormat("ko-KR", {
 const dateLabel = (value: string | null) => value ? timestamp.format(new Date(value)) : "기록 없음";
 export { dateLabel as collectionTime };
 
-export function CollectionNavigation({ active }: { active: "items" | "pages" | "replays" | "corrections" }) {
+export function CollectionNavigation({ active }: { active: "items" | "pages" | "replays" | "corrections" | "rules" }) {
   return <nav className="policy-filters mb-6" aria-label="수집 오류·보정 메뉴">
     <a href={COLLECTION_PATH} aria-current={active === "items" ? "page" : undefined}>항목 오류</a>
     <a href={PAGE_FAILURES_PATH} aria-current={active === "pages" ? "page" : undefined}>페이지 오류</a>
     <a href={REPLAYS_PATH} aria-current={active === "replays" ? "page" : undefined}>재처리 이력</a>
     <a href={CORRECTIONS_PATH} aria-current={active === "corrections" ? "page" : undefined}>보정 관리</a>
+    <a href={`${COLLECTION_PATH}/rules`} aria-current={active === "rules" ? "page" : undefined}>조건 검토</a>
   </nav>;
 }
 
 export function CollectionFailure({ status, retryHref }: { status: LoadFailure; retryHref: string }) {
   if (status === "unauthenticated") return <PageState kind="error" label="로그인 필요" title="관리자 계정으로 로그인하세요"
-    description="관리자만 수집 오류와 보정 내역을 확인할 수 있습니다."
+    description="관리자만 운영 정보를 확인할 수 있습니다."
     actions={<a className="button-primary" href="/login?next=admin">로그인</a>} />;
   if (status === "forbidden") return <PageState kind="error" label="접근 제한" title="관리자 권한이 없습니다"
     description="관리자 계정과 권한 설정을 확인해주세요."
@@ -116,7 +117,7 @@ const comparisonFields = {
   regionCodes: "지역 코드", sourceModifiedAtText: "온통청년 수정일",
 } satisfies Record<keyof PolicyContent, string>;
 
-function RevisionComparison({ policy }: { policy: CurrentPolicy }) {
+export function RevisionComparison({ policy, description = "현재 공개 내용과 바로 이전 버전을 비교합니다. 수집 실패 당시 내용과는 다를 수 있습니다." }: { policy: CurrentPolicy; description?: string }) {
   const previous = policy.previousRevision;
   if (!previous) return <section className="member-panel" aria-labelledby="revision-heading">
     <h2 id="revision-heading">이전 버전 비교</h2><p>비교할 이전 버전이 없습니다.</p>
@@ -126,7 +127,7 @@ function RevisionComparison({ policy }: { policy: CurrentPolicy }) {
   const unchanged = fields.filter(field => !changed.includes(field));
   return <section className="member-panel" aria-labelledby="revision-heading">
     <h2 id="revision-heading">이전 버전 비교</h2>
-    <p className="field-help">현재 공개 내용과 바로 이전 버전을 비교합니다. 수집 실패 당시 내용과는 다를 수 있습니다.</p>
+    <p className="field-help">{description}</p>
     <p className="field-help">이전 버전 {previous.revision} · 원본 수집 {dateLabel(previous.sourceCapturedAt)} (서울)<br />
       현재 버전 {policy.revision} · 원본 수집 {dateLabel(policy.sourceCapturedAt)} (서울)</p>
     <p>{changed.length ? `변경된 항목 ${changed.length}개` : "표시 항목의 변경이 없습니다."}</p>

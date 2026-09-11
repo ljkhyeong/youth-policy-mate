@@ -49,7 +49,8 @@ class SecurityConfiguration {
                             .access(adminAccess.authorization())
                         .requestMatchers(HttpMethod.GET, "/api/v1/admin/collection-exceptions", "/api/v1/admin/collection-exceptions/pages", "/api/v1/admin/collection-exceptions/replays",
                                 "/api/v1/admin/collection-exceptions/*/*",
-                                "/api/v1/admin/policy-corrections", "/api/v1/admin/policy-corrections/policies/*")
+                                "/api/v1/admin/policy-corrections", "/api/v1/admin/policy-corrections/policies/*",
+                                "/api/v1/admin/policy-rule-reviews", "/api/v1/admin/policy-rule-reviews/*")
                             .access(adminAccess.authorization())
                         .anyRequest().denyAll())
                 .logout(logout -> logout.logoutUrl("/api/v1/logout").invalidateHttpSession(true)

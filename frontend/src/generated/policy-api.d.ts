@@ -159,6 +159,46 @@ export interface paths {
         readonly patch?: never;
         readonly trace?: never;
     };
+    readonly "/api/v1/admin/policy-rule-reviews": {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header?: never;
+            readonly path?: never;
+            readonly cookie?: never;
+        };
+        /**
+         * 공고 조건 검토 목록
+         * @description 원문 변경·기간 만료·조건 미등록 순서. 상태 필터와 검색을 전체 결과에 적용한 뒤 페이지를 나눈다.
+         */
+        readonly get: operations["listPolicyRuleReviews"];
+        readonly put?: never;
+        readonly post?: never;
+        readonly delete?: never;
+        readonly options?: never;
+        readonly head?: never;
+        readonly patch?: never;
+        readonly trace?: never;
+    };
+    readonly "/api/v1/admin/policy-rule-reviews/{number}": {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header?: never;
+            readonly path?: never;
+            readonly cookie?: never;
+        };
+        /**
+         * 공고 변경점·원본·질문 검토
+         * @description 현재 공개 개정과 직전 개정을 비교한다. 직전 개정은 규칙의 검토 원문과 다를 수 있다. 조회로 규칙을 적용하지 않는다.
+         */
+        readonly get: operations["getPolicyRuleReview"];
+        readonly put?: never;
+        readonly post?: never;
+        readonly delete?: never;
+        readonly options?: never;
+        readonly head?: never;
+        readonly patch?: never;
+        readonly trace?: never;
+    };
     readonly "/api/v1/logout": {
         readonly parameters: {
             readonly query?: never;
@@ -855,6 +895,59 @@ export interface components {
             /** @enum {string} */
             readonly status: "BEFORE_OPENING" | "OPEN" | "CLOSED" | "ROLLING" | "UNTIL_EXHAUSTED" | "UNKNOWN";
         };
+        readonly PolicyRuleReviewDetail: {
+            /** Format: date-time */
+            readonly checkedAt: string;
+            readonly currentPolicy: components["schemas"]["CollectionExceptionCurrentPolicy"];
+            readonly item: components["schemas"]["PolicyRuleReviewItem"];
+            readonly rawPolicyJson: string;
+            /** @description 현재 지정 버전 우선, 그 외 최근 20개 버전 */
+            readonly versions: readonly components["schemas"]["PolicyRuleReviewVersion"][];
+        };
+        readonly PolicyRuleReviewItem: {
+            /** Format: date-time */
+            readonly collectedAt: string;
+            /** Format: int64 */
+            readonly draftCount: number;
+            readonly policyNumber: string;
+            /** Format: int64 */
+            readonly revision: number;
+            /** @enum {string} */
+            readonly status: "SOURCE_CHANGED" | "EXPIRED" | "MISSING" | "SCHEDULED" | "ACTIVE";
+            readonly title: string;
+        };
+        readonly PolicyRuleReviewPage: {
+            /** Format: date-time */
+            readonly checkedAt: string;
+            readonly hasNext: boolean;
+            readonly items: readonly components["schemas"]["PolicyRuleReviewItem"][];
+            /** Format: int32 */
+            readonly page: number;
+            /** Format: int32 */
+            readonly pageSize: number;
+            /** Format: int64 */
+            readonly total: number;
+        };
+        readonly PolicyRuleReviewVersion: {
+            readonly changeReason: string;
+            /** Format: date-time */
+            readonly createdAt: string;
+            /** Format: uuid */
+            readonly id: string;
+            readonly questions: readonly components["schemas"]["PolicyQuestion"][];
+            readonly reason: string;
+            readonly remainingChecks: readonly string[];
+            readonly ruleVersion: string;
+            readonly scope: string;
+            readonly sourceMatches: boolean;
+            readonly sourceUrl: string;
+            /** @enum {string} */
+            readonly state: "CURRENT" | "DRAFT" | "PREVIOUS";
+            /** Format: date-time */
+            readonly validFrom: string;
+            /** Format: date-time */
+            readonly validUntil: string;
+        };
         readonly PolicySourceNotice: {
             readonly description: string;
             readonly sourceLabel: string;
@@ -1475,6 +1568,134 @@ export interface operations {
                 };
             };
             /** @description 보정 처리 또는 조회 실패 */
+            readonly 503: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "*/*": components["schemas"]["PolicyApiError"];
+                };
+            };
+        };
+    };
+    readonly listPolicyRuleReviews: {
+        readonly parameters: {
+            readonly query?: {
+                readonly page?: number;
+                readonly pageSize?: number;
+                readonly filter?: "REVIEW" | "ALL" | "SOURCE_CHANGED" | "EXPIRED" | "MISSING" | "SCHEDULED" | "ACTIVE";
+                readonly query?: string;
+            };
+            readonly header?: never;
+            readonly path?: never;
+            readonly cookie?: never;
+        };
+        readonly requestBody?: never;
+        readonly responses: {
+            /** @description OK */
+            readonly 200: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "*/*": components["schemas"]["PolicyRuleReviewPage"];
+                };
+            };
+            /** @description 조회 조건 오류 */
+            readonly 400: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "*/*": components["schemas"]["PolicyApiError"];
+                };
+            };
+            /** @description 로그인 필요 */
+            readonly 401: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "*/*": components["schemas"]["PolicyApiError"];
+                };
+            };
+            /** @description 관리자 권한 없음 */
+            readonly 403: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "*/*": components["schemas"]["PolicyApiError"];
+                };
+            };
+            /** @description 조회 실패 */
+            readonly 503: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "*/*": components["schemas"]["PolicyApiError"];
+                };
+            };
+        };
+    };
+    readonly getPolicyRuleReview: {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header?: never;
+            readonly path: {
+                readonly number: string;
+            };
+            readonly cookie?: never;
+        };
+        readonly requestBody?: never;
+        readonly responses: {
+            /** @description OK */
+            readonly 200: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "*/*": components["schemas"]["PolicyRuleReviewDetail"];
+                };
+            };
+            /** @description 조회 조건 오류 */
+            readonly 400: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "*/*": components["schemas"]["PolicyApiError"];
+                };
+            };
+            /** @description 로그인 필요 */
+            readonly 401: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "*/*": components["schemas"]["PolicyApiError"];
+                };
+            };
+            /** @description 관리자 권한 없음 */
+            readonly 403: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "*/*": components["schemas"]["PolicyApiError"];
+                };
+            };
+            /** @description 정책 없음 */
+            readonly 404: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "*/*": components["schemas"]["PolicyApiError"];
+                };
+            };
+            /** @description 조회 실패 */
             readonly 503: {
                 headers: {
                     readonly [name: string]: unknown;

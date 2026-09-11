@@ -22,6 +22,9 @@ public record PolicyRecruitment(RecruitmentStatus status, String explanation, In
         } else if (MovingFeeRules.NUMBER.equals(number) && MovingFeeRules.CONTENT_HASH.equals(hash)) {
             source = MovingFeeRules.SOURCE;
             location = MovingFeeRules.SCOPE;
+        } else if (FutureYouthJobsRules.NUMBER.equals(number) && FutureYouthJobsRules.CONTENT_HASH.equals(hash)) {
+            source = FutureYouthJobsRules.SOURCE;
+            location = FutureYouthJobsRules.SCOPE;
         }
         var assessment = new RecruitmentAssessment(new RecruitmentSchedule(number, Long.toString(revision), period,
                 source, location, Optional.empty()), now);
@@ -32,6 +35,8 @@ public record PolicyRecruitment(RecruitmentStatus status, String explanation, In
             return times(SeoulYouthNetworkRules.OPEN_AT, SeoulYouthNetworkRules.CLOSE_AT);
         if (MovingFeeRules.NUMBER.equals(number) && MovingFeeRules.CONTENT_HASH.equals(hash))
             return times(MovingFeeRules.OPEN_AT, MovingFeeRules.CLOSE_AT);
+        if (FutureYouthJobsRules.NUMBER.equals(number) && FutureYouthJobsRules.CONTENT_HASH.equals(hash))
+            return new ApplicationPeriod.Dates(java.time.LocalDate.of(2026, 5, 18), java.time.LocalDate.of(2026, 5, 31));
         return PolicyApplicationPeriod.parse(raw);
     }
     private static ApplicationPeriod.Times times(Instant open, Instant close) {

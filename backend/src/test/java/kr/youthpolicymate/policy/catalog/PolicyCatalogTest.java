@@ -1093,6 +1093,111 @@ class PolicyCatalogTest {
         mvc.perform(post(path + "/evaluation").contentType("application/json").content(body)).andExpect(status().isConflict());
     }
 
+    @Test @DisplayName("미래 청년 일자리의 질문·연령·원문 차이를 연결하고 원문·규칙·개정·적용 기간을 확인한다")
+    void providesFutureYouthJobsQuestionsAndAge() throws Exception {
+        var number = FutureYouthJobsRules.NUMBER;
+        saveReviewed(number, "미래 청년 일자리", FutureYouthJobsRules.CONTENT_HASH);
+        var path = "/api/v1/policies/" + number;
+        mvc.perform(get(path + "/questions")).andExpect(status().isOk())
+                .andExpect(jsonPath("$.available").value(true)).andExpect(jsonPath("$.questions.length()").value(6))
+                .andExpect(jsonPath("$.ruleVersion").value(FutureYouthJobsRules.VERSION))
+                .andExpect(jsonPath("$.reason").value(org.hamcrest.Matchers.containsString("5월 모집")));
+        mvc.perform(get(path)).andExpect(status().isOk())
+                .andExpect(jsonPath("$.sourceNotices.length()").value(3))
+                .andExpect(jsonPath("$.sourceNotices[0].sourceUrl").value(FutureYouthJobsRules.SOURCE));
+        mvc.perform(get("/api/v1/policies").param("questionsOnly", "true").param("q", "미래 청년 일자리"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.total").value(1))
+                .andExpect(jsonPath("$.items[0].questionnaireAvailable").value(true));
+        var request = new PolicyQuestions.Request(1, FutureYouthJobsRules.VERSION, List.of(
+                new PolicyQuestions.Answer("birthRange", "BASE_RANGE"), new PolicyQuestions.Answer("residence", "SEOUL"),
+                new PolicyQuestions.Answer("employment", "UP_TO_30_HOURS"), new PolicyQuestions.Answer("education", "EXCEPTION_CONFIRMED"),
+                new PolicyQuestions.Answer("business", "INACTIVE_CONFIRMED"), new PolicyQuestions.Answer("publicJob", "NO")));
+        var body = mapper.writeValueAsString(request);
+        mvc.perform(post(path + "/evaluation").contentType("application/json").content(body))
+                .andExpect(status().isOk()).andExpect(header().string("Cache-Control", "no-store"))
+                .andExpect(jsonPath("$.commonCriteriaStatus").value("ELIGIBLE"))
+                .andExpect(jsonPath("$.status").value("NEEDS_REVIEW"));
+        for (var stale : List.of(new PolicyQuestions.Request(2, request.ruleVersion(), request.answers()),
+                new PolicyQuestions.Request(1, "future-youth-jobs-old", request.answers()))) {
+            mvc.perform(post(path + "/evaluation").contentType("application/json").content(mapper.writeValueAsString(stale)))
+                    .andExpect(status().isConflict());
+        }
+        var input = new BasicConditions(java.time.LocalDate.parse("2000-01-01"), "강남구", BasicConditions.EmploymentStatus.NOT_EMPLOYED);
+        mvc.perform(post("/api/v1/policies/checks").param("q", "미래 청년 일자리").contentType("application/json").content(mapper.writeValueAsString(input)))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.items[0].ruleVersion").value(FutureYouthJobsRules.VERSION))
+                .andExpect(jsonPath("$.items[0].checks[0].outcome").value("MET"))
+                .andExpect(jsonPath("$.items[0].checks[1].outcome").value("UNKNOWN"));
+        for (var time : List.of("2026-05-03T14:59:59Z", "2026-12-31T15:00:00Z")) {
+            org.mockito.Mockito.when(clock.instant()).thenReturn(Instant.parse(time));
+            mvc.perform(get(path + "/questions")).andExpect(status().isOk()).andExpect(jsonPath("$.available").value(false));
+            mvc.perform(get("/api/v1/policies").param("questionsOnly", "true"))
+                    .andExpect(status().isOk()).andExpect(jsonPath("$.total").value(0));
+            mvc.perform(post(path + "/evaluation").contentType("application/json").content(body)).andExpect(status().isConflict());
+        }
+        org.mockito.Mockito.when(clock.instant()).thenReturn(AT);
+        var current = store.find(number).orElseThrow();
+        store.importPolicy(number, current.content(), "{}", AT.plusSeconds(1), "changed-future-jobs", "changed-hash");
+        mvc.perform(get(path + "/questions")).andExpect(status().isOk()).andExpect(jsonPath("$.available").value(false));
+        mvc.perform(get(path)).andExpect(status().isOk()).andExpect(jsonPath("$.sourceNotices").isEmpty());
+        mvc.perform(get("/api/v1/policies").param("questionsOnly", "true"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.total").value(0));
+        assertThat(checks.check(input, 1, "미래 청년 일자리", PolicyCheckResponse.Sort.AGE_MATCH, null).items().getFirst().ruleVersion()).isEmpty();
+        mvc.perform(post(path + "/evaluation").contentType("application/json").content(body)).andExpect(status().isConflict());
+    }
+
+    @Test @DisplayName("검토한 일자리 공고의 검색 기간만 수정하고 다른 원문·정책 및 개정을 유지한다")
+    void migratesOnlyReviewedFutureYouthJobsPeriod() throws Exception {
+        for (var reviewed : List.of(true, false)) {
+            var schema = reviewed ? "future_jobs_reviewed" : "future_jobs_changed";
+            var config = org.flywaydb.core.Flyway.configure().dataSource(postgres.getJdbcUrl(), postgres.getUsername(), postgres.getPassword()).schemas(schema);
+            config.target("20").load().migrate();
+            try (var connection = java.sql.DriverManager.getConnection(postgres.getJdbcUrl(), postgres.getUsername(), postgres.getPassword())) {
+                connection.setSchema(schema);
+                var isolated = JdbcClient.create(new org.springframework.jdbc.datasource.SingleConnectionDataSource(connection, true));
+                var normalized = parser.item(item);
+                for (var number : List.of(FutureYouthJobsRules.NUMBER, "999999")) {
+                    isolated.sql("""
+                            INSERT INTO policies(policy_number, current_revision, content_hash, content, last_collected_at,
+                                recruitment_kind, recruitment_opens_at, recruitment_closes_at)
+                            VALUES (:number, 1, :hash, CAST(:content AS jsonb), :at, 'PERIOD',
+                                TIMESTAMPTZ '2026-05-04 00:00:00+09', TIMESTAMPTZ '2026-06-01 00:00:00+09')
+                            """)
+                            .param("number", number).param("hash", reviewed ? FutureYouthJobsRules.CONTENT_HASH : "new-hash")
+                            .param("content", mapper.writeValueAsString(normalized.content())).param("at", AT.atOffset(java.time.ZoneOffset.UTC)).update();
+                    var snapshot = isolated.sql("""
+                            INSERT INTO policy_source_snapshots(policy_number, capture_hash, captured_at, raw_policy)
+                            VALUES (:number, 'original', :at, '{"aplyPrdSeCd":"0057001","aplyYmd":"20260504 ~ 20260531"}'::jsonb) RETURNING id
+                            """).param("number", number).param("at", AT.atOffset(java.time.ZoneOffset.UTC)).query(Long.class).single();
+                    isolated.sql("INSERT INTO policy_revisions(policy_number, revision, source_snapshot_id, content) SELECT policy_number, 1, :snapshot, content FROM policies WHERE policy_number = :number")
+                            .param("snapshot", snapshot).param("number", number).update();
+                }
+                config.target("latest").load().migrate();
+                var opens = isolated.sql("SELECT recruitment_opens_at FROM policies WHERE policy_number = :number")
+                        .param("number", FutureYouthJobsRules.NUMBER).query(java.time.OffsetDateTime.class).single().toInstant();
+                assertThat(opens).isEqualTo(Instant.parse(reviewed ? "2026-05-17T15:00:00Z" : "2026-05-03T15:00:00Z"));
+                assertThat(isolated.sql("SELECT recruitment_opens_at FROM policies WHERE policy_number = '999999'")
+                        .query(java.time.OffsetDateTime.class).single().toInstant()).isEqualTo(Instant.parse("2026-05-03T15:00:00Z"));
+                assertThat(isolated.sql("SELECT current_revision FROM policies").query(Long.class).list()).containsExactly(1L, 1L);
+                assertThat(isolated.sql("SELECT count(*) FROM policy_source_snapshots").query(Long.class).single()).isEqualTo(2);
+                assertThat(isolated.sql("SELECT count(*) FROM policy_revisions").query(Long.class).single()).isEqualTo(2);
+                if (reviewed) {
+                    var migrated = new PolicyCatalogStore(isolated, mapper, java.time.Clock.fixed(AT, java.time.ZoneOffset.UTC), new PolicyCorrectionStore(isolated, mapper));
+                    var beforeOpen = Instant.parse("2026-05-10T00:00:00Z");
+                    assertThat(migrated.list("", 1, 20, false, kr.youthpolicymate.policy.RecruitmentStatus.BEFORE_OPENING, beforeOpen).items())
+                            .singleElement().satisfies(policy -> {
+                                assertThat(policy.policyNumber()).isEqualTo(FutureYouthJobsRules.NUMBER);
+                                assertThat(policy.recruitment().status()).isEqualTo(kr.youthpolicymate.policy.RecruitmentStatus.BEFORE_OPENING);
+                            });
+                    assertThat(migrated.list("", 1, 20, false, kr.youthpolicymate.policy.RecruitmentStatus.OPEN, beforeOpen).items())
+                            .singleElement().satisfies(policy -> {
+                                assertThat(policy.policyNumber()).isEqualTo("999999");
+                                assertThat(policy.recruitment().status()).isEqualTo(kr.youthpolicymate.policy.RecruitmentStatus.OPEN);
+                            });
+                }
+            }
+        }
+    }
+
     private void saveReviewed(String number, String title, String hash) {
         // 인공 본문과 검토 해시로 조회·질문 연결만 검사한다. 공식 조건의 정확성 검사가 아니다.
         var source = item.deepCopy();

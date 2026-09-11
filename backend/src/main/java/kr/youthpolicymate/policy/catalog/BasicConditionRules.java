@@ -37,6 +37,9 @@ final class BasicConditionRules {
                 new Comparison(MisoYouthFutureRules.CONTENT_HASH, MisoYouthFutureRules.VERSION, MisoYouthFutureRules.SOURCE,
                         MisoYouthFutureRules.ageCheck(birth, now),
                         "오늘(서울 기준) 대출 신청 시 연령이에요. 신청일이 달라지면 다시 확인해주세요."));
+        if (FutureYouthJobsRules.appliesAt(now)) comparisons.put(FutureYouthJobsRules.NUMBER,
+                new Comparison(FutureYouthJobsRules.CONTENT_HASH, FutureYouthJobsRules.VERSION, FutureYouthJobsRules.SOURCE,
+                        FutureYouthJobsRules.ageCheck(birth), FutureYouthJobsRules.periodNotice(now)));
         return comparisons;
     }
 

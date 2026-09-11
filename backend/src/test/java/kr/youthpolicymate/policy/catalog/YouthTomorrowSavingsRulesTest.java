@@ -66,7 +66,7 @@ class YouthTomorrowSavingsRulesTest {
 
     @Test @DisplayName("미응답과 모름은 미확인으로 남기고 제출한 답변만 표시한다")
     void preservesMissingAnswers() {
-        var unanswered = YouthTomorrowSavingsRules.evaluate(1, new Request(1, YouthTomorrowSavingsRules.VERSION, List.of()), NOW);
+        var unanswered = PolicyRuleFixtures.rule(YouthTomorrowSavingsRules.NUMBER).evaluate(1, new Request(1, YouthTomorrowSavingsRules.VERSION, List.of()), NOW);
         assertThat(unanswered.checks()).extracting(Check::outcome).containsOnly(UNKNOWN);
         assertThat(unanswered.checks().getFirst().providedValue()).isEqualTo("미응답");
         assertThat(evaluate("UNKNOWN", "UNKNOWN", "UNKNOWN", "UNKNOWN", "UNKNOWN").checks())
@@ -79,12 +79,12 @@ class YouthTomorrowSavingsRulesTest {
         assertThat(YouthTomorrowSavingsRules.periodNotice(Instant.parse("2026-05-03T15:00:00Z"))).doesNotContain("접수 전");
         assertThat(YouthTomorrowSavingsRules.periodNotice(Instant.parse("2026-05-20T14:59:59Z"))).doesNotContain("마감");
         assertThat(YouthTomorrowSavingsRules.periodNotice(Instant.parse("2026-05-20T15:00:00Z"))).contains("마감");
-        assertThat(YouthTomorrowSavingsRules.appliesAt(Instant.parse("2025-12-31T14:59:59Z"))).isFalse();
-        assertThat(YouthTomorrowSavingsRules.appliesAt(Instant.parse("2025-12-31T15:00:00Z"))).isTrue();
-        assertThat(YouthTomorrowSavingsRules.appliesAt(Instant.parse("2026-12-31T14:59:59Z"))).isTrue();
+        assertThat(PolicyRuleFixtures.rule(YouthTomorrowSavingsRules.NUMBER).appliesAt(Instant.parse("2025-12-31T14:59:59Z"))).isFalse();
+        assertThat(PolicyRuleFixtures.rule(YouthTomorrowSavingsRules.NUMBER).appliesAt(Instant.parse("2025-12-31T15:00:00Z"))).isTrue();
+        assertThat(PolicyRuleFixtures.rule(YouthTomorrowSavingsRules.NUMBER).appliesAt(Instant.parse("2026-12-31T14:59:59Z"))).isTrue();
         var nextYear = Instant.parse("2026-12-31T15:00:00Z");
-        assertThat(YouthTomorrowSavingsRules.appliesAt(nextYear)).isFalse();
-        assertThatThrownBy(() -> YouthTomorrowSavingsRules.evaluate(1, new Request(1, YouthTomorrowSavingsRules.VERSION, List.of()), nextYear))
+        assertThat(PolicyRuleFixtures.rule(YouthTomorrowSavingsRules.NUMBER).appliesAt(nextYear)).isFalse();
+        assertThatThrownBy(() -> PolicyRuleFixtures.rule(YouthTomorrowSavingsRules.NUMBER).evaluate(1, new Request(1, YouthTomorrowSavingsRules.VERSION, List.of()), nextYear))
                 .isInstanceOf(IllegalArgumentException.class);
     }
 
@@ -92,14 +92,14 @@ class YouthTomorrowSavingsRulesTest {
     void comparesBirthDateBoundariesForBasicConditions() {
         var cases = java.util.Map.of("1986-04-30", NOT_MET, "1986-05-01", MET, "2011-05-31", MET, "2011-06-01", NOT_MET);
         cases.forEach((date, expected) -> {
-            var result = YouthTomorrowSavingsRules.ageCheck(java.time.LocalDate.parse(date));
+            var result = PolicyRuleFixtures.age(YouthTomorrowSavingsRules.NUMBER, java.time.LocalDate.parse(date));
             assertThat(result.outcome()).as(date).isEqualTo(expected);
             assertThat(result.evidence()).contains("2026년 5월", "1986.5.1.~2011.5.31.");
         });
     }
 
     private Evaluation evaluate(String age, String work, String income, String household, String participation) {
-        return YouthTomorrowSavingsRules.evaluate(1, new Request(1, YouthTomorrowSavingsRules.VERSION, List.of(
+        return PolicyRuleFixtures.rule(YouthTomorrowSavingsRules.NUMBER).evaluate(1, new Request(1, YouthTomorrowSavingsRules.VERSION, List.of(
                 new Answer("birthRange", age), new Answer("workType", work), new Answer("monthlyIncome", income),
                 new Answer("householdIncome", household), new Answer("duplicateParticipation", participation))), NOW);
     }

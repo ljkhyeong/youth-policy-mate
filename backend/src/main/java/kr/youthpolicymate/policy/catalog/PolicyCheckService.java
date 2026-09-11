@@ -55,7 +55,7 @@ public class PolicyCheckService {
         return new PolicyCheckResponse(items, page, policies.getTotalElements(), policies.hasNext(), now);
     }
 
-    private String explanation(BasicConditionRules.Comparison comparison) {
+    private String explanation(PolicyAgeComparison comparison) {
         if (comparison == null) return "이 정책의 연령 기준은 아직 비교할 수 없어요. 공식 공고를 확인해주세요.";
         var message = switch (comparison.age().outcome()) {
             case MET -> "입력한 생년월일은 연령 조건을 충족해요. 다른 신청 조건은 추가 확인이 필요해요.";

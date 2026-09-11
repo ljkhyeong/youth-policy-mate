@@ -9,7 +9,7 @@ import java.util.Optional;
 import static kr.youthpolicymate.eligibility.ConditionAssessment.Outcome.*;
 import static kr.youthpolicymate.policy.catalog.PolicyQuestions.*;
 
-/** 2026년 하반기 모집의 연령·서울 거주 또는 생활권·위원 이력만 비교한다. 최종 선발은 별도 심사다. */
+/** 이전 결과 비교용 고정 자료. 2026년 하반기 모집의 연령·서울 거주 또는 생활권·위원 이력만 비교한다. 최종 선발은 별도 심사다. */
 public final class SeoulYouthNetworkRules {
     public static final String NUMBER = "20260520005400213208";
     public static final String CONTENT_HASH = "f5ae512cf9721607bb849c8d466db4b21e17eb2c8b84eb8dda013fa158d98ca7";

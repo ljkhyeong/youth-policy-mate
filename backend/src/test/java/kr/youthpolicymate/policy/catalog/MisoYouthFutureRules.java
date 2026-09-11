@@ -12,7 +12,7 @@ import java.util.Optional;
 import static kr.youthpolicymate.eligibility.ConditionAssessment.Outcome.*;
 import static kr.youthpolicymate.policy.catalog.PolicyQuestions.*;
 
-/** 청년 미래이음 대출의 기본요건을 비교하며 지원 제한·예외와 대출심사는 별도로 남긴다. */
+/** 이전 결과 비교용 고정 자료. 청년 미래이음 대출의 기본요건을 비교하며 지원 제한·예외와 대출심사는 별도로 남긴다. */
 public final class MisoYouthFutureRules {
     public static final String NUMBER = "20260421005400112773";
     public static final String CONTENT_HASH = "c2ba149dd238ced25aab441f1ff595079b0b2fb6b7d25f4d71a97a21ce3d3788";

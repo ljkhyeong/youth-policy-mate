@@ -56,7 +56,7 @@ class HaetsalronYouthRulesTest {
     void comparesAgeBoundaries() {
         var dates = Map.of("2007-09-09", NOT_MET, "2007-09-08", MET, "1991-09-09", MET, "1991-09-08", NOT_MET);
         dates.forEach((date, expected) -> {
-            var basic = HaetsalronYouthRules.ageCheck(LocalDate.parse(date), NOW);
+            var basic = PolicyRuleFixtures.age(HaetsalronYouthRules.NUMBER, LocalDate.parse(date), NOW);
             assertThat(basic.outcome()).as(date).isEqualTo(expected);
             assertThat(basic.providedValue()).contains("2026-09-08", "서울");
             assertThat(basic.evidence()).contains("연령 상한 연장이 아니에요");
@@ -65,28 +65,28 @@ class HaetsalronYouthRulesTest {
             assertThat(evaluate(Map.of("age", answer)).checks().getFirst().outcome()).isEqualTo(NOT_MET);
         }
         var birthday = LocalDate.parse("2007-09-08");
-        assertThat(HaetsalronYouthRules.ageCheck(birthday, Instant.parse("2026-09-07T14:59:59Z")).outcome()).isEqualTo(NOT_MET);
-        assertThat(HaetsalronYouthRules.ageCheck(birthday, Instant.parse("2026-09-07T15:00:00Z")).outcome()).isEqualTo(MET);
+        assertThat(PolicyRuleFixtures.age(HaetsalronYouthRules.NUMBER, birthday, Instant.parse("2026-09-07T14:59:59Z")).outcome()).isEqualTo(NOT_MET);
+        assertThat(PolicyRuleFixtures.age(HaetsalronYouthRules.NUMBER, birthday, Instant.parse("2026-09-07T15:00:00Z")).outcome()).isEqualTo(MET);
     }
 
     @Test @DisplayName("미응답은 미확인으로 남기고 서울 날짜의 검토 연도를 벗어나면 재사용하지 않는다")
     void keepsMissingAnswersAndReviewedYear() {
         var empty = new Request(1, HaetsalronYouthRules.VERSION, List.of());
-        var result = HaetsalronYouthRules.evaluate(1, empty, NOW);
+        var result = PolicyRuleFixtures.rule(HaetsalronYouthRules.NUMBER).evaluate(1, empty, NOW);
         assertThat(result.checks()).extracting(Check::outcome).containsOnly(UNKNOWN);
         assertThat(result.checks().getFirst().providedValue()).isEqualTo("미응답");
-        assertThat(HaetsalronYouthRules.appliesAt(Instant.parse("2025-12-31T14:59:59Z"))).isFalse();
-        assertThat(HaetsalronYouthRules.appliesAt(Instant.parse("2025-12-31T15:00:00Z"))).isTrue();
-        assertThat(HaetsalronYouthRules.appliesAt(Instant.parse("2026-12-31T14:59:59Z"))).isTrue();
+        assertThat(PolicyRuleFixtures.rule(HaetsalronYouthRules.NUMBER).appliesAt(Instant.parse("2025-12-31T14:59:59Z"))).isFalse();
+        assertThat(PolicyRuleFixtures.rule(HaetsalronYouthRules.NUMBER).appliesAt(Instant.parse("2025-12-31T15:00:00Z"))).isTrue();
+        assertThat(PolicyRuleFixtures.rule(HaetsalronYouthRules.NUMBER).appliesAt(Instant.parse("2026-12-31T14:59:59Z"))).isTrue();
         var nextYear = Instant.parse("2026-12-31T15:00:00Z");
-        assertThat(HaetsalronYouthRules.appliesAt(nextYear)).isFalse();
-        assertThatThrownBy(() -> HaetsalronYouthRules.evaluate(1, empty, nextYear)).isInstanceOf(IllegalArgumentException.class);
+        assertThat(PolicyRuleFixtures.rule(HaetsalronYouthRules.NUMBER).appliesAt(nextYear)).isFalse();
+        assertThatThrownBy(() -> PolicyRuleFixtures.rule(HaetsalronYouthRules.NUMBER).evaluate(1, empty, nextYear)).isInstanceOf(IllegalArgumentException.class);
     }
 
     private Evaluation evaluate(Map<String, String> changes) {
         var values = new HashMap<>(ANSWERS);
         values.putAll(changes);
-        return HaetsalronYouthRules.evaluate(1, new Request(1, HaetsalronYouthRules.VERSION,
+        return PolicyRuleFixtures.rule(HaetsalronYouthRules.NUMBER).evaluate(1, new Request(1, HaetsalronYouthRules.VERSION,
                 values.entrySet().stream().map(e -> new Answer(e.getKey(), e.getValue())).toList()), NOW);
     }
 }

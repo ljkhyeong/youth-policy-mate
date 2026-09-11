@@ -23,58 +23,6 @@ public class PolicyQuestionService {
     }
     private PolicyQuestions.Questionnaire questionsAt(String number, PolicyCatalogStore.QuestionVersion policy, Instant now) {
         if (policy.definition() != null) return policy.definition().questionnaire(policy.revision(), policy.contentHash(), now);
-        var hash = policy.contentHash();
-        var reviewedHash = ReviewedPolicyQuestions.contentHashesAt(now).get(number);
-        if (reviewedHash != null && reviewedHash.equals(hash)) {
-            return switch (number) {
-                case KPassRules.NUMBER -> KPassRules.questionnaire(policy.revision(), now);
-                case YouthHousingSavingsRules.NUMBER -> YouthHousingSavingsRules.questionnaire(policy.revision());
-                case SeoulYouthNetworkRules.NUMBER -> SeoulYouthNetworkRules.questionnaire(policy.revision(), now);
-                case MovingFeeRules.NUMBER -> MovingFeeRules.questionnaire(policy.revision(), now);
-                case YouthTomorrowSavingsRules.NUMBER -> YouthTomorrowSavingsRules.questionnaire(policy.revision(), now);
-                case GuaranteeFeeRules.NUMBER -> GuaranteeFeeRules.questionnaire(policy.revision());
-                case HaetsalronYouthRules.NUMBER -> HaetsalronYouthRules.questionnaire(policy.revision());
-                case MisoYouthFutureRules.NUMBER -> MisoYouthFutureRules.questionnaire(policy.revision());
-                case FutureYouthJobsRules.NUMBER -> FutureYouthJobsRules.questionnaire(policy.revision(), now);
-                default -> throw new IllegalStateException("등록한 정책의 질문 구현이 필요합니다.");
-            };
-        }
-        if (KPassRules.NUMBER.equals(number) && KPassRules.CONTENT_HASH.equals(hash)) {
-            return new PolicyQuestions.Questionnaire(number, policy.revision(), "", false, KPassRules.SCOPE,
-                    "올해 가입·이용 기준의 질문은 아직 제공하지 않아요. 공식 안내를 확인해주세요.", KPassRules.SOURCE, List.of());
-        }
-        if (YouthHousingSavingsRules.NUMBER.equals(number) && YouthHousingSavingsRules.CONTENT_HASH.equals(hash)) {
-            return new PolicyQuestions.Questionnaire(number, policy.revision(), "", false, YouthHousingSavingsRules.SCOPE,
-                    "올해 가입 기준의 질문은 아직 제공하지 않아요. 공식 안내를 확인해주세요.", YouthHousingSavingsRules.SOURCE, List.of());
-        }
-        if (SeoulYouthNetworkRules.NUMBER.equals(number) && SeoulYouthNetworkRules.CONTENT_HASH.equals(hash)) {
-            return new PolicyQuestions.Questionnaire(number, policy.revision(), "", false, SeoulYouthNetworkRules.SCOPE,
-                    "이 질문은 2026년 하반기 모집 기준이에요. 새 모집의 질문은 아직 제공하지 않아요.", SeoulYouthNetworkRules.SOURCE, List.of());
-        }
-        if (MovingFeeRules.NUMBER.equals(number) && MovingFeeRules.CONTENT_HASH.equals(hash)) {
-            return new PolicyQuestions.Questionnaire(number, policy.revision(), "", false, MovingFeeRules.SCOPE,
-                    "이 질문은 2026년 상반기 모집 기준이에요. 새 모집의 질문은 아직 제공하지 않아요.", MovingFeeRules.SOURCE, List.of());
-        }
-        if (YouthTomorrowSavingsRules.NUMBER.equals(number) && YouthTomorrowSavingsRules.CONTENT_HASH.equals(hash)) {
-            return new PolicyQuestions.Questionnaire(number, policy.revision(), "", false, YouthTomorrowSavingsRules.SCOPE,
-                    "이 질문은 2026년 5월 신규 모집 기준이에요. 새 모집의 질문은 아직 제공하지 않아요.", YouthTomorrowSavingsRules.SOURCE, List.of());
-        }
-        if (GuaranteeFeeRules.NUMBER.equals(number) && GuaranteeFeeRules.CONTENT_HASH.equals(hash)) {
-            return new PolicyQuestions.Questionnaire(number, policy.revision(), "", false, GuaranteeFeeRules.SCOPE,
-                    "올해 보증료 지원 기준의 질문은 아직 제공하지 않아요. 공식 안내를 확인해주세요.", GuaranteeFeeRules.SOURCE, List.of());
-        }
-        if (HaetsalronYouthRules.NUMBER.equals(number) && HaetsalronYouthRules.CONTENT_HASH.equals(hash)) {
-            return new PolicyQuestions.Questionnaire(number, policy.revision(), "", false, HaetsalronYouthRules.SCOPE,
-                    "올해 보증 기준의 질문은 아직 제공하지 않아요. 공식 안내를 확인해주세요.", HaetsalronYouthRules.SOURCE, List.of());
-        }
-        if (MisoYouthFutureRules.NUMBER.equals(number) && MisoYouthFutureRules.CONTENT_HASH.equals(hash)) {
-            return new PolicyQuestions.Questionnaire(number, policy.revision(), "", false, MisoYouthFutureRules.SCOPE,
-                    "검토한 2026년 3월 31일 이후 기준의 질문만 제공해요. 현재 적용 기준은 공식 안내를 확인해주세요.", MisoYouthFutureRules.SOURCE, List.of());
-        }
-        if (FutureYouthJobsRules.NUMBER.equals(number) && FutureYouthJobsRules.CONTENT_HASH.equals(hash)) {
-            return new PolicyQuestions.Questionnaire(number, policy.revision(), "", false, FutureYouthJobsRules.SCOPE,
-                    "이 질문은 2026년 5월 모집 기준이에요. 현재 모집의 질문은 아직 제공하지 않아요.", FutureYouthJobsRules.SOURCE, List.of());
-        }
         return new PolicyQuestions.Questionnaire(number, policy.revision(), "", false, "신청 조건 확인",
                 "이 정책의 조건 확인 질문은 아직 제공하지 않아요. 공식 안내를 확인해주세요.", PolicyCatalogStore.sourceUrl(number), List.of());
     }
@@ -85,18 +33,7 @@ public class PolicyQuestionService {
         var questions = questionsAt(number, policy, now);
         if (!questions.available() || request.revision() != questions.revision() || !request.ruleVersion().equals(questions.ruleVersion())) throw new PolicyChangedException();
         if (policy.definition() != null) return policy.definition().evaluate(policy.revision(), request, now);
-        return switch (number) {
-            case KPassRules.NUMBER -> KPassRules.evaluate(questions.revision(), request, now);
-            case YouthHousingSavingsRules.NUMBER -> YouthHousingSavingsRules.evaluate(questions.revision(), request, now);
-            case SeoulYouthNetworkRules.NUMBER -> SeoulYouthNetworkRules.evaluate(questions.revision(), request, now);
-            case MovingFeeRules.NUMBER -> MovingFeeRules.evaluate(questions.revision(), request, now);
-            case YouthTomorrowSavingsRules.NUMBER -> YouthTomorrowSavingsRules.evaluate(questions.revision(), request, now);
-            case GuaranteeFeeRules.NUMBER -> GuaranteeFeeRules.evaluate(questions.revision(), request, now);
-            case HaetsalronYouthRules.NUMBER -> HaetsalronYouthRules.evaluate(questions.revision(), request, now);
-            case MisoYouthFutureRules.NUMBER -> MisoYouthFutureRules.evaluate(questions.revision(), request, now);
-            case FutureYouthJobsRules.NUMBER -> FutureYouthJobsRules.evaluate(questions.revision(), request, now);
-            default -> throw new PolicyChangedException();
-        };
+        throw new PolicyChangedException();
     }
     @Transactional(readOnly = true, isolation = org.springframework.transaction.annotation.Isolation.REPEATABLE_READ)
     public PolicyQuestions.Prefill prefill(String number, PolicyQuestions.PrefillRequest input) {
@@ -107,7 +44,7 @@ public class PolicyQuestionService {
         var questions = questionsAt(number, policy, now);
         if (!questions.available() || input.revision() != questions.revision() || !input.ruleVersion().equals(questions.ruleVersion()))
             throw new PolicyChangedException();
-        return new PolicyQuestions.Prefill(policy.definition() == null ? List.of() : policy.definition().prefill(input.birthDate()));
+        return new PolicyQuestions.Prefill(policy.definition() == null ? List.of() : policy.definition().prefill(input.birthDate(), now));
     }
     public static class PolicyChangedException extends RuntimeException {}
 }

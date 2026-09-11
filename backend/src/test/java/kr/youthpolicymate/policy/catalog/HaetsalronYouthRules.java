@@ -12,7 +12,7 @@ import java.util.Optional;
 import static kr.youthpolicymate.eligibility.ConditionAssessment.Outcome.*;
 import static kr.youthpolicymate.policy.catalog.PolicyQuestions.*;
 
-/** 보증 공통요건의 일부를 비교하며 서민금융진흥원 보증심사와 은행 대출심사는 별도로 남긴다. */
+/** 이전 결과 비교용 고정 자료. 보증 공통요건의 일부를 비교하며 서민금융진흥원 보증심사와 은행 대출심사는 별도로 남긴다. */
 public final class HaetsalronYouthRules {
     public static final String NUMBER = "20260724005400113307";
     public static final String CONTENT_HASH = "1fbde72fe6ad25caf843889a0571a62c817ddd8b246df04093bd65710eb22df5";

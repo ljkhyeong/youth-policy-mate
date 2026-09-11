@@ -99,7 +99,7 @@ export function ConditionForm({ today }: { today: string }) {
               <p>‘연령 조건 비교’ 버튼을 누르면 입력 내용을 전송해 이번 비교에만 사용해요.</p>
             </div>
           </div>
-          <p className="data-retention-note">생년월일은 다른 정책의 출생일 질문에도 사용할 수 있어요. 저장하지 않은 입력은 새로고침하면 지워져요.</p>
+          <p className="data-retention-note">생년월일은 다른 정책의 연령 질문에도 사용할 수 있어요. 저장하지 않은 입력은 새로고침하면 지워져요.</p>
           <div className="form-actions">
             <button type="button" className="button-primary button-block" onClick={() => setShowResults(true)}>연령 조건 비교</button>
             <button type="button" className="button-secondary button-block" onClick={edit}>입력 수정</button>

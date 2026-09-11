@@ -12,7 +12,7 @@ import java.util.Optional;
 import static kr.youthpolicymate.eligibility.ConditionAssessment.Outcome.*;
 import static kr.youthpolicymate.policy.catalog.PolicyQuestions.*;
 
-/** 가입 시 연령·본인 무주택·소득을 비교한다. 통장 전환과 금리·세제·대출 심사는 별도 확인한다. */
+/** 이전 결과 비교용 고정 자료. 가입 시 연령·본인 무주택·소득을 비교한다. 통장 전환과 금리·세제·대출 심사는 별도 확인한다. */
 public final class YouthHousingSavingsRules {
     public static final String NUMBER = "20260616005400113238";
     public static final String CONTENT_HASH = "52ab8f797a2bd470745ded339b0b789ea6baf46e44177f4699e6d60fffc8d214";

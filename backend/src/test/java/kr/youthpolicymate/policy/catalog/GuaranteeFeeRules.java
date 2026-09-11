@@ -10,7 +10,7 @@ import java.util.Optional;
 import static kr.youthpolicymate.eligibility.ConditionAssessment.Outcome.*;
 import static kr.youthpolicymate.policy.catalog.PolicyQuestions.*;
 
-/** 보증료 지원의 일부 조건을 비교하며 지급액·예산·서류 심사는 신청처에서 확인한다. */
+/** 이전 결과 비교용 고정 자료. 보증료 지원의 일부 조건을 비교하며 지급액·예산·서류 심사는 신청처에서 확인한다. */
 public final class GuaranteeFeeRules {
     public static final String NUMBER = "20260527005400113223";
     public static final String CONTENT_HASH = "4dc5e18b6a09b35f00cf00c7be3a608689f6c2d33ee8b191c38a9823dac8cc24";

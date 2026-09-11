@@ -10,7 +10,7 @@ import java.util.stream.IntStream;
 import static kr.youthpolicymate.eligibility.ConditionAssessment.Outcome.*;
 import static kr.youthpolicymate.policy.catalog.PolicyQuestions.*;
 
-/** 서울시 공고 2026-1109호의 상반기 기준만 비교한다. 증빙·참여 제한·선발은 별도 확인한다. */
+/** 이전 결과 비교용 고정 자료. 서울시 공고 2026-1109호의 상반기 기준만 비교한다. 증빙·참여 제한·선발은 별도 확인한다. */
 public final class MovingFeeRules {
     public static final String NUMBER = "20260614005400213232";
     public static final String CONTENT_HASH = "e3f828c1c37c1ecddde5a2dc59065e1179642d0fd7be3e919ec8cb9b07441c42";

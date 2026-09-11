@@ -49,7 +49,7 @@ class FutureYouthJobsRulesTest {
         Map.of("1985-12-31", UNKNOWN, "1986-01-01", MET, "2007-12-31", MET, "2008-01-01", NOT_MET)
                 .forEach((birth, expected) -> {
                     var input = new BasicConditions(LocalDate.parse(birth), "강남구", BasicConditions.EmploymentStatus.EMPLOYED);
-                    var comparison = BasicConditionRules.compare(input, NOW).get(FutureYouthJobsRules.NUMBER);
+                    var comparison = PolicyRuleFixtures.comparisons(input, NOW).get(FutureYouthJobsRules.NUMBER);
                     assertThat(comparison.age().outcome()).as(birth).isEqualTo(expected);
                     assertThat(comparison.periodNotice()).contains("5월", "마감");
                 });
@@ -67,10 +67,10 @@ class FutureYouthJobsRulesTest {
                 .isEqualTo(kr.youthpolicymate.policy.RecruitmentStatus.BEFORE_OPENING);
         assertThat(PolicyRecruitment.from(FutureYouthJobsRules.NUMBER, 2, "changed", raw, may4).status())
                 .isEqualTo(kr.youthpolicymate.policy.RecruitmentStatus.OPEN);
-        assertThat(FutureYouthJobsRules.periodNotice(Instant.parse("2026-05-17T14:59:59Z"))).contains("접수 전");
-        assertThat(FutureYouthJobsRules.periodNotice(Instant.parse("2026-05-17T15:00:00Z"))).doesNotContain("접수 전", "마감됐어요");
-        assertThat(FutureYouthJobsRules.periodNotice(Instant.parse("2026-05-31T14:59:59Z"))).doesNotContain("마감됐어요");
-        assertThat(FutureYouthJobsRules.periodNotice(Instant.parse("2026-05-31T15:00:00Z"))).contains("마감됐어요");
+        assertThat(PolicyRuleFixtures.rule(FutureYouthJobsRules.NUMBER).periodNotice().at(Instant.parse("2026-05-17T14:59:59Z"))).contains("접수 전");
+        assertThat(PolicyRuleFixtures.rule(FutureYouthJobsRules.NUMBER).periodNotice().at(Instant.parse("2026-05-17T15:00:00Z"))).doesNotContain("접수 전", "마감됐어요");
+        assertThat(PolicyRuleFixtures.rule(FutureYouthJobsRules.NUMBER).periodNotice().at(Instant.parse("2026-05-31T14:59:59Z"))).doesNotContain("마감됐어요");
+        assertThat(PolicyRuleFixtures.rule(FutureYouthJobsRules.NUMBER).periodNotice().at(Instant.parse("2026-05-31T15:00:00Z"))).contains("마감됐어요");
         var window = PolicyRecruitmentWindow.from(FutureYouthJobsRules.NUMBER, FutureYouthJobsRules.CONTENT_HASH, raw);
         assertThat(window.opensAt().toInstant()).isEqualTo(Instant.parse("2026-05-17T15:00:00Z"));
         assertThat(window.closesAt().toInstant()).isEqualTo(Instant.parse("2026-05-31T15:00:00Z"));
@@ -79,22 +79,22 @@ class FutureYouthJobsRulesTest {
     @Test @DisplayName("미응답은 미확인이며 공고 이전·다음 연도에는 질문과 기본 연령을 적용하지 않는다")
     void limitsReviewedPeriodAndKeepsMissingAnswersUnknown() {
         var request = new Request(1, FutureYouthJobsRules.VERSION, List.of());
-        assertThat(FutureYouthJobsRules.evaluate(1, request, NOW).checks()).extracting(Check::outcome).containsOnly(UNKNOWN);
-        assertThat(FutureYouthJobsRules.appliesAt(Instant.parse("2026-05-03T15:00:00Z"))).isTrue();
-        assertThat(FutureYouthJobsRules.appliesAt(Instant.parse("2026-12-31T14:59:59Z"))).isTrue();
+        assertThat(PolicyRuleFixtures.rule(FutureYouthJobsRules.NUMBER).evaluate(1, request, NOW).checks()).extracting(Check::outcome).containsOnly(UNKNOWN);
+        assertThat(PolicyRuleFixtures.rule(FutureYouthJobsRules.NUMBER).appliesAt(Instant.parse("2026-05-03T15:00:00Z"))).isTrue();
+        assertThat(PolicyRuleFixtures.rule(FutureYouthJobsRules.NUMBER).appliesAt(Instant.parse("2026-12-31T14:59:59Z"))).isTrue();
         var input = new BasicConditions(LocalDate.parse("2000-01-01"), "강남구", BasicConditions.EmploymentStatus.NOT_EMPLOYED);
         for (var value : List.of("2026-05-03T14:59:59Z", "2026-12-31T15:00:00Z")) {
             var now = Instant.parse(value);
-            assertThat(FutureYouthJobsRules.appliesAt(now)).isFalse();
-            assertThat(BasicConditionRules.compare(input, now)).doesNotContainKey(FutureYouthJobsRules.NUMBER);
-            assertThatThrownBy(() -> FutureYouthJobsRules.evaluate(1, request, now)).isInstanceOf(IllegalArgumentException.class);
+            assertThat(PolicyRuleFixtures.rule(FutureYouthJobsRules.NUMBER).appliesAt(now)).isFalse();
+            assertThat(PolicyRuleFixtures.comparisons(input, now)).doesNotContainKey(FutureYouthJobsRules.NUMBER);
+            assertThatThrownBy(() -> PolicyRuleFixtures.rule(FutureYouthJobsRules.NUMBER).evaluate(1, request, now)).isInstanceOf(IllegalArgumentException.class);
         }
     }
 
     private Evaluation evaluate(Map<String, String> changes) {
         var values = new HashMap<>(ANSWERS);
         values.putAll(changes);
-        return FutureYouthJobsRules.evaluate(1, new Request(1, FutureYouthJobsRules.VERSION,
+        return PolicyRuleFixtures.rule(FutureYouthJobsRules.NUMBER).evaluate(1, new Request(1, FutureYouthJobsRules.VERSION,
                 values.entrySet().stream().map(entry -> new Answer(entry.getKey(), entry.getValue())).toList()), NOW);
     }
 }

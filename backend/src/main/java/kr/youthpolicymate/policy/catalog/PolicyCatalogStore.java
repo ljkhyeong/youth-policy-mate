@@ -187,7 +187,7 @@ public class PolicyCatalogStore {
     }
 
     private Map<String, String> reviewedHashes(java.util.List<PolicyRuleDefinition> definitions, Instant now) {
-        var reviewed = ReviewedPolicyQuestions.contentHashesAt(now);
+        var reviewed = new HashMap<String, String>();
         for (var definition : definitions) {
             reviewed.remove(definition.policyNumber());
             if (definition.appliesAt(now)) reviewed.put(definition.policyNumber(), definition.contentHash());
@@ -221,11 +221,11 @@ public class PolicyCatalogStore {
                                          BasicConditions input, RecruitmentStatus recruitmentStatus, Instant now) {
         var definitions = rules.published();
         var reviewed = reviewedHashes(definitions, now);
-        var comparisons = BasicConditionRules.compare(input, now);
+        var comparisons = new HashMap<String, PolicyAgeComparison>();
         for (var definition : definitions) {
             comparisons.remove(definition.policyNumber());
             if (definition.appliesAt(now)) {
-                var comparison = definition.compareBirth(input.birthDate());
+                var comparison = definition.compareBirth(input.birthDate(), now);
                 if (comparison != null) comparisons.put(definition.policyNumber(), comparison);
             }
         }
@@ -292,7 +292,7 @@ public class PolicyCatalogStore {
     }
 
     public enum ImportResult { APPLIED, UNCHANGED, REPLAYED, STALE, CORRECTION_CONFLICT }
-    record CheckSource(PolicyDetailResponse policy, JsonNode raw, boolean questionnaireAvailable, BasicConditionRules.Comparison comparison) {}
+    record CheckSource(PolicyDetailResponse policy, JsonNode raw, boolean questionnaireAvailable, PolicyAgeComparison comparison) {}
     record QuestionVersion(long revision, String contentHash, PolicyRuleDefinition definition) {}
     private record Current(long revision, String hash, OffsetDateTime collectedAt, long requestSequence) {}
 }

@@ -167,6 +167,47 @@ class PolicyCatalogTest {
         assertThat(evaluation.revision()).isOne();
     }
 
+    @Test @DisplayName("11개 검토 정책이 DB 규칙으로 질문을 제공하고 생년월일로 답할 수 있는 9개 연령 항목을 연결한다")
+    void servesAllDataRules() {
+        int prefills = 0;
+        var birth = java.time.LocalDate.parse("1992-02-29");
+        for (var definition : PolicyRuleFixtures.DEFINITIONS.values()) {
+            saveReviewed(definition.policyNumber(), definition.scope(), definition.contentHash());
+            var questionnaire = questions.questions(definition.policyNumber());
+            assertThat(questionnaire.available()).isTrue();
+            assertThat(questionnaire.ruleVersion()).isEqualTo(definition.versionAt(AT));
+            var filled = questions.prefill(definition.policyNumber(), new PolicyQuestions.PrefillRequest(1, questionnaire.ruleVersion(), birth));
+            if (!filled.answers().isEmpty()) {
+                prefills++;
+                var response = questions.evaluate(definition.policyNumber(), new PolicyQuestions.Request(1, questionnaire.ruleVersion(), filled.answers()));
+                assertThat(response.checks().getFirst().outcome()).isEqualTo(LegacyPolicyRules.age(definition.policyNumber(), birth, AT).outcome());
+            }
+        }
+        assertThat(prefills).isEqualTo(9);
+        assertThat(store.list("", 1, 20, true, null, AT).total()).isEqualTo(11);
+    }
+
+    @Test @org.springframework.transaction.annotation.Transactional
+    @DisplayName("월별 정책의 연령 기준을 데이터로 변경하면 새 질문 버전과 연령 답변에 즉시 반영한다")
+    void publishesAgeAndMonthlyRuleWithoutRestart() {
+        saveReviewed(KPassRules.NUMBER, "K-패스", KPassRules.CONTENT_HASH);
+        var original = PolicyRuleFixtures.rule(KPassRules.NUMBER);
+        var json = (ObjectNode) mapper.valueToTree(original);
+        json.put("ruleVersion", "k-pass-age-test");
+        ((ObjectNode) json.get("ageBinding")).put("minimumInclusive", 20);
+        var next = mapper.treeToValue(json, PolicyRuleDefinition.class);
+        var id = rules.draft(next, "rule-test", "공통 연령 비교의 데이터 변경 검증");
+        rules.publish(id, original.ruleVersion(), "rule-test");
+        var birth = java.time.LocalDate.parse("2007-01-01");
+        var current = questions.questions(KPassRules.NUMBER);
+        assertThat(current.ruleVersion()).isEqualTo("k-pass-age-test-2026-09");
+        assertThatThrownBy(() -> questions.evaluate(KPassRules.NUMBER, new PolicyQuestions.Request(1, original.versionAt(AT), List.of())))
+                .isInstanceOf(PolicyQuestionService.PolicyChangedException.class);
+        var answers = questions.prefill(KPassRules.NUMBER, new PolicyQuestions.PrefillRequest(1, current.ruleVersion(), birth)).answers();
+        assertThat(questions.evaluate(KPassRules.NUMBER, new PolicyQuestions.Request(1, current.ruleVersion(), answers)).checks().getFirst().outcome())
+                .isEqualTo(kr.youthpolicymate.eligibility.ConditionAssessment.Outcome.NOT_MET);
+    }
+
     @Test
     @DisplayName("실제 PostgreSQL에 원본과 개정을 저장하고 같은 캡처 재전달과 조회수 변경은 개정을 늘리지 않는다")
     void storesWithoutDuplicateRevision() {
@@ -599,7 +640,7 @@ class PolicyCatalogTest {
         var path = "/api/v1/policies/" + KPassRules.NUMBER;
         org.mockito.Mockito.when(clock.instant()).thenReturn(Instant.parse("2026-12-31T15:00:00Z"));
         mvc.perform(get(path + "/questions")).andExpect(status().isOk()).andExpect(jsonPath("$.available").value(false))
-                .andExpect(jsonPath("$.reason").value(org.hamcrest.Matchers.containsString("올해")));
+                .andExpect(jsonPath("$.reason").value(org.hamcrest.Matchers.containsString("적용 기간")));
         mvc.perform(get("/api/v1/policies")).andExpect(status().isOk())
                 .andExpect(jsonPath("$.items[0].questionnaireAvailable").value(false));
         mvc.perform(get("/api/v1/policies").param("questionsOnly", "true"))
@@ -656,7 +697,7 @@ class PolicyCatalogTest {
         mvc.perform(post(path + "/evaluation").contentType("application/json").content(body))
                 .andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("POLICY_CHANGED"));
         mvc.perform(get(path + "/questions")).andExpect(status().isOk()).andExpect(jsonPath("$.available").value(false))
-                .andExpect(jsonPath("$.reason").value(org.hamcrest.Matchers.containsString("올해")));
+                .andExpect(jsonPath("$.reason").value(org.hamcrest.Matchers.containsString("적용 기간")));
         mvc.perform(get("/api/v1/policies")).andExpect(status().isOk())
                 .andExpect(jsonPath("$.items[0].questionnaireAvailable").value(false));
         mvc.perform(get("/api/v1/policies").param("questionsOnly", "true"))
@@ -713,7 +754,7 @@ class PolicyCatalogTest {
         mvc.perform(post(path + "/evaluation").contentType("application/json").content(body))
                 .andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("POLICY_CHANGED"));
         mvc.perform(get(path + "/questions")).andExpect(status().isOk()).andExpect(jsonPath("$.available").value(false))
-                .andExpect(jsonPath("$.reason").value(org.hamcrest.Matchers.containsString("새 모집")));
+                .andExpect(jsonPath("$.reason").value(org.hamcrest.Matchers.containsString("적용 기간")));
         mvc.perform(get("/api/v1/policies")).andExpect(status().isOk())
                 .andExpect(jsonPath("$.items[0].questionnaireAvailable").value(false));
         mvc.perform(get("/api/v1/policies").param("questionsOnly", "true"))

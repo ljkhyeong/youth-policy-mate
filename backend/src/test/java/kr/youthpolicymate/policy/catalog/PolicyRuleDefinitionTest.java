@@ -14,7 +14,7 @@ class PolicyRuleDefinitionTest {
     @Test @DisplayName("초기 데이터는 기존 모든 선택지 조합과 같은 판정·근거·예외 설명을 제공한다")
     void preservesReviewedDecisions() {
         try (var factory = Validation.buildDefaultValidatorFactory()) {
-            for (var definition : PolicyRuleFixtures.DEFINITIONS.values()) {
+            for (var definition : List.of(PolicyRuleFixtures.exam(), PolicyRuleFixtures.work())) {
                 definition.validate(factory.getValidator());
                 compareCombinations(definition, 0, new ArrayList<>());
             }
@@ -53,8 +53,8 @@ class PolicyRuleDefinitionTest {
     }
     @Test @DisplayName("양쪽 출생일 경계를 포함하고 학적·소득 답변은 생년월일에서 추정하지 않는다")
     void mapsOnlyReviewedBirthAnswers() {
-        assertThat(PolicyRuleFixtures.exam().prefill(LocalDate.parse("1991-01-01"))).containsExactly(new Answer("birthRange", "ON_OR_AFTER_1991_01_01"));
-        assertThat(PolicyRuleFixtures.exam().prefill(LocalDate.parse("1990-12-31"))).containsExactly(new Answer("birthRange", "BEFORE_1991_01_01"));
-        assertThat(PolicyRuleFixtures.work().prefill(LocalDate.parse("2000-01-01"))).isEmpty();
+        assertThat(PolicyRuleFixtures.exam().prefill(LocalDate.parse("1991-01-01"), NOW)).containsExactly(new Answer("birthRange", "ON_OR_AFTER_1991_01_01"));
+        assertThat(PolicyRuleFixtures.exam().prefill(LocalDate.parse("1990-12-31"), NOW)).containsExactly(new Answer("birthRange", "BEFORE_1991_01_01"));
+        assertThat(PolicyRuleFixtures.work().prefill(LocalDate.parse("2000-01-01"), NOW)).isEmpty();
     }
 }

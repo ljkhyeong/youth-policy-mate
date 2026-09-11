@@ -11,7 +11,7 @@ import java.util.Optional;
 import static kr.youthpolicymate.eligibility.ConditionAssessment.Outcome.*;
 import static kr.youthpolicymate.policy.catalog.PolicyQuestions.*;
 
-/** 2026년 5월 신규 모집의 일부 조건을 비교한다. 수집 안내의 충돌과 최종 심사는 별도 확인으로 남긴다. */
+/** 이전 결과 비교용 고정 자료. 2026년 5월 신규 모집의 일부 조건을 비교한다. 수집 안내의 충돌과 최종 심사는 별도 확인으로 남긴다. */
 public final class YouthTomorrowSavingsRules {
     public static final String NUMBER = "20260430005400113009";
     public static final String CONTENT_HASH = "f3709a60376cdaf861ee232c1fc411292f2d3bdcb28c807ca87190a19698733c";

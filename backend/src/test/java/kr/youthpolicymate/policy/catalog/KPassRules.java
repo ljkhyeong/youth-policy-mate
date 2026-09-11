@@ -10,7 +10,7 @@ import java.util.Optional;
 import static kr.youthpolicymate.eligibility.ConditionAssessment.Outcome.*;
 import static kr.youthpolicymate.policy.catalog.PolicyQuestions.*;
 
-/** 현재 월의 가입·이용 공통요건만 비교한다. 환급 유형·금액과 실제 지급은 공식 서비스에서 확인한다. */
+/** 이전 결과 비교용 고정 자료. 현재 월의 가입·이용 공통요건만 비교한다. 환급 유형·금액과 실제 지급은 공식 서비스에서 확인한다. */
 public final class KPassRules {
     public static final String NUMBER = "20260710005400113257";
     public static final String CONTENT_HASH = "8285137b93b842eec33bd8f9ad79f8eef1c953858ebc9feca37e90140644e653";

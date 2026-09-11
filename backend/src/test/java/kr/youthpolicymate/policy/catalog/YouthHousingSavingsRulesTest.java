@@ -15,10 +15,10 @@ class YouthHousingSavingsRulesTest {
 
     @Test @DisplayName("기본 생년월일은 오늘 가입할 때의 연령만 비교하고 병역기간을 추정하지 않는다")
     void comparesBirthDateUsingExistingAgeRules() {
-        var below = YouthHousingSavingsRules.ageCheck(LocalDate.parse("2007-09-06"), NOW);
-        var adult = YouthHousingSavingsRules.ageCheck(LocalDate.parse("2007-09-05"), NOW);
-        var upper = YouthHousingSavingsRules.ageCheck(LocalDate.parse("1991-09-06"), NOW);
-        var military = YouthHousingSavingsRules.ageCheck(LocalDate.parse("1991-09-05"), NOW);
+        var below = PolicyRuleFixtures.age(YouthHousingSavingsRules.NUMBER, LocalDate.parse("2007-09-06"), NOW);
+        var adult = PolicyRuleFixtures.age(YouthHousingSavingsRules.NUMBER, LocalDate.parse("2007-09-05"), NOW);
+        var upper = PolicyRuleFixtures.age(YouthHousingSavingsRules.NUMBER, LocalDate.parse("1991-09-06"), NOW);
+        var military = PolicyRuleFixtures.age(YouthHousingSavingsRules.NUMBER, LocalDate.parse("1991-09-05"), NOW);
         assertThat(below.outcome()).isEqualTo(NOT_MET);
         assertThat(adult.outcome()).isEqualTo(MET);
         assertThat(upper.outcome()).isEqualTo(MET);
@@ -31,11 +31,11 @@ class YouthHousingSavingsRulesTest {
     @Test @DisplayName("생일의 서울 자정에 연령이 바뀌고 윤일 출생도 날짜 계산으로 비교한다")
     void usesSeoulBirthdayBoundary() {
         var birth = LocalDate.parse("2007-09-06");
-        assertThat(YouthHousingSavingsRules.ageCheck(birth, Instant.parse("2026-09-05T14:59:59Z")).outcome()).isEqualTo(NOT_MET);
-        assertThat(YouthHousingSavingsRules.ageCheck(birth, Instant.parse("2026-09-05T15:00:00Z")).outcome()).isEqualTo(MET);
+        assertThat(PolicyRuleFixtures.age(YouthHousingSavingsRules.NUMBER, birth, Instant.parse("2026-09-05T14:59:59Z")).outcome()).isEqualTo(NOT_MET);
+        assertThat(PolicyRuleFixtures.age(YouthHousingSavingsRules.NUMBER, birth, Instant.parse("2026-09-05T15:00:00Z")).outcome()).isEqualTo(MET);
         var leapBirth = LocalDate.parse("1992-02-29");
-        assertThat(YouthHousingSavingsRules.ageCheck(leapBirth, Instant.parse("2026-02-28T00:00:00Z")).providedValue()).startsWith("만 33세");
-        assertThat(YouthHousingSavingsRules.ageCheck(leapBirth, Instant.parse("2026-03-01T00:00:00Z")).providedValue()).startsWith("만 34세");
+        assertThat(PolicyRuleFixtures.age(YouthHousingSavingsRules.NUMBER, leapBirth, Instant.parse("2026-02-28T00:00:00Z")).providedValue()).startsWith("만 33세");
+        assertThat(PolicyRuleFixtures.age(YouthHousingSavingsRules.NUMBER, leapBirth, Instant.parse("2026-03-01T00:00:00Z")).providedValue()).startsWith("만 34세");
     }
 
     @Test @DisplayName("연령·본인 무주택·소득 충족과 은행의 가입·혜택 심사를 구분한다")
@@ -90,29 +90,29 @@ class YouthHousingSavingsRulesTest {
 
     @Test @DisplayName("미응답은 추가 확인으로 남기고 지원하지 않는 질문·답변과 중복 답변을 거절한다")
     void handlesMissingAndInvalidAnswers() {
-        var result = YouthHousingSavingsRules.evaluate(1, new Request(1, YouthHousingSavingsRules.VERSION, List.of()), NOW);
+        var result = PolicyRuleFixtures.rule(YouthHousingSavingsRules.NUMBER).evaluate(1, new Request(1, YouthHousingSavingsRules.VERSION, List.of()), NOW);
         assertThat(result.checks()).extracting(Check::outcome).containsOnly(UNKNOWN);
         assertThat(result.commonCriteriaStatus()).isEqualTo(NEEDS_REVIEW);
         assertThat(evaluate("UNKNOWN", "UNKNOWN", "UNKNOWN", "UNKNOWN").checks()).extracting(Check::outcome).containsOnly(UNKNOWN);
         for (var answers : List.of(List.of(new Answer("monthlyRides", "ZERO")), List.of(new Answer("incomeAmount", "ZERO")),
                 List.of(new Answer("homeOwnership", "NO_HOME"), new Answer("homeOwnership", "OWNS_HOME")))) {
-            assertThatThrownBy(() -> YouthHousingSavingsRules.evaluate(1, new Request(1, YouthHousingSavingsRules.VERSION, answers), NOW))
+            assertThatThrownBy(() -> PolicyRuleFixtures.rule(YouthHousingSavingsRules.NUMBER).evaluate(1, new Request(1, YouthHousingSavingsRules.VERSION, answers), NOW))
                     .isInstanceOf(IllegalArgumentException.class);
         }
     }
 
     @Test @DisplayName("서울 기준 검토 연도 밖에서는 연도별 소득 질문을 재사용하지 않는다")
     void boundsReviewedYearInSeoul() {
-        assertThat(YouthHousingSavingsRules.appliesAt(Instant.parse("2025-12-31T14:59:59Z"))).isFalse();
-        assertThat(YouthHousingSavingsRules.appliesAt(Instant.parse("2025-12-31T15:00:00Z"))).isTrue();
-        assertThat(YouthHousingSavingsRules.appliesAt(Instant.parse("2026-12-31T14:59:59Z"))).isTrue();
-        assertThat(YouthHousingSavingsRules.appliesAt(Instant.parse("2026-12-31T15:00:00Z"))).isFalse();
-        assertThatThrownBy(() -> YouthHousingSavingsRules.evaluate(1, new Request(1, YouthHousingSavingsRules.VERSION, List.of()),
+        assertThat(PolicyRuleFixtures.rule(YouthHousingSavingsRules.NUMBER).appliesAt(Instant.parse("2025-12-31T14:59:59Z"))).isFalse();
+        assertThat(PolicyRuleFixtures.rule(YouthHousingSavingsRules.NUMBER).appliesAt(Instant.parse("2025-12-31T15:00:00Z"))).isTrue();
+        assertThat(PolicyRuleFixtures.rule(YouthHousingSavingsRules.NUMBER).appliesAt(Instant.parse("2026-12-31T14:59:59Z"))).isTrue();
+        assertThat(PolicyRuleFixtures.rule(YouthHousingSavingsRules.NUMBER).appliesAt(Instant.parse("2026-12-31T15:00:00Z"))).isFalse();
+        assertThatThrownBy(() -> PolicyRuleFixtures.rule(YouthHousingSavingsRules.NUMBER).evaluate(1, new Request(1, YouthHousingSavingsRules.VERSION, List.of()),
                 Instant.parse("2026-12-31T15:00:00Z"))).isInstanceOf(IllegalArgumentException.class);
     }
 
     private Evaluation evaluate(String age, String home, String basis, String amount) {
-        return YouthHousingSavingsRules.evaluate(1, new Request(1, YouthHousingSavingsRules.VERSION,
+        return PolicyRuleFixtures.rule(YouthHousingSavingsRules.NUMBER).evaluate(1, new Request(1, YouthHousingSavingsRules.VERSION,
                 List.of(new Answer("age", age), new Answer("homeOwnership", home), new Answer("incomeBasis", basis), new Answer("incomeAmount", amount))), NOW);
     }
 }

@@ -69,7 +69,7 @@ function QuestionForm({ questions, onChanged }: { questions: Questionnaire; onCh
       if (controller.signal.aborted || readConfirmedBirth() !== birthDate) return;
       if (response.answers.length) {
         setAnswers(Object.fromEntries(response.answers.map(answer => [answer.questionId, answer.value])));
-        setPrefillNotice("내 조건의 생년월일로 출생일 답변을 채웠어요. 변경할 수 있어요.");
+        setPrefillNotice("내 조건의 생년월일을 반영했어요. 답변은 변경할 수 있어요.");
       }
     } catch (failure) {
       if (controller.signal.aborted) return;
@@ -95,7 +95,7 @@ function QuestionForm({ questions, onChanged }: { questions: Questionnaire; onCh
   return <>
     <p className="question-scope">{questions.scope}</p>
     <p>{questions.reason}</p>
-    <p className="question-privacy">답변은 저장하지 않아요. 확인한 생년월일이 있으면 출생일 답변에 사용하며, 새로고침하면 지워져요.</p>
+    <p className="question-privacy">답변은 저장하지 않아요. 확인한 생년월일은 연령 답변에 사용하며, 새로고침하면 지워져요.</p>
     {!started ? <button type="button" className="button-primary" onClick={() => void start()}>질문에 답하기</button> : <form onSubmit={event => { event.preventDefault(); void evaluate(); }}>
       <p className="question-privacy">모르는 항목은 비워두거나 ‘모르겠어요’를 선택하세요.</p>
       {prefillNotice && <p role="status">{prefillNotice}</p>}

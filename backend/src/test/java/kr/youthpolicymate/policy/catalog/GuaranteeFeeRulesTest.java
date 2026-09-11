@@ -24,7 +24,7 @@ class GuaranteeFeeRulesTest {
         assertThat(result.status()).isEqualTo(NEEDS_REVIEW);
         assertThat(result.remainingChecks()).anyMatch(s -> s.contains("동일 보증서"))
                 .anyMatch(s -> s.contains("예산 소진"));
-        assertThat(GuaranteeFeeRules.questionnaire(1).reason()).contains("청년 외 연령도 대상");
+        assertThat(PolicyRuleFixtures.questions(GuaranteeFeeRules.NUMBER, 1).reason()).contains("청년 외 연령도 대상");
     }
 
     @Test @DisplayName("청년·청년 외·신혼부부별 소득 상한을 포함하고 초과 구간을 구분한다")
@@ -70,26 +70,26 @@ class GuaranteeFeeRulesTest {
 
     @Test @DisplayName("빈 답변은 미응답과 미확인으로 남긴다")
     void keepsMissingAnswersUnknown() {
-        var result = GuaranteeFeeRules.evaluate(1, new Request(1, GuaranteeFeeRules.VERSION, List.of()), NOW);
+        var result = PolicyRuleFixtures.rule(GuaranteeFeeRules.NUMBER).evaluate(1, new Request(1, GuaranteeFeeRules.VERSION, List.of()), NOW);
         assertThat(result.checks()).extracting(Check::outcome).containsOnly(UNKNOWN);
         assertThat(result.checks().getFirst().providedValue()).isEqualTo("미응답");
     }
 
     @Test @DisplayName("서울 날짜로 검토 연도를 제한하고 다음 해 규칙으로 재사용하지 않는다")
     void limitsReviewedYear() {
-        assertThat(GuaranteeFeeRules.appliesAt(Instant.parse("2025-12-31T14:59:59Z"))).isFalse();
-        assertThat(GuaranteeFeeRules.appliesAt(Instant.parse("2025-12-31T15:00:00Z"))).isTrue();
-        assertThat(GuaranteeFeeRules.appliesAt(Instant.parse("2026-12-31T14:59:59Z"))).isTrue();
+        assertThat(PolicyRuleFixtures.rule(GuaranteeFeeRules.NUMBER).appliesAt(Instant.parse("2025-12-31T14:59:59Z"))).isFalse();
+        assertThat(PolicyRuleFixtures.rule(GuaranteeFeeRules.NUMBER).appliesAt(Instant.parse("2025-12-31T15:00:00Z"))).isTrue();
+        assertThat(PolicyRuleFixtures.rule(GuaranteeFeeRules.NUMBER).appliesAt(Instant.parse("2026-12-31T14:59:59Z"))).isTrue();
         var nextYear = Instant.parse("2026-12-31T15:00:00Z");
-        assertThat(GuaranteeFeeRules.appliesAt(nextYear)).isFalse();
-        assertThatThrownBy(() -> GuaranteeFeeRules.evaluate(1, new Request(1, GuaranteeFeeRules.VERSION, List.of()), nextYear))
+        assertThat(PolicyRuleFixtures.rule(GuaranteeFeeRules.NUMBER).appliesAt(nextYear)).isFalse();
+        assertThatThrownBy(() -> PolicyRuleFixtures.rule(GuaranteeFeeRules.NUMBER).evaluate(1, new Request(1, GuaranteeFeeRules.VERSION, List.of()), nextYear))
                 .isInstanceOf(IllegalArgumentException.class);
     }
 
     private Evaluation evaluate(Map<String, String> changes) {
         var values = new HashMap<>(ANSWERS);
         values.putAll(changes);
-        return GuaranteeFeeRules.evaluate(1, new Request(1, GuaranteeFeeRules.VERSION,
+        return PolicyRuleFixtures.rule(GuaranteeFeeRules.NUMBER).evaluate(1, new Request(1, GuaranteeFeeRules.VERSION,
                 values.entrySet().stream().map(e -> new Answer(e.getKey(), e.getValue())).toList()), NOW);
     }
 }

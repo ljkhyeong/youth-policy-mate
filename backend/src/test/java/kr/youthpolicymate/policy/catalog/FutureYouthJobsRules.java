@@ -10,7 +10,7 @@ import java.util.Optional;
 import static kr.youthpolicymate.eligibility.ConditionAssessment.Outcome.*;
 import static kr.youthpolicymate.policy.catalog.PolicyQuestions.*;
 
-/** 서울시 공고 제2026-1444호의 5월 모집만 비교한다. 이후 모집과 최종 선발은 별도 확인한다. */
+/** 이전 결과 비교용 고정 자료. 서울시 공고 제2026-1444호의 5월 모집만 비교한다. 이후 모집과 최종 선발은 별도 확인한다. */
 public final class FutureYouthJobsRules {
     public static final String NUMBER = "20260722005400213264";
     public static final String CONTENT_HASH = "0d98b50fc87fc4e319676be23e6a900304a4434215e997004ed3e1f47bb8dfea";

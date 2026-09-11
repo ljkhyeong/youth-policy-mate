@@ -46,7 +46,7 @@ class KPassRulesTest {
         assertThat(result.commonCriteriaStatus()).isEqualTo(NEEDS_REVIEW);
         assertThat(result.checks().getLast().explanation()).contains("이용내역 반영이 끝나면 다시 답해주세요");
         assertThat(evaluate("UNKNOWN", "UNKNOWN", "UNKNOWN", "UNKNOWN").checks()).extracting(Check::outcome).containsOnly(UNKNOWN);
-        assertThat(KPassRules.evaluate(1, new Request(1, KPassRules.versionAt(NOW), List.of()), NOW).checks()).extracting(Check::outcome).containsOnly(UNKNOWN);
+        assertThat(PolicyRuleFixtures.rule(KPassRules.NUMBER).evaluate(1, new Request(1, PolicyRuleFixtures.rule(KPassRules.NUMBER).versionAt(NOW), List.of()), NOW).checks()).extracting(Check::outcome).containsOnly(UNKNOWN);
     }
 
     @Test @DisplayName("연령 미달과 카드 발급만 한 상태는 첫 달 횟수 예외로 충족 처리하지 않는다")
@@ -62,12 +62,12 @@ class KPassRulesTest {
 
     @Test @DisplayName("질문의 대상 월은 서울 자정에 바뀌며 검토한 연도가 지난 규칙은 실행하지 않는다")
     void identifiesMonthAndReviewedYearInSeoul() {
-        assertThat(KPassRules.versionAt(Instant.parse("2026-09-30T14:59:59Z"))).endsWith("2026-09");
-        assertThat(KPassRules.versionAt(Instant.parse("2026-09-30T15:00:00Z"))).endsWith("2026-10");
-        assertThat(KPassRules.questionnaire(1, Instant.parse("2026-09-30T15:00:00Z")).scope()).startsWith("2026년 10월");
-        assertThat(KPassRules.appliesAt(Instant.parse("2026-12-31T14:59:59Z"))).isTrue();
-        assertThat(KPassRules.appliesAt(Instant.parse("2026-12-31T15:00:00Z"))).isFalse();
-        assertThatThrownBy(() -> KPassRules.evaluate(1, new Request(1, KPassRules.versionAt(NOW), List.of()), Instant.parse("2026-12-31T15:00:00Z")))
+        assertThat(PolicyRuleFixtures.rule(KPassRules.NUMBER).versionAt(Instant.parse("2026-09-30T14:59:59Z"))).endsWith("2026-09");
+        assertThat(PolicyRuleFixtures.rule(KPassRules.NUMBER).versionAt(Instant.parse("2026-09-30T15:00:00Z"))).endsWith("2026-10");
+        assertThat(PolicyRuleFixtures.questions(KPassRules.NUMBER, 1, Instant.parse("2026-09-30T15:00:00Z")).scope()).startsWith("2026년 10월");
+        assertThat(PolicyRuleFixtures.rule(KPassRules.NUMBER).appliesAt(Instant.parse("2026-12-31T14:59:59Z"))).isTrue();
+        assertThat(PolicyRuleFixtures.rule(KPassRules.NUMBER).appliesAt(Instant.parse("2026-12-31T15:00:00Z"))).isFalse();
+        assertThatThrownBy(() -> PolicyRuleFixtures.rule(KPassRules.NUMBER).evaluate(1, new Request(1, PolicyRuleFixtures.rule(KPassRules.NUMBER).versionAt(NOW), List.of()), Instant.parse("2026-12-31T15:00:00Z")))
                 .isInstanceOf(IllegalArgumentException.class);
     }
 
@@ -75,13 +75,13 @@ class KPassRulesTest {
     void rejectsInvalidAnswers() {
         for (var answers : List.of(List.of(new Answer("remainingUses", "ONE")), List.of(new Answer("monthlyRides", "TEN")),
                 List.of(new Answer("monthlyRides", "AT_LEAST_15"), new Answer("monthlyRides", "ZERO")))) {
-            assertThatThrownBy(() -> KPassRules.evaluate(1, new Request(1, KPassRules.versionAt(NOW), answers), NOW))
+            assertThatThrownBy(() -> PolicyRuleFixtures.rule(KPassRules.NUMBER).evaluate(1, new Request(1, PolicyRuleFixtures.rule(KPassRules.NUMBER).versionAt(NOW), answers), NOW))
                     .isInstanceOf(IllegalArgumentException.class);
         }
     }
 
     private Evaluation evaluate(String age, String registration, String residence, String rides) {
-        return KPassRules.evaluate(1, new Request(1, KPassRules.versionAt(NOW), List.of(new Answer("age", age),
+        return PolicyRuleFixtures.rule(KPassRules.NUMBER).evaluate(1, new Request(1, PolicyRuleFixtures.rule(KPassRules.NUMBER).versionAt(NOW), List.of(new Answer("age", age),
                 new Answer("registration", registration), new Answer("residence", residence), new Answer("monthlyRides", rides))), NOW);
     }
 }

@@ -960,6 +960,10 @@ select {
 .rule-review-search :is(input, select):focus-visible { outline: 3px solid var(--app-blue); outline-offset: 2px; }
 .rule-review-search .form-actions { display: flex; flex-direction: row; align-items: center; gap: 16px; margin: 0; padding: 0; border: 0; }
 .rule-review-search .button-primary { width: auto; margin: 0; }
+.rule-review-confirm { display: flex; align-items: start; gap: 10px; margin: 20px 0; line-height: 1.7; }
+.rule-review-confirm input { margin-top: 7px; flex-shrink: 0; }
+.rule-version-controls { margin-top: 20px; }
+.rule-version-controls > button { margin-top: 12px; }
 @media (min-width: 760px) { .rule-review-search { grid-template-columns: minmax(0, 1fr) 160px auto; align-items: end; } }
 
 @layer components {

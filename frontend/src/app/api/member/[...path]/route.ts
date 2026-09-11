@@ -12,6 +12,9 @@ async function handle(request: NextRequest, context: { params: Promise<{ path: s
   const collectionReplay = /^collection-replays\/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\/([0-9])$/i.exec(path);
   const correctionResolution = /^policy-corrections\/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\/resolutions$/i.exec(path);
   const correction = path === "policy-corrections" || Boolean(correctionResolution);
+  const ruleDraft = /^policy-rule-reviews\/[0-9]{20}\/drafts$/.test(path);
+  const ruleFile = /^policy-rule-reviews\/[0-9]{20}\/versions\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(path);
+  const rulePublish = /^policy-rule-reviews\/[0-9]{20}\/versions\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\/publish$/i.test(path);
   const anonymous = path === "checks" || Boolean(question || evaluation || prefill);
   const allowed = (path === "session" && method === "GET")
     || (path === "logout" && method === "POST")
@@ -20,6 +23,8 @@ async function handle(request: NextRequest, context: { params: Promise<{ path: s
     || (Boolean(evaluation || prefill) && method === "POST")
     || (correction && method === "POST")
     || (Boolean(collectionReplay) && method === "POST")
+    || ((ruleDraft || rulePublish) && method === "POST")
+    || (ruleFile && method === "GET")
     || (path === "conditions" && ["GET", "PUT", "DELETE"].includes(method))
     || (path === "policies" && method === "GET")
     || (/^policies\/[0-9]{1,100}$/.test(path) && ["PUT", "DELETE"].includes(method))
@@ -42,7 +47,7 @@ async function handle(request: NextRequest, context: { params: Promise<{ path: s
           const next = await reader.read();
           if (next.done) break;
           length += next.value.byteLength;
-          if (length > 16384) { await reader.cancel(); return Response.json({ message: "입력 내용이 너무 길어요." }, { status: 413 }); }
+          if (length > (ruleDraft ? 524288 : 16384)) { await reader.cancel(); return Response.json({ message: "입력 내용이 너무 길어요." }, { status: 413 }); }
           chunks.push(next.value);
         }
       }
@@ -50,7 +55,7 @@ async function handle(request: NextRequest, context: { params: Promise<{ path: s
     }
     const base = process.env.POLICY_API_BASE_URL || "http://127.0.0.1:8080";
     const apiPath = collectionReplay ? `/api/v1/admin/collection-exceptions/${collectionReplay[1]}/${collectionReplay[2]}/replays`
-      : correction ? `/api/v1/admin/${path}`
+      : correction || ruleDraft || ruleFile || rulePublish ? `/api/v1/admin/${path}`
       : question ? `/api/v1/policies/${question[1]}/questions`
       : prefill ? `/api/v1/policies/${prefill[1]}/question-prefill`
       : evaluation ? `/api/v1/policies/${evaluation[1]}/evaluation` : path === "checks" ? "/api/v1/policies/checks" : ["session", "logout"].includes(path) ? `/api/v1/${path}` : `/api/v1/me/${path}`;

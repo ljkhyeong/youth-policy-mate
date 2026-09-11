@@ -58,11 +58,132 @@ class PolicyRuleReviewApiTest {
     @BeforeEach void setup() {
         when(clock.instant()).thenReturn(NOW);
         when(clock.getZone()).thenReturn(ZoneId.of("Asia/Seoul"));
+        jdbc.sql("DELETE FROM admin_policy_rule_actions").update();
         jdbc.sql("DELETE FROM policy_revisions").update();
         jdbc.sql("DELETE FROM policy_source_snapshots").update();
         jdbc.sql("DELETE FROM policies").update();
         jdbc.sql("DELETE FROM policy_rule_heads WHERE policy_number LIKE '9999%'").update();
         jdbc.sql("DELETE FROM policy_rule_versions WHERE policy_number LIKE '9999%'").update();
+    }
+
+    @Test @DisplayName("규칙 파일 등록·검토·적용을 분리하고 응답 유실 후 같은 요청은 기존 결과를 반환한다")
+    void managesDraftAndPublication() throws Exception {
+        var policy = source(1, "웹 규칙 관리", 0);
+        var payload = definition(policy, NOW.minusSeconds(1), NOW.plusSeconds(100), "web-v1");
+        var request = new PolicyRuleActions.Draft(UUID.randomUUID(), 1L, mapper.writeValueAsString(payload), "새 공고 검토");
+        var first = create(policy.number(), request).andExpect(status().isOk()).andExpect(jsonPath("$.action").value("DRAFT"))
+                .andExpect(jsonPath("$.actorId").value(ADMIN)).andReturn().getResponse().getContentAsString();
+        create(policy.number(), request).andExpect(content().json(first));
+        var id = UUID.fromString(mapper.readTree(first).path("versionId").asString());
+        mvc.perform(get("/api/v1/policies/" + policy.number() + "/questions")).andExpect(jsonPath("$.available").value(false));
+        mvc.perform(get(ROOT + "/" + policy.number()).with(social(ADMIN)))
+                .andExpect(jsonPath("$.contentHash").value(policy.contentHash())).andExpect(jsonPath("$.versions[0].canPublish").value(true));
+        var exported = mvc.perform(get(ROOT + "/" + policy.number() + "/versions/" + id).with(social(ADMIN)))
+                .andExpect(status().isOk()).andExpect(header().string("Cache-Control", "no-store")).andReturn();
+        assertThat(mapper.readValue(mapper.readTree(exported.getResponse().getContentAsString()).path("definitionJson").asString(), PolicyRuleDefinition.class)).isEqualTo(payload);
+
+        var publish = new PolicyRuleActions.Publish(UUID.randomUUID(), 1L, "none", "질문과 판정표 확인");
+        var applied = publish(policy.number(), id, publish).andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+        publish(policy.number(), id, publish).andExpect(content().json(applied));
+        mvc.perform(get("/api/v1/policies/" + policy.number() + "/questions")).andExpect(jsonPath("$.available").value(true))
+                .andExpect(jsonPath("$.ruleVersion").value("web-v1"));
+        mvc.perform(get(ROOT + "/" + policy.number()).with(social(ADMIN))).andExpect(jsonPath("$.versions[0].canPublish").value(false))
+                .andExpect(jsonPath("$.versions[0].publishedBy").value(ADMIN)).andExpect(jsonPath("$.versions[0].publishReason").value(publish.reason()));
+        source(1, "이후 변경 공고", 1);
+        publish(policy.number(), id, publish).andExpect(content().json(applied));
+        create(policy.number(), request).andExpect(content().json(first));
+        assertThat(jdbc.sql("SELECT count(*) FROM admin_policy_rule_actions").query(Long.class).single()).isEqualTo(2);
+        publish(policy.number(), id, new PolicyRuleActions.Publish(publish.requestId(), 1L, "none", "변경된 사유"))
+                .andExpect(status().isConflict());
+        var different = definition(policy, NOW, NOW.plusSeconds(100), "different");
+        create(policy.number(), new PolicyRuleActions.Draft(request.requestId(), 1L, mapper.writeValueAsString(different), request.reason())).andExpect(status().isConflict());
+    }
+
+    @Test @DisplayName("쓰기 경로에 관리자 인증과 CSRF를 요구하고 다른 정책의 파일은 반환하지 않는다")
+    void protectsWritesAndExport() throws Exception {
+        var policy = source(1, "접근 검사", 0);
+        var id = draft(policy, NOW, NOW.plusSeconds(100), "access");
+        for (var path : List.of(ROOT + "/" + policy.number() + "/drafts", ROOT + "/" + policy.number() + "/versions/" + id + "/publish")) {
+            mvc.perform(post(path).with(csrf()).contentType("application/json").content("{}"))
+                    .andExpect(status().isUnauthorized());
+            mvc.perform(post(path).with(social(ADMIN)).contentType("application/json").content("{}"))
+                    .andExpect(status().isForbidden());
+            mvc.perform(post(path).with(social("20000000-0000-0000-0000-000000000002")).with(csrf()).contentType("application/json").content("{}"))
+                    .andExpect(status().isForbidden());
+        }
+        mvc.perform(get(ROOT + "/" + policy.number() + "/versions/" + id)).andExpect(status().isUnauthorized());
+        mvc.perform(get(ROOT + "/99990000000000000002/versions/" + id).with(social(ADMIN))).andExpect(status().isNotFound());
+        publish("99990000000000000002", id, new PolicyRuleActions.Publish(UUID.randomUUID(), 1L, "none", "확인"))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test @DisplayName("잘못된 파일·원문 변경·기간 오류를 거절하고 같은 적용 버전의 경쟁 요청은 하나만 반영한다")
+    void rejectsStaleAndConcurrentChanges() throws Exception {
+        var policy = source(1, "경합 검사", 0);
+        var original = definition(policy, NOW, NOW.plusSeconds(100), "valid");
+        for (var json : List.of("null", "{}", "not-json", mapper.writeValueAsString(original).replace("\"ruleVersion\"", "\"unknownField\""))) {
+            create(policy.number(), new PolicyRuleActions.Draft(UUID.randomUUID(), 1L, json, "확인")).andExpect(status().isBadRequest());
+        }
+        var stale = source(1, "새 원문", 1);
+        create(policy.number(), new PolicyRuleActions.Draft(UUID.randomUUID(), 1L, mapper.writeValueAsString(original), "확인")).andExpect(status().isConflict());
+        var expired = draft(stale, NOW.minusSeconds(10), NOW, "expired");
+        var future = draft(stale, NOW.plusSeconds(1), NOW.plusSeconds(100), "future");
+        for (var id : List.of(expired, future)) publish(stale.number(), id, new PolicyRuleActions.Publish(UUID.randomUUID(), 2L, "none", "확인")).andExpect(status().isConflict());
+        var first = draft(stale, NOW, NOW.plusSeconds(100), "first");
+        var second = draft(stale, NOW, NOW.plusSeconds(100), "second");
+        publish(stale.number(), first, new PolicyRuleActions.Publish(UUID.randomUUID(), 1L, "none", "이전 개정"))
+                .andExpect(status().isConflict());
+        try (var executor = java.util.concurrent.Executors.newVirtualThreadPerTaskExecutor()) {
+            var start = new java.util.concurrent.CountDownLatch(1);
+            var tasks = List.of(first, second).stream().map(id -> executor.submit(() -> {
+                start.await();
+                return publish(stale.number(), id, new PolicyRuleActions.Publish(UUID.randomUUID(), 2L, "none", "동시 검토"))
+                        .andReturn().getResponse().getStatus();
+            })).toList();
+            start.countDown();
+            assertThat(List.of(tasks.get(0).get(10, java.util.concurrent.TimeUnit.SECONDS), tasks.get(1).get(10, java.util.concurrent.TimeUnit.SECONDS)))
+                    .containsExactlyInAnyOrder(200, 409);
+        }
+        assertThat(jdbc.sql("SELECT count(*) FROM admin_policy_rule_actions").query(Long.class).single()).isEqualTo(1);
+        assertThat(jdbc.sql("SELECT count(*) FROM policy_rule_versions WHERE policy_number = :number AND published_at IS NOT NULL")
+                .param("number", stale.number()).query(Long.class).single()).isEqualTo(1);
+    }
+
+    @Test @DisplayName("동일한 초안 요청이 동시에 도착해도 버전과 이력을 한 번만 저장한다")
+    void serializesRepeatedDraft() throws Exception {
+        var policy = source(1, "중복 등록 검사", 0);
+        var request = new PolicyRuleActions.Draft(UUID.randomUUID(), 1L,
+                mapper.writeValueAsString(definition(policy, NOW, NOW.plusSeconds(100), "same-request")), "확인");
+        try (var executor = java.util.concurrent.Executors.newVirtualThreadPerTaskExecutor()) {
+            var start = new java.util.concurrent.CountDownLatch(1);
+            var tasks = java.util.stream.IntStream.range(0, 2).mapToObj(index -> executor.submit(() -> {
+                start.await();
+                return create(policy.number(), request).andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+            })).toList();
+            start.countDown();
+            assertThat(tasks.get(0).get(10, java.util.concurrent.TimeUnit.SECONDS)).isEqualTo(tasks.get(1).get(10, java.util.concurrent.TimeUnit.SECONDS));
+        }
+        assertThat(jdbc.sql("SELECT count(*) FROM admin_policy_rule_actions").query(Long.class).single()).isEqualTo(1);
+        assertThat(jdbc.sql("SELECT count(*) FROM policy_rule_versions WHERE policy_number = :number").param("number", policy.number()).query(Long.class).single()).isEqualTo(1);
+    }
+
+    @Test @DisplayName("작업 이력 저장에 실패하면 초안 등록과 적용도 함께 롤백한다")
+    void rollsBackFailedAudit() throws Exception {
+        var policy = source(1, "롤백 검사", 0);
+        var id = draft(policy, NOW, NOW.plusSeconds(100), "rollback");
+        jdbc.sql("CREATE FUNCTION reject_rule_action() RETURNS trigger LANGUAGE plpgsql AS 'BEGIN RAISE EXCEPTION ''검증용 저장 실패''; END'").update();
+        jdbc.sql("CREATE TRIGGER reject_rule_action BEFORE INSERT ON admin_policy_rule_actions FOR EACH ROW EXECUTE FUNCTION reject_rule_action()").update();
+        try {
+            publish(policy.number(), id, new PolicyRuleActions.Publish(UUID.randomUUID(), 1L, "none", "롤백 확인")).andExpect(status().isServiceUnavailable());
+            create(policy.number(), new PolicyRuleActions.Draft(UUID.randomUUID(), 1L, mapper.writeValueAsString(definition(policy, NOW, NOW.plusSeconds(100), "rollback-draft")), "롤백 확인"))
+                    .andExpect(status().isServiceUnavailable());
+            assertThat(jdbc.sql("SELECT count(*) FROM policy_rule_heads WHERE policy_number = :number").param("number", policy.number()).query(Long.class).single()).isZero();
+            assertThat(jdbc.sql("SELECT count(*) FROM policy_rule_versions WHERE policy_number = :number").param("number", policy.number()).query(Long.class).single()).isOne();
+            assertThat(jdbc.sql("SELECT published_at IS NULL FROM policy_rule_versions WHERE id = :id").param("id", id).query(Boolean.class).single()).isTrue();
+        } finally {
+            jdbc.sql("DROP TRIGGER reject_rule_action ON admin_policy_rule_actions").update();
+            jdbc.sql("DROP FUNCTION reject_rule_action()").update();
+        }
     }
 
     @Test @DisplayName("관리자 소셜 세션만 조회하고 등록·적용 요청은 열지 않는다")
@@ -155,10 +276,21 @@ class PolicyRuleReviewApiTest {
         return item;
     }
     private UUID draft(OntongPolicyCapture.Item item, Instant from, Instant until, String version) {
+        return rules.draft(definition(item, from, until, version), "검증 작업자", "원문 확인");
+    }
+    private PolicyRuleDefinition definition(OntongPolicyCapture.Item item, Instant from, Instant until, String version) {
         var definition = (ObjectNode) mapper.readTree(jdbc.sql("SELECT definition::text FROM policy_rule_versions WHERE id = 'ba390000-0000-4000-8000-000000000001'").query(String.class).single());
         definition.put("policyNumber", item.number()).put("contentHash", item.contentHash()).put("ruleVersion", version)
                 .put("validFrom", from.toString()).put("validUntil", until.toString());
-        return rules.draft(mapper.treeToValue(definition, PolicyRuleDefinition.class), "검증 작업자", "원문 확인");
+        return mapper.treeToValue(definition, PolicyRuleDefinition.class);
+    }
+    private org.springframework.test.web.servlet.ResultActions create(String number, PolicyRuleActions.Draft request) throws Exception {
+        return mvc.perform(post(ROOT + "/" + number + "/drafts").with(social(ADMIN)).with(csrf())
+                .contentType("application/json").content(mapper.writeValueAsString(request)));
+    }
+    private org.springframework.test.web.servlet.ResultActions publish(String number, UUID id, PolicyRuleActions.Publish request) throws Exception {
+        return mvc.perform(post(ROOT + "/" + number + "/versions/" + id + "/publish").with(social(ADMIN)).with(csrf())
+                .contentType("application/json").content(mapper.writeValueAsString(request)));
     }
     private UUID publish(OntongPolicyCapture.Item item, Instant from, Instant until) {
         var id = draft(item, from, until, "review-v1"); rules.publish(id, "none", "검증 작업자"); return id;

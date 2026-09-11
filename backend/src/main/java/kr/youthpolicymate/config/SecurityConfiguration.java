@@ -45,12 +45,14 @@ class SecurityConfiguration {
                         .requestMatchers(HttpMethod.POST, "/api/v1/policies/checks", "/api/v1/policies/*/evaluation", "/api/v1/policies/*/question-prefill").permitAll()
                         .requestMatchers("/api/v1/me/**").hasRole("MEMBER")
                         .requestMatchers(HttpMethod.POST, "/api/v1/admin/collection-exceptions/*/*/replays",
-                                "/api/v1/admin/policy-corrections", "/api/v1/admin/policy-corrections/*/resolutions")
+                                "/api/v1/admin/policy-corrections", "/api/v1/admin/policy-corrections/*/resolutions",
+                                "/api/v1/admin/policy-rule-reviews/*/drafts", "/api/v1/admin/policy-rule-reviews/*/versions/*/publish")
                             .access(adminAccess.authorization())
                         .requestMatchers(HttpMethod.GET, "/api/v1/admin/collection-exceptions", "/api/v1/admin/collection-exceptions/pages", "/api/v1/admin/collection-exceptions/replays",
                                 "/api/v1/admin/collection-exceptions/*/*",
                                 "/api/v1/admin/policy-corrections", "/api/v1/admin/policy-corrections/policies/*",
-                                "/api/v1/admin/policy-rule-reviews", "/api/v1/admin/policy-rule-reviews/*")
+                                "/api/v1/admin/policy-rule-reviews", "/api/v1/admin/policy-rule-reviews/*",
+                                "/api/v1/admin/policy-rule-reviews/*/versions/*")
                             .access(adminAccess.authorization())
                         .anyRequest().denyAll())
                 .logout(logout -> logout.logoutUrl("/api/v1/logout").invalidateHttpSession(true)

@@ -23,7 +23,7 @@ class PolicyRuleReviewStore {
     // 상태 계산을 공통 쿼리로 두어 필터·전체 건수·페이지 순서가 같은 기준을 사용한다.
     private static final String REVIEW = """
             WITH review AS (
-                SELECT p.policy_number, p.current_revision, p.content->>'title' AS title, p.last_collected_at,
+                SELECT p.policy_number, p.current_revision, p.content_hash, p.content->>'title' AS title, p.last_collected_at,
                     CASE WHEN v.id IS NULL THEN 'MISSING'
                          WHEN v.definition->>'contentHash' <> p.content_hash THEN 'SOURCE_CHANGED'
                          WHEN CAST(v.definition->>'validUntil' AS timestamptz) <= :now THEN 'EXPIRED'
@@ -64,28 +64,36 @@ class PolicyRuleReviewStore {
     Optional<PolicyRuleReviews.Detail> detail(String number) {
         var now = clock.instant();
         return jdbc.sql(REVIEW + "SELECT * FROM review WHERE policy_number = :number")
-                .param("now", now.atOffset(ZoneOffset.UTC)).param("number", number).query((rs, row) -> item(rs)).optional()
-                .map(item -> {
+                .param("now", now.atOffset(ZoneOffset.UTC)).param("number", number)
+                .query((rs, row) -> new ReviewSource(item(rs), rs.getString("content_hash"))).optional()
+                .map(source -> {
+                    var item = source.item();
                     var policy = sources.currentPolicy(number).orElseThrow();
                     var raw = jdbc.sql("""
                             SELECT s.raw_policy::text FROM policy_revisions r JOIN policy_source_snapshots s ON s.id = r.source_snapshot_id
                             WHERE r.policy_number = :number AND r.revision = :revision
                             """).param("number", number).param("revision", item.revision()).query(String.class).single();
                     var versions = jdbc.sql("""
-                            SELECT v.*, p.content_hash, h.version_id FROM policy_rule_versions v
+                            SELECT v.*, p.content_hash, h.version_id, a.reason AS publish_reason FROM policy_rule_versions v
                             JOIN policies p ON p.policy_number = v.policy_number
-                            LEFT JOIN policy_rule_heads h ON h.policy_number = v.policy_number WHERE v.policy_number = :number
+                            LEFT JOIN policy_rule_heads h ON h.policy_number = v.policy_number
+                            LEFT JOIN admin_policy_rule_actions a ON a.version_id = v.id AND a.action = 'PUBLISH'
+                            WHERE v.policy_number = :number
                             ORDER BY (v.id = h.version_id) DESC NULLS LAST, v.created_at DESC, v.id LIMIT 21
                             """).param("number", number).query((rs, row) -> {
                         var definition = mapper.readValue(rs.getString("definition"), PolicyRuleDefinition.class);
                         var state = rs.getObject("id").equals(rs.getObject("version_id")) ? PolicyRuleReviews.VersionState.CURRENT
                                 : rs.getObject("published_at") == null ? PolicyRuleReviews.VersionState.DRAFT : PolicyRuleReviews.VersionState.PREVIOUS;
+                        boolean matches = definition.contentHash().equals(rs.getString("content_hash"));
+                        var publishedAt = rs.getObject("published_at", OffsetDateTime.class);
                         return new PolicyRuleReviews.Version(rs.getObject("id", UUID.class), definition.ruleVersion(), state,
-                                definition.contentHash().equals(rs.getString("content_hash")), definition.validFrom(), definition.validUntil(),
+                                matches, definition.validFrom(), definition.validUntil(),
                                 definition.scope(), definition.reason(), definition.sourceUrl(), definition.questions(), definition.remainingChecks(),
-                                rs.getObject("created_at", OffsetDateTime.class).toInstant(), rs.getString("reason"));
+                                rs.getObject("created_at", OffsetDateTime.class).toInstant(), rs.getString("reason"),
+                                state == PolicyRuleReviews.VersionState.DRAFT && matches && definition.appliesAt(now), rs.getString("created_by"),
+                                publishedAt == null ? null : publishedAt.toInstant(), rs.getString("published_by"), rs.getString("publish_reason"));
                     }).list();
-                    return new PolicyRuleReviews.Detail(item, policy, raw, versions, now);
+                    return new PolicyRuleReviews.Detail(item, policy, raw, source.hash(), versions, now);
                 });
     }
 
@@ -94,4 +102,5 @@ class PolicyRuleReviewStore {
                 PolicyRuleReviews.Status.valueOf(rs.getString("status")), rs.getObject("last_collected_at", OffsetDateTime.class).toInstant(),
                 rs.getLong("draft_count"));
     }
+    private record ReviewSource(PolicyRuleReviews.Item item, String hash) {}
 }

@@ -7,6 +7,25 @@ const context = (path: string) => ({ params: Promise.resolve({ path: path.split(
 afterEach(() => vi.unstubAllGlobals());
 
 describe("개인 API 중계", () => {
+  it("규칙 파일 요청만 용량을 늘리고 관리자 경로·세션·CSRF를 제한해 중계한다", async () => {
+    const fetch = vi.fn().mockImplementation(() => Promise.resolve(Response.json({}))); vi.stubGlobal("fetch", fetch);
+    const root = "policy-rule-reviews/99990000000000000001";
+    const version = `${root}/versions/10000000-0000-0000-0000-000000000001`;
+    const body = JSON.stringify({ definitionJson: "가".repeat(12000) });
+    const headers = { origin: base, cookie: "other=private; YPM_SESSION=admin", "x-csrf-token": "csrf", authorization: "private" };
+    expect((await POST(new NextRequest(`${base}/api/member/${root}/drafts?private=ignored`, { method: "POST", headers, body }), context(`${root}/drafts`))).status).toBe(200);
+    expect(fetch.mock.calls[0][0].pathname).toBe(`/api/v1/admin/${root}/drafts`);
+    expect(fetch.mock.calls[0][0].search).toBe("");
+    expect(fetch.mock.calls[0][1].headers).toEqual({ Accept: "application/json", "Content-Type": "application/json", Cookie: "YPM_SESSION=admin", "X-CSRF-TOKEN": "csrf" });
+    expect((await POST(new NextRequest(`${base}/api/member/${version}/publish`, { method: "POST", headers, body }), context(`${version}/publish`))).status).toBe(413);
+    expect((await POST(new NextRequest(`${base}/api/member/${root}/drafts`, { method: "POST", headers, body: "x".repeat(524289) }), context(`${root}/drafts`))).status).toBe(413);
+    expect((await GET(new NextRequest(`${base}/api/member/${version}`, { headers }), context(version))).status).toBe(200);
+    expect(fetch.mock.calls[1][0].pathname).toBe(`/api/v1/admin/${version}`);
+    expect((await POST(new NextRequest(`${base}/api/member/${version}`, { method: "POST", headers }), context(version))).status).toBe(404);
+    expect((await GET(new NextRequest(`${base}/api/member/${root}/drafts`), context(`${root}/drafts`))).status).toBe(404);
+    expect((await POST(new NextRequest(`${base}/api/member/${root}/drafts`, { method: "POST", headers: { origin: "https://other.example" } }), context(`${root}/drafts`))).status).toBe(403);
+    expect(fetch).toHaveBeenCalledTimes(2);
+  });
   it("관리자 항목 재처리는 지정 경로의 POST만 허용하고 세션·CSRF를 전달한다", async () => {
     const fetch = vi.fn().mockImplementation(() => Promise.resolve(Response.json({ outcome: "APPLIED" })));
     vi.stubGlobal("fetch", fetch);

@@ -19,13 +19,17 @@ public final class PolicyRuleReviews {
     @Schema(name = "PolicyRuleReviewItem", requiredProperties = {"policyNumber", "title", "revision", "status", "collectedAt", "draftCount"})
     public record Item(String policyNumber, String title, long revision, Status status, Instant collectedAt, long draftCount) {}
 
-    @Schema(name = "PolicyRuleReviewDetail", requiredProperties = {"item", "currentPolicy", "rawPolicyJson", "versions", "checkedAt"})
+    @Schema(name = "PolicyRuleReviewDetail", requiredProperties = {"item", "currentPolicy", "rawPolicyJson", "contentHash", "versions", "checkedAt"})
     public record Detail(Item item, CollectionExceptions.CurrentPolicy currentPolicy, String rawPolicyJson,
-                         @Schema(description = "현재 지정 버전 우선, 그 외 최근 20개 버전") List<Version> versions, Instant checkedAt) {}
+                         String contentHash, @Schema(description = "현재 지정 버전 우선, 그 외 최근 20개 버전") List<Version> versions, Instant checkedAt) {}
 
     @Schema(name = "PolicyRuleReviewVersion", requiredProperties = {"id", "ruleVersion", "state", "sourceMatches", "validFrom", "validUntil",
-            "scope", "reason", "sourceUrl", "questions", "remainingChecks", "createdAt", "changeReason"})
+            "scope", "reason", "sourceUrl", "questions", "remainingChecks", "createdAt", "changeReason", "canPublish", "createdBy", "publishedAt", "publishedBy", "publishReason"})
     public record Version(UUID id, String ruleVersion, VersionState state, boolean sourceMatches,
                           Instant validFrom, Instant validUntil, String scope, String reason, String sourceUrl,
-                          List<PolicyQuestions.Question> questions, List<String> remainingChecks, Instant createdAt, String changeReason) {}
+                          List<PolicyQuestions.Question> questions, List<String> remainingChecks, Instant createdAt, String changeReason,
+                          boolean canPublish, String createdBy,
+                          @Schema(types = {"string", "null"}, format = "date-time") Instant publishedAt,
+                          @Schema(types = {"string", "null"}) String publishedBy,
+                          @Schema(types = {"string", "null"}) String publishReason) {}
 }

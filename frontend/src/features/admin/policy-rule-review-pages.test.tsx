@@ -15,13 +15,14 @@ const item: RuleReviewDetail["item"] = { policyNumber: number, title: "원문이
 const content: RuleReviewDetail["currentPolicy"]["content"] = { title: item.title, description: "현재 안내", organization: "기관", category: "교육",
   applicationPeriod: "기간 확인", sections: [], links: [], regionCodes: [], sourceModifiedAtText: "" };
 const detail: RuleReviewDetail = {
-  item, checkedAt: at, rawPolicyJson: '{"plcyNm":"<script>원문</script>"}',
+  item, checkedAt: at, contentHash: "a".repeat(64), rawPolicyJson: '{"plcyNm":"<script>원문</script>"}',
   currentPolicy: { policyNumber: number, revision: 3, content, collectedAt: at, sourceCapturedAt: at, correctionId: null,
     previousRevision: { revision: 2, sourceCapturedAt: at, content: { ...content, title: "직전 제목" }, correctionId: null } },
   versions: [{ id: "10000000-0000-0000-0000-000000000001", ruleVersion: "review-v1", state: "CURRENT", sourceMatches: false,
     validFrom: at, validUntil: "2027-01-01T00:00:00Z", scope: "2026년 공고", reason: "공식 조건 확인", sourceUrl: "https://example.com/notice",
     questions: [{ id: "age", label: "연령 조건", help: "기준일 확인", options: [{ value: "YES", label: "해당" }] }],
-    remainingChecks: ["증빙 확인"], createdAt: at, changeReason: "연간 조건 등록" }],
+    remainingChecks: ["증빙 확인"], createdAt: at, changeReason: "연간 조건 등록", canPublish: false,
+    createdBy: "검토자", publishedAt: at, publishedBy: "적용자", publishReason: "원문 확인" }],
 };
 
 describe("관리자 조건 검토 화면", () => {
@@ -43,8 +44,21 @@ describe("관리자 조건 검토 화면", () => {
     expect(view).toContain("현재 원문과 다름 · 재검토 필요");
     expect(view).toContain("직전 공개 버전 기준");
     expect(view).toContain("증빙 확인");
+    expect(view).toContain("전체 규칙 확인");
+    expect(view).toContain("규칙 초안 등록");
+    expect(view).toContain("등록·적용 이력");
+    expect(view).toContain("검토자");
+    expect(view).not.toContain("이 초안 적용");
     expect(view).toContain("&lt;script&gt;원문&lt;/script&gt;");
     expect(view).not.toContain("<script>");
+  });
+
+  it("적용할 수 있는 초안도 전체 규칙을 읽기 전에는 적용 폼을 표시하지 않는다", async () => {
+    vi.mocked(loadRuleReview).mockResolvedValue({ status: "available", data: { ...detail,
+      versions: [{ ...detail.versions[0], state: "DRAFT", canPublish: true, sourceMatches: true, publishedAt: null, publishedBy: null, publishReason: null }] } });
+    const html = renderToStaticMarkup(await RuleReviewPage({ params: Promise.resolve({ policyNumber: number }), searchParams: Promise.resolve({}) }));
+    expect(html).toContain("전체 규칙을 확인하면 적용할 수 있습니다");
+    expect(html).not.toContain("이 초안 적용");
   });
 
   it("조회 실패·권한 오류를 검토할 정책 없음으로 표시하지 않는다", async () => {

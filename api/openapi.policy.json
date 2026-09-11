@@ -986,6 +986,318 @@
         "tags" : [ "policy-rule-review-controller" ]
       }
     },
+    "/api/v1/admin/policy-rule-reviews/{number}/drafts" : {
+      "post" : {
+        "description" : "같은 요청 ID·입력·작업자는 기존 처리 결과를 반환한다. 초안 등록만으로 질문을 공개하지 않는다.",
+        "operationId" : "createPolicyRuleDraft",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "number",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "pattern" : "[0-9]{20}"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/PolicyRuleDraftRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PolicyRuleActionResult"
+                }
+              }
+            },
+            "description" : "OK"
+          },
+          "400" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PolicyApiError"
+                }
+              }
+            },
+            "description" : "규칙·사유 입력 오류"
+          },
+          "401" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PolicyApiError"
+                }
+              }
+            },
+            "description" : "로그인 필요"
+          },
+          "403" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PolicyApiError"
+                }
+              }
+            },
+            "description" : "관리자 권한 없음"
+          },
+          "404" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PolicyApiError"
+                }
+              }
+            },
+            "description" : "정책·규칙 없음"
+          },
+          "409" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PolicyApiError"
+                }
+              }
+            },
+            "description" : "원문·기간·적용 버전·요청 정보 변경"
+          },
+          "503" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PolicyApiError"
+                }
+              }
+            },
+            "description" : "처리 결과 미확인"
+          }
+        },
+        "security" : [ {
+          "memberSession" : [ ]
+        } ],
+        "summary" : "검토한 규칙 파일을 새 초안으로 등록",
+        "tags" : [ "policy-rule-management-controller" ]
+      }
+    },
+    "/api/v1/admin/policy-rule-reviews/{number}/versions/{id}" : {
+      "get" : {
+        "description" : "기존 원문 해시·연도·적용 기간을 유지한다.",
+        "operationId" : "getPolicyRuleFile",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "number",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "pattern" : "[0-9]{20}"
+          }
+        }, {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PolicyRuleFile"
+                }
+              }
+            },
+            "description" : "OK"
+          },
+          "400" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PolicyApiError"
+                }
+              }
+            },
+            "description" : "규칙·사유 입력 오류"
+          },
+          "401" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PolicyApiError"
+                }
+              }
+            },
+            "description" : "로그인 필요"
+          },
+          "403" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PolicyApiError"
+                }
+              }
+            },
+            "description" : "관리자 권한 없음"
+          },
+          "404" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PolicyApiError"
+                }
+              }
+            },
+            "description" : "정책·규칙 없음"
+          },
+          "409" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PolicyApiError"
+                }
+              }
+            },
+            "description" : "원문·기간·적용 버전·요청 정보 변경"
+          },
+          "503" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PolicyApiError"
+                }
+              }
+            },
+            "description" : "처리 결과 미확인"
+          }
+        },
+        "security" : [ {
+          "memberSession" : [ ]
+        } ],
+        "summary" : "등록된 규칙 파일 조회",
+        "tags" : [ "policy-rule-management-controller" ]
+      }
+    },
+    "/api/v1/admin/policy-rule-reviews/{number}/versions/{id}/publish" : {
+      "post" : {
+        "description" : "조회한 개정·현재 적용 버전·원문·기간을 확인한다. 같은 요청 재시도는 기존 결과만 반환한다.",
+        "operationId" : "publishPolicyRuleDraft",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "number",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "pattern" : "[0-9]{20}"
+          }
+        }, {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/PolicyRulePublishRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PolicyRuleActionResult"
+                }
+              }
+            },
+            "description" : "OK"
+          },
+          "400" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PolicyApiError"
+                }
+              }
+            },
+            "description" : "규칙·사유 입력 오류"
+          },
+          "401" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PolicyApiError"
+                }
+              }
+            },
+            "description" : "로그인 필요"
+          },
+          "403" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PolicyApiError"
+                }
+              }
+            },
+            "description" : "관리자 권한 없음"
+          },
+          "404" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PolicyApiError"
+                }
+              }
+            },
+            "description" : "정책·규칙 없음"
+          },
+          "409" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PolicyApiError"
+                }
+              }
+            },
+            "description" : "원문·기간·적용 버전·요청 정보 변경"
+          },
+          "503" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PolicyApiError"
+                }
+              }
+            },
+            "description" : "처리 결과 미확인"
+          }
+        },
+        "security" : [ {
+          "memberSession" : [ ]
+        } ],
+        "summary" : "검토한 초안을 현재 질문·판정에 적용",
+        "tags" : [ "policy-rule-management-controller" ]
+      }
+    },
     "/api/v1/logout" : {
       "post" : {
         "operationId" : "logoutMember",
@@ -3190,12 +3502,113 @@
         },
         "required" : [ "evaluatedAt", "explanation", "status" ]
       },
+      "PolicyRuleActionResult" : {
+        "type" : "object",
+        "properties" : {
+          "action" : {
+            "type" : "string",
+            "enum" : [ "DRAFT", "PUBLISH" ]
+          },
+          "actorId" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "performedAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "policyNumber" : {
+            "type" : "string"
+          },
+          "reason" : {
+            "type" : "string"
+          },
+          "requestId" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "revision" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "ruleVersion" : {
+            "type" : "string"
+          },
+          "versionId" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        },
+        "required" : [ "action", "actorId", "performedAt", "policyNumber", "reason", "requestId", "revision", "ruleVersion", "versionId" ]
+      },
+      "PolicyRuleDraftRequest" : {
+        "type" : "object",
+        "properties" : {
+          "definitionJson" : {
+            "type" : "string",
+            "maxLength" : 131072,
+            "minLength" : 0
+          },
+          "expectedRevision" : {
+            "type" : "integer",
+            "format" : "int64",
+            "minimum" : 0
+          },
+          "reason" : {
+            "type" : "string",
+            "maxLength" : 500,
+            "minLength" : 0
+          },
+          "requestId" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        },
+        "required" : [ "definitionJson", "expectedRevision", "reason", "requestId" ]
+      },
+      "PolicyRuleFile" : {
+        "type" : "object",
+        "properties" : {
+          "definitionJson" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "definitionJson" ]
+      },
+      "PolicyRulePublishRequest" : {
+        "type" : "object",
+        "properties" : {
+          "expectedRevision" : {
+            "type" : "integer",
+            "format" : "int64",
+            "minimum" : 0
+          },
+          "expectedRuleVersion" : {
+            "type" : "string",
+            "maxLength" : 80,
+            "minLength" : 0
+          },
+          "reason" : {
+            "type" : "string",
+            "maxLength" : 500,
+            "minLength" : 0
+          },
+          "requestId" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        },
+        "required" : [ "expectedRevision", "expectedRuleVersion", "reason", "requestId" ]
+      },
       "PolicyRuleReviewDetail" : {
         "type" : "object",
         "properties" : {
           "checkedAt" : {
             "type" : "string",
             "format" : "date-time"
+          },
+          "contentHash" : {
+            "type" : "string"
           },
           "currentPolicy" : {
             "$ref" : "#/components/schemas/CollectionExceptionCurrentPolicy"
@@ -3214,7 +3627,7 @@
             }
           }
         },
-        "required" : [ "checkedAt", "currentPolicy", "item", "rawPolicyJson", "versions" ]
+        "required" : [ "checkedAt", "contentHash", "currentPolicy", "item", "rawPolicyJson", "versions" ]
       },
       "PolicyRuleReviewItem" : {
         "type" : "object",
@@ -3278,6 +3691,9 @@
       "PolicyRuleReviewVersion" : {
         "type" : "object",
         "properties" : {
+          "canPublish" : {
+            "type" : "boolean"
+          },
           "changeReason" : {
             "type" : "string"
           },
@@ -3285,9 +3701,22 @@
             "type" : "string",
             "format" : "date-time"
           },
+          "createdBy" : {
+            "type" : "string"
+          },
           "id" : {
             "type" : "string",
             "format" : "uuid"
+          },
+          "publishReason" : {
+            "type" : [ "string", "null" ]
+          },
+          "publishedAt" : {
+            "type" : [ "string", "null" ],
+            "format" : "date-time"
+          },
+          "publishedBy" : {
+            "type" : [ "string", "null" ]
           },
           "questions" : {
             "type" : "array",
@@ -3329,7 +3758,7 @@
             "format" : "date-time"
           }
         },
-        "required" : [ "changeReason", "createdAt", "id", "questions", "reason", "remainingChecks", "ruleVersion", "scope", "sourceMatches", "sourceUrl", "state", "validFrom", "validUntil" ]
+        "required" : [ "canPublish", "changeReason", "createdAt", "createdBy", "id", "publishReason", "publishedAt", "publishedBy", "questions", "reason", "remainingChecks", "ruleVersion", "scope", "sourceMatches", "sourceUrl", "state", "validFrom", "validUntil" ]
       },
       "PolicySourceNotice" : {
         "type" : "object",

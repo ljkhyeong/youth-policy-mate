@@ -199,6 +199,66 @@ export interface paths {
         readonly patch?: never;
         readonly trace?: never;
     };
+    readonly "/api/v1/admin/policy-rule-reviews/{number}/drafts": {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header?: never;
+            readonly path?: never;
+            readonly cookie?: never;
+        };
+        readonly get?: never;
+        readonly put?: never;
+        /**
+         * 검토한 규칙 파일을 새 초안으로 등록
+         * @description 같은 요청 ID·입력·작업자는 기존 처리 결과를 반환한다. 초안 등록만으로 질문을 공개하지 않는다.
+         */
+        readonly post: operations["createPolicyRuleDraft"];
+        readonly delete?: never;
+        readonly options?: never;
+        readonly head?: never;
+        readonly patch?: never;
+        readonly trace?: never;
+    };
+    readonly "/api/v1/admin/policy-rule-reviews/{number}/versions/{id}": {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header?: never;
+            readonly path?: never;
+            readonly cookie?: never;
+        };
+        /**
+         * 등록된 규칙 파일 조회
+         * @description 기존 원문 해시·연도·적용 기간을 유지한다.
+         */
+        readonly get: operations["getPolicyRuleFile"];
+        readonly put?: never;
+        readonly post?: never;
+        readonly delete?: never;
+        readonly options?: never;
+        readonly head?: never;
+        readonly patch?: never;
+        readonly trace?: never;
+    };
+    readonly "/api/v1/admin/policy-rule-reviews/{number}/versions/{id}/publish": {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header?: never;
+            readonly path?: never;
+            readonly cookie?: never;
+        };
+        readonly get?: never;
+        readonly put?: never;
+        /**
+         * 검토한 초안을 현재 질문·판정에 적용
+         * @description 조회한 개정·현재 적용 버전·원문·기간을 확인한다. 같은 요청 재시도는 기존 결과만 반환한다.
+         */
+        readonly post: operations["publishPolicyRuleDraft"];
+        readonly delete?: never;
+        readonly options?: never;
+        readonly head?: never;
+        readonly patch?: never;
+        readonly trace?: never;
+    };
     readonly "/api/v1/logout": {
         readonly parameters: {
             readonly query?: never;
@@ -895,9 +955,46 @@ export interface components {
             /** @enum {string} */
             readonly status: "BEFORE_OPENING" | "OPEN" | "CLOSED" | "ROLLING" | "UNTIL_EXHAUSTED" | "UNKNOWN";
         };
+        readonly PolicyRuleActionResult: {
+            /** @enum {string} */
+            readonly action: "DRAFT" | "PUBLISH";
+            /** Format: uuid */
+            readonly actorId: string;
+            /** Format: date-time */
+            readonly performedAt: string;
+            readonly policyNumber: string;
+            readonly reason: string;
+            /** Format: uuid */
+            readonly requestId: string;
+            /** Format: int64 */
+            readonly revision: number;
+            readonly ruleVersion: string;
+            /** Format: uuid */
+            readonly versionId: string;
+        };
+        readonly PolicyRuleDraftRequest: {
+            readonly definitionJson: string;
+            /** Format: int64 */
+            readonly expectedRevision: number;
+            readonly reason: string;
+            /** Format: uuid */
+            readonly requestId: string;
+        };
+        readonly PolicyRuleFile: {
+            readonly definitionJson: string;
+        };
+        readonly PolicyRulePublishRequest: {
+            /** Format: int64 */
+            readonly expectedRevision: number;
+            readonly expectedRuleVersion: string;
+            readonly reason: string;
+            /** Format: uuid */
+            readonly requestId: string;
+        };
         readonly PolicyRuleReviewDetail: {
             /** Format: date-time */
             readonly checkedAt: string;
+            readonly contentHash: string;
             readonly currentPolicy: components["schemas"]["CollectionExceptionCurrentPolicy"];
             readonly item: components["schemas"]["PolicyRuleReviewItem"];
             readonly rawPolicyJson: string;
@@ -929,11 +1026,17 @@ export interface components {
             readonly total: number;
         };
         readonly PolicyRuleReviewVersion: {
+            readonly canPublish: boolean;
             readonly changeReason: string;
             /** Format: date-time */
             readonly createdAt: string;
+            readonly createdBy: string;
             /** Format: uuid */
             readonly id: string;
+            readonly publishReason: string | null;
+            /** Format: date-time */
+            readonly publishedAt: string | null;
+            readonly publishedBy: string | null;
             readonly questions: readonly components["schemas"]["PolicyQuestion"][];
             readonly reason: string;
             readonly remainingChecks: readonly string[];
@@ -1696,6 +1799,244 @@ export interface operations {
                 };
             };
             /** @description 조회 실패 */
+            readonly 503: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "*/*": components["schemas"]["PolicyApiError"];
+                };
+            };
+        };
+    };
+    readonly createPolicyRuleDraft: {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header?: never;
+            readonly path: {
+                readonly number: string;
+            };
+            readonly cookie?: never;
+        };
+        readonly requestBody: {
+            readonly content: {
+                readonly "application/json": components["schemas"]["PolicyRuleDraftRequest"];
+            };
+        };
+        readonly responses: {
+            /** @description OK */
+            readonly 200: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "*/*": components["schemas"]["PolicyRuleActionResult"];
+                };
+            };
+            /** @description 규칙·사유 입력 오류 */
+            readonly 400: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "*/*": components["schemas"]["PolicyApiError"];
+                };
+            };
+            /** @description 로그인 필요 */
+            readonly 401: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "*/*": components["schemas"]["PolicyApiError"];
+                };
+            };
+            /** @description 관리자 권한 없음 */
+            readonly 403: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "*/*": components["schemas"]["PolicyApiError"];
+                };
+            };
+            /** @description 정책·규칙 없음 */
+            readonly 404: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "*/*": components["schemas"]["PolicyApiError"];
+                };
+            };
+            /** @description 원문·기간·적용 버전·요청 정보 변경 */
+            readonly 409: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "*/*": components["schemas"]["PolicyApiError"];
+                };
+            };
+            /** @description 처리 결과 미확인 */
+            readonly 503: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "*/*": components["schemas"]["PolicyApiError"];
+                };
+            };
+        };
+    };
+    readonly getPolicyRuleFile: {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header?: never;
+            readonly path: {
+                readonly number: string;
+                readonly id: string;
+            };
+            readonly cookie?: never;
+        };
+        readonly requestBody?: never;
+        readonly responses: {
+            /** @description OK */
+            readonly 200: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "*/*": components["schemas"]["PolicyRuleFile"];
+                };
+            };
+            /** @description 규칙·사유 입력 오류 */
+            readonly 400: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "*/*": components["schemas"]["PolicyApiError"];
+                };
+            };
+            /** @description 로그인 필요 */
+            readonly 401: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "*/*": components["schemas"]["PolicyApiError"];
+                };
+            };
+            /** @description 관리자 권한 없음 */
+            readonly 403: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "*/*": components["schemas"]["PolicyApiError"];
+                };
+            };
+            /** @description 정책·규칙 없음 */
+            readonly 404: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "*/*": components["schemas"]["PolicyApiError"];
+                };
+            };
+            /** @description 원문·기간·적용 버전·요청 정보 변경 */
+            readonly 409: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "*/*": components["schemas"]["PolicyApiError"];
+                };
+            };
+            /** @description 처리 결과 미확인 */
+            readonly 503: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "*/*": components["schemas"]["PolicyApiError"];
+                };
+            };
+        };
+    };
+    readonly publishPolicyRuleDraft: {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header?: never;
+            readonly path: {
+                readonly number: string;
+                readonly id: string;
+            };
+            readonly cookie?: never;
+        };
+        readonly requestBody: {
+            readonly content: {
+                readonly "application/json": components["schemas"]["PolicyRulePublishRequest"];
+            };
+        };
+        readonly responses: {
+            /** @description OK */
+            readonly 200: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "*/*": components["schemas"]["PolicyRuleActionResult"];
+                };
+            };
+            /** @description 규칙·사유 입력 오류 */
+            readonly 400: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "*/*": components["schemas"]["PolicyApiError"];
+                };
+            };
+            /** @description 로그인 필요 */
+            readonly 401: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "*/*": components["schemas"]["PolicyApiError"];
+                };
+            };
+            /** @description 관리자 권한 없음 */
+            readonly 403: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "*/*": components["schemas"]["PolicyApiError"];
+                };
+            };
+            /** @description 정책·규칙 없음 */
+            readonly 404: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "*/*": components["schemas"]["PolicyApiError"];
+                };
+            };
+            /** @description 원문·기간·적용 버전·요청 정보 변경 */
+            readonly 409: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "*/*": components["schemas"]["PolicyApiError"];
+                };
+            };
+            /** @description 처리 결과 미확인 */
             readonly 503: {
                 headers: {
                     readonly [name: string]: unknown;

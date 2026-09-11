@@ -1,6 +1,7 @@
 import { PageState } from "@/components/page-state";
 import { CollectionFailure, RevisionComparison, collectionTime } from "./collection-exception-view";
 import type { LoadFailure, RuleReviewDetail, RuleReviewPage } from "./load-collection-exceptions";
+import { RuleDraftForm, RuleVersionControls } from "./policy-rule-actions";
 
 export const RULE_REVIEWS_PATH = "/admin/collection-exceptions/rules";
 const statuses = {
@@ -61,6 +62,7 @@ const versionLabels = { CURRENT: "현재 지정 버전", DRAFT: "미적용 초�
 
 export function RuleReviewContent({ data }: { data: RuleReviewDetail }) {
   const policy = data.currentPolicy;
+  const expectedRuleVersion = data.versions.find(version => version.state === "CURRENT")?.ruleVersion ?? "none";
   return <>
     <section className="member-panel" aria-labelledby="review-status">
       <h2 id="review-status">{statuses[data.item.status]}</h2><p>{guidance[data.item.status]}</p>
@@ -80,7 +82,11 @@ export function RuleReviewContent({ data }: { data: RuleReviewDetail }) {
       <div className="form-actions">{policy.content.links.map((link, index) => <a className="text-link" key={index} href={link.url} target="_blank" rel="noreferrer">{link.label}</a>)}</div>
       <details className="exception-section"><summary>수집 원본 전체 보기</summary>
         <pre className="exception-raw" tabIndex={0} aria-label="수집 원본 JSON">{data.rawPolicyJson}</pre></details>
+      <details className="exception-section"><summary>규칙 작성용 원문 정보</summary>
+        <dl className="exception-facts"><dt>정책번호</dt><dd>{data.item.policyNumber}</dd><dt>원문 해시</dt><dd><code>{data.contentHash}</code></dd></dl>
+        <p className="field-help">파일의 policyNumber·contentHash와 일치해야 합니다. 원문 해시만 바꾸지 말고 조건과 예외를 함께 검토하세요.</p></details>
     </section>
+    <RuleDraftForm policyNumber={data.item.policyNumber} revision={data.item.revision} />
     <section className="member-panel" aria-labelledby="review-rules">
       <h2 id="review-rules">등록된 질문·근거</h2>
       <p className="field-help">초안은 검토 후 별도로 적용해야 합니다. 현재 지정 버전과 최근 등록 내역을 최대 21개 표시합니다.</p>
@@ -92,12 +98,17 @@ export function RuleReviewContent({ data }: { data: RuleReviewDetail }) {
         <dl className="exception-facts"><dt>적용 시작</dt><dd>{collectionTime(version.validFrom)} (서울)</dd>
           <dt>적용 종료</dt><dd>{collectionTime(version.validUntil)} (서울)부터 중단</dd>
           <dt>등록 사유</dt><dd>{version.changeReason}</dd></dl>
+        <details><summary>등록·적용 이력</summary><dl className="exception-facts">
+          <dt>등록 작업자</dt><dd>{version.createdBy}</dd><dt>등록 시각</dt><dd>{collectionTime(version.createdAt)} (서울)</dd>
+          <dt>적용 작업자</dt><dd>{version.publishedBy ?? "미적용"}</dd><dt>적용 시각</dt><dd>{collectionTime(version.publishedAt)} (서울)</dd>
+          <dt>적용 사유</dt><dd>{version.publishReason ?? "별도 기록 없음"}</dd></dl></details>
         <a className="text-link" href={version.sourceUrl} target="_blank" rel="noreferrer">규칙의 근거 공고 보기</a>
         <ol className="revision-list">{version.questions.map(question => <li key={question.id}>
           <strong>{question.label}</strong><p className="exception-text">{question.help}</p>
           <ul>{question.options.map(option => <li key={option.value}>{option.label}</li>)}</ul>
         </li>)}</ol>
         <h4>기관 확인이 필요한 항목</h4><ul>{version.remainingChecks.map((check, index) => <li key={index}>{check}</li>)}</ul>
+        <RuleVersionControls policyNumber={data.item.policyNumber} revision={data.item.revision} expectedRuleVersion={expectedRuleVersion} version={version} />
       </details>)}
     </section>
   </>;

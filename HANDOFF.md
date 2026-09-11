@@ -5,8 +5,8 @@
 ## 현재 작업
 
 - 이전 누적 작업은 `1b7fbdd`로 로컬·원격 `main`에 반영했고 [웹·전체 서버 CI](https://github.com/ljkhyeong/youth-policy-mate/actions/runs/34222499053)를 통과했다.
-- 현재 `codex/policy-source-notices`의 `6cd4b06`에서 청년 미래이음 대출의 조건 질문과 기본 연령 비교를 추가했다. 연령·취창업 상태와 세 지원 요건 중 하나의 충족을 비교하며 신용정보 제한·예외와 최종 여신심사는 추가 확인으로 남긴다.
-- 규칙·PostgreSQL 정책 API·서버 패키징과 실제 질문·기본 조건 검색을 검증했다. 명령·로그·범위는 [청년 미래이음 대출](docs/development/miso-youth-future-questions.md)에 있다. 로컬 변경은 커밋했으며 이번 브랜치는 원격에 반영하지 않았다.
+- 현재 `codex/policy-source-notices`의 `bb501c3`에서 공개 화면·정책 질문·알림·관리자 문구를 간소화했다. 기본 조건의 연령 비교 범위와 이메일 알림 취소 대상을 명시하고, 긴 선택지와 중복 안내를 줄였다. 판정 기준·API·DB는 유지했다.
+- 관련 웹·정책 규칙·접수 상태·일부 PostgreSQL API 검사와 로컬 화면 확인을 마쳤다. 기존 연도 경계 테스트의 고정 정책 수는 `c4a6824`에서 제거했다. 명령·로그·실패 후 재검증·미실행 범위는 [화면 문구 정리](docs/development/ui-wording.md)에 있다. 이번 브랜치는 원격에 반영하지 않았다.
 
 ## 구현·검증 범위
 
@@ -18,7 +18,7 @@
 - 회원 기능: OAuth 로그인 코드, 관심 정책 저장·해제, 일정·서비스 내 알림을 연결했다. 테스트 제공자와 실제 HTTP·DB로 코드 교환부터 관리자 접근·세션 종료까지 확인했다. 로컬 카카오·네이버 ID/Secret과 관리자 ID가 없어 실제 제공자 로그인은 미검증이다. [회원 기능](docs/development/member-policy-flow.md)
 - 이메일: 주소 확인·동의·암호화 저장·Outbox·SMTP 어댑터를 구현했다. 실제 공급자·발신 도메인은 미정이며 외부 수신함 전달은 미검증이다. [이메일 구현과 설정](docs/development/member-email-reminders.md)
 - AI: 후보 개정 검사·비용 예약·DB 복구 흐름은 내부 모델과 테스트용 공급자로 검증했다. 실제 AI 호출·청구·운영 작업자는 미연결이다. [AI 요청 판단](docs/development/ai-request-admission.md)·[복구 실행](docs/development/ai-reservation-recovery-work-runs.md)
-- 검증 기준: `1b7fbdd`의 전체 CI 이후 정책 질문·기본 연령 비교와 화면 구성을 개선했다. 최신 서버 검증은 `6cd4b06`의 청년 미래이음 대출 규칙·PostgreSQL 정책 API·패키징에 적용했다. 프런트엔드·API 구조·생성 타입·의존성·설정은 변경하지 않아 `d4405c9`의 [웹 검증](docs/development/interface-design-review.md)을 재사용했다. DB V20·실제 정책 데이터는 유지했다.
+- 검증 기준: `1b7fbdd`의 전체 CI 이후 정책 질문·기본 연령 비교와 화면 구성을 개선했다. 최신 `bb501c3`의 문구 변경은 [문구 검증](docs/development/ui-wording.md) 범위에서 확인했다. API 구조·생성 타입·의존성·설정·DB V20·실제 정책 데이터는 유지했다. 전체 CI와 웹 빌드는 문구 변경만으로 반복하지 않았다.
 - 검증 도구의 성공·실패·실행 중 변경 시나리오와 기존 도구 검사를 통과했다. 컴파일·패키징 명령의 Gradle 실행 계획에 테스트 실행이 없음을 확인했다. `npm run verify -- status`에서 실행 기록을 확인한다. 검증 도구를 정리할 당시에는 앱 기능을 변경하지 않아 전체 앱 테스트를 재실행하지 않았다.
 
 ## 남은 작업

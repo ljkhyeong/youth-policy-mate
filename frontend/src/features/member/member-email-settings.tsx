@@ -72,10 +72,10 @@ export function MemberEmailSettings({ csrf }: { csrf: string }) {
         <p><strong>{settings.address || "등록한 이메일 주소"}</strong></p>
         <p>{settings.verified ? "이메일 인증 완료" : "이메일 인증 필요"} · {settings.enabled ? "이메일 알림 켜짐" : "이메일 알림 꺼짐"}</p>
         {settings.verified && <button type="button" className="button-secondary" disabled={busy || (!settings.available && !settings.enabled)}
-          onClick={() => change("email-settings", "PUT", { enabled: !settings.enabled }, settings.enabled ? "이메일 알림을 껐어요. 발송 대기 중인 알림을 취소했어요." : "이메일 알림을 켰어요. 새 알림부터 이메일로 보내요.")}>
+          onClick={() => change("email-settings", "PUT", { enabled: !settings.enabled }, settings.enabled ? "이메일 알림을 끄고 발송 대기 중인 이메일을 취소했어요." : "이메일 알림을 켰어요. 새 알림부터 이메일로 보내요.")}>
           {settings.enabled ? "이메일 알림 끄기" : "수신 동의하고 알림 켜기"}
         </button>}
-        <button type="button" className="text-button" disabled={busy} onClick={() => change("email-settings", "DELETE", undefined, "이메일 주소를 삭제하고 발송 대기 중인 알림을 취소했어요.")}>이메일 주소 삭제</button>
+        <button type="button" className="text-button" disabled={busy} onClick={() => change("email-settings", "DELETE", undefined, "이메일 주소를 삭제하고 발송 대기 중인 이메일을 취소했어요.")}>이메일 주소 삭제</button>
       </div>}
       {settings.available && <>
         <form onSubmit={event => { event.preventDefault(); void change("email-verification", "POST", { address: address.trim() }, "인증 메일을 요청했어요. 받은 메일의 8자리 코드를 입력해주세요."); }}>
@@ -92,7 +92,7 @@ export function MemberEmailSettings({ csrf }: { csrf: string }) {
             : settings.verificationDelivery === "FAILED" ? "인증 메일을 보내지 못했어요. 잠시 후 새 코드를 요청해주세요."
             : settings.verificationDelivery === "PENDING" || settings.verificationDelivery === "SENDING" ? "인증 메일을 보내는 중이에요. 잠시 후 메일함을 확인해주세요." : "새 인증 메일을 요청해주세요."}</p>
           <button type="button" className="text-button" disabled={busy} onClick={() => setReload(value => value + 1)}>발송 상태 새로고침</button>
-          <form onSubmit={event => { event.preventDefault(); void change("email-verification/confirm", "POST", { code }, "이메일 인증이 끝났어요. 수신에 동의하면 알림을 받을 수 있어요."); }}>
+          <form onSubmit={event => { event.preventDefault(); void change("email-verification/confirm", "POST", { code }, "이메일 인증을 마쳤어요. 수신에 동의하면 이메일 알림을 받을 수 있어요."); }}>
             <fieldset disabled={busy || !settings.verificationExpiresAt}>
               <label htmlFor="email-verification-code">8자리 인증 코드</label>
               <input id="email-verification-code" inputMode="numeric" autoComplete="one-time-code" pattern="[0-9]{8}" maxLength={8} required value={code} onChange={event => setCode(event.target.value)} aria-describedby="email-code-help" />
@@ -102,7 +102,7 @@ export function MemberEmailSettings({ csrf }: { csrf: string }) {
           </form>
         </>}
       </>}
-      <p className="field-help">수신을 끄거나 주소를 삭제해도 서비스 내 알림은 유지돼요. 이미 발송을 시작한 메일은 취소할 수 없어요.</p>
+      <p className="field-help">이메일 알림을 끄거나 주소를 삭제해도 ‘알림’ 탭의 안내는 유지돼요. 발송 중인 이메일은 취소할 수 없어요.</p>
     </>}
   </section>;
 }

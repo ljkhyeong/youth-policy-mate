@@ -32,8 +32,8 @@ export function PolicyCheckResults({ input }: { input: BasicConditions }) {
     setResponse(null); setError(""); setPage(next); setRetry(value => value + 1);
   }
   return <section className="policy-check-results" aria-label="정책 조건 확인 결과">
-    <h2 ref={headingRef} tabIndex={-1}>내 조건으로 정책 찾기</h2>
-    <p>검토된 정책의 연령 조건을 비교해요. 거주·취업·소득 등 다른 조건과 현재 접수 여부는 따로 확인해주세요.</p>
+    <h2 ref={headingRef} tabIndex={-1}>연령 조건 비교 결과</h2>
+    <p>일부 정책의 연령 조건을 비교했어요. 거주·취업·소득과 접수 여부는 별도로 확인해주세요.</p>
     <form className="policy-search" role="search" aria-label="조건 결과에서 정책 검색" onSubmit={event => {
       event.preventDefault(); setQuery(draftQuery.trim()); loadPage(1);
     }}>
@@ -57,18 +57,18 @@ export function PolicyCheckResults({ input }: { input: BasicConditions }) {
         setDraftQuery(""); setQuery(""); setRecruitmentStatus(""); loadPage(1);
       }}>검색·필터 초기화</button>}
     </div>
-    <p className="field-help">연령 조건 충족 → 미확인 → 불충족 순으로 볼 수 있어요. 미확인·불충족 정책도 제외하지 않아요.</p>
+    <p className="field-help">‘연령 조건 충족 우선’은 충족 → 미확인 → 불충족 순으로 모든 결과를 표시해요.</p>
     {error && <div role="alert"><p>{error}</p><button type="button" className="button-secondary" onClick={() => loadPage(page)}>다시 확인하기</button></div>}
     {!response && !error && <p role="status">신청 조건을 불러오고 있어요.</p>}
     {response?.items.length === 0 && <p role="status">{query || recruitmentStatus ? "검색 조건에 맞는 정책이 없어요. 검색어를 바꾸거나 필터를 해제해주세요." : "현재 확인할 정책이 없어요. 내 조건이 불충족이라는 뜻은 아니에요."}</p>}
     {response && <p className="field-help" role="status">{query && `‘${query}’ 검색 결과 · `}{recruitmentStatus && `${recruitmentLabels[recruitmentStatus]} · `}정책 {response.total}건 · {response.page}페이지</p>}
     {response?.items.map(policy => <article className="member-panel" key={`${policy.policyNumber}-${policy.revision}`}>
-      <span className="review-label">전체 자격: 추가 확인 필요</span><h3><Link href={`/policies/${policy.policyNumber}`}>{policy.title}</Link></h3>
+      <span className="review-label">최종 신청 자격: 추가 확인 필요</span><h3><Link href={`/policies/${policy.policyNumber}`}>{policy.title}</Link></h3>
       <p>{policy.explanation}</p><p className="policy-period">신청기간: {policy.applicationPeriod}</p>
       <PolicyRecruitment recruitment={policy.recruitment} />
       {policy.questionnaireAvailable && <div className="policy-question-next">
-        <span className="policy-question-badge">조건 확인 질문 있음</span>
-        <p>질문에 답하면 일부 신청 조건을 확인할 수 있어요.</p>
+        <span className="policy-question-badge">신청 조건 질문</span>
+        <p>질문으로 다른 신청 조건도 비교해보세요.</p>
         <Link href={`/policies/${policy.policyNumber}#policy-questions`} className="text-link" aria-label={`${policy.title} 질문에 답하기`}>질문에 답하기 →</Link>
       </div>}
       <details><summary>조건별 결과와 근거 보기</summary><div className="policy-check-details">

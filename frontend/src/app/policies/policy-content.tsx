@@ -49,15 +49,15 @@ export function PolicyArticle({ policy }: { policy: Detail }) {
       <p><a className="text-link" href={notice.sourceUrl} target="_blank" rel="noopener noreferrer">{notice.sourceLabel} <span aria-hidden="true">↗</span><span className="sr-only"> (새 창)</span></a></p>
     </aside>)}
     <aside className="policy-notice">
-      <strong>신청 자격은 추가 확인이 필요해요</strong>
-      <p>아래는 온통청년에서 수집한 안내예요. 신청 조건과 예외는 해당 모집 공고에서 확인해주세요.</p>
+      <strong>신청 전 공식 공고를 확인하세요</strong>
+      <p>온통청년에서 수집한 내용이에요. 최신 신청 조건과 예외는 공식 모집 공고를 확인해주세요.</p>
     </aside>
     <div id="policy-support" tabIndex={-1} className="policy-sections">
       {content.sections.map((section, index) => <section key={index}>
         <h2>{section.title}</h2><p>{section.text}</p>
       </section>)}
       <section id="policy-official" tabIndex={-1}>
-        <h2>공식 안내 확인하기</h2>
+        <h2>공식 안내</h2>
         <div className="policy-official-links">
           <a href={policy.sourceUrl} className="button-primary" target="_blank" rel="noopener noreferrer">온통청년에서 보기 <span aria-hidden="true">↗</span><span className="sr-only"> (새 창)</span></a>
           {content.links.map((link) => <a key={link.url} href={link.url} className="button-secondary" target="_blank" rel="noopener noreferrer">{link.label}<span className="sr-only"> (새 창)</span></a>)}
@@ -70,7 +70,7 @@ export function PolicyArticle({ policy }: { policy: Detail }) {
       <p>출처: 온통청년</p>
       <p>수집 시각: <time dateTime={policy.collectedAt}>{collectedTime(policy.collectedAt)}</time> (서울)</p>
       {content.sourceModifiedAtText && <p>온통청년 수정일: {content.sourceModifiedAtText}</p>}
-      <p>수집 이후 내용이 달라질 수 있어요. 실제 신청은 공식 신청처에서 진행해주세요.</p>
+      <p>정책 신청은 공식 신청처에서 진행해주세요.</p>
     </footer>
   </article>;
 }

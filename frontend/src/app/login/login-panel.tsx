@@ -25,8 +25,8 @@ export function LoginPanel({ admin = false }: { admin?: boolean }) {
       {session?.providers.map(provider => <a key={provider.id} className="button-primary button-block" href={provider.url}
         onClick={() => rememberLoginDestination(admin)}>{provider.name}로 로그인</a>)}
       {session?.providers.length === 0 && <div className="availability-note"><div><strong>로그인 기능을 준비 중이에요</strong><p>지금은 로그인 없이 정책 검색과 조건 확인을 이용할 수 있어요.</p></div></div>}
-      <p className="data-retention-note">로그인만으로 입력 조건이나 정책을 자동 저장하지 않아요. 저장할 내용을 확인한 뒤 직접 저장해주세요.</p>
+      <p className="data-retention-note">로그인 후 원하는 조건과 정책의 저장 버튼을 눌러주세요. 자동 저장되지는 않아요.</p>
     </>}
-    <Link className="text-link" href="/policies">로그인 없이 정책 둘러보기</Link>
+    <Link className="text-link" href="/policies">로그인 없이 정책 찾기</Link>
   </section>;
 }

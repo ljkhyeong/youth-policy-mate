@@ -7,7 +7,7 @@ const reasons: Record<PageFailure["reason"], string> = {
   API_KEY_MISSING: "API 인증 설정 없음",
   HTTP_ERROR: "HTTP 응답 오류",
   NON_JSON_RESPONSE: "JSON 응답 아님",
-  SECRET_IN_RESPONSE: "인증정보가 포함된 응답의 저장 차단",
+  SECRET_IN_RESPONSE: "인증정보 포함으로 저장 차단",
   REQUEST_INTERRUPTED: "요청 처리 중단",
   REQUEST_OR_RESPONSE_FAILED: "요청·응답 처리 실패",
   RESPONSE_STORE_FAILED: "응답 저장 실패",
@@ -25,15 +25,15 @@ export function CollectionPageFailures({ data }: { data: PageFailureList }) {
       <a className="text-link" href={`${PAGE_FAILURES_PATH}?page=${data.page}`}>새로고침</a></div>
     <ul className="policy-list" aria-label="페이지 수집 실패 목록">
       {data.items.map(item => <li key={item.runId} className="policy-card">
-        <p className="policy-eyebrow"><span>{item.state === "FETCH_FAILED" ? "응답 확보 실패" : "목록 형식 오류"}</span>
-          <span>{item.responseStored ? "응답 보관됨" : "보관된 응답 없음"}</span></p>
+        <p className="policy-eyebrow"><span>{item.state === "FETCH_FAILED" ? "페이지 수집 실패" : "목록 형식 오류"}</span>
+          <span>{item.responseStored ? "응답 저장됨" : "보관된 응답 없음"}</span></p>
         <h2>수집 {item.pageNumber}페이지</h2>
         <p className="policy-lead">{item.reason === "HTTP_ERROR" && item.httpStatus === 429 ? "요청 한도 초과" : reasons[item.reason]}
           {item.httpStatus !== null && ` (HTTP ${item.httpStatus})`}</p>
         <dl className="exception-facts">
           <dt>요청 시작</dt><dd>{collectionTime(item.startedAt)} (서울)</dd>
-          <dt>발송 시작</dt><dd>{collectionTime(item.dispatchedAt)}{item.dispatchedAt && " (서울)"}</dd>
-          <dt>응답 보관</dt><dd>{collectionTime(item.receivedAt)}{item.receivedAt && " (서울)"}</dd>
+          <dt>요청 전송</dt><dd>{collectionTime(item.dispatchedAt)}{item.dispatchedAt && " (서울)"}</dd>
+          <dt>응답 저장</dt><dd>{collectionTime(item.receivedAt)}{item.receivedAt && " (서울)"}</dd>
           <dt>수집 실행 ID</dt><dd>{item.runId}</dd>
         </dl>
         <p className="field-help">{item.responseStored

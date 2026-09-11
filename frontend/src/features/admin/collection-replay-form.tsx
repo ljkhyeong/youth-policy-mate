@@ -57,14 +57,14 @@ export function CollectionReplayForm({ runId, itemIndex, attempts }: { runId: st
         <p id="replay-help" className="field-help">조치하거나 확인한 내용을 적어주세요. 개인정보·인증키는 입력하지 마세요.</p>
       </div>
       <button className="button-primary disabled:cursor-default disabled:opacity-50" type="submit" disabled={busy || blocked || Boolean(result) || !reason.trim()}>
-        {busy ? "처리 확인 중…" : result ? "처리 결과 확인됨" : blocked ? "최신 상태 확인 필요" : uncertain ? "재처리 결과 다시 확인" : "사유를 기록하고 재처리"}
+        {busy ? "처리 확인 중…" : result ? "결과 확인 완료" : blocked ? "최신 상태 확인 필요" : uncertain ? "재처리 결과 다시 확인" : "재처리"}
       </button>
     </form>
     {result && <div role="status">
       <p><strong>{replayLabels[result.outcome]}</strong>{result.policyRevision !== null && ` · 처리 후 개정 ${result.policyRevision}`}</p>
       {result.outcome === "INVALID_ITEM" && <p>원본이 검증을 통과하지 못했습니다. 원본과 처리 규칙을 확인해주세요.</p>}
       {result.outcome === "CORRECTION_CONFLICT" && <p>보정 관리에서 새 원본과 보정 값을 확인한 뒤 다시 처리해주세요.</p>}
-      {result.outcome === "STALE" && <p>더 최신 수집이 있어 현재 정책을 유지했습니다.</p>}
+      {result.outcome === "STALE" && <p>이후에 수집한 내용이 있어 현재 공개 내용을 유지했습니다.</p>}
     </div>}
     {message && <p role="alert">{message}</p>}
     <div className="form-actions">

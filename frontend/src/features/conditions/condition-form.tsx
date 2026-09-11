@@ -81,8 +81,8 @@ export function ConditionForm({ today }: { today: string }) {
       {confirmed ? (
         <div className="confirmation-view">
           <span className="confirmation-icon" aria-hidden="true">✓</span>
-          <p className="confirmation-label">입력이 끝났어요</p>
-          <h2 ref={summaryRef} tabIndex={-1} className="confirmation-title">아래 내용이 맞는지 확인해주세요</h2>
+          <p className="confirmation-label">입력 완료</p>
+          <h2 ref={summaryRef} tabIndex={-1} className="confirmation-title">입력 내용을 확인해주세요</h2>
           <dl className="summary-list">
             <div className="summary-row"><dt>생년월일 · 양력</dt><dd>{draft.birthDate.replaceAll("-", ". ")}</dd></div>
             <div className="summary-row"><dt>주민등록상 거주지</dt><dd>서울특별시 {draft.district}</dd></div>
@@ -91,14 +91,14 @@ export function ConditionForm({ today }: { today: string }) {
           <div className="availability-note">
             <span aria-hidden="true">i</span>
             <div>
-              <p>정책별 신청 조건을 확인하세요</p>
-              <p>확인 버튼을 누르면 입력 내용을 전송해 이번 확인에만 사용해요. 확인할 수 없는 조건은 ‘추가 확인 필요’로 표시해요.</p>
+              <p>정책별 연령 조건을 비교해요</p>
+              <p>‘연령 조건 비교’ 버튼을 누르면 입력 내용을 전송해 이번 비교에만 사용해요.</p>
             </div>
           </div>
-          <p className="data-retention-note">새로고침하면 입력 내용이 지워져요. 로그인 후 저장 버튼을 눌러 보관할 수 있어요.</p>
+          <p className="data-retention-note">저장하지 않은 입력은 새로고침하면 지워져요.</p>
           <div className="form-actions">
-            <button type="button" className="button-primary button-block" onClick={() => setShowResults(true)}>이 조건으로 정책 확인하기</button>
-            <button type="button" className="button-secondary button-block" onClick={edit}>입력 내용 수정하기</button>
+            <button type="button" className="button-primary button-block" onClick={() => setShowResults(true)}>연령 조건 비교</button>
+            <button type="button" className="button-secondary button-block" onClick={edit}>입력 수정</button>
             <button type="button" className="text-button" onClick={reset}>입력 내용 모두 지우기</button>
           </div>
           <ConditionMemberControls input={input} onLoad={loadSaved} />
@@ -132,7 +132,7 @@ export function ConditionForm({ today }: { today: string }) {
               <option value="">자치구 선택</option>
               {SEOUL_DISTRICTS.map((district) => <option key={district} value={district}>{district}</option>)}
             </select>
-            <p id="district-help" className="field-help">학교나 직장이 아닌 주민등록상 거주지예요.</p>
+            <p id="district-help" className="field-help">주민등록상 주소를 선택해주세요.</p>
             {errors.district && <p id="district-error" className="field-error">{errors.district}</p>}
           </div>
 
@@ -148,7 +148,7 @@ export function ConditionForm({ today }: { today: string }) {
 
           <div className="form-actions">
             <button type="submit" className="button-primary button-block">
-              입력 내용 확인하기 <span className="button-arrow" aria-hidden="true">→</span>
+              입력 내용 확인 <span className="button-arrow" aria-hidden="true">→</span>
             </button>
             <button type="button" className="text-button" onClick={reset}>입력 내용 모두 지우기</button>
           </div>

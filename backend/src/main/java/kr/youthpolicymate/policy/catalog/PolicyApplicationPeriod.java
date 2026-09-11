@@ -16,11 +16,11 @@ final class PolicyApplicationPeriod {
         var period = raw.path("aplyYmd").asString("").strip();
         var periodType = raw.path("aplyPrdSeCd").asString("");
         if (!"0057001".equals(periodType)) {
-            if (!period.isEmpty()) return new ApplicationPeriod.Unresolved("신청기간 코드와 날짜 안내를 함께 확인해야 해요.");
+            if (!period.isEmpty()) return new ApplicationPeriod.Unresolved("신청 기간의 구분과 날짜 안내가 달라요. 공식 공고를 확인해주세요.");
             return switch (periodType) {
                 case "0057002" -> new ApplicationPeriod.Rolling();
                 case "0057003" -> new ApplicationPeriod.Closed();
-                default -> new ApplicationPeriod.Unresolved("신청기간 구분을 확인할 수 없어요. 공식 안내를 확인해주세요.");
+                default -> new ApplicationPeriod.Unresolved("접수 기간을 확인할 수 없어요. 공식 공고를 확인해주세요.");
             };
         }
         var matcher = RANGE.matcher(period);

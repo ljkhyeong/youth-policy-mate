@@ -50,17 +50,17 @@ public record RecruitmentAssessment(RecruitmentSchedule schedule, Instant evalua
 
     public String explanation() {
         return switch (status()) {
-            case BEFORE_OPENING -> "확인한 신청기간이 아직 시작되지 않았습니다.";
+            case BEFORE_OPENING -> "아직 접수 시작 전이에요.";
             case OPEN -> schedule.applicationPeriod() instanceof ApplicationPeriod.Dates
-                    ? "서울 날짜 기준으로 신청기간에 포함됩니다. 정확한 접수 시각은 확인되지 않았으므로 공식 신청처의 운영 시간을 확인해야 합니다."
-                    : "확인한 접수 시작 시각 이후이고 마감 시각 전입니다. 실제 접수 상태는 공식 신청처에서 확인해야 합니다.";
+                    ? "오늘(서울 기준)은 접수 기간에 해당해요. 정확한 접수 시각은 공식 신청처에서 확인해주세요."
+                    : "공고의 접수 기간에 해당해요. 실제 접수 여부는 공식 신청처에서 확인해주세요.";
             case CLOSED -> switch (schedule.applicationPeriod()) {
-                case ApplicationPeriod.Dates ignored -> "서울 날짜 기준으로 확인한 신청 종료일이 지났습니다.";
-                case ApplicationPeriod.Times ignored -> "확인한 접수 마감 시각에 도달했거나 지났습니다.";
-                default -> "원문에서 모집 마감을 확인했습니다. 이 안내만으로 정확한 마감 날짜나 시각을 알 수는 없습니다.";
+                case ApplicationPeriod.Dates ignored -> "공고의 마감일이 지났어요(서울 기준).";
+                case ApplicationPeriod.Times ignored -> "공고의 마감 시각이 됐거나 지났어요.";
+                default -> "공고상 접수가 마감됐어요. 정확한 마감 날짜·시각은 확인되지 않았어요.";
             };
-            case ROLLING -> "원문에서 상시 모집으로 확인했습니다. 현재 접수 여부는 공식 신청처에서 확인해야 합니다.";
-            case UNTIL_EXHAUSTED -> "예산·인원 소진 시 끝나는 모집입니다. 소진 여부와 현재 접수 여부를 공식 신청처에서 확인해야 합니다.";
+            case ROLLING -> "상시 모집이에요. 현재 접수 여부는 공식 신청처에서 확인해주세요.";
+            case UNTIL_EXHAUSTED -> "예산·인원 소진 시 마감돼요. 현재 접수 여부는 공식 신청처에서 확인해주세요.";
             case UNKNOWN -> ((ApplicationPeriod.Unresolved) schedule.applicationPeriod()).reason();
         };
     }

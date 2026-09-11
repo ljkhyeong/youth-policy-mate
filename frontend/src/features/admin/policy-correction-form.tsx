@@ -68,7 +68,7 @@ export function PolicyCorrectionForm({ policy, correction }: Props) {
         {correction.status === "CONFLICT" && <option value="KEEP">보정 유지</option>}
         <option value="USE_SOURCE">보정 해제 · 원본 적용</option>
       </select>
-      <p className="field-help">{correction.status === "CONFLICT" ? "검토 원본을 기준으로 처리합니다. 다른 항목의 변경도 함께 반영됩니다." : "보정을 해제하고 현재 개정의 원본 값을 적용합니다."}</p>
+      <p className="field-help">{correction.status === "CONFLICT" ? "새 수집 원본을 기준으로 처리합니다. 다른 항목의 변경도 함께 반영됩니다." : "보정을 해제하고 현재 개정의 원본 값을 적용합니다."}</p>
     </div>}
     <div className="form-field"><label htmlFor={`${id}-reason`}>{policy ? "보정 사유" : "처리 사유"}</label>
       <textarea id={`${id}-reason`} required maxLength={500} rows={2} value={reason} readOnly={locked} onChange={event => setReason(event.target.value)} />
@@ -76,7 +76,7 @@ export function PolicyCorrectionForm({ policy, correction }: Props) {
     </div>
     <button className="button-primary disabled:cursor-default disabled:opacity-50" type="submit"
       disabled={busy || blocked || Boolean(result) || !reason.trim() || Boolean(policy && !value.trim())}>
-      {busy ? "처리 확인 중…" : result ? "처리 결과 확인됨" : blocked ? "최신 상태 확인 필요" : uncertain ? "처리 결과 다시 확인" : policy ? "보정 적용" : "사유를 기록하고 적용"}
+      {busy ? "처리 확인 중…" : result ? "결과 확인 완료" : blocked ? "최신 상태 확인 필요" : uncertain ? "처리 결과 다시 확인" : policy ? "보정 적용" : "적용"}
     </button>
     {message && <p role="alert">{message}</p>}
     {result && <p role="status">{policy ? "보정을 적용했습니다." : "보정 처리를 완료했습니다. 남은 수집 실패 항목을 재처리해주세요."}</p>}

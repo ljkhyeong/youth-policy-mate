@@ -27,22 +27,22 @@ public final class SeoulYouthNetworkRules {
                             new Option("OLDER_NO_EXTENSION", "1986.1.1.까지 출생 · 연장 불가"),
                             new Option("EXTENDED_LIMIT_EXCEEDED", "연장 후에도 연령 상한 초과"),
                             new Option("MILITARY_EXTENSION_PENDING", "군복무에 따른 연령 연장 확인 중"),
-                            new Option("UNKNOWN", "아직 확인하지 못했어요"))),
-            new Question("seoulConnection", "이 모집 신청 당시 서울과 어떤 관계가 있었나요?",
+                            new Option("UNKNOWN", "모르겠어요"))),
+            new Question("seoulConnection", "신청 당시 서울 거주·재학·재직 중이었나요?",
                     "서울 거주·대학·직장 중 하나에 해당하면 돼요. 대학 재·휴학과 직장 재·휴직을 포함해요. 사업자는 서울 생활권 증빙을 담당 기관에서 확인해주세요.",
                     List.of(new Option("RESIDENT", "서울 거주"), new Option("UNIVERSITY", "서울 소재 대학 재학·휴학"),
                             new Option("WORKPLACE", "서울 소재 직장 재직·휴직"),
                             new Option("BUSINESS_CONFIRMED", "서울 사업장 · 기관에서 증빙 인정"),
                             new Option("NONE_CONFIRMED", "모두 해당 없음 · 기관 확인"),
-                            new Option("UNKNOWN", "아직 확인하지 못했어요"))),
+                            new Option("UNKNOWN", "모르겠어요"))),
             new Question("consecutiveTerms", "2023~2025년 청정넷 위원으로 연속 활동했나요?",
                     "공고는 2023~2025년 2차례 연임자를 제외해요. 중간 공백 등으로 연임 여부가 불분명하면 담당 기관에서 확인해주세요.",
                     List.of(new Option("NOT_APPLICABLE", "해당 없음 (첫 참여 포함)"), new Option("APPLIES", "해당함 · 2차례 연임"),
-                            new Option("UNKNOWN", "아직 확인하지 못했어요"))),
+                            new Option("UNKNOWN", "모르겠어요"))),
             new Question("priorDisqualification", "과거 청정넷 활동에서 위촉 제한 사유가 있나요?",
                     "공고는 과거 위원 활동 중 징계·해촉 등의 전력이 있으면 위촉할 수 없다고 안내해요. 해당 여부가 불분명하면 담당 기관에서 확인해주세요.",
                     List.of(new Option("NONE", "없음 (첫 참여 포함)"), new Option("CONFIRMED", "있음 · 담당 기관 확인"),
-                            new Option("UNKNOWN", "아직 확인하지 못했어요"))));
+                            new Option("UNKNOWN", "모르겠어요"))));
 
     public static boolean appliesAt(Instant now) { return now.atZone(ZoneId.of("Asia/Seoul")).getYear() == 2026; }
     public static Questionnaire questionnaire(long revision, Instant now) {

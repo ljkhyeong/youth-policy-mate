@@ -13,7 +13,7 @@ describe("실제 정책 공통요건 결과 표시", () => {
     };
     const html = renderToStaticMarkup(<PolicyQuestionResult result={result} />);
     expect(html).toContain("확인한 조건 충족");
-    expect(html).toContain("입력한 답변으로 확인한 결과예요. 공식 기관의 자격 심사 결과는 아니에요.");
+    expect(html).toContain(result.explanation);
     expect(html).toContain("최종 신청 자격 · 추가 확인 필요");
     expect(html).toContain("소속 대학의 선발요건");
     expect(html).toContain("70점 미만");

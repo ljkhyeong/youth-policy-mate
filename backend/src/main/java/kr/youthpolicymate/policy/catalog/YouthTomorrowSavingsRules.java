@@ -22,28 +22,28 @@ public final class YouthTomorrowSavingsRules {
             new Question("birthRange", "2026년 5월 모집의 출생일 범위에 해당하나요?",
                     "1986.5.1.~2011.5.31. 출생자가 대상이에요(양 끝 날짜 포함). 사업 지침은 신청 월에 만 15세 또는 만 40세가 되는 사람까지 포함해요.",
                     List.of(new Option("IN_RANGE", "1986.5.1.~2011.5.31. 출생"), new Option("OUTSIDE_RANGE", "이 출생일 범위에 해당하지 않아요"),
-                            new Option("UNKNOWN", "아직 확인하지 못했어요"))),
+                            new Option("UNKNOWN", "모르겠어요"))),
             new Question("workType", "모집 신청 당시 어떤 소득활동을 했나요?",
                     "자활기업·자활근로사업단 소득은 인정해요. 공공 일자리는 인건비 지원 방식·별도 채용 등 예외를 주민센터에서 확인해주세요.",
                     List.of(new Option("EMPLOYMENT_OR_BUSINESS", "일반 근로·사업"), new Option("SELF_RELIANCE", "자활기업·자활근로"),
                             new Option("PUBLIC_WORK_CONFIRMED", "공공 일자리 · 인정 확인"),
                             new Option("PUBLIC_WORK_PENDING", "공공 일자리 · 확인 중"),
                             new Option("EXCLUDED_ONLY", "근로장학금·실업·육아휴직급여만"), new Option("UNPAID_ONLY", "무급근로만"),
-                            new Option("NO_WORK", "근로·사업활동 없음"), new Option("UNKNOWN", "아직 확인하지 못했어요"))),
+                            new Option("NO_WORK", "근로·사업활동 없음"), new Option("UNKNOWN", "모르겠어요"))),
             new Question("monthlyIncome", "신청 당시 인정되는 본인 월 근로·사업소득은 얼마인가요?",
                     "본인의 세전 근로·사업소득 기준이에요. 근로장학금·실업급여·육아휴직급여는 더하지 마세요. 공적자료나 대체 증빙의 소득 인정 여부가 확인 중이면 아래에서 선택해주세요.",
                     List.of(new Option("AT_LEAST_100K", "월 10만 원 이상"), new Option("BELOW_100K", "월 10만 원 미만"),
-                            new Option("DOCUMENTS_PENDING", "소득 증빙·금액 확인 중"), new Option("UNKNOWN", "아직 확인하지 못했어요"))),
+                            new Option("DOCUMENTS_PENDING", "소득 증빙·금액 확인 중"), new Option("UNKNOWN", "모르겠어요"))),
             new Question("householdIncome", "신청 당시 가구 소득인정액 기준을 확인했나요?",
                     "2026년 가입 기준은 중위소득 50% 이하예요. 소득인정액에는 소득과 재산 환산액이 반영돼요. 가구 범위·적용 금액을 주민센터에서 확인하고 월급·건강보험료로 대신 답하지 마세요.",
                     List.of(new Option("UP_TO_50_CONFIRMED", "확인 완료 · 50% 이하"),
                             new Option("OVER_50_CONFIRMED", "확인 완료 · 50% 초과"),
-                            new Option("ASSESSMENT_PENDING", "가구 범위·소득인정액 확인 중"), new Option("UNKNOWN", "아직 확인하지 못했어요"))),
+                            new Option("ASSESSMENT_PENDING", "가구 범위·소득인정액 확인 중"), new Option("UNKNOWN", "모르겠어요"))),
             new Question("duplicateParticipation", "다른 자산형성사업의 참여 이력을 확인했나요?",
                     "본인·가구원의 참여 중·참여 예정·과거 수혜 이력을 확인해요. 가구원의 가입이나 지원금 환수 이력만으로 가입이 제한되지는 않으니 사업별로 주민센터에서 확인해주세요.",
                     List.of(new Option("NO_HISTORY", "참여·수혜·예정 없음"), new Option("ALLOWED_CONFIRMED", "참여 이력 · 가입 가능 확인"),
                             new Option("RESTRICTED_CONFIRMED", "중복참여 제한 확인"), new Option("HISTORY_PENDING", "참여·수혜·환수 확인 중"),
-                            new Option("UNKNOWN", "아직 확인하지 못했어요"))));
+                            new Option("UNKNOWN", "모르겠어요"))));
 
     public static boolean appliesAt(Instant now) { return now.atZone(ZoneId.of("Asia/Seoul")).getYear() == 2026; }
 

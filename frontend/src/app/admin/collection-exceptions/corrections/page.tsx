@@ -11,12 +11,12 @@ export default async function PolicyCorrectionsPage({ searchParams }: { searchPa
   const number = typeof query.policyNumber === "string" ? query.policyNumber.trim() : "";
   const [result, policy] = await Promise.all([loadPolicyCorrections(page), number ? loadCorrectionPolicy(number) : null]);
   return <>
-    <header><p className="page-label">운영 관리</p><h1>수집 예외</h1><p>정책 표시 내용을 보정하고, 새 원본과 충돌한 보정을 처리합니다.</p></header>
+    <header><p className="page-label">운영 관리</p><h1>수집 예외</h1><p>정책명·운영 기관을 수정하고, 새 수집 원본과 충돌한 내용을 확인합니다.</p></header>
     <CollectionNavigation active="corrections" />
     {result.status !== "available" ? <CollectionFailure status={result.status} retryHref={CORRECTIONS_PATH} /> : <>
       <section className="member-panel" aria-labelledby="correction-heading">
         <h2 id="correction-heading">정책 보정</h2>
-        <p className="field-help">공개된 정책의 정책명·운영 기관을 한 정책당 한 항목씩 보정합니다. 수집 원본과 작업 이력은 보관합니다.</p>
+        <p className="field-help">정책명·운영 기관 중 한 항목을 보정할 수 있습니다. 수집 원본과 작업 이력은 보관합니다.</p>
         <form action={CORRECTIONS_PATH} className="form-field">
           <label htmlFor="correction-policy">정책번호</label>
           <input id="correction-policy" name="policyNumber" inputMode="numeric" pattern="[0-9]{1,100}" maxLength={100} required defaultValue={number} />
@@ -64,7 +64,7 @@ function CorrectionCard({ item }: { item: CorrectionItem }) {
         <dl className="exception-facts"><dt>운영 기관</dt><dd>{item.reviewContent.organization}</dd>
           <dt>정책 분야</dt><dd>{item.reviewContent.category}</dd><dt>신청 기간</dt><dd>{item.reviewContent.applicationPeriod}</dd>
           <dt>지역 코드</dt><dd>{item.reviewContent.regionCodes.join(", ") || "내용 없음"}</dd>
-          <dt>원천 수정 일시</dt><dd>{item.reviewContent.sourceModifiedAtText || "기록 없음"}</dd></dl>
+          <dt>온통청년 수정일</dt><dd>{item.reviewContent.sourceModifiedAtText || "기록 없음"}</dd></dl>
         {item.reviewContent.sections.map((section, index) => <section key={index} className="exception-section">
           <h4>{section.title}</h4><p className="exception-text">{section.text}</p>
         </section>)}

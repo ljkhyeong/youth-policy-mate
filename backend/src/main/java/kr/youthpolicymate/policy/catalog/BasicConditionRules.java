@@ -24,7 +24,7 @@ final class BasicConditionRules {
         if (YouthHousingSavingsRules.appliesAt(now)) comparisons.put(YouthHousingSavingsRules.NUMBER,
                 new Comparison(YouthHousingSavingsRules.CONTENT_HASH, YouthHousingSavingsRules.VERSION, YouthHousingSavingsRules.SOURCE,
                         YouthHousingSavingsRules.ageCheck(birth, now),
-                        "오늘(서울 날짜) 가입하는 경우의 연령만 비교했어요. 실제 가입일이 다르면 다시 확인해주세요."));
+                        "오늘(서울 기준) 가입할 때의 연령이에요. 가입일이 달라지면 다시 확인해주세요."));
         if (YouthTomorrowSavingsRules.appliesAt(now)) comparisons.put(YouthTomorrowSavingsRules.NUMBER,
                 new Comparison(YouthTomorrowSavingsRules.CONTENT_HASH, YouthTomorrowSavingsRules.VERSION, YouthTomorrowSavingsRules.SOURCE,
                         YouthTomorrowSavingsRules.ageCheck(birth), YouthTomorrowSavingsRules.periodNotice(now)
@@ -32,11 +32,11 @@ final class BasicConditionRules {
         if (HaetsalronYouthRules.appliesAt(now)) comparisons.put(HaetsalronYouthRules.NUMBER,
                 new Comparison(HaetsalronYouthRules.CONTENT_HASH, HaetsalronYouthRules.VERSION, HaetsalronYouthRules.SOURCE,
                         HaetsalronYouthRules.ageCheck(birth, now),
-                        "오늘(서울 날짜) 보증을 신청하는 경우의 연령만 비교했어요. 실제 신청일이 다르면 다시 확인해주세요."));
+                        "오늘(서울 기준) 보증 신청 시 연령이에요. 신청일이 달라지면 다시 확인해주세요."));
         if (MisoYouthFutureRules.appliesAt(now)) comparisons.put(MisoYouthFutureRules.NUMBER,
                 new Comparison(MisoYouthFutureRules.CONTENT_HASH, MisoYouthFutureRules.VERSION, MisoYouthFutureRules.SOURCE,
                         MisoYouthFutureRules.ageCheck(birth, now),
-                        "오늘(서울 날짜) 대출을 신청하는 경우의 연령만 비교했어요. 실제 신청일이 다르면 다시 확인해주세요."));
+                        "오늘(서울 기준) 대출 신청 시 연령이에요. 신청일이 달라지면 다시 확인해주세요."));
         return comparisons;
     }
 

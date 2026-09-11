@@ -46,7 +46,7 @@ public class PolicyCheckService {
                             "주된 취업상태 하나만으로 고용보험·재학·사업자등록·소득 요건을 확인할 수 없어요.",
                             text(raw, "earnEtcCn", "addAplyQlfcCndCn", "plcySprtCn"), UNKNOWN),
                     new PolicyCheckResponse.Check("추가 조건과 참여 제한", "추가 확인 필요",
-                            "본문과 공식 신청처의 필수 조건·예외를 함께 확인해야 해요. 원문 누락은 제한 없음이 아니에요.",
+                            "공식 공고에서 필수 조건과 예외를 확인해주세요. 이 화면에 없는 제한이 있을 수 있어요.",
                             text(raw, "ptcpPrpTrgtCn", "addAplyQlfcCndCn", "plcySprtCn"), UNKNOWN));
             items.add(new PolicyCheckResponse.Item(policy.policyNumber(), policy.revision(), policy.content().title(), EligibilityStatus.NEEDS_REVIEW,
                     explanation(comparison), policy.content().applicationPeriod(), comparison == null ? policy.sourceUrl() : comparison.sourceUrl(),
@@ -56,7 +56,7 @@ public class PolicyCheckService {
     }
 
     private String explanation(BasicConditionRules.Comparison comparison) {
-        if (comparison == null) return "검토된 연령 기준이 아직 없어요. 원문과 추가 조건을 확인해주세요.";
+        if (comparison == null) return "이 정책의 연령 기준은 아직 비교할 수 없어요. 공식 공고를 확인해주세요.";
         var message = switch (comparison.age().outcome()) {
             case MET -> "입력한 생년월일은 연령 조건을 충족해요. 다른 신청 조건은 추가 확인이 필요해요.";
             case NOT_MET -> "입력한 생년월일은 이 공고의 연령 조건을 충족하지 않아요. 적용 기준을 확인해주세요.";

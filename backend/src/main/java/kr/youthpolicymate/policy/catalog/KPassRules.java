@@ -20,21 +20,21 @@ public final class KPassRules {
     private static final List<Question> QUESTIONS = List.of(
             new Question("age", "현재 만 19세 이상인가요?",
                     "기본 가입 연령을 확인해요. 만 35세 이상도 기본 가입 대상이므로 청년 환급률의 연령 범위와 구분해요. 생년월일 전체는 입력하지 않아요.",
-                    List.of(new Option("ADULT", "만 19세 이상이에요"), new Option("UNDER_19", "만 19세 미만이에요"), new Option("UNKNOWN", "아직 확인하지 못했어요"))),
+                    List.of(new Option("ADULT", "만 19세 이상이에요"), new Option("UNDER_19", "만 19세 미만이에요"), new Option("UNKNOWN", "모르겠어요"))),
             new Question("registration", "공식 홈페이지나 앱에 회원가입하고 이용 중인 카드를 등록했나요?",
                     "카드 발급만으로는 적립되지 않아요. 모두의카드(K-패스) 회원가입과 실제 이용 카드의 등록 상태를 확인해주세요. 카드번호는 입력하지 않아요.",
-                    List.of(new Option("REGISTERED", "회원가입과 이용 카드 등록을 모두 마쳤어요"), new Option("CARD_ONLY", "카드만 발급받았고 회원가입·등록은 하지 않았어요"),
-                            new Option("NOT_REGISTERED", "회원가입이나 이용 카드 등록을 아직 마치지 않았어요"), new Option("UNKNOWN", "아직 확인하지 못했어요"))),
+                    List.of(new Option("REGISTERED", "회원가입·카드 등록 완료"), new Option("CARD_ONLY", "카드만 발급 · 회원가입·등록 전"),
+                            new Option("NOT_REGISTERED", "회원가입 또는 카드 등록 미완료"), new Option("UNKNOWN", "모르겠어요"))),
             new Question("residence", "공식 서비스에서 참여 지자체의 주민으로 확인됐나요?",
                     "서울을 포함한 참여 지자체 거주를 확인해요. 외국인도 가입할 수 있으며, 이 서비스에서는 국적·주소·증빙서류를 받지 않아요. 주소지 확인이 진행 중이면 그대로 선택해주세요.",
-                    List.of(new Option("CONFIRMED", "참여 지자체의 주민으로 확인됐어요"), new Option("PENDING", "주소지 확인이 진행 중이에요"), new Option("UNKNOWN", "아직 확인하지 못했어요"))),
+                    List.of(new Option("CONFIRMED", "참여 지자체 거주 확인 완료"), new Option("PENDING", "주소지 확인 중"), new Option("UNKNOWN", "모르겠어요"))),
             new Question("monthlyRides", "이번 달의 인정 이용 횟수와 첫 가입 월 여부를 확인했나요?",
                     "화면에 표시된 연월의 공식 이용내역으로 답해주세요. 환승마다 따로 세거나 미반영 내역을 0회로 바꾸지 않아요. 이번 달 가입 여부가 불확실하면 ‘아직 확인하지 못했어요’를 선택해주세요.",
-                    List.of(new Option("AT_LEAST_15", "인정 이용 횟수가 15회 이상이에요"),
-                            new Option("FIRST_MONTH_1_TO_14", "가입 첫 달이며 인정 이용 횟수가 1~14회예요"),
-                            new Option("LATER_MONTH_1_TO_14", "가입 첫 달이 아니며 인정 이용 횟수가 1~14회예요"),
-                            new Option("ZERO", "인정 이용이 0회이고 반영을 기다리는 이용도 없어요"),
-                            new Option("PENDING", "이용내역 반영을 기다리고 있어요"), new Option("UNKNOWN", "아직 확인하지 못했어요"))));
+                    List.of(new Option("AT_LEAST_15", "15회 이상"),
+                            new Option("FIRST_MONTH_1_TO_14", "가입 첫 달 · 1~14회"),
+                            new Option("LATER_MONTH_1_TO_14", "가입 첫 달 아님 · 1~14회"),
+                            new Option("ZERO", "0회 · 반영 대기 내역 없음"),
+                            new Option("PENDING", "이용내역 반영 대기 중"), new Option("UNKNOWN", "모르겠어요"))));
 
     public static boolean appliesAt(Instant now) { return now.atZone(SEOUL).getYear() == 2026; }
     public static String versionAt(Instant now) { return "k-pass-2026-v1-" + YearMonth.from(now.atZone(SEOUL)); }
@@ -71,7 +71,7 @@ public final class KPassRules {
         var remaining = List.of("공식 서비스의 본인·주소지·카드 등록 결과와 실제 적립 대상 이용내역을 확인해주세요. 이 서비스는 해당 계정이나 카드 이용내역을 조회하지 않아요.",
                 "시외·고속·공항버스, KTX·SRT 등 별도 발권 수단은 적립 대상에서 제외돼요. 공항철도와 공항버스를 구분하고 실제 인정 내역은 공식 서비스에서 확인해주세요.",
                 "청년·다자녀·저소득 등 대상 구분, 지자체 추가 혜택, 한시 혜택과 환급 방식에 따라 금액이 달라져요. 환급률과 금액은 K-패스에서 확인해주세요.",
-                "현재 월의 중간 확인 결과예요. 이용·반영 내역이 늘면 다시 확인해주세요. 최종 정산 결과와 카드사의 실제 지급일·지급 방식을 별도로 확인해주세요.");
+                "이번 달 이용내역이 늘면 다시 비교해주세요. 최종 환급액과 지급일·지급 방식은 K-패스와 카드사에서 확인해주세요.");
         var whole = new EligibilityDecision(basis, PolicyReview.incomplete(remaining.stream()
                 .map(message -> new PolicyReview.PendingIssue(message, evidence)).toList()), conditions);
         return new Evaluation(NUMBER, revision, versionAt(now), whole.status(), common, scopeAt(now),

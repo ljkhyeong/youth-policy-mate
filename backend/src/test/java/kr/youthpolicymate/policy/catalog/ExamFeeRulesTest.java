@@ -18,7 +18,7 @@ class ExamFeeRulesTest {
         assertThat(result.status()).isEqualTo(NEEDS_REVIEW);
         assertThat(result.checks()).extracting(Check::outcome).containsOnly(MET);
         assertThat(result.checks().getFirst().evidence()).contains("2026년", "1991년 1월 1일 이후 출생자");
-        assertThat(result.checks().getFirst().providedValue()).isEqualTo("1991년 1월 1일 또는 그 이후");
+        assertThat(result.checks().getFirst().providedValue()).isEqualTo("1991.1.1. 이후 출생 (당일 포함)");
         assertThat(result.remainingChecks()).anyMatch(s -> s.contains("예산 소진"));
         assertThat(result.ruleVersion()).isEqualTo(ExamFeeRules.VERSION);
         assertThat(result.evaluatedAt()).isEqualTo(NOW);

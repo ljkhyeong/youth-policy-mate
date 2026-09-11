@@ -18,7 +18,7 @@ class PolicyRecruitmentTest {
         assertThat(at("2026-09-05T15:00:00Z").status()).isEqualTo(OPEN);
         assertThat(at("2026-09-07T14:59:59Z").status()).isEqualTo(OPEN);
         assertThat(at("2026-09-07T15:00:00Z").status()).isEqualTo(CLOSED);
-        assertThat(at("2026-09-06T00:00:00Z").explanation()).contains("정확한 접수 시각은 확인되지 않았으므로");
+        assertThat(at("2026-09-06T00:00:00Z").explanation()).contains("정확한 접수 시각은 공식 신청처에서 확인");
         assertThat(PolicyDeadline.from(raw).date()).hasToString("2026-09-07");
     }
 

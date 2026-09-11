@@ -17,18 +17,18 @@ public final class ExamFeeRules {
     public static final String SOURCE = "https://hrdc.hrdkorea.or.kr/hrdc/196105";
     public static final String SCOPE = "2026년 청년 국가기술자격 응시료 지원 조건";
     private static final List<Question> QUESTIONS = List.of(
-            new Question("birthRange", "출생일이 어느 범위에 해당하나요?",
+            new Question("birthRange", "출생일이 어느 구간에 해당하나요?",
                     "오늘의 만 나이 대신 2026년 공식 안내의 출생일 기준을 사용해요. 생년월일 전체는 입력하지 않아요.",
-                    List.of(new Option("ON_OR_AFTER_1991_01_01", "1991년 1월 1일 또는 그 이후"),
-                            new Option("BEFORE_1991_01_01", "1990년 12월 31일 또는 그 이전"), new Option("UNKNOWN", "모르겠어요"))),
+                    List.of(new Option("ON_OR_AFTER_1991_01_01", "1991.1.1. 이후 출생 (당일 포함)"),
+                            new Option("BEFORE_1991_01_01", "1990.12.31. 이전 출생 (당일 포함)"), new Option("UNKNOWN", "모르겠어요"))),
             new Question("exam", "응시할 시험의 종류와 시행기관을 확인했나요?",
                     "한국산업인력공단에서 시행하는 국가기술자격시험이 대상이에요. 큐넷에 보이는 모든 시험이 대상인 것은 아니에요.",
-                    List.of(new Option("HRDK_TECHNICAL", "한국산업인력공단 시행 국가기술자격시험으로 확인했어요"),
-                            new Option("OTHER", "다른 기관의 시험이거나 국가전문·민간자격 시험이에요"), new Option("UNKNOWN", "아직 확인하지 못했어요"))),
+                    List.of(new Option("HRDK_TECHNICAL", "한국산업인력공단 국가기술자격시험"),
+                            new Option("OTHER", "다른 기관 시험·국가전문·민간자격"), new Option("UNKNOWN", "모르겠어요"))),
             new Question("remainingUses", "큐넷에서 확인한 2026년 남은 응시료 지원 횟수는 얼마인가요?",
                     "취소 후 횟수 복구가 아직 반영되지 않았다면 ‘복구 확인 중’을 선택해주세요. 시험에 가지 않은 것만으로는 횟수가 복구되지 않아요.",
-                    List.of(new Option("ONE", "1회"), new Option("TWO", "2회"), new Option("THREE", "3회"), new Option("ZERO", "0회 · 복구 대기 건도 없어요"),
-                            new Option("RESTORING", "원서접수 취소 후 복구 확인 중이에요"), new Option("UNKNOWN", "아직 확인하지 못했어요"))));
+                    List.of(new Option("ONE", "1회"), new Option("TWO", "2회"), new Option("THREE", "3회"), new Option("ZERO", "0회 · 복구 대기 없음"),
+                            new Option("RESTORING", "접수 취소 후 지원 횟수 복구 중"), new Option("UNKNOWN", "모르겠어요"))));
 
     public static boolean appliesAt(Instant now) { return now.atZone(ZoneId.of("Asia/Seoul")).getYear() == 2026; }
     public static Questionnaire questionnaire(long revision) {

@@ -26,26 +26,26 @@ export default function HomePage() {
 
           <section className="start-panel" aria-labelledby="start-title">
             <h2 id="start-title">내 조건으로 확인하기</h2>
-            <p className="start-description">기본 정보를 입력하고 정책별 신청 조건을 비교하세요.</p>
+            <p className="start-description">생년월일로 연령 조건을 비교하고, 정책별 질문으로 다른 조건도 확인하세요.</p>
             <ul className="condition-list" aria-label="입력할 기본 조건">
               <li><strong>생년월일</strong><small>양력 기준</small></li>
               <li><strong>서울 거주지</strong><small>주민등록상 주소</small></li>
               <li><strong>취업상태</strong><small>현재 주된 상태</small></li>
             </ul>
             <Link href="/conditions" className="button-primary button-block">내 조건 입력하기</Link>
-            <p className="privacy-note">로그인 없이 이용할 수 있어요.<br />조건 비교를 요청할 때만 전송하고 자동 저장하지 않아요.</p>
+            <p className="privacy-note">로그인 없이 이용할 수 있어요.<br />입력 내용은 조건 비교에만 사용하고 자동 저장하지 않아요.</p>
           </section>
         </div>
 
         <section className="home-followup" aria-label="정책 이용 안내">
           <div>
             <h2>관심 있는 정책은 저장해두세요</h2>
-            <p>로그인하면 관심 정책과 마감 일정·알림을 관리할 수 있어요.</p>
+            <p>로그인하면 정책을 저장하고 마감일과 알림을 확인할 수 있어요.</p>
             <Link className="text-link" href="/my">내 정책 보기</Link>
           </div>
           <div>
             <h2>신청 전, 공식 공고를 확인하세요</h2>
-            <p>일부 정책의 안내와 조건 질문을 제공해요. 최종 신청 자격과 접수 여부는 공식 신청처에서 확인해주세요.</p>
+            <p>일부 정책의 조건만 비교할 수 있어요. 최종 신청 자격과 접수 여부는 공식 신청처에서 확인해주세요.</p>
           </div>
         </section>
       </main>

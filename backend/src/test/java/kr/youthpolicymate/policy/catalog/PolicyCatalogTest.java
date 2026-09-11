@@ -858,7 +858,7 @@ class PolicyCatalogTest {
         assertThat(housing.policyNumber()).isEqualTo(YouthHousingSavingsRules.NUMBER);
         assertThat(housing.ruleVersion()).isEqualTo(YouthHousingSavingsRules.VERSION);
         assertThat(housing.sourceUrl()).isEqualTo(YouthHousingSavingsRules.SOURCE);
-        assertThat(housing.explanation()).contains("오늘(서울 날짜) 가입", "실제 가입일");
+        assertThat(housing.explanation()).contains("오늘(서울 기준) 가입", "가입일이 달라지면");
         assertThat(housing.checks()).extracting(PolicyCheckResponse.Check::outcome).containsExactly(
                 kr.youthpolicymate.eligibility.ConditionAssessment.Outcome.MET,
                 kr.youthpolicymate.eligibility.ConditionAssessment.Outcome.UNKNOWN,
@@ -871,7 +871,7 @@ class PolicyCatalogTest {
                 .andExpect(jsonPath("$.items[0].checks[0].providedValue").value("만 26세 (2026-09-05 · 서울)"));
         var military = new BasicConditions(java.time.LocalDate.parse("1990-01-01"), input.district(), input.employmentStatus());
         assertThat(checks.check(military, 1, "청약", PolicyCheckResponse.Sort.AGE_MATCH, null).items().getFirst().explanation())
-                .contains("병역기간 차감", "실제 가입일");
+                .contains("병역기간 차감", "가입일이 달라지면");
 
         org.mockito.Mockito.when(clock.instant()).thenReturn(Instant.parse("2026-12-31T15:00:00Z"));
         var expired = checks.check(input, 1, "청약", PolicyCheckResponse.Sort.AGE_MATCH, null).items().getFirst();
@@ -1019,7 +1019,7 @@ class PolicyCatalogTest {
                         .content(mapper.writeValueAsString(input)))
                 .andExpect(status().isOk()).andExpect(header().string("Cache-Control", "no-store"))
                 .andExpect(jsonPath("$.items[0].ruleVersion").value(HaetsalronYouthRules.VERSION))
-                .andExpect(jsonPath("$.items[0].explanation").value(org.hamcrest.Matchers.containsString("오늘(서울 날짜) 보증")))
+                .andExpect(jsonPath("$.items[0].explanation").value(org.hamcrest.Matchers.containsString("오늘(서울 기준) 보증")))
                 .andExpect(jsonPath("$.items[0].checks[0].outcome").value("MET"))
                 .andExpect(jsonPath("$.items[0].checks[1].outcome").value("UNKNOWN"))
                 .andExpect(jsonPath("$.items[0].checks[2].outcome").value("UNKNOWN"))

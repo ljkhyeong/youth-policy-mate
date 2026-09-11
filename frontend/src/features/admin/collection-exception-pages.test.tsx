@@ -57,7 +57,7 @@ describe("관리자 수집 예외 화면", () => {
     expect(html).toContain("요청 한도 초과");
     expect(html).toContain("HTTP 429");
     expect(html).toContain("보관된 응답 없음");
-    expect(html).toContain("응답 보관됨");
+    expect(html).toContain("응답 저장됨");
     expect(html).toContain("보관된 응답을 검토한 뒤 재처리할 수 있습니다.");
     expect(html).toContain('href="/admin/collection-exceptions/pages?page=3"');
     expect(html).toContain('href="/admin/collection-exceptions/pages?page=1"');

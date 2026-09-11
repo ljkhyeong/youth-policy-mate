@@ -28,22 +28,22 @@ public final class YouthHousingSavingsRules {
                             new Option("NO_MILITARY_DEDUCTION", "만 35세 이상 · 차감 대상 아님"),
                             new Option("OVER_LIMIT_CONFIRMED", "차감 후에도 만 35세 이상"),
                             new Option("MILITARY_AGE_PENDING", "병역기간 차감 기준 확인 중"),
-                            new Option("UNKNOWN", "아직 확인하지 못했어요"))),
+                            new Option("UNKNOWN", "모르겠어요"))),
             new Question("homeOwnership", "가입일에 본인 소유의 주택이 없나요?",
                     "가입 조건은 본인의 무주택 여부예요. 소유 여부가 불분명하면 은행에서 확인해주세요.",
                     List.of(new Option("NO_HOME", "본인 소유의 주택이 없어요"), new Option("OWNS_HOME", "본인 소유의 주택이 있어요"),
-                            new Option("UNKNOWN", "아직 확인하지 못했어요"))),
+                            new Option("UNKNOWN", "모르겠어요"))),
             new Question("incomeBasis", "가입용 소득서류의 기준을 확인했나요?",
                     "원칙은 직전 과세연도인 2025년이에요. 소득이 아직 확정되지 않았거나 첫 취업·군복무 예외에 해당하면 은행에서 적용 기준을 확인해주세요.",
                     List.of(new Option("PREVIOUS_YEAR", "2025년 신고소득 서류 확인"),
                             new Option("EARLIER_YEAR_CONFIRMED", "은행 확인 · 2024년 소득 적용"),
-                            new Option("ANNUALIZED_CONFIRMED", "은행 확인 · 첫 취업 연환산"),
+                            new Option("ANNUALIZED_CONFIRMED", "은행 확인 · 첫 취업 소득을 연소득으로 환산"),
                             new Option("MILITARY_CONFIRMED", "은행 확인 · 군복무자 소득 예외"),
-                            new Option("UNKNOWN", "아직 확인하지 못했어요"))),
+                            new Option("UNKNOWN", "모르겠어요"))),
             new Question("incomeAmount", "가입용 서류에서 확인한 연소득은 얼마인가요?",
                     "근로소득은 총급여액, 사업·기타소득은 종합소득금액 기준이에요. 월급·매출·가구소득을 입력하지 마세요. 군복무자 예외는 비과세 소득만 있는 경우예요.",
                     List.of(new Option("UP_TO_50M", "연 5,000만 원 이하"), new Option("OVER_50M", "연 5,000만 원 초과"),
-                            new Option("TAX_EXEMPT_ONLY", "군복무 급여 등 비과세 소득만"), new Option("UNKNOWN", "아직 확인하지 못했어요"))));
+                            new Option("TAX_EXEMPT_ONLY", "군복무 급여 등 비과세 소득만"), new Option("UNKNOWN", "모르겠어요"))));
 
     public static boolean appliesAt(Instant now) { return now.atZone(ZoneId.of("Asia/Seoul")).getYear() == 2026; }
     public static Questionnaire questionnaire(long revision) {

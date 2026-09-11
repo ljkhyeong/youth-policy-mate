@@ -39,7 +39,7 @@ describe("정책 상세의 원문 충돌 안내", () => {
     const html = renderToStaticMarkup(<PolicyArticle policy={policy} />);
     expect(html).not.toContain("소득 기준 확인 필요");
     expect(html).not.toContain("복지로 2026년 모집 공고");
-    expect(html).toContain("신청 자격은 추가 확인이 필요해요");
-    expect(html).toContain("온통청년에서 수집한 안내");
+    expect(html).toContain("신청 전 공식 공고를 확인하세요");
+    expect(html).toContain("온통청년에서 수집한 내용");
   });
 });

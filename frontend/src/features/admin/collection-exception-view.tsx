@@ -96,7 +96,7 @@ export function ExceptionContent({ data }: { data: ExceptionDetail }) {
         {currentPolicy.content.sections.map((section, index) => <section className="exception-section" key={index}>
           <h4>{section.title}</h4><p className="exception-text">{section.text}</p>
         </section>)}
-        <div className="form-actions"><a className="text-link" href={`/policies/${currentPolicy.policyNumber}`}>공개 정책 상세 보기</a>
+        <div className="form-actions"><a className="text-link" href={`/policies/${currentPolicy.policyNumber}`}>공개 화면 보기</a>
           <a className="text-link" href={`${CORRECTIONS_PATH}?policyNumber=${currentPolicy.policyNumber}`}>정책 보정 관리</a></div>
       </> : <p>{item.policyNumber ? "같은 정책번호로 공개된 내용이 없습니다." : "정책번호를 확인할 수 없어 공개 내용과 연결하지 않았습니다."}</p>}
     </section>
@@ -113,7 +113,7 @@ type PolicyContent = CurrentPolicy["content"];
 const comparisonFields = {
   title: "정책명", description: "정책 설명", category: "정책 분야", organization: "운영 기관",
   applicationPeriod: "신청 기간", sections: "상세 안내", links: "공식 링크",
-  regionCodes: "지역 코드", sourceModifiedAtText: "원천 수정 일시",
+  regionCodes: "지역 코드", sourceModifiedAtText: "온통청년 수정일",
 } satisfies Record<keyof PolicyContent, string>;
 
 function RevisionComparison({ policy }: { policy: CurrentPolicy }) {
@@ -126,7 +126,7 @@ function RevisionComparison({ policy }: { policy: CurrentPolicy }) {
   const unchanged = fields.filter(field => !changed.includes(field));
   return <section className="member-panel" aria-labelledby="revision-heading">
     <h2 id="revision-heading">이전 개정 비교</h2>
-    <p className="field-help">현재 공개 내용과 직전 내부 개정을 비교합니다. 실패 당시의 내용과는 다를 수 있습니다.</p>
+    <p className="field-help">현재 공개 내용과 바로 이전 개정을 비교합니다. 수집 실패 당시 내용과는 다를 수 있습니다.</p>
     <p className="field-help">이전 개정 {previous.revision} · 원본 수집 {dateLabel(previous.sourceCapturedAt)} (서울)<br />
       현재 개정 {policy.revision} · 원본 수집 {dateLabel(policy.sourceCapturedAt)} (서울)</p>
     <p>{changed.length ? `변경된 항목 ${changed.length}개` : "표시 항목의 변경이 없습니다."}</p>

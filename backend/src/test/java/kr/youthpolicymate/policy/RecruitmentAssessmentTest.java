@@ -51,7 +51,7 @@ class RecruitmentAssessmentTest {
         assertThat(result.status()).isEqualTo(expected);
         assertThat(result.schedule().applicationPeriod()).isEqualTo(DATES);
         if (expected == OPEN) {
-            assertThat(result.explanation()).contains("서울 날짜 기준", "정확한 접수 시각은 확인되지 않았으므로");
+            assertThat(result.explanation()).contains("서울 기준", "정확한 접수 시각은 공식 신청처에서 확인");
         }
     }
 
@@ -82,7 +82,7 @@ class RecruitmentAssessmentTest {
 
         assertThat(result.status()).isEqualTo(expected);
         assertThat(result.schedule().applicationPeriod()).isEqualTo(TIMES);
-        if (expected == CLOSED) assertThat(result.explanation()).contains("마감 시각에 도달했거나 지났습니다");
+        if (expected == CLOSED) assertThat(result.explanation()).contains("마감 시각이 됐거나 지났어요");
     }
 
     static Stream<ApplicationPeriod> noDeadlinePeriods() {
@@ -162,7 +162,7 @@ class RecruitmentAssessmentTest {
         var result = RecruitmentAssessment.evaluate(schedule(DATES), clock);
 
         assertThat(result.status()).isEqualTo(BEFORE_OPENING);
-        assertThat(result.explanation()).contains("아직 시작되지 않았습니다");
+        assertThat(result.explanation()).contains("아직 접수 시작 전");
         assertThat(result.evaluatedOnSeoul()).isEqualTo(LocalDate.of(2026, 8, 30));
         assertThat(result.status()).isEqualTo(BEFORE_OPENING);
         verify(clock, times(1)).instant();

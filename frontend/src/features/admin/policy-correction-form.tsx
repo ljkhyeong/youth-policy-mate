@@ -3,8 +3,9 @@
 
 import { useId, useRef, useState, type FormEvent } from "react";
 import type { components } from "@/generated/policy-api";
-import { MemberApiError, memberApi, type MemberSession } from "@/features/member/member-api";
+import { MemberApiError } from "@/features/member/member-api";
 import type { CorrectionItem, CorrectionPolicy } from "./load-collection-exceptions";
+import { useAdminMutation } from "./use-admin-mutation";
 
 type Create = components["schemas"]["PolicyCorrectionRequest"];
 type Resolve = components["schemas"]["PolicyCorrectionResolution"];
@@ -16,7 +17,7 @@ export function PolicyCorrectionForm({ policy, correction }: Props) {
   const [value, setValue] = useState("");
   const [action, setAction] = useState<Resolve["action"]>(correction?.status === "CONFLICT" ? "KEEP" : "USE_SOURCE");
   const [reason, setReason] = useState("");
-  const [busy, setBusy] = useState(false);
+  const { busy, mutate } = useAdminMutation();
   const [blocked, setBlocked] = useState(false);
   const [uncertain, setUncertain] = useState(false);
   const [message, setMessage] = useState("");
@@ -30,12 +31,11 @@ export function PolicyCorrectionForm({ policy, correction }: Props) {
     pending.current ??= policy
       ? { requestId: crypto.randomUUID(), policyNumber: policy.policyNumber, expectedRevision: policy.revision, field, value: value.trim(), reason: reason.trim() }
       : { requestId: crypto.randomUUID(), expectedRevision: correction.currentRevision, reviewSnapshotId: correction.reviewSnapshotId, action, reason: reason.trim() };
-    setBusy(true); setMessage("");
+    setMessage("");
     try {
-      const session = await memberApi<MemberSession>("session");
-      if (!session.authenticated) throw new MemberApiError(401, "로그인 필요");
-      setResult(await memberApi<CorrectionItem>(policy ? "policy-corrections" : `policy-corrections/${correction.id}/resolutions`,
-        { method: "POST", csrf: session.csrfToken, body: pending.current }));
+      const response = await mutate<CorrectionItem>(policy ? "policy-corrections" : `policy-corrections/${correction.id}/resolutions`, pending.current);
+      if (!response) return;
+      setResult(response);
       setUncertain(false);
     } catch (error) {
       if (error instanceof MemberApiError && [400, 401, 403, 409, 413].includes(error.status)) {
@@ -49,7 +49,7 @@ export function PolicyCorrectionForm({ policy, correction }: Props) {
         setUncertain(true);
         setMessage("처리 결과를 확인하지 못했습니다. 아래 ‘처리 결과 다시 확인’을 눌러주세요.");
       }
-    } finally { setBusy(false); }
+    }
   }
 
   return <form onSubmit={submit} aria-label={policy ? "정책 보정" : `정책 ${correction.policyNumber} 보정 처리`}>

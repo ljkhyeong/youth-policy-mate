@@ -3,15 +3,16 @@
 
 import { useRef, useState, type FormEvent } from "react";
 import type { components } from "@/generated/policy-api";
-import { MemberApiError, memberApi, type MemberSession } from "@/features/member/member-api";
+import { MemberApiError } from "@/features/member/member-api";
 import { replayLabels } from "./collection-replay-labels";
+import { useAdminMutation } from "./use-admin-mutation";
 
 type Request = components["schemas"]["CollectionReplayRequest"];
 type Result = components["schemas"]["CollectionReplayResult"];
 
 export function CollectionReplayForm({ runId, itemIndex, attempts }: { runId: string; itemIndex: number; attempts: number }) {
   const [reason, setReason] = useState("");
-  const [busy, setBusy] = useState(false);
+  const { busy, mutate } = useAdminMutation();
   const [blocked, setBlocked] = useState(false);
   const [uncertain, setUncertain] = useState(false);
   const [message, setMessage] = useState("");
@@ -22,12 +23,10 @@ export function CollectionReplayForm({ runId, itemIndex, attempts }: { runId: st
     event.preventDefault();
     if (busy || blocked || result) return;
     pending.current ??= { requestId: crypto.randomUUID(), expectedAttempts: attempts, reason: reason.trim() };
-    setBusy(true); setMessage("");
+    setMessage("");
     try {
-      const session = await memberApi<MemberSession>("session");
-      if (!session.authenticated) throw new MemberApiError(401, "로그인 필요");
-      const response = await memberApi<Result>(`collection-replays/${runId}/${itemIndex}`,
-        { method: "POST", csrf: session.csrfToken, body: pending.current });
+      const response = await mutate<Result>(`collection-replays/${runId}/${itemIndex}`, pending.current);
+      if (!response) return;
       setResult(response);
       setUncertain(false);
     } catch (error) {
@@ -42,7 +41,7 @@ export function CollectionReplayForm({ runId, itemIndex, attempts }: { runId: st
         setUncertain(true);
         setMessage("처리 결과를 확인하지 못했습니다. 아래 ‘재처리 결과 다시 확인’을 눌러주세요.");
       }
-    } finally { setBusy(false); }
+    }
   }
 
   return <section className="member-panel" aria-labelledby="replay-heading">

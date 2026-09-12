@@ -1,8 +1,8 @@
 "use client";
-/* eslint-disable @next/next/no-html-link-for-pages -- 처리 후 최신 권한·원문·규칙을 서버에서 다시 조회한다. */
 import { useId, useRef, useState, type FormEvent, type ReactNode } from "react";
 import type { components } from "@/generated/policy-api";
-import { MemberApiError, memberApi, type MemberSession } from "@/features/member/member-api";
+import { MemberApiError } from "@/features/member/member-api";
+import { useAdminMutation } from "./use-admin-mutation";
 
 type Draft = components["schemas"]["PolicyRuleDraftRequest"];
 type Publish = components["schemas"]["PolicyRulePublishRequest"];
@@ -16,7 +16,7 @@ export function RuleActionForm({ policyNumber, revision, versionId, expectedRule
   const [fileBusy, setFileBusy] = useState(false);
   const [reason, setReason] = useState("");
   const [verified, setVerified] = useState(false);
-  const [busy, setBusy] = useState(false);
+  const { busy, mutate } = useAdminMutation();
   const [blocked, setBlocked] = useState(false);
   const [uncertain, setUncertain] = useState(false);
   const [message, setMessage] = useState("");
@@ -45,12 +45,11 @@ export function RuleActionForm({ policyNumber, revision, versionId, expectedRule
     pending.current ??= publishing
       ? { requestId: crypto.randomUUID(), expectedRevision: revision, expectedRuleVersion: expectedRuleVersion!, reason: reason.trim() }
       : { requestId: crypto.randomUUID(), expectedRevision: revision, definitionJson: candidate, reason: reason.trim() };
-    setBusy(true); setMessage("");
+    setMessage("");
     try {
-      const session = await memberApi<MemberSession>("session");
-      if (!session.authenticated) throw new MemberApiError(401, "로그인 필요");
-      setResult(await memberApi<Result>(`policy-rule-reviews/${policyNumber}/${publishing ? `versions/${versionId}/publish` : "drafts"}`,
-        { method: "POST", csrf: session.csrfToken, body: pending.current }));
+      const response = await mutate<Result>(`policy-rule-reviews/${policyNumber}/${publishing ? `versions/${versionId}/publish` : "drafts"}`, pending.current);
+      if (!response) return;
+      setResult(response);
       setUncertain(false);
     } catch (error) {
       if (error instanceof MemberApiError && [400, 401, 403, 404, 409, 413].includes(error.status)) {
@@ -59,7 +58,7 @@ export function RuleActionForm({ policyNumber, revision, versionId, expectedRule
           : error.status === 404 || error.status === 409 ? "원문·기간·버전 또는 처리 상태가 바뀌었습니다. 최신 내용을 다시 확인해주세요."
             : "규칙 파일의 형식·질문·기간·용량과 사유를 확인해주세요. 파일은 128KB까지 등록할 수 있습니다.");
       } else { setUncertain(true); setMessage("처리 결과를 확인하지 못했습니다. 입력을 유지한 채 ‘처리 결과 다시 확인’을 눌러주세요."); }
-    } finally { setBusy(false); }
+    }
   }
 
   return <form onSubmit={submit} onInvalid={event => {

@@ -12,6 +12,7 @@ import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
 import java.util.List;
+import java.util.Comparator;
 import java.util.UUID;
 
 @Service
@@ -102,14 +103,21 @@ public class MemberPolicyStore {
     @Transactional
     public MemberResponses.SavedList saved(UUID member) {
         refresh(member);
+        var now = clock.instant();
         var items = jdbc.sql("""
-                SELECT s.*, p.content->>'title' AS title, p.content->>'applicationPeriod' AS application_period
+                SELECT s.*, p.content_hash, p.content->>'title' AS title, p.content->>'applicationPeriod' AS application_period,
+                    source.raw_policy
                 FROM saved_policies s JOIN policies p ON p.policy_number = s.policy_number
-                WHERE s.member_id = :member ORDER BY s.deadline_on NULLS LAST, s.saved_at DESC
+                JOIN policy_revisions revision ON revision.policy_number = p.policy_number AND revision.revision = p.current_revision
+                JOIN policy_source_snapshots source ON source.id = revision.source_snapshot_id
+                WHERE s.member_id = :member ORDER BY s.deadline_on NULLS LAST, s.saved_at DESC, s.policy_number
                 """).param("member", member).query((rs, row) ->
                     new MemberResponses.Saved(rs.getString("policy_number"), rs.getString("title"), rs.getLong("saved_revision"),
                             rs.getLong("current_revision"), new PolicyDeadline(rs.getObject("deadline_on", LocalDate.class), rs.getString("deadline_note")),
-                            rs.getObject("saved_at", OffsetDateTime.class).toInstant(), rs.getString("application_period"))).list();
+                            rs.getObject("saved_at", OffsetDateTime.class).toInstant(), rs.getString("application_period"),
+                            PolicyRecruitment.from(rs.getString("policy_number"), rs.getLong("current_revision"), rs.getString("content_hash"),
+                                    mapper.readTree(rs.getString("raw_policy")), now))).list().stream()
+                .sorted(Comparator.comparing(item -> item.recruitment().status() == kr.youthpolicymate.policy.RecruitmentStatus.CLOSED)).toList();
         return new MemberResponses.SavedList(items);
     }
     @Transactional

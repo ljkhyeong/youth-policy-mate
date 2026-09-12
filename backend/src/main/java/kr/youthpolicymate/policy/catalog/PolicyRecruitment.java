@@ -12,7 +12,7 @@ import java.util.Optional;
 
 @Schema(requiredProperties = {"status", "explanation", "evaluatedAt"})
 public record PolicyRecruitment(RecruitmentStatus status, String explanation, Instant evaluatedAt) {
-    static PolicyRecruitment from(String number, long revision, String hash, JsonNode raw, Instant now) {
+    public static PolicyRecruitment from(String number, long revision, String hash, JsonNode raw, Instant now) {
         var period = period(number, hash, raw);
         var source = PolicyCatalogStore.sourceUrl(number);
         var location = "온통청년 신청기간·추가 안내";

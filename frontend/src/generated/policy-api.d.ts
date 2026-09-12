@@ -1227,6 +1227,7 @@ export interface components {
             readonly currentRevision: number;
             readonly deadline: components["schemas"]["PolicyDeadline"];
             readonly policyNumber: string;
+            readonly recruitment: components["schemas"]["PolicyRecruitment"];
             /** Format: date-time */
             readonly savedAt: string;
             /** Format: int64 */

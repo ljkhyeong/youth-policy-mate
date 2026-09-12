@@ -3,6 +3,8 @@ import { announceAccountChange } from "@/features/member/account-transitions";
 
 import Link from "next/link";
 import { MemberEmailSettings } from "@/features/member/member-email-settings";
+import { MemberPolicyList } from "@/features/member/member-policy-list";
+import type { RecruitmentFilter } from "@/features/policies/policy-recruitment";
 import { useEffect, useState } from "react";
 import { memberApi, type MemberSession, type SavedPolicies, type Notifications } from "@/features/member/member-api";
 
@@ -14,6 +16,7 @@ export function MemberDashboard() {
   const [busy, setBusy] = useState(false);
   const [reload, setReload] = useState(0);
   const [tab, setTab] = useState<"saved" | "calendar" | "notifications">("saved");
+  const [calendarFilter, setCalendarFilter] = useState<RecruitmentFilter>("");
   useEffect(() => {
     const controller = new AbortController();
     (async () => {
@@ -54,22 +57,12 @@ export function MemberDashboard() {
   return <>
     {error && <div className="member-panel" role="alert"><p>{error}</p><button className="button-secondary" onClick={reloadData}>다시 불러오기</button></div>}
     {!policies && !error && <p role="status">내 정책을 불러오고 있어요.</p>}
-    {session?.authenticated && <div className="member-toolbar"><strong>{session.displayName}님의 정책</strong><Link href="/conditions">내 조건 관리</Link><button type="button" className="text-button" disabled={busy} onClick={logout}>로그아웃</button></div>}
+    {session?.authenticated && <div className="member-toolbar member-account-toolbar"><strong>{session.displayName}님의 정책</strong><Link href="/conditions">내 조건 관리</Link><button type="button" className="text-button" disabled={busy} onClick={reloadData}>새로고침</button><button type="button" className="text-button" disabled={busy} onClick={logout}>로그아웃</button></div>}
     <nav className="member-tabs" aria-label="내 정책 보기">
       {(["saved", "calendar", "notifications"] as const).map(value => <button type="button" aria-current={tab === value ? "page" : undefined} key={value} onClick={() => setTab(value)}>{value === "saved" ? "관심 정책" : value === "calendar" ? "마감 일정" : "알림"}</button>)}
     </nav>
-    {policies && tab !== "notifications" && <div className="member-list">
-      {policies.items.length === 0 && <section className="member-panel"><h2>저장한 정책이 아직 없어요</h2><p>정책 상세에서 저장 버튼을 눌러주세요.</p><Link href="/policies" className="button-primary">정책 찾기</Link></section>}
-      {policies.items.map(policy => <article className="member-panel" key={policy.policyNumber}>
-        {tab === "calendar" && <p className="member-deadline">{policy.deadline.date ? `${policy.deadline.date} 마감` : "마감일 확인 필요"}</p>}
-        <h2><Link href={`/policies/${policy.policyNumber}`}>{policy.title}</Link></h2>
-        <p className="policy-period">신청기간: {policy.applicationPeriod}</p>
-        <p>{policy.deadline.note}</p>
-        {policy.savedRevision !== policy.currentRevision && <p className="member-change">저장한 뒤 정책 내용이 바뀌었어요. 최신 안내를 확인해주세요.</p>}
-        {tab === "calendar" && policy.deadline.date && <p className="field-help">마감 7·3·1일 전 ‘알림’ 탭에 안내해요. 지난 알림 날짜는 건너뛰어요.</p>}
-        <button className="text-button" type="button" disabled={busy} onClick={() => mutate(`policies/${policy.policyNumber}`, "DELETE")}>저장 해제</button>
-      </article>)}
-    </div>}
+    {policies && tab !== "notifications" && <MemberPolicyList policies={policies.items} calendar={tab === "calendar"}
+      filter={calendarFilter} onFilterChange={setCalendarFilter} busy={busy} onRemove={number => mutate(`policies/${number}`, "DELETE")} />}
     {session?.authenticated && tab === "notifications" && <MemberEmailSettings csrf={session.csrfToken} />}
     {notifications && tab === "notifications" && <div className="member-list">
       {notifications.items.length === 0 && <section className="member-panel"><h2>도착한 알림이 없어요</h2><p>저장한 정책의 내용 변경과 마감 안내가 이곳에 표시돼요.</p></section>}

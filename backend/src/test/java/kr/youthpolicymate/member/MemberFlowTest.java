@@ -205,6 +205,48 @@ class MemberFlowTest {
     }
 
     @Test
+    @DisplayName("내 일정은 가까운 마감부터 조회하고 상시·미확인·종료를 구분한다")
+    void groupsSavedRecruitmentWithoutInventingDeadlines() throws Exception {
+        var fixtures = List.of(
+                List.of("마감된 날짜", "0057001", "20260901 ~ 20260904"),
+                List.of("먼 마감", "0057001", "20260918 ~ 20260920"),
+                List.of("가까운 마감", "0057001", "20260901 ~ 20260906"),
+                List.of("상시 접수", "0057002", ""),
+                List.of("기간 미확인", "0057001", "추후 안내"),
+                List.of("접수 종료", "0057003", ""));
+        for (int index = 0; index < fixtures.size(); index++) {
+            var fixture = fixtures.get(index);
+            var number = "999900000000000000%02d".formatted(index);
+            raw.put("plcyNo", number).put("plcyNm", fixture.get(0)).put("aplyPrdSeCd", fixture.get(1)).put("aplyYmd", fixture.get(2));
+            importPolicy(); members.save(first, number);
+        }
+        var saved = members.saved(first).items();
+        assertThat(saved.subList(0, 2)).extracting(MemberResponses.Saved::title).containsExactly("가까운 마감", "먼 마감");
+        assertThat(saved.subList(4, 6)).allSatisfy(policy -> assertThat(policy.recruitment().status()).isEqualTo(kr.youthpolicymate.policy.RecruitmentStatus.CLOSED));
+        assertThat(saved.stream().filter(policy -> List.of("상시 접수", "기간 미확인", "접수 종료").contains(policy.title())))
+                .allSatisfy(policy -> assertThat(policy.deadline().date()).isNull());
+        assertThat(saved).extracting(policy -> policy.recruitment().status().name())
+                .containsExactly("OPEN", "BEFORE_OPENING", "UNKNOWN", "ROLLING", "CLOSED", "CLOSED");
+        mvc.perform(get("/api/v1/me/policies").with(oauth2Login().oauth2User(user(first))))
+                .andExpect(jsonPath("$.items[0].recruitment.status").value("OPEN"))
+                .andExpect(jsonPath("$.items[0].recruitment.evaluatedAt").value("2026-09-04T15:00:00Z"));
+    }
+
+    @Test
+    @DisplayName("개정이 그대로여도 서울 날짜가 바뀌면 내 일정과 공개 화면의 마감 상태가 함께 바뀐다")
+    void refreshesRecruitmentAcrossSeoulMidnight() throws Exception {
+        members.save(first, NUMBER);
+        time("2026-09-12T14:59:59Z");
+        assertThat(members.saved(first).items().getFirst().recruitment().status()).isEqualTo(kr.youthpolicymate.policy.RecruitmentStatus.OPEN);
+        time("2026-09-12T15:00:00Z");
+        var saved = members.saved(first).items().getFirst();
+        assertThat(saved.recruitment().status()).isEqualTo(kr.youthpolicymate.policy.RecruitmentStatus.CLOSED);
+        assertThat(saved.deadline().date()).hasToString("2026-09-12");
+        assertThat(saved.currentRevision()).isOne();
+        mvc.perform(get("/api/v1/policies/" + NUMBER)).andExpect(jsonPath("$.recruitment.status").value("CLOSED"));
+    }
+
+    @Test
     @DisplayName("관심 정책 조회가 끝날 때까지 수집의 정책 갱신을 막는다")
     void keepsPolicyLockedDuringSavedListRead() {
         members.save(first, NUMBER);

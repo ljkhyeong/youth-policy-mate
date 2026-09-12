@@ -4334,6 +4334,9 @@
           "policyNumber" : {
             "type" : "string"
           },
+          "recruitment" : {
+            "$ref" : "#/components/schemas/PolicyRecruitment"
+          },
           "savedAt" : {
             "type" : "string",
             "format" : "date-time"
@@ -4346,7 +4349,7 @@
             "type" : "string"
           }
         },
-        "required" : [ "applicationPeriod", "currentRevision", "deadline", "policyNumber", "savedAt", "savedRevision", "title" ]
+        "required" : [ "applicationPeriod", "currentRevision", "deadline", "policyNumber", "recruitment", "savedAt", "savedRevision", "title" ]
       },
       "SavedPolicyList" : {
         "type" : "object",

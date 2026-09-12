@@ -43,6 +43,9 @@ springdoc:
     enabled: false
 
 app:
+  ai:
+    auto:
+      enabled: ${AI_AUTO_ENABLED:false}
   admin:
     member-ids: ${ADMIN_MEMBER_IDS:}
   email:

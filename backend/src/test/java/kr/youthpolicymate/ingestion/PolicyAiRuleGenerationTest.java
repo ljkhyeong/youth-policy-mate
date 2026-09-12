@@ -43,12 +43,16 @@ class PolicyAiRuleGenerationTest {
     @Autowired PolicyAiRuleCallStore calls;
     @Autowired AiBudgetReservationStore reservations;
     @Autowired AiBudgetReservationLifecycleStore lifecycle;
+    @Autowired PolicyAiRuleAutoStore automation;
+    @Autowired kr.youthpolicymate.policy.catalog.PolicyRuleStore rules;
     MockRestServiceServer server;
     MockEnvironment environment;
     OpenAiRuleClient client;
     PolicyAiRuleGenerationService service;
+    PolicyAiRuleAutoRunner automatic;
 
     @BeforeEach void setup() throws Exception {
+        jdbc.sql("DELETE FROM policy_ai_rule_auto_runs").update();
         jdbc.sql("DELETE FROM policy_ai_rule_calls").update();
         jdbc.sql("DELETE FROM policy_ai_rule_candidates").update();
         jdbc.sql("DELETE FROM policy_ai_rule_requests").update();
@@ -69,6 +73,159 @@ class PolicyAiRuleGenerationTest {
         server = MockRestServiceServer.bindTo(builder).build();
         client = new OpenAiRuleClient(environment, mapper, builder.build());
         service = new PolicyAiRuleGenerationService(drafts, calls, reservations, lifecycle, client, Clock.systemUTC());
+        environment.withProperty("AI_AUTO_DAILY_LIMIT", "10").withProperty("AI_AUTO_INTERVAL_SECONDS", "60").withProperty("AI_AUTO_MAX_ATTEMPTS", "3");
+        automatic = new PolicyAiRuleAutoRunner(automation, service, client, environment, Clock.systemUTC());
+    }
+
+    @Test @DisplayName("수집된 신규·변경 공고를 자동 추출하고 내용이 같은 재수집에는 다시 호출하지 않는다")
+    void automaticallyProcessesChangedPolicies() throws Exception {
+        countTokens(); automaticResponse(); countTokens(); automaticResponse();
+        var first = automatic.tick();
+        assertThat(first.state()).isEqualTo("COMPLETED");
+        assertThat(first.candidateStatus()).isEqualTo("DRAFT_CREATED");
+        assertThat(automatic.tick().state()).isEqualTo("WAITING");
+        elapse();
+        source("AI 호출 검증 공고", Instant.now());
+        assertThat(automatic.tick().state()).isEqualTo("EMPTY");
+        source("내용이 바뀐 자동 추출 공고", Instant.now().plusSeconds(1));
+        var changed = automatic.tick();
+        assertThat(changed.state()).isEqualTo("COMPLETED");
+        assertThat(changed.requestId()).isNotEqualTo(first.requestId());
+        assertThat(drafts.prepared(changed.requestId()).revision()).isEqualTo(2);
+        assertThat(heads()).isZero();
+        server.verify();
+    }
+
+    @Test @DisplayName("관리자가 준비한 요청과 같은 원문 해시의 기존 규칙은 자동으로 중복 추출하지 않는다")
+    void skipsManualWork() {
+        var manual = prepare();
+        assertThat(automatic.tick().state()).isEqualTo("EMPTY");
+        rules.draft(mapper.readValue(definition(manual), kr.youthpolicymate.policy.catalog.PolicyRuleDefinition.class), "검증 관리자", "수동 검토");
+        jdbc.sql("DELETE FROM policy_ai_rule_requests WHERE id = :id").param("id", manual.id()).update();
+        assertThat(automatic.tick().state()).isEqualTo("EMPTY");
+        assertThat(automation.recent()).isEmpty();
+        server.verify();
+    }
+
+    @Test @DisplayName("자동 설정 누락·일일 한도 소진을 차단하고 한국 날짜가 바뀌면 일일 한도를 다시 계산한다")
+    void enforcesAutomaticDailyLimit() throws Exception {
+        environment.withProperty("AI_AUTO_DAILY_LIMIT", "0");
+        assertThat(automatic.tick().state()).isEqualTo("CONFIGURATION_REQUIRED");
+        assertThat(automation.recent()).isEmpty();
+        environment.withProperty("AI_AUTO_DAILY_LIMIT", "1");
+        countTokens(); automaticResponse(); countTokens(); automaticResponse();
+        assertThat(automatic.tick().state()).isEqualTo("COMPLETED");
+        source("다음 자동 추출 공고", Instant.now());
+        assertThat(automatic.tick().state()).isEqualTo("DAILY_LIMIT");
+        jdbc.sql("UPDATE policy_ai_rule_auto_runs SET started_at = (date_trunc('day', clock_timestamp() AT TIME ZONE 'Asia/Seoul') AT TIME ZONE 'Asia/Seoul') - interval '1 second'").update();
+        assertThat(automatic.tick().state()).isEqualTo("COMPLETED");
+        server.verify();
+    }
+
+    @Test @DisplayName("호출 전 실패는 동일 요청으로 제한된 횟수만 재개한다")
+    void boundsAutomaticRetries() {
+        environment.withProperty("AI_AUTO_MAX_ATTEMPTS", "2");
+        server.expect(requestTo("https://api.openai.com/v1/responses/input_tokens")).andRespond(withServerError());
+        server.expect(requestTo("https://api.openai.com/v1/responses/input_tokens")).andRespond(withServerError());
+        var first = automatic.tick();
+        assertThat(first.state()).isEqualTo("RETRY_PENDING");
+        elapse();
+        var second = automatic.tick();
+        assertThat(second.state()).isEqualTo("REVIEW_REQUIRED");
+        assertThat(second.requestId()).isEqualTo(first.requestId());
+        assertThat(automation.recent()).extracting(PolicyAiRuleAutoStore.Summary::attempt).containsExactly(2, 1);
+        elapse();
+        assertThat(automatic.tick().state()).isEqualTo("EMPTY");
+        assertThat(calls.find(first.requestId())).isEmpty();
+        server.verify();
+    }
+
+    @Test @DisplayName("여러 작업자가 동시에 선택해도 한 건만 배정하고 중단 후 같은 요청으로 재개한다")
+    void claimsOnceAndResumes() throws Exception {
+        var start = new CountDownLatch(1);
+        var limits = new PolicyAiRuleAutoStore.Limits(10, 60, 3);
+        var settings = client.settings(Instant.now());
+        try (var pool = Executors.newVirtualThreadPerTaskExecutor()) {
+            var tasks = new ArrayList<Future<PolicyAiRuleAutoStore.Claim>>();
+            for (int i = 0; i < 3; i++) tasks.add(pool.submit(() -> { start.await(); return automation.claim(limits, settings); }));
+            start.countDown();
+            var claims = new ArrayList<PolicyAiRuleAutoStore.Claim>();
+            for (var task : tasks) claims.add(task.get(10, TimeUnit.SECONDS));
+            assertThat(claims.stream().filter(c -> c.run() != null)).hasSize(1);
+        }
+        var original = automation.recent().getFirst();
+        assertThat(automation.claim(limits, settings).reason()).isEqualTo("BUSY");
+        elapse();
+        var resumed = automation.claim(limits, settings).run();
+        assertThat(resumed.requestId()).isEqualTo(original.requestId());
+        assertThat(resumed.attempt()).isEqualTo(2);
+        assertThat(automation.recent()).extracting(PolicyAiRuleAutoStore.Summary::state).containsExactly("RUNNING", "INTERRUPTED");
+        assertThat(automation.finish(new PolicyAiRuleAutoStore.Run(original.runId(), original.requestId(), 1, original.startedAt(), original.startedAt().plusSeconds(600)),
+                service.status(original.requestId()), true, 3)).isEqualTo("LEASE_EXPIRED");
+        server.verify();
+    }
+
+    @Test @DisplayName("발송 후 중단된 작업은 자동 재호출하지 않고 운영자 확인으로 남긴다")
+    void doesNotRedispatchInterruptedWork() {
+        var run = automation.claim(new PolicyAiRuleAutoStore.Limits(10, 60, 3), client.settings(Instant.now())).run();
+        var request = drafts.prepared(run.requestId());
+        var call = reserve(request);
+        calls.dispatch(request, call, new AiBudgetReservationState.Dispatch("auto-interrupted", Instant.now()));
+        elapse();
+        assertThat(automatic.tick().state()).isEqualTo("EMPTY");
+        assertThat(automation.recent().getFirst().state()).isEqualTo("REVIEW_REQUIRED");
+        assertThat(service.status(request.id()).reservationPhase()).isEqualTo("DISPATCHED");
+        server.verify();
+    }
+
+    @Test @DisplayName("비용 예약 직후 중단된 작업은 남은 예산이 없어도 같은 예약으로 실행한다")
+    void resumesHeldReservationWithExhaustedBudget() {
+        var run = automation.claim(new PolicyAiRuleAutoStore.Limits(10, 60, 3), client.settings(Instant.now())).run();
+        reserve(drafts.prepared(run.requestId()));
+        jdbc.sql("UPDATE ai_budgets SET confirmed_won = limit_won - reserved_won").update();
+        elapse();
+        automaticResponse();
+        var result = automatic.tick();
+        assertThat(result.state()).isEqualTo("COMPLETED");
+        assertThat(result.requestId()).isEqualTo(run.requestId());
+        assertThat(automation.recent().getFirst().attempt()).isEqualTo(2);
+        assertThat(jdbc.sql("SELECT reserved_won FROM ai_budgets").query(java.math.BigDecimal.class).single()).isEqualByComparingTo("2.1");
+        server.verify();
+    }
+
+    @Test @DisplayName("예산이 모두 예약됐어도 저장한 응답의 초안 재처리는 외부 호출 없이 완료한다")
+    void resumesResponseWithExhaustedBudget() {
+        countTokens(); automaticResponse();
+        jdbc.sql("CREATE FUNCTION fail_auto_candidate_test() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION '검증 실패'; END; $$").update();
+        jdbc.sql("CREATE TRIGGER fail_auto_candidate_test BEFORE INSERT ON policy_ai_rule_candidates FOR EACH ROW EXECUTE FUNCTION fail_auto_candidate_test()").update();
+        PolicyAiRuleAutoRunner.Tick first;
+        try {
+            first = automatic.tick();
+            assertThat(first.state()).isEqualTo("RETRY_PENDING");
+            assertThat(service.status(first.requestId()).responseStored()).isTrue();
+        } finally {
+            jdbc.sql("DROP TRIGGER fail_auto_candidate_test ON policy_ai_rule_candidates").update();
+            jdbc.sql("DROP FUNCTION fail_auto_candidate_test()").update();
+        }
+        jdbc.sql("UPDATE ai_budgets SET confirmed_won = limit_won - reserved_won").update();
+        elapse();
+        assertThat(automatic.tick().state()).isEqualTo("COMPLETED");
+        assertThat(automation.recent().getFirst().requestId()).isEqualTo(first.requestId());
+        assertThat(service.status(first.requestId()).candidateStatus()).isEqualTo("DRAFT_CREATED");
+        elapse();
+        assertThat(automatic.tick().state()).isEqualTo("BUDGET_LIMIT");
+        server.verify();
+    }
+
+    private void automaticResponse() {
+        server.expect(requestTo("https://api.openai.com/v1/responses")).andRespond(http -> {
+            assertThat(TransactionSynchronizationManager.isActualTransactionActive()).isFalse();
+            var request = drafts.prepared(automation.recent().getFirst().requestId());
+            return withSuccess(response(definition(request)), MediaType.APPLICATION_JSON).createResponse(http);
+        });
+    }
+    private void elapse() {
+        jdbc.sql("UPDATE policy_ai_rule_auto_runs SET started_at = started_at - interval '11 minutes', lease_until = lease_until - interval '11 minutes'").update();
     }
 
     @Test @DisplayName("예산을 예약한 뒤 한 번 호출하고 원 응답·검토 초안을 보관하며 청구 확인을 기다린다")

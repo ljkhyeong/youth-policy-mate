@@ -17,6 +17,7 @@
     "ai:policy-rules": "./backend/gradlew -p backend managePolicyAiRules --no-daemon",
     "test:ai-rule-drafts": "./backend/gradlew -p backend test --tests 'kr.youthpolicymate.ingestion.PolicyAiRuleDraftStoreTest' --no-daemon",
     "test:ai-rule-generation": "./backend/gradlew -p backend test --tests 'kr.youthpolicymate.ingestion.PolicyAiRuleGenerationTest' --tests 'kr.youthpolicymate.ingestion.PolicyAiRuleDraftStoreTest' --tests 'kr.youthpolicymate.ingestion.PolicyAiExecutionCoordinatorTest' --no-daemon",
+    "test:ai-rule-auto": "./backend/gradlew -p backend test --tests 'kr.youthpolicymate.ingestion.PolicyAiRuleGenerationTest' --tests 'kr.youthpolicymate.ingestion.PolicyAiRuleSchedulerTest' --no-daemon",
     "import:policy": "./backend/gradlew -p backend importPolicyCapture --no-daemon",
     "rules:policy": "./backend/gradlew -p backend managePolicyRules --no-daemon",
     "collect:policy": "./backend/gradlew -p backend collectPolicyPage --no-daemon",

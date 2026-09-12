@@ -14,15 +14,18 @@ public final class PolicyAiRuleCommand {
     public static void main(String[] args) throws Exception {
         if (!(args.length == 6 && args[0].equals("prepare") || args.length == 3 && args[0].equals("complete")
                 || args.length == 2 && (args[0].equals("status") || args[0].equals("generate"))
-                || args.length == 5 && args[0].equals("settle") || args.length == 4 && args[0].equals("no-charge")))
-            throw new IllegalArgumentException("사용법: prepare <정책번호> <개정> <생성 방식> <요청 UUID> <새 JSON 경로> | generate <요청 UUID> | complete <요청 UUID> <결과 JSON 경로> | status <요청 UUID> | settle <요청 UUID> <청구 확인 ID> <확인 시각> <원화 청구액> | no-charge <요청 UUID> <무과금 확인 ID> <확인 시각>");
+                || args.length == 5 && args[0].equals("settle") || args.length == 4 && args[0].equals("no-charge")
+                || args.length == 1 && (args[0].equals("auto-run") || args[0].equals("auto-status"))))
+            throw new IllegalArgumentException("사용법: prepare <정책번호> <개정> <생성 방식> <요청 UUID> <새 JSON 경로> | generate <요청 UUID> | complete <요청 UUID> <결과 JSON 경로> | status <요청 UUID> | settle <요청 UUID> <청구 확인 ID> <확인 시각> <원화 청구액> | no-charge <요청 UUID> <무과금 확인 ID> <확인 시각> | auto-run | auto-status");
         var app = new SpringApplication(YouthPolicyMateApplication.class);
         app.setAdditionalProfiles("local");
         app.setWebApplicationType(WebApplicationType.NONE);
         try (var context = app.run("--spring.config.import=optional:file:.env[.properties]", "--app.ontong.schedule.enabled=false",
-                "--app.reminders.enabled=false", "--app.email.enabled=false")) {
+                "--app.reminders.enabled=false", "--app.email.enabled=false", "--app.ai.auto.enabled=false")) {
             var store = context.getBean(PolicyAiRuleDraftStore.class);
             switch (args[0]) {
+                case "auto-run" -> System.out.println(context.getBean(PolicyAiRuleAutoRunner.class).tick());
+                case "auto-status" -> context.getBean(PolicyAiRuleAutoStore.class).recent().forEach(System.out::println);
                 case "prepare" -> {
                     var request = store.prepare(new PolicyAiRuleDraftStore.Preparation(UUID.fromString(args[4]), args[1],
                             Long.parseLong(args[2]), args[3], System.getProperty("user.name")));

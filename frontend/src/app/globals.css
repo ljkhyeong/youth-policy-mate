@@ -700,6 +700,12 @@ select {
   }
 }
 
+@media (max-width: 639px) {
+  :root {
+    scroll-padding-bottom: calc(80px + env(safe-area-inset-bottom));
+  }
+}
+
 @media (min-width: 640px) {
   .app-shell > main,
   .app-header-inner {

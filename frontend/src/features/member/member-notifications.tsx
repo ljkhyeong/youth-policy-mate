@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
-import { memberApi, type NotificationFilter, type Notifications } from "./member-api";
+import { memberApi, MemberApiError, type NotificationFilter, type Notifications } from "./member-api";
 
 const receivedAt = new Intl.DateTimeFormat("ko-KR", {
   timeZone: "Asia/Seoul", dateStyle: "medium", timeStyle: "short",
@@ -16,11 +16,21 @@ export function MemberNotifications({ csrf, active, onUnreadCount }: {
   const [filter, setFilter] = useState<NotificationFilter>("ALL");
   const [reload, setReload] = useState(0);
   const [error, setError] = useState("");
-  const [busy, setBusy] = useState(false);
+  const [busy, setBusy] = useState(true);
+  const [loginRequired, setLoginRequired] = useState(false);
   const readRequest = useRef<AbortController | null>(null);
+  const restoreFocus = useRef(false);
+  const filterSelect = useRef<HTMLSelectElement>(null);
+  const retryButton = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
-    const controller = new AbortController();
+    if (!restoreFocus.current || busy) return;
+    if (active) (error ? retryButton : filterSelect).current?.focus();
+    restoreFocus.current = false;
+  }, [active, busy, error]);
+
+  useEffect(() => {
+    const controller = new AbortController(); readRequest.current = controller;
     memberApi<Notifications>(`notifications?page=${page}&pageSize=20&filter=${filter}`, { signal: controller.signal })
       .then(result => {
         if (controller.signal.aborted) return;
@@ -30,7 +40,12 @@ export function MemberNotifications({ csrf, active, onUnreadCount }: {
       .catch(failure => {
         if (controller.signal.aborted) return;
         onUnreadCount(null);
-        setError(failure instanceof Error ? failure.message : "알림을 불러오지 못했어요.");
+        const expired = failure instanceof MemberApiError && failure.status === 401;
+        setLoginRequired(expired);
+        setError(expired ? failure.message : "알림을 불러오지 못했어요. 다시 시도해주세요.");
+      }).finally(() => {
+        if (!controller.signal.aborted) setBusy(false);
+        if (readRequest.current === controller) readRequest.current = null;
       });
     return () => controller.abort();
   }, [page, filter, reload, onUnreadCount]);
@@ -38,23 +53,33 @@ export function MemberNotifications({ csrf, active, onUnreadCount }: {
   useEffect(() => () => readRequest.current?.abort(), []);
 
   function changePage(next: number) {
-    setData(null); setError(""); setPage(next);
+    if (busy || readRequest.current) return;
+    restoreFocus.current = true;
+    setData(null); setError(""); setLoginRequired(false); setBusy(true); setPage(next);
+    setReload(value => value + 1);
   }
 
   async function markRead(id: string) {
+    if (busy || readRequest.current || !data) return;
     const controller = new AbortController();
     readRequest.current = controller;
+    restoreFocus.current = true;
     setBusy(true); setError("");
     try {
       await memberApi(`notifications/${id}/read`, { method: "POST", csrf, signal: controller.signal });
       if (controller.signal.aborted) return;
-      setData(null);
+      setData(null); onUnreadCount(null);
       if (filter === "UNREAD") setPage(1);
       setReload(value => value + 1);
     } catch (failure) {
-      if (!controller.signal.aborted) setError(failure instanceof Error ? failure.message : "읽음 처리를 완료하지 못했어요.");
+      if (controller.signal.aborted) return;
+      setData(null); onUnreadCount(null);
+      const expired = failure instanceof MemberApiError && failure.status === 401;
+      setLoginRequired(expired);
+      setError(expired ? failure.message : "읽음 처리 결과를 확인하지 못했어요. 알림을 다시 불러와주세요.");
+      setBusy(false);
     } finally {
-      if (!controller.signal.aborted) setBusy(false);
+      if (readRequest.current === controller) readRequest.current = null;
     }
   }
 
@@ -62,7 +87,7 @@ export function MemberNotifications({ csrf, active, onUnreadCount }: {
   return <section aria-label="서비스 알림" className="member-list">
     <div className="member-panel">
       <div className="rule-review-field"><label htmlFor="notification-filter">알림 보기</label>
-        <select id="notification-filter" className="member-calendar-filter" value={filter} disabled={busy}
+        <select ref={filterSelect} id="notification-filter" className="member-calendar-filter" value={filter} disabled={busy}
           onChange={event => { changePage(1); setFilter(event.target.value as NotificationFilter); }}>
           <option value="ALL">전체 알림</option><option value="UNREAD">안 읽은 알림</option>
         </select></div>
@@ -70,8 +95,10 @@ export function MemberNotifications({ csrf, active, onUnreadCount }: {
       {data && <p role="status">{data.total}건 · 안 읽은 알림 {data.unreadCount}건</p>}
     </div>
     {error && <div className="member-panel" role="alert"><p>{error}</p>
-      {!data && <button type="button" className="button-secondary" onClick={() => { setError(""); setReload(value => value + 1); }}>다시 불러오기</button>}
+      <button ref={retryButton} type="button" className="button-secondary" disabled={busy} onClick={() => changePage(page)}>다시 불러오기</button>
+      {loginRequired && <Link href="/login" className="text-link">로그인하기</Link>}
     </div>}
+    {data && busy && <p role="status">읽음으로 표시하고 있어요.</p>}
     {!data && !error && <p role="status">알림을 불러오고 있어요.</p>}
     {data?.items.length === 0 && <div className="member-panel">
       <h2>{page > 1 ? "이 페이지에 알림이 없어요" : filter === "UNREAD" ? "안 읽은 알림이 없어요" : "도착한 알림이 없어요"}</h2>

@@ -46,7 +46,6 @@ export function SavePolicyButton({ policyNumber }: { policyNumber: string }) {
   }
 
   function login() {
-    sessionStorage.setItem("ypm-pending-policy", policyNumber);
     router.push(`/login?policy=${policyNumber}`);
   }
 

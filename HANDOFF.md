@@ -5,21 +5,21 @@
 ## 현재 작업
 
 - 이전 누적 작업은 `1b7fbdd`로 로컬·원격 `main`에 반영했고 [웹·전체 서버 CI](https://github.com/ljkhyeong/youth-policy-mate/actions/runs/34222499053)를 통과했다.
-- 현재 `codex/policy-source-notices`의 `ee34aca`에서 수집된 최신 공고의 AI 자동 추출을 연결했다. 같은 개정/원문의 요청·규칙이 있으면 새 요청을 만들지 않고 일일 한도·간격·최대 시도를 DB에서 제한한다. 중단 후에는 기존 요청·예산 예약·저장된 응답을 재사용하며 발송 후 결과 미확인은 자동 재호출하지 않는다. AI 전용 스케줄러를 수집·알림과 분리했고 기본값은 비활성화다. `ai:policy-rules`에 `auto-run`·`auto-status`를 추가했다.
-- `test:ai-rule-auto`와 전체 서버·DB·계약 검사를 통과했다. 실제 PostgreSQL과 가짜 HTTP 공급자로 확인했으며 명령·로그·미실행 항목은 [자동 추출](docs/development/ai-rule-automation.md#검증)에 있다. 화면·HTTP 계약·생성 타입은 변경하지 않아 웹 검증은 `e05fa3d` 결과를 유지한다. 검증 후 변경은 문서뿐이다.
-- 로컬 DB에 V28을 적용하고 정책 40건·적용 규칙 11건·AI 요청/호출/자동 실행 0건을 확인했다. Spring은 `ee34aca` 실행 파일·PID 20054·로그 `/tmp/youth-ai-auto-runtime.log`, Next는 PID 70721이다. `auto-status` 명령과 서버 상태 조회 200을 확인했다. AI 자동 실행·정기 수집·이메일·알림은 비활성화했으며 실제 AI 호출은 실행하지 않았다. 실행 시점에 프로세스를 재확인하며 이번 브랜치는 원격에 반영하지 않았다.
+- 현재 `codex/policy-source-notices`의 `280a12b`에서 관리자 AI 추출 조회를 추가했다. `/admin/collection-exceptions/ai`에서 요청별 마지막 시도·시간 초과·현재 결과·비용 상태를 검색하고 기존 조건 검토로 이동한다. 원문 변경과 후속 요청을 별도로 표시하며 조회로 실행·재호출·정산하지 않는다.
+- 서버 계약 생성, 새 API와 기존 관리자 DB·권한 검사, 관련 웹 테스트, 린트·타입·생성 타입·배포 빌드를 통과했다. 390px·1280px 표시·키보드 조작·검색·페이지 이동·조건 검토 연결을 별도 테스트 API로 확인했다. 명령·로그·미검증 항목은 [관리자 AI 추출](docs/development/admin-ai-runs.md#검증)에 있다. 자동 추출·비용 처리 코드는 바꾸지 않아 해당 범위의 전체 서버 검사 `ee34aca`를 재사용했다. 검증 후 변경은 문서뿐이다.
+- 이전 로컬 프로세스와 Docker가 종료돼 있어 개발 환경을 다시 실행했다. Spring은 `280a12b` 실행 파일·PID 9981·로그 `/tmp/youth-admin-ai-runtime.log`, Next는 PID 10257·로그 `/tmp/youth-admin-ai-web.log`다. 서버 상태 조회 200·관리자 API 비회원 401·웹 화면 200을 확인했다. DB는 V28이며 정책 40건·적용 규칙 11건·AI 요청/호출/자동 실행 0건을 유지한다. 자동 추출·정기 수집·이메일·알림은 비활성화했고 실제 AI 호출은 실행하지 않았다. 실행 시점에 프로세스를 재확인하며 이번 브랜치는 원격에 반영하지 않았다.
 
 ## 구현·검증 범위
 
 - 정책 조회: 로컬 수집 40건의 검색·상세·원문 링크를 제공한다. 검토된 원문 충돌은 상세에서 별도 안내하며 빈 안내 목록이 검토 완료를 뜻하지 않는다. 서울 대상 전체 정책을 수집한 상태는 아니다. [조회](docs/development/policy-catalog.md)·[수집과 재개](docs/development/policy-range-collection.md)·[충돌 안내](docs/development/policy-source-notices.md)
-- 관리자 수집 예외: `/admin/collection-exceptions`에서 원본·직전 개정 비교와 사유를 남기는 항목 재처리를 제공한다. `/pages`는 페이지 실패, `/replays`는 재처리 이력, `/corrections`는 보정 관리다. 정책명·운영 기관 중 한 항목을 원본과 분리해 보정하고, 새 원본과 충돌하면 현재 내용을 유지한 뒤 관리자가 해소한다. V19·V20에 작업자·사유·적용 개정을 기록하며 같은 요청은 한 번만 처리한다. 실제 관리자 계정 연결은 남아 있다. [설정과 계약](docs/development/admin-collection-exceptions.md)·[보정 범위](docs/development/policy-corrections.md)
+- 관리자 수집 예외: `/admin/collection-exceptions`에서 원본·직전 개정 비교와 사유를 남기는 항목 재처리를 제공한다. `/pages`는 페이지 실패, `/replays`는 재처리 이력, `/corrections`는 보정 관리다. 정책명·운영 기관 중 한 항목을 원본과 분리해 보정하고, 새 원본과 충돌하면 현재 내용을 유지한 뒤 관리자가 해소한다. V19·V20에 작업자·사유·적용 개정을 기록하며 같은 요청은 한 번만 처리한다. AI 추출 목록에서는 마지막 시도와 현재 결과·비용 상태를 조회한다. 실제 관리자 계정 연결은 남아 있다. [AI 추출 조회](docs/development/admin-ai-runs.md)·[설정과 계약](docs/development/admin-collection-exceptions.md)·[보정 범위](docs/development/policy-corrections.md)
 - 조건 질문: 국가근로장학금·응시료 지원·K-패스·청년주택드림청약통장·서울청년정책네트워크·상반기 이사비 지원·청년내일저축계좌·전세보증금반환보증 보증료 지원·햇살론유스·청년 미래이음 대출·미래 청년 일자리 5월 모집을 제공한다. 정책별 소득·중복지원·참여 제한·보증한도의 미확인을 구분한다. 실제 증빙·기타 제한·선발은 기관 심사가 필요하며 전체 자격은 추가 확인으로 유지한다. [질문 탐색](docs/development/policy-question-discovery.md)·[이사비](docs/development/moving-fee-questions.md)·[저축계좌](docs/development/youth-tomorrow-savings-questions.md)·[보증료](docs/development/guarantee-fee-questions.md)·[햇살론유스](docs/development/haetsalron-youth-questions.md)·[미래이음](docs/development/miso-youth-future-questions.md)·[미래 청년 일자리](docs/development/future-youth-jobs-questions.md)
 - 접수 상태: 목록·상세·내 조건에서 날짜형·시각형·상시·마감·미확인을 구분하며 공개 목록과 내 조건을 상태별로 검색한다. 검색·질문 필터·정렬과 함께 전체 결과에 적용한 뒤 페이지를 나눈다. Flyway V18로 기존 정책의 검색용 기간을 이전했다. 기존 마감 알림과 원문 해석을 공유한다. 날짜 충돌·회차·소진 안내를 임의로 접수 중으로 바꾸지 않는다.
 - 개인 조건 탐색: 미래 청년 일자리를 포함한 9개 정책의 연령을 비교하고 전체 정책에서 검색·정렬한다. 정책별 기준일·출생일 범위·병역 예외를 구분하며 햇살론유스·청년 미래이음 대출은 오늘 보증·대출신청을 가정한다. 거주·취업·소득은 추가 확인으로 남긴다. 검색·페이지 이동·오류 재시도·모바일 화면을 로컬 실제 정책으로 확인했다.
 - 회원 기능: OAuth 로그인 코드, 관심 정책 저장·해제, 일정·서비스 내 알림을 연결했다. 테스트 제공자와 실제 HTTP·DB로 코드 교환부터 관리자 접근·세션 종료까지 확인했다. 로컬 카카오·네이버 ID/Secret과 관리자 ID가 없어 실제 제공자 로그인은 미검증이다. [회원 기능](docs/development/member-policy-flow.md)
 - 이메일: 주소 확인·동의·암호화 저장·Outbox·SMTP 어댑터를 구현했다. 실제 공급자·발신 도메인은 미정이며 외부 수신함 전달은 미검증이다. [이메일 구현과 설정](docs/development/member-email-reminders.md)
 - AI: 공고 원문·OpenAI 호출·예산 예약·원 응답·규칙 초안을 연결했다. 응답 유실에는 예약을 유지하고 재호출하지 않는다. 수집된 신규/변경 공고의 자동 추출과 실제 청구·무과금 확인 명령을 제공한다. 공급자 청구 자동 조회·실제 생성 품질 검증은 남아 있다. 모델·요금·월 한도는 설정값으로 받고 미설정 상태에는 호출하지 않는다. [규칙 추출과 설정](docs/development/ai-rule-drafts.md)·[자동 추출](docs/development/ai-rule-automation.md)·[요청 판단](docs/development/ai-request-admission.md)·[복구 실행](docs/development/ai-reservation-recovery-work-runs.md)
-- 검증 기준: 전체 서버·DB·계약 검사는 `ee34aca`, 관리자 편집 화면·타입·모바일 검사는 `e05fa3d`다. 이번 작업은 화면과 API 계약을 유지해 웹 검사를 반복하지 않았다. 원격 CI·실제 관리자 로그인·실제 AI 품질/청구는 미검증이다.
+- 검증 기준: 관리자 API·웹·계약과 관련 회귀는 `280a12b`, 변경하지 않은 자동 추출·생성·비용 처리 등 전체 서버 기준은 `ee34aca`다. 실제 관리자 로그인·AI 품질/청구·원격 CI는 미검증이다.
 - 검증 도구의 성공·실패·실행 중 변경 시나리오와 기존 도구 검사를 통과했다. 컴파일·패키징 명령의 Gradle 실행 계획에 테스트 실행이 없음을 확인했다. `npm run verify -- status`에서 실행 기록을 확인한다. 검증 도구를 정리할 당시에는 앱 기능을 변경하지 않아 전체 앱 테스트를 재실행하지 않았다.
 
 ## 남은 작업

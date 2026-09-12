@@ -904,6 +904,9 @@ select {
 .member-calendar-filter:focus-visible { outline: 3px solid var(--app-blue); outline-offset: 2px; }
 @media (max-width: 600px) { .member-account-toolbar > strong { flex-basis: 100%; } }
 .member-change, .review-label { color: #8b5209; background: #fff4dc; border-radius: 8px; padding: 6px 10px; font-size: 14px; }
+.member-email-disclosure { margin-bottom: 20px; }
+.member-email-disclosure > summary { width: fit-content; padding: 12px 0; cursor: pointer; font-weight: 650; }
+.member-email-disclosure > summary:focus-visible { outline: 3px solid var(--app-blue); outline-offset: 2px; }
 .member-panel[data-read="true"] { background: #f8fafc; }
 .policy-check-results { margin-top: 36px; padding-top: 28px; border-top: 1px solid var(--app-line); text-align: left; }
 .policy-check-results > h2 { font-size: 24px; font-weight: 750; }

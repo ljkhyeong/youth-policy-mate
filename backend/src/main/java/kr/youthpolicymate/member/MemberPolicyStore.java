@@ -181,10 +181,20 @@ public class MemberPolicyStore {
                 """).param("id", UUID.randomUUID()).param("member", member).param("notification", notification)
                 .param("now", MemberEmailStore.at(clock.instant())).param("expires", expires).update();
     }
-    public MemberResponses.Notifications notifications(UUID member) {
-        return new MemberResponses.Notifications(jdbc.sql("SELECT * FROM member_notifications WHERE member_id = :member ORDER BY created_at DESC LIMIT 100")
-                .param("member",member).query((rs,row) -> new MemberResponses.Notification(rs.getString("id"),rs.getString("policy_number"),
-                        rs.getString("title"),rs.getString("message"),rs.getObject("created_at",OffsetDateTime.class).toInstant(),rs.getObject("read_at") != null)).list());
+    @Transactional(readOnly = true, isolation = org.springframework.transaction.annotation.Isolation.REPEATABLE_READ)
+    public MemberResponses.Notifications notifications(UUID member, int page, int pageSize, MemberResponses.NotificationFilter filter) {
+        var counts = jdbc.sql("""
+                SELECT count(*) AS total, count(*) FILTER (WHERE read_at IS NULL) AS unread
+                FROM member_notifications WHERE member_id = :member
+                """).param("member", member).query((rs, row) -> new NotificationCounts(rs.getLong("total"), rs.getLong("unread"))).single();
+        var total = filter == MemberResponses.NotificationFilter.UNREAD ? counts.unread() : counts.total();
+        var items = jdbc.sql("""
+                SELECT * FROM member_notifications WHERE member_id = :member AND (:filter = 'ALL' OR read_at IS NULL)
+                ORDER BY created_at DESC, id DESC LIMIT :limit OFFSET :offset
+                """).param("member", member).param("filter", filter.name()).param("limit", pageSize).param("offset", (long) (page - 1) * pageSize)
+                .query((rs,row) -> new MemberResponses.Notification(rs.getString("id"),rs.getString("policy_number"),
+                        rs.getString("title"),rs.getString("message"),rs.getObject("created_at",OffsetDateTime.class).toInstant(),rs.getObject("read_at") != null)).list();
+        return new MemberResponses.Notifications(items, page, pageSize, total, (long) page * pageSize < total, counts.unread());
     }
     public void read(UUID member, UUID id) {
         jdbc.sql("UPDATE member_notifications SET read_at = COALESCE(read_at,CURRENT_TIMESTAMP) WHERE id = :id AND member_id = :member")
@@ -192,4 +202,5 @@ public class MemberPolicyStore {
     }
     private record SavedVersion(String number, long revision, long savedRevision, UUID generation, String title) {}
     private record Due(UUID id, String number, UUID generation, long revision, int before, LocalDate date, String title) {}
+    private record NotificationCounts(long total, long unread) {}
 }

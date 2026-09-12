@@ -1902,7 +1902,39 @@
     },
     "/api/v1/me/notifications" : {
       "get" : {
+        "description" : "최신순으로 정렬하고 필터를 전체 알림에 적용한 뒤 페이지를 나눈다. unreadCount는 필터와 무관한 회원 전체의 안 읽은 알림 수다.",
         "operationId" : "listMemberNotifications",
+        "parameters" : [ {
+          "in" : "query",
+          "name" : "page",
+          "required" : false,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int32",
+            "default" : 1,
+            "minimum" : 1
+          }
+        }, {
+          "in" : "query",
+          "name" : "pageSize",
+          "required" : false,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int32",
+            "default" : 20,
+            "maximum" : 50,
+            "minimum" : 1
+          }
+        }, {
+          "in" : "query",
+          "name" : "filter",
+          "required" : false,
+          "schema" : {
+            "type" : "string",
+            "default" : "ALL",
+            "enum" : [ "ALL", "UNREAD" ]
+          }
+        } ],
         "responses" : {
           "200" : {
             "content" : {
@@ -1924,7 +1956,7 @@
         "security" : [ {
           "memberSession" : [ ]
         } ],
-        "summary" : "내 서비스 내 알림 조회",
+        "summary" : "내 알림 페이지·안 읽은 알림 수 조회",
         "tags" : [ "member-controller" ]
       }
     },
@@ -2943,14 +2975,33 @@
       "MemberNotificationList" : {
         "type" : "object",
         "properties" : {
+          "hasNext" : {
+            "type" : "boolean"
+          },
           "items" : {
             "type" : "array",
             "items" : {
               "$ref" : "#/components/schemas/MemberNotification"
             }
+          },
+          "page" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "pageSize" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "total" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "unreadCount" : {
+            "type" : "integer",
+            "format" : "int64"
           }
         },
-        "required" : [ "items" ]
+        "required" : [ "hasNext", "items", "page", "pageSize", "total", "unreadCount" ]
       },
       "MemberSession" : {
         "type" : "object",

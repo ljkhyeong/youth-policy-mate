@@ -66,6 +66,12 @@ async function handle(request: NextRequest, context: { params: Promise<{ path: s
         if (value !== null) url.searchParams.set(key, value);
       }
     }
+    if (path === "notifications") {
+      for (const key of ["page", "pageSize", "filter"]) {
+        const value = request.nextUrl.searchParams.get(key);
+        if (value !== null) url.searchParams.set(key, value);
+      }
+    }
     const headers: Record<string, string> = { Accept: "application/json" };
     if (body) headers["Content-Type"] = "application/json";
     const cookie = request.headers.get("cookie")?.split(";").map(value => value.trim()).find(value => value.startsWith("YPM_SESSION="));

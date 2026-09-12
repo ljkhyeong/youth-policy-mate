@@ -3,15 +3,16 @@ import { announceAccountChange } from "@/features/member/account-transitions";
 
 import Link from "next/link";
 import { MemberEmailSettings } from "@/features/member/member-email-settings";
+import { MemberNotifications } from "@/features/member/member-notifications";
 import { MemberPolicyList } from "@/features/member/member-policy-list";
 import type { RecruitmentFilter } from "@/features/policies/policy-recruitment";
 import { useEffect, useState } from "react";
-import { memberApi, type MemberSession, type SavedPolicies, type Notifications } from "@/features/member/member-api";
+import { memberApi, type MemberSession, type SavedPolicies } from "@/features/member/member-api";
 
 export function MemberDashboard() {
   const [session, setSession] = useState<MemberSession | null>(null);
   const [policies, setPolicies] = useState<SavedPolicies | null>(null);
-  const [notifications, setNotifications] = useState<Notifications | null>(null);
+  const [unreadCount, setUnreadCount] = useState<number | null>(null);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [reload, setReload] = useState(0);
@@ -26,14 +27,13 @@ export function MemberDashboard() {
         setSession(current);
         if (!current.authenticated) return;
         const saved = await memberApi<SavedPolicies>("policies", { signal: controller.signal });
-        const messages = await memberApi<Notifications>("notifications", { signal: controller.signal });
-        if (!controller.signal.aborted) { setPolicies(saved); setNotifications(messages); }
+        if (!controller.signal.aborted) setPolicies(saved);
       } catch { if (!controller.signal.aborted) setError("내 정보를 불러오지 못했어요. 다시 시도해주세요."); }
     })();
     return () => controller.abort();
   }, [reload]);
   function reloadData() {
-    setError(""); setPolicies(null); setNotifications(null); setSession(null);
+    setError(""); setPolicies(null); setUnreadCount(null); setSession(null);
     setReload(value => value + 1);
   }
   async function mutate(path: string, method: string) {
@@ -59,17 +59,13 @@ export function MemberDashboard() {
     {!policies && !error && <p role="status">내 정책을 불러오고 있어요.</p>}
     {session?.authenticated && <div className="member-toolbar member-account-toolbar"><strong>{session.displayName}님의 정책</strong><Link href="/conditions">내 조건 관리</Link><button type="button" className="text-button" disabled={busy} onClick={reloadData}>새로고침</button><button type="button" className="text-button" disabled={busy} onClick={logout}>로그아웃</button></div>}
     <nav className="member-tabs" aria-label="내 정책 보기">
-      {(["saved", "calendar", "notifications"] as const).map(value => <button type="button" aria-current={tab === value ? "page" : undefined} key={value} onClick={() => setTab(value)}>{value === "saved" ? "관심 정책" : value === "calendar" ? "마감 일정" : "알림"}</button>)}
+      {(["saved", "calendar", "notifications"] as const).map(value => <button type="button" aria-current={tab === value ? "page" : undefined} key={value} onClick={() => setTab(value)}>{value === "saved" ? "관심 정책" : value === "calendar" ? "마감 일정" : `알림${unreadCount ? ` (${unreadCount})` : ""}`}</button>)}
     </nav>
     {policies && tab !== "notifications" && <MemberPolicyList policies={policies.items} calendar={tab === "calendar"}
       filter={calendarFilter} onFilterChange={setCalendarFilter} busy={busy} onRemove={number => mutate(`policies/${number}`, "DELETE")} />}
-    {session?.authenticated && tab === "notifications" && <MemberEmailSettings csrf={session.csrfToken} />}
-    {notifications && tab === "notifications" && <div className="member-list">
-      {notifications.items.length === 0 && <section className="member-panel"><h2>도착한 알림이 없어요</h2><p>저장한 정책의 내용 변경과 마감 안내가 이곳에 표시돼요.</p></section>}
-      {notifications.items.map(notification => <article className="member-panel" key={notification.id} data-read={notification.read}>
-        <p className="page-label">{notification.read ? "읽은 알림" : "새 알림"}</p><h2><Link href={`/policies/${notification.policyNumber}`}>{notification.title}</Link></h2><p>{notification.message}</p>
-        {!notification.read && <button type="button" className="text-button" disabled={busy} onClick={() => mutate(`notifications/${notification.id}/read`, "POST")}>읽음으로 표시</button>}
-      </article>)}
-    </div>}
+    {session?.authenticated && tab === "notifications" && <details className="member-email-disclosure">
+      <summary>이메일 알림 설정</summary><MemberEmailSettings csrf={session.csrfToken} />
+    </details>}
+    {session?.authenticated && policies && <MemberNotifications csrf={session.csrfToken} active={tab === "notifications"} onUnreadCount={setUnreadCount} />}
   </>;
 }

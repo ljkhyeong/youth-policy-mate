@@ -1,4 +1,4 @@
-import type { components } from "@/generated/policy-api";
+import type { components, operations } from "@/generated/policy-api";
 
 export type EmailSettings = components["schemas"]["MemberEmailSettings"];
 export type EmailAddress = components["schemas"]["MemberEmailAddress"];
@@ -7,6 +7,7 @@ export type EmailConsent = components["schemas"]["MemberEmailConsent"];
 
 export type MemberSession = components["schemas"]["MemberSession"];
 export type SavedPolicies = components["schemas"]["SavedPolicyList"];
+export type NotificationFilter = NonNullable<NonNullable<operations["listMemberNotifications"]["parameters"]["query"]>["filter"]>;
 export type Notifications = components["schemas"]["MemberNotificationList"];
 export type SavedConditions = components["schemas"]["MemberConditions"];
 export type BasicConditions = components["schemas"]["BasicConditions"];

@@ -114,6 +114,19 @@ describe("개인 API 중계", () => {
     expect(fetch).toHaveBeenCalledTimes(2);
   });
 
+  it("알림 페이지와 필터만 회원 API에 전달하고 회원 식별자 쿼리는 제외한다", async () => {
+    const fetch = vi.fn().mockResolvedValue(Response.json({ items: [], unreadCount: 0 })); vi.stubGlobal("fetch", fetch);
+    const response = await GET(new NextRequest(`${base}/api/member/notifications?page=3&pageSize=20&filter=UNREAD&memberId=other`, {
+      headers: { cookie: "other=private; YPM_SESSION=member", Authorization: "private" },
+    }), context("notifications"));
+    const [url, request] = fetch.mock.calls[0];
+    expect(url.pathname).toBe("/api/v1/me/notifications");
+    expect(Object.fromEntries(url.searchParams)).toEqual({ page: "3", pageSize: "20", filter: "UNREAD" });
+    expect(request.headers).toEqual({ Accept: "application/json", Cookie: "YPM_SESSION=member" });
+    expect(request.cache).toBe("no-store");
+    expect(response.headers.get("cache-control")).toBe("no-store");
+  });
+
   it("조건 검색·정렬·접수 상태만 쿼리로 전달하고 생년월일은 본문에 유지한다", async () => {
     const fetch = vi.fn().mockResolvedValue(Response.json({ items: [] })); vi.stubGlobal("fetch", fetch);
     const body = JSON.stringify({ birthDate: "2000-01-02", district: "강남구", employmentStatus: "NOT_EMPLOYED" });

@@ -135,6 +135,72 @@ class MemberFlowTest {
     }
 
     @Test
+    @DisplayName("알림은 100건 이후에도 조회하고 같은 시각의 순서와 전체 미읽음 수를 유지한다")
+    void pagesNotificationsAndCountsUnread() throws Exception {
+        insertNotifications(first, 105, 0);
+        insertNotifications(second, 3, 1000);
+        var last = members.notifications(first, 6, 20, MemberResponses.NotificationFilter.ALL);
+        assertThat(last.total()).isEqualTo(105);
+        assertThat(last.unreadCount()).isEqualTo(53);
+        assertThat(last.hasNext()).isFalse();
+        assertThat(last.items()).extracting(MemberResponses.Notification::id).containsExactly(
+                notificationId(5), notificationId(4), notificationId(3), notificationId(2), notificationId(1));
+        var unread = members.notifications(first, 2, 20, MemberResponses.NotificationFilter.UNREAD);
+        assertThat(unread.total()).isEqualTo(53);
+        assertThat(unread.unreadCount()).isEqualTo(53);
+        assertThat(unread.hasNext()).isTrue();
+        assertThat(unread.items()).hasSize(20).allMatch(item -> !item.read());
+        assertThat(unread.items().getFirst().id()).isEqualTo(notificationId(65));
+        assertThat(members.notifications(first, Integer.MAX_VALUE, 50, MemberResponses.NotificationFilter.ALL).items()).isEmpty();
+        mvc.perform(get("/api/v1/me/notifications").param("page", "6").with(oauth2Login().oauth2User(user(first))))
+                .andExpect(status().isOk()).andExpect(header().string("Cache-Control", "no-store"))
+                .andExpect(jsonPath("$.items.length()").value(5)).andExpect(jsonPath("$.page").value(6))
+                .andExpect(jsonPath("$.pageSize").value(20)).andExpect(jsonPath("$.total").value(105))
+                .andExpect(jsonPath("$.hasNext").value(false)).andExpect(jsonPath("$.unreadCount").value(53));
+        mvc.perform(get("/api/v1/me/notifications").param("filter", "UNREAD").with(oauth2Login().oauth2User(user(second))))
+                .andExpect(jsonPath("$.items.length()").value(2)).andExpect(jsonPath("$.total").value(2))
+                .andExpect(jsonPath("$.unreadCount").value(2));
+    }
+
+    @Test
+    @DisplayName("알림 조회는 잘못된 페이지와 필터를 거절하고 읽음 처리는 본인·CSRF·최초 읽은 시각을 지킨다")
+    void protectsNotificationRequests() throws Exception {
+        mvc.perform(get("/api/v1/me/notifications")).andExpect(status().isUnauthorized());
+        for (var query : List.of("page=0", "page=-1", "pageSize=0", "pageSize=51", "filter=INVALID")) {
+            mvc.perform(get("/api/v1/me/notifications?" + query).with(oauth2Login().oauth2User(user(first))))
+                    .andExpect(status().isBadRequest()).andExpect(jsonPath("$.code").value("INVALID_MEMBER_INPUT"));
+        }
+        mvc.perform(get("/api/v1/me/notifications").with(oauth2Login().oauth2User(user(first))))
+                .andExpect(jsonPath("$.items").isEmpty()).andExpect(jsonPath("$.total").value(0))
+                .andExpect(jsonPath("$.unreadCount").value(0)).andExpect(jsonPath("$.hasNext").value(false));
+        insertNotifications(first, 1, 0);
+        var path = "/api/v1/me/notifications/" + notificationId(1) + "/read";
+        mvc.perform(post(path).with(oauth2Login().oauth2User(user(first)))).andExpect(status().isForbidden());
+        mvc.perform(post(path).with(oauth2Login().oauth2User(user(second))).with(csrf())).andExpect(status().isNoContent());
+        assertThat(notifications(first).unreadCount()).isEqualTo(1);
+        mvc.perform(post(path).with(oauth2Login().oauth2User(user(first))).with(csrf())).andExpect(status().isNoContent());
+        assertThat(notifications(first).unreadCount()).isZero();
+        jdbc.sql("UPDATE member_notifications SET read_at = '2026-09-05T01:00:00Z' WHERE member_id = :member")
+                .param("member", first).update();
+        mvc.perform(post(path).with(oauth2Login().oauth2User(user(first))).with(csrf())).andExpect(status().isNoContent());
+        assertThat(jdbc.sql("SELECT read_at FROM member_notifications WHERE member_id = :member").param("member", first)
+                .query((rs, row) -> rs.getTimestamp("read_at").toInstant()).single()).isEqualTo(Instant.parse("2026-09-05T01:00:00Z"));
+    }
+
+    private void insertNotifications(UUID member, int count, int offset) {
+        jdbc.sql("""
+                INSERT INTO member_notifications (id, member_id, policy_number, generation, policy_revision, kind, title, message, created_at, read_at)
+                SELECT CAST('00000000-0000-0000-0000-' || lpad(CAST(i + :offset AS text), 12, '0') AS uuid),
+                       :member, :policy, gen_random_uuid(), i, 'POLICY_CHANGED', '정책 변경', '신청 기간이 바뀌었습니다.',
+                       TIMESTAMPTZ '2026-09-04T15:00:00Z',
+                       CASE WHEN i % 2 = 0 THEN TIMESTAMPTZ '2026-09-05T00:00:00Z' END
+                FROM generate_series(1, :count) AS i
+                """).param("member", member).param("policy", NUMBER).param("count", count).param("offset", offset).update();
+    }
+
+    private static String notificationId(int number) { return "00000000-0000-0000-0000-%012d".formatted(number); }
+
+    @Test
     @DisplayName("공개 조건 확인은 실제 원문과 검토 필요를 반환하며 생년월일과 회원 조건을 저장하지 않는다")
     void checksWithoutSaving() throws Exception {
         var response = mvc.perform(post("/api/v1/policies/checks").contentType("application/json").content(INPUT))
@@ -161,16 +227,16 @@ class MemberFlowTest {
         members.remove(first, NUMBER);
         members.deliver(first);
         assertThat(reminders("CANCELED")).isEqualTo(3);
-        assertThat(members.notifications(first).items()).isEmpty();
+        assertThat(notifications(first).items()).isEmpty();
         members.save(first, NUMBER);
         members.deliver(first); members.deliver(first);
         assertThat(reminders("DELIVERED")).isEqualTo(1);
-        assertThat(members.notifications(first).items()).hasSize(1);
-        var id = UUID.fromString(members.notifications(first).items().getFirst().id());
+        assertThat(notifications(first).items()).hasSize(1);
+        var id = UUID.fromString(notifications(first).items().getFirst().id());
         members.read(second, id);
-        assertThat(members.notifications(first).items().getFirst().read()).isFalse();
+        assertThat(notifications(first).items().getFirst().read()).isFalse();
         members.read(first, id);
-        assertThat(members.notifications(first).items().getFirst().read()).isTrue();
+        assertThat(notifications(first).items().getFirst().read()).isTrue();
     }
 
     @Test
@@ -197,7 +263,7 @@ class MemberFlowTest {
             assertThat(policy.savedRevision()).isOne();
             assertThat(policy.currentRevision()).isOne();
         });
-        assertThat(members.notifications(first).items()).isEmpty();
+        assertThat(notifications(first).items()).isEmpty();
 
         org.mockito.Mockito.clearInvocations(jdbc);
         assertThat(members.saved(second).items()).isEmpty();
@@ -282,7 +348,7 @@ class MemberFlowTest {
         assertThat(reminders("CANCELED")).isEqualTo(3);
         assertThat(reminders("PENDING")).isEqualTo(3);
         members.refresh(first);
-        assertThat(members.notifications(first).items()).hasSize(1);
+        assertThat(notifications(first).items()).hasSize(1);
         raw.put("aplyYmd", "상시"); importPolicy();
         members.deliver(first);
         assertThat(members.saved(first).items().getFirst().deadline().date()).isNull();
@@ -297,11 +363,11 @@ class MemberFlowTest {
         time("2026-09-05T15:00:00Z");
         members.deliver(first);
         assertThat(reminders("SKIPPED")).isEqualTo(1);
-        assertThat(members.notifications(first).items()).isEmpty();
+        assertThat(notifications(first).items()).isEmpty();
         time("2026-09-08T15:00:00Z");
         members.deliver(first);
         assertThat(reminders("DELIVERED")).isEqualTo(1);
-        assertThat(members.notifications(first).items()).hasSize(1);
+        assertThat(notifications(first).items()).hasSize(1);
     }
 
     @Test
@@ -311,7 +377,7 @@ class MemberFlowTest {
         raw.put("plcySprtCn", "지원 안내 수정"); importPolicy();
         members.deliver(first);
         assertThat(reminders("DELIVERED")).isEqualTo(1);
-        assertThat(members.notifications(first).items()).hasSize(2);
+        assertThat(notifications(first).items()).hasSize(2);
     }
 
     @Test
@@ -476,7 +542,7 @@ class MemberFlowTest {
     void rollsBackEmailAndSkipsExpiredDeadline() {
         verifiedEmail(); emails.consent(first, true); members.save(first, NUMBER);
         new TransactionTemplate(transactions).executeWithoutResult(tx -> { members.deliver(first); tx.setRollbackOnly(); });
-        assertThat(members.notifications(first).items()).isEmpty(); assertThat(policyMailIds()).isEmpty();
+        assertThat(notifications(first).items()).isEmpty(); assertThat(policyMailIds()).isEmpty();
         members.deliver(first); UUID id = policyMailIds().getFirst();
         time("2026-09-05T15:00:00Z"); emailDelivery.deliver(id);
         assertThat(mailState(id)).isEqualTo("CANCELED");
@@ -490,6 +556,7 @@ class MemberFlowTest {
         return jdbc.sql("SELECT settings_version, code_cipher FROM member_email_outbox WHERE member_id = :member AND state = 'PENDING' AND kind = 'VERIFICATION'")
                 .param("member", member).query((rs, row) -> crypto.decrypt(MemberEmailStore.context(member, rs.getObject(1, UUID.class), "code"), rs.getString(2))).single();
     }
+    private MemberResponses.Notifications notifications(UUID member) { return members.notifications(member, 1, 20, MemberResponses.NotificationFilter.ALL); }
     private List<UUID> policyMailIds() { return jdbc.sql("SELECT id FROM member_email_outbox WHERE kind = 'POLICY'").query(UUID.class).list(); }
     private UUID pendingPolicyMail() { return jdbc.sql("SELECT id FROM member_email_outbox WHERE kind = 'POLICY' AND state = 'PENDING'").query(UUID.class).single(); }
     private String mailState(UUID id) { return jdbc.sql("SELECT state FROM member_email_outbox WHERE id = :id").param("id", id).query(String.class).single(); }

@@ -23,6 +23,7 @@ public final class MemberResponses {
     public record SavedList(List<Saved> items) {}
     @Schema(name = "MemberNotification", requiredProperties = {"id", "policyNumber", "title", "message", "createdAt", "read"})
     public record Notification(String id, String policyNumber, String title, String message, Instant createdAt, boolean read) {}
-    @Schema(name = "MemberNotificationList", requiredProperties = {"items"})
-    public record Notifications(List<Notification> items) {}
+    public enum NotificationFilter { ALL, UNREAD }
+    @Schema(name = "MemberNotificationList", requiredProperties = {"items", "page", "pageSize", "total", "hasNext", "unreadCount"})
+    public record Notifications(List<Notification> items, int page, int pageSize, long total, boolean hasNext, long unreadCount) {}
 }

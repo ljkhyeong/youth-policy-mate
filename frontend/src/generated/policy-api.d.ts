@@ -375,7 +375,10 @@ export interface paths {
             readonly path?: never;
             readonly cookie?: never;
         };
-        /** 내 서비스 내 알림 조회 */
+        /**
+         * 내 알림 페이지·안 읽은 알림 수 조회
+         * @description 최신순으로 정렬하고 필터를 전체 알림에 적용한 뒤 페이지를 나눈다. unreadCount는 필터와 무관한 회원 전체의 안 읽은 알림 수다.
+         */
         readonly get: operations["listMemberNotifications"];
         readonly put?: never;
         readonly post?: never;
@@ -739,7 +742,16 @@ export interface components {
             readonly title: string;
         };
         readonly MemberNotificationList: {
+            readonly hasNext: boolean;
             readonly items: readonly components["schemas"]["MemberNotification"][];
+            /** Format: int32 */
+            readonly page: number;
+            /** Format: int32 */
+            readonly pageSize: number;
+            /** Format: int64 */
+            readonly total: number;
+            /** Format: int64 */
+            readonly unreadCount: number;
         };
         readonly MemberSession: {
             readonly authenticated: boolean;
@@ -2767,7 +2779,11 @@ export interface operations {
     };
     readonly listMemberNotifications: {
         readonly parameters: {
-            readonly query?: never;
+            readonly query?: {
+                readonly page?: number;
+                readonly pageSize?: number;
+                readonly filter?: "ALL" | "UNREAD";
+            };
             readonly header?: never;
             readonly path?: never;
             readonly cookie?: never;

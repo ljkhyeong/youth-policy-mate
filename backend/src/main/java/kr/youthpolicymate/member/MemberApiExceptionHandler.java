@@ -15,7 +15,8 @@ public class MemberApiExceptionHandler {
     }
     @ExceptionHandler({IllegalArgumentException.class, org.springframework.web.bind.MethodArgumentNotValidException.class,
             org.springframework.http.converter.HttpMessageNotReadableException.class,
-            org.springframework.web.method.annotation.MethodArgumentTypeMismatchException.class})
+            org.springframework.web.method.annotation.MethodArgumentTypeMismatchException.class,
+            org.springframework.web.method.annotation.HandlerMethodValidationException.class})
     ResponseEntity<PolicyApiError> invalid() { return ResponseEntity.badRequest().body(new PolicyApiError("INVALID_MEMBER_INPUT", "입력 내용을 확인해주세요.")); }
     @ExceptionHandler(PolicyNotFoundException.class)
     ResponseEntity<PolicyApiError> missing() { return ResponseEntity.status(404).body(new PolicyApiError("POLICY_NOT_FOUND", "정책을 찾을 수 없습니다.")); }

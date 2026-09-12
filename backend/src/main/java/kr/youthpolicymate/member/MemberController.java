@@ -2,6 +2,8 @@ package kr.youthpolicymate.member;
 
 import io.swagger.v3.oas.annotations.Operation;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.Max;
 import kr.youthpolicymate.policy.catalog.BasicConditions;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplication;
@@ -65,8 +67,14 @@ public class MemberController {
     @Operation(operationId = "removeSavedPolicy", summary = "내 관심 정책 해제와 미발송 알림 취소")
     public void remove(@AuthenticationPrincipal OAuth2User user, @PathVariable String number) { store.remove(member(user), number); }
     @GetMapping("/me/notifications")
-    @Operation(operationId = "listMemberNotifications", summary = "내 서비스 내 알림 조회")
-    public ResponseEntity<MemberResponses.Notifications> notifications(@AuthenticationPrincipal OAuth2User user) { return privateResponse(store.notifications(member(user))); }
+    @Operation(operationId = "listMemberNotifications", summary = "내 알림 페이지·안 읽은 알림 수 조회",
+            description = "최신순으로 정렬하고 필터를 전체 알림에 적용한 뒤 페이지를 나눈다. unreadCount는 필터와 무관한 회원 전체의 안 읽은 알림 수다.")
+    public ResponseEntity<MemberResponses.Notifications> notifications(@AuthenticationPrincipal OAuth2User user,
+            @RequestParam(defaultValue = "1") @Min(1) int page,
+            @RequestParam(defaultValue = "20") @Min(1) @Max(50) int pageSize,
+            @RequestParam(defaultValue = "ALL") MemberResponses.NotificationFilter filter) {
+        return privateResponse(store.notifications(member(user), page, pageSize, filter));
+    }
     @PostMapping("/me/notifications/{id}/read")
     @ResponseStatus(org.springframework.http.HttpStatus.NO_CONTENT)
     @Operation(operationId = "readMemberNotification", summary = "내 알림 읽음 처리")

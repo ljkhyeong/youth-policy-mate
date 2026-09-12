@@ -909,6 +909,10 @@ select {
 .saved-policy-changes { margin: 12px 0 20px; }
 .member-calendar-filter { width: 100%; min-height: 48px; padding: 10px 12px; border: 1px solid var(--app-line); border-radius: 10px; background: white; color: inherit; font: inherit; }
 .member-calendar-filter:focus-visible { outline: 3px solid var(--app-blue); outline-offset: 2px; }
+.member-policy-search { margin-top: 0; }
+.member-policy-search .button-primary { margin-top: 0; }
+.member-change-filter { display: flex; align-items: center; gap: 10px; min-height: 44px; margin-top: 12px; cursor: pointer; }
+.member-change-filter input { width: 18px; height: 18px; accent-color: var(--app-blue); }
 @media (max-width: 600px) { .member-account-toolbar > strong { flex-basis: 100%; } }
 .member-change, .review-label { color: #8b5209; background: #fff4dc; border-radius: 8px; padding: 6px 10px; font-size: 14px; }
 .member-email-disclosure { margin-bottom: 20px; }
@@ -928,6 +932,7 @@ select {
 .policy-check-details blockquote { white-space: pre-wrap; overflow-wrap: anywhere; border-left: 3px solid #cbd5e1; padding: 12px; margin-top: 12px; background: #f8fafc; line-height: 1.8; font-size: 14px; max-height: 320px; overflow-y: auto; }
 .condition-member-controls { padding: 18px 0; border-block: 1px solid var(--app-line); margin: 12px 0 24px; text-align: left; }
 @media (max-width: 600px) { .member-main { width: calc(100% - 32px); margin-top: 28px; } .member-panel { padding: 20px; } .member-toolbar { gap: 12px; } .member-tabs a { padding: 12px; flex: 1; } }
+@media (max-width: 600px) { .member-policy-search { flex-wrap: wrap; } .member-policy-search input { flex-basis: 100%; } }
 
 @layer components {
   .policy-questionnaire { scroll-margin-top: 100px; margin-top: 24px; padding: clamp(18px, 4vw, 28px); border: 1px solid var(--app-line); border-radius: 20px; background: var(--app-surface); }

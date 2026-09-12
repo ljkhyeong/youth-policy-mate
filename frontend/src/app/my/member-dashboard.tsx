@@ -145,7 +145,9 @@ export function MemberDashboard() {
       {(["saved", "calendar", "notifications"] as const).map(value => <Link href={getMemberHref({ ...location, view: value })} scroll={false} aria-current={tab === value ? "page" : undefined} key={value}>{value === "saved" ? "관심 정책" : value === "calendar" ? "마감 일정" : `알림${unreadCount ? ` (${unreadCount})` : ""}`}</Link>)}
     </nav>
     {policies && !endingSession && tab !== "notifications" && <MemberPolicyList policies={policies.items} calendar={tab === "calendar"}
-      filter={calendarFilter} onFilterChange={status => router.push(getMemberHref({ ...location, status }), { scroll: false })} busy={busy} onRemove={number => runAction("remove", number)} />}
+      query={location.q} changedOnly={location.changed} filter={calendarFilter}
+      onSearch={search => router.push(getMemberHref({ ...location, ...search }), { scroll: false })}
+      onFilterChange={status => router.push(getMemberHref({ ...location, status }), { scroll: false })} busy={busy} onRemove={number => runAction("remove", number)} />}
     {session?.authenticated && !endingSession && tab === "notifications" && <details className="member-email-disclosure" open={view === "email"} onToggle={event => {
       if (event.currentTarget.open !== (view === "email")) router.replace(getMemberHref({ ...location, view: event.currentTarget.open ? "email" : "notifications" }), { scroll: false });
     }}>

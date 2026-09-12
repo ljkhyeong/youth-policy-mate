@@ -3,7 +3,7 @@ import { getMemberHref, getMemberLocation, getMemberLoginHref, parseMemberDestin
 
 describe("내 정책 화면 주소", () => {
   it("탭을 바꾸어도 일정 필터를 보관하고 로그인 링크로 전달한다", () => {
-    expect(getMemberLocation({ view: "calendar", status: "CLOSED" })).toEqual({ view: "calendar", status: "CLOSED", page: 1, filter: "ALL" });
+    expect(getMemberLocation({ view: "calendar", status: "CLOSED" })).toEqual({ view: "calendar", status: "CLOSED", page: 1, filter: "ALL", q: "", changed: false });
     expect(getMemberHref({ view: "calendar", status: "CLOSED" })).toBe("/my?view=calendar&status=CLOSED");
     expect(getMemberHref({ view: "saved", status: "CLOSED" })).toBe("/my?status=CLOSED");
     expect(getMemberHref()).toBe("/my");
@@ -11,14 +11,14 @@ describe("내 정책 화면 주소", () => {
   });
 
   it("알 수 없는 탭·필터와 개인 정보는 복귀 주소에 전달하지 않는다", () => {
-    expect(getMemberLocation({ view: "other", status: "toString", page: "wrong", filter: "other" })).toEqual({ view: "saved", status: "", page: 1, filter: "ALL" });
+    expect(getMemberLocation({ view: "other", status: "toString", page: "wrong", filter: "other" })).toEqual({ view: "saved", status: "", page: 1, filter: "ALL", q: "", changed: false });
     expect(parseMemberDestination("/my?view=email&status=unknown&address=private&token=secret")).toBe("/my?view=email");
     expect(parseMemberDestination("/my?next=https://external.example")).toBe("/my");
   });
 
   it("알림 페이지·필터를 다른 탭과 로그인 복귀에서도 유지한다", () => {
     const location = readMemberLocation(new URLSearchParams("view=notifications&status=OPEN&page=3&filter=UNREAD"));
-    expect(location).toEqual({ view: "notifications", status: "OPEN", page: 3, filter: "UNREAD" });
+    expect(location).toEqual({ view: "notifications", status: "OPEN", page: 3, filter: "UNREAD", q: "", changed: false });
     expect(getMemberHref({ ...location, view: "calendar" })).toBe("/my?view=calendar&status=OPEN&page=3&filter=UNREAD");
     expect(getMemberLoginHref(location)).toBe("/login?view=notifications&status=OPEN&page=3&filter=UNREAD&next=my");
     expect(parseMemberDestination("/my?view=email&page=3&filter=UNREAD&memberId=private")).toBe("/my?view=email&page=3&filter=UNREAD");
@@ -31,7 +31,18 @@ describe("내 정책 화면 주소", () => {
   it("서버가 받는 정수 페이지 범위를 유지하고 기본값은 주소에서 생략한다", () => {
     expect(getMemberLocation({ page: "2147483647" }).page).toBe(2147483647);
     expect(getMemberHref({ view: "notifications", page: 1, filter: "ALL" })).toBe("/my?view=notifications");
-    expect(getMemberLocation({ view: ["email", "saved"], status: ["OPEN"], filter: ["UNREAD"] })).toEqual({ view: "saved", status: "", page: 1, filter: "ALL" });
+    expect(getMemberLocation({ view: ["email", "saved"], status: ["OPEN"], filter: ["UNREAD"] })).toEqual({ view: "saved", status: "", page: 1, filter: "ALL", q: "", changed: false });
+  });
+
+  it("정책명 검색과 변경 필터를 정리해 주소와 로그인 복귀에 보관한다", () => {
+    const location = getMemberLocation({ view: "saved", q: "  K-Pass  ", changed: "1", page: 3, filter: "UNREAD" });
+    expect(location.q).toBe("K-Pass");
+    expect(location.changed).toBe(true);
+    expect(getMemberHref(location)).toBe("/my?page=3&filter=UNREAD&q=K-Pass&changed=1");
+    expect(getMemberLoginHref(location)).toBe("/login?page=3&filter=UNREAD&q=K-Pass&changed=1&next=my");
+    expect(parseMemberDestination("/my?q=K-Pass&changed=1&token=private")).toBe("/my?q=K-Pass&changed=1");
+    expect(getMemberLocation({ q: "가".repeat(81) }).q).toHaveLength(80);
+    expect(getMemberLocation({ q: ["주거", "일자리"], changed: "true" })).toMatchObject({ q: "", changed: false });
   });
 
   it.each(["https://external.example/my?view=email", "//external.example/my", "/my/../admin", "/my-other", "/my#email"])("정해진 내 정책 경로가 아닌 %s는 거부한다", value => {

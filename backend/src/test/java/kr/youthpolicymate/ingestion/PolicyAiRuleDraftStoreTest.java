@@ -55,6 +55,11 @@ class PolicyAiRuleDraftStoreTest {
     @MockitoBean Clock clock;
 
     @BeforeEach void setup() throws Exception {
+        jdbc.sql("""
+                INSERT INTO members(id, provider, provider_subject, display_name)
+                VALUES ('10000000-0000-0000-0000-000000000001', 'kakao', 'admin-fixture', '검증 관리자')
+                ON CONFLICT (id) DO NOTHING
+                """).update();
         when(clock.instant()).thenReturn(NOW);
         when(clock.getZone()).thenReturn(ZoneId.of("Asia/Seoul"));
         jdbc.sql("DELETE FROM policy_ai_rule_candidates").update();

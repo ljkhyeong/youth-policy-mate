@@ -55,6 +55,12 @@ class CollectionExceptionApiTest {
 
     @BeforeEach
     void clear() {
+        jdbc.sql("""
+                INSERT INTO members(id, provider, provider_subject, display_name) VALUES
+                ('10000000-0000-0000-0000-000000000001', 'kakao', 'admin-fixture', '검증 관리자'),
+                ('20000000-0000-0000-0000-000000000002', 'naver', 'member-fixture', '검증 회원')
+                ON CONFLICT (id) DO NOTHING
+                """).update();
         jdbc.sql("DELETE FROM admin_collection_replays").update();
         jdbc.sql("DELETE FROM ontong_collection_item_attempts").update();
         jdbc.sql("DELETE FROM ontong_collection_items").update();
@@ -198,7 +204,7 @@ class CollectionExceptionApiTest {
         }
         mvc.perform(get(ROOT + "/" + UUID.randomUUID() + "/0").with(social(ADMIN)))
                 .andExpect(status().isNotFound());
-        doThrow(new DataAccessResourceFailureException("sensitive-db-detail")).when(jdbc).sql(startsWith("SELECT "));
+        doThrow(new DataAccessResourceFailureException("sensitive-db-detail")).when(jdbc).sql(startsWith("SELECT i.run_id"));
         mvc.perform(get(ROOT).with(social(ADMIN))).andExpect(status().isServiceUnavailable())
                 .andExpect(jsonPath("$.code").value("COLLECTION_UNAVAILABLE"))
                 .andExpect(content().string(not(containsString("sensitive-db-detail"))));
@@ -262,7 +268,7 @@ class CollectionExceptionApiTest {
         mvc.perform(get(ROOT + "/pages").with(social(ADMIN)).param("pageSize", "51"))
                 .andExpect(status().isBadRequest()).andExpect(jsonPath("$.code").value("INVALID_COLLECTION_QUERY"));
         mvc.perform(post(ROOT + "/pages").with(social(ADMIN)).with(csrf())).andExpect(status().isForbidden());
-        doThrow(new DataAccessResourceFailureException("private-database-error")).when(jdbc).sql(startsWith("SELECT "));
+        doThrow(new DataAccessResourceFailureException("private-database-error")).when(jdbc).sql(startsWith("SELECT run_id"));
         mvc.perform(get(ROOT + "/pages").with(social(ADMIN))).andExpect(status().isServiceUnavailable())
                 .andExpect(jsonPath("$.code").value("COLLECTION_UNAVAILABLE"));
     }

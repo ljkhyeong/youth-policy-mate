@@ -1,12 +1,27 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { NextRequest } from "next/server";
-import { GET, POST, PUT } from "./route";
+import { DELETE, GET, POST, PUT } from "./route";
 
 const base = "http://127.0.0.1:3000";
 const context = (path: string) => ({ params: Promise.resolve({ path: path.split("/") }) });
 afterEach(() => { vi.unstubAllGlobals(); vi.unstubAllEnvs(); });
 
 describe("개인 API 중계", () => {
+  it("탈퇴는 본인 세션의 DELETE만 허용하고 다른 회원 식별자를 전달하지 않는다", async () => {
+    const fetch = vi.fn().mockResolvedValue(new Response(null, { status: 204, headers: { "Set-Cookie": "YPM_SESSION=; Path=/; Max-Age=0" } }));
+    vi.stubGlobal("fetch", fetch);
+    const headers = { origin: base, cookie: "YPM_SESSION=member", "X-CSRF-TOKEN": "confirmed" };
+    const result = await DELETE(new NextRequest(`${base}/api/member/account?memberId=other`, { method: "DELETE", headers }), context("account"));
+    expect(result.status).toBe(204);
+    expect(fetch.mock.calls[0][0].pathname).toBe("/api/v1/me/account");
+    expect(fetch.mock.calls[0][0].search).toBe("");
+    expect(fetch.mock.calls[0][1].headers).toMatchObject({ Cookie: "YPM_SESSION=member", "X-CSRF-TOKEN": "confirmed" });
+    expect(result.headers.get("cache-control")).toBe("no-store");
+    expect(result.headers.get("set-cookie")).toContain("Max-Age=0");
+    expect((await POST(new NextRequest(`${base}/api/member/account`, { method: "POST", headers }), context("account"))).status).toBe(404);
+    expect((await DELETE(new NextRequest(`${base}/api/member/account`, { method: "DELETE", headers: { origin: "https://other.test" } }), context("account"))).status).toBe(403);
+    expect(fetch).toHaveBeenCalledTimes(1);
+  });
   it("운영 공개 주소의 요청만 허용하고 실행 환경의 내부 API 주소를 사용한다", async () => {
     vi.stubEnv("PUBLIC_APP_URL", "https://policy.example.test");
     vi.stubEnv("POLICY_API_BASE_URL", "http://youth-policy-api:8080");

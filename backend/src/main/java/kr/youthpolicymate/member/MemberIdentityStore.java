@@ -13,6 +13,11 @@ public class MemberIdentityStore {
     private final JdbcClient jdbc;
     public MemberIdentityStore(JdbcClient jdbc) { this.jdbc = jdbc; }
 
+    public boolean exists(UUID member) {
+        return jdbc.sql("SELECT EXISTS (SELECT 1 FROM members WHERE id = :id)")
+                .param("id", member).query(Boolean.class).single();
+    }
+
     @Transactional
     public UUID login(String provider, String subject, String displayName) {
         return jdbc.sql("""

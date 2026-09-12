@@ -145,6 +145,63 @@ class OAuthLoginFlowTest {
         assertThat(provider.tokenCalls).hasValue(expectedTokens);
     }
 
+    @ParameterizedTest @ValueSource(strings = {"kakao", "naver"})
+    @DisplayName("탈퇴는 모든 기기의 세션을 삭제하고 늦은 로그인 세션도 차단하며 다른 계정은 유지한다")
+    void withdrawsAcrossSessions(String registration) throws Exception {
+        var first = browser(); var second = browser(); var other = browser();
+        login(first, registration); login(second, registration);
+        login(other, registration.equals("kakao") ? "naver" : "kakao");
+        var member = jdbc.sql("SELECT id FROM members WHERE provider = :provider AND provider_subject = '777'")
+                .param("provider", registration).query(UUID.class).single();
+        Map<String, ? extends org.springframework.session.Session> existing = sessions.findByPrincipalName(member.toString());
+        assertThat(existing).hasSize(2);
+        SecurityContext lateContext = existing.values().iterator().next().getAttribute("SPRING_SECURITY_CONTEXT");
+        var expired = lateSession(sessions, lateContext);
+        jdbc.sql("UPDATE spring_session SET last_access_time = 0, expiry_time = 0 WHERE session_id = :id")
+                .param("id", expired.getId()).update();
+        var firstCookie = cookie(first); var secondCookie = cookie(second);
+        var csrf = session(first).path("csrfToken").asString();
+        var response = first.send(HttpRequest.newBuilder(URI.create(base() + "/api/v1/me/account"))
+                .header("X-CSRF-TOKEN", csrf).timeout(Duration.ofSeconds(5)).DELETE().build(), HttpResponse.BodyHandlers.ofString());
+        assertThat(response.statusCode()).isEqualTo(204);
+        assertThat(response.headers().allValues("Set-Cookie")).anyMatch(value -> value.contains("YPM_SESSION=") && value.contains("Max-Age=0"));
+        assertThat(sessions.findByPrincipalName(member.toString())).isEmpty();
+        assertThat(jdbc.sql("SELECT count(*) FROM spring_session WHERE principal_name = :name")
+                .param("name", member.toString()).query(Long.class).single()).isZero();
+        assertThat(getWithCookie(firstCookie, "/api/v1/me/conditions").statusCode()).isEqualTo(401);
+        assertThat(getWithCookie(secondCookie, "/api/v1/admin/policy-corrections").statusCode()).isEqualTo(401);
+        assertThat(session(other).path("authenticated").asBoolean()).isTrue();
+
+        // 탈퇴 직전 읽은 프로필로 OAuth 콜백이 뒤늦게 세션을 저장한 경우를 재현한다.
+        for (String path : List.of("/api/v1/session", "/api/v1/admin/policy-corrections", "/api/v1/me/conditions")) {
+            var late = lateSession(sessions, lateContext);
+            var encoded = java.util.Base64.getEncoder().encodeToString(late.getId().getBytes(StandardCharsets.UTF_8));
+            var rejected = getWithCookie(encoded, path);
+            if (path.equals("/api/v1/session")) {
+                assertThat(rejected.statusCode()).isEqualTo(200);
+                assertThat(mapper.readTree(rejected.body()).path("authenticated").asBoolean()).isFalse();
+            } else assertThat(rejected.statusCode()).isEqualTo(401);
+            assertThat(sessions.findById(late.getId())).isNull();
+        }
+        login(first, registration);
+        var rejoined = jdbc.sql("SELECT id FROM members WHERE provider = :provider AND provider_subject = '777'")
+                .param("provider", registration).query(UUID.class).single();
+        assertThat(rejoined).isNotEqualTo(member);
+        assertThat(get(first, "/api/v1/admin/policy-corrections").statusCode()).isEqualTo(403);
+    }
+
+    private void login(HttpClient browser, String registration) throws Exception {
+        var authorization = location(get(browser, "/oauth2/authorization/" + registration));
+        assertThat(location(get(browser, location(get(browser, authorization))))).endsWith("/login/complete");
+    }
+
+    private <S extends org.springframework.session.Session> org.springframework.session.Session lateSession(FindByIndexNameSessionRepository<S> repository, SecurityContext context) {
+        S session = repository.createSession();
+        session.setAttribute("SPRING_SECURITY_CONTEXT", context);
+        repository.save(session);
+        return session;
+    }
+
     private HttpClient browser() {
         var client = HttpClient.newBuilder().cookieHandler(new CookieManager(null, CookiePolicy.ACCEPT_ORIGINAL_SERVER))
                 .connectTimeout(Duration.ofSeconds(5)).followRedirects(HttpClient.Redirect.NEVER).build();

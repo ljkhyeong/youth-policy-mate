@@ -56,6 +56,12 @@ class EmailDeliveryApiTest {
         jdbc.sql("DELETE FROM members").update();
         jdbc.sql("INSERT INTO members(id, provider, provider_subject, display_name) VALUES (:id, 'kakao', 'private-subject', '비공개 회원')")
                 .param("id", MEMBER).update();
+        jdbc.sql("""
+                INSERT INTO members(id, provider, provider_subject, display_name) VALUES
+                ('10000000-0000-0000-0000-000000000001', 'kakao', 'admin-fixture', '검증 관리자'),
+                ('20000000-0000-0000-0000-000000000002', 'naver', 'member-fixture', '검증 회원')
+                ON CONFLICT (id) DO NOTHING
+                """).update();
     }
 
     @Test @DisplayName("관리자 소셜 세션만 발송 현황을 조회하며 변경 요청은 허용하지 않는다")

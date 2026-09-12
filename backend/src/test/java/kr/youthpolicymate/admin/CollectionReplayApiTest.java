@@ -55,6 +55,12 @@ class CollectionReplayApiTest {
     @MockitoBean OntongApiClient client;
 
     @BeforeEach void clear() {
+        jdbc.sql("""
+                INSERT INTO members(id, provider, provider_subject, display_name) VALUES
+                ('10000000-0000-0000-0000-000000000001', 'kakao', 'admin-fixture', '검증 관리자'),
+                ('20000000-0000-0000-0000-000000000002', 'naver', 'member-fixture', '검증 회원')
+                ON CONFLICT (id) DO NOTHING
+                """).update();
         jdbc.sql("TRUNCATE ontong_collection_pages, policies CASCADE").update();
     }
     @AfterEach void noExternalRequests() { verifyNoInteractions(client); }
@@ -154,14 +160,14 @@ class CollectionReplayApiTest {
         var run = prepared("정책 제목");
         var body = request(UUID.randomUUID(), "권한 검증");
         mvc.perform(post(path(run)).with(csrf()).contentType(MediaType.APPLICATION_JSON).content(body)).andExpect(status().isUnauthorized());
-        mvc.perform(post(path(run)).with(social(UUID.randomUUID().toString())).with(csrf()).contentType(MediaType.APPLICATION_JSON).content(body)).andExpect(status().isForbidden());
+        mvc.perform(post(path(run)).with(social("20000000-0000-0000-0000-000000000002")).with(csrf()).contentType(MediaType.APPLICATION_JSON).content(body)).andExpect(status().isForbidden());
         mvc.perform(post(path(run)).with(social(ADMIN)).contentType(MediaType.APPLICATION_JSON).content(body)).andExpect(status().isForbidden());
         for (var invalid : List.of(request(UUID.randomUUID(), " "), request(UUID.randomUUID(), "가".repeat(501)), "{}", "{")) {
             mvc.perform(post(path(run)).with(social(ADMIN)).with(csrf()).contentType(MediaType.APPLICATION_JSON).content(invalid))
                     .andExpect(status().isBadRequest());
         }
         mvc.perform(get(ROOT + "/replays")).andExpect(status().isUnauthorized());
-        mvc.perform(get(ROOT + "/replays").with(social(UUID.randomUUID().toString()))).andExpect(status().isForbidden());
+        mvc.perform(get(ROOT + "/replays").with(social("20000000-0000-0000-0000-000000000002"))).andExpect(status().isForbidden());
         assertThat(jdbc.sql("SELECT count(*) FROM admin_collection_replays").query(Long.class).single()).isZero();
     }
 

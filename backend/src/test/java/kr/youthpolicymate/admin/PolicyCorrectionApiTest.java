@@ -57,7 +57,15 @@ class PolicyCorrectionApiTest {
     @Autowired OntongCollectionService collection;
     @MockitoBean OntongApiClient client;
 
-    @BeforeEach void clear() { jdbc.sql("TRUNCATE ontong_collection_pages, policies CASCADE").update(); }
+    @BeforeEach void clear() {
+        jdbc.sql("""
+                INSERT INTO members(id, provider, provider_subject, display_name) VALUES
+                ('10000000-0000-0000-0000-000000000001', 'kakao', 'admin-fixture', '검증 관리자'),
+                ('20000000-0000-0000-0000-000000000002', 'naver', 'member-fixture', '검증 회원')
+                ON CONFLICT (id) DO NOTHING
+                """).update();
+        jdbc.sql("TRUNCATE ontong_collection_pages, policies CASCADE").update();
+    }
     @AfterEach void noExternalRequests() { verifyNoInteractions(client); }
 
     @Test @DisplayName("보정은 원본을 유지하고 새 개정과 작업 이력을 한 번만 기록한다")
@@ -220,7 +228,7 @@ class PolicyCorrectionApiTest {
         mvc.perform(post(ROOT).with(social(ADMIN)).with(csrf()).contentType(MediaType.APPLICATION_JSON).content(body)).andExpect(status().isConflict());
         ingest("원본 제목", "원본 설명", 1);
         mvc.perform(get(ROOT)).andExpect(status().isUnauthorized());
-        mvc.perform(get(ROOT + "/policies/123").with(social(UUID.randomUUID().toString()))).andExpect(status().isForbidden());
+        mvc.perform(get(ROOT + "/policies/123").with(social("20000000-0000-0000-0000-000000000002"))).andExpect(status().isForbidden());
         mvc.perform(post(ROOT).with(csrf()).contentType(MediaType.APPLICATION_JSON).content(body)).andExpect(status().isUnauthorized());
         mvc.perform(post(ROOT).with(social(ADMIN)).contentType(MediaType.APPLICATION_JSON).content(body)).andExpect(status().isForbidden());
         for (var invalid : List.of(request(UUID.randomUUID(), "DEADLINE", "값"), request(UUID.randomUUID(), "TITLE", " "),

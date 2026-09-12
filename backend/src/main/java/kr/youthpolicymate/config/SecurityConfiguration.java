@@ -10,6 +10,9 @@ import org.springframework.security.provisioning.InMemoryUserDetailsManager;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.oauth2.client.registration.InMemoryClientRegistrationRepository;
 import kr.youthpolicymate.member.SocialMemberService;
+import kr.youthpolicymate.member.MemberIdentityStore;
+import kr.youthpolicymate.member.MemberSessionFilter;
+import org.springframework.security.web.context.SecurityContextHolderFilter;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.core.env.Environment;
 import org.springframework.security.oauth2.client.OAuth2AuthorizedClientService;
@@ -23,7 +26,7 @@ class SecurityConfiguration {
     @Bean
     SecurityFilterChain securityFilterChain(HttpSecurity http, Environment env, AdminAccess adminAccess,
             ObjectProvider<InMemoryClientRegistrationRepository> registrations, ObjectProvider<SocialMemberService> social,
-            ObjectProvider<OAuth2AuthorizedClientService> authorizedClients) throws Exception {
+            ObjectProvider<OAuth2AuthorizedClientService> authorizedClients, ObjectProvider<MemberIdentityStore> identities) throws Exception {
         http
                 .csrf(csrf -> csrf.ignoringRequestMatchers("/api/v1/webhooks/resend", "/api/v1/policies/checks", "/api/v1/policies/*/evaluation", "/api/v1/policies/*/question-prefill"))
                 .requestCache(cache -> cache.disable())
@@ -68,6 +71,8 @@ class SecurityConfiguration {
                         response.sendRedirect(frontend + "/login/complete");
                     }).failureHandler((request, response, exception) -> response.sendRedirect(frontend + "/login?error=login")));
         }
+        var memberIdentities = identities.getIfAvailable();
+        if (memberIdentities != null) http.addFilterAfter(new MemberSessionFilter(memberIdentities), SecurityContextHolderFilter.class);
         return http.build();
     }
 

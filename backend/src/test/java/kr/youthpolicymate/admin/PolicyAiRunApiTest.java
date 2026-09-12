@@ -54,6 +54,12 @@ class PolicyAiRunApiTest {
     @MockitoSpyBean PolicyAiRunStore runs;
 
     @BeforeEach void setup() {
+        jdbc.sql("""
+                INSERT INTO members(id, provider, provider_subject, display_name) VALUES
+                ('10000000-0000-0000-0000-000000000001', 'kakao', 'admin-fixture', '검증 관리자'),
+                ('20000000-0000-0000-0000-000000000002', 'naver', 'member-fixture', '검증 회원')
+                ON CONFLICT (id) DO NOTHING
+                """).update();
         for (var table : List.of("policy_ai_rule_auto_runs", "policy_ai_rule_calls", "ai_request_reservations", "ai_budgets", "policy_ai_rule_candidates", "policy_ai_rule_requests",
                 "policy_revisions", "policy_source_snapshots", "policies")) jdbc.sql("DELETE FROM " + table).update();
     }

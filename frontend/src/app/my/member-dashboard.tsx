@@ -5,8 +5,9 @@ import Link from "next/link";
 import { MemberEmailSettings } from "@/features/member/member-email-settings";
 import { MemberNotifications } from "@/features/member/member-notifications";
 import { MemberPolicyList } from "@/features/member/member-policy-list";
+import { MemberWithdrawal } from "@/features/member/member-withdrawal";
 import type { RecruitmentFilter } from "@/features/policies/policy-recruitment";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { memberApi, type MemberSession, type SavedPolicies } from "@/features/member/member-api";
 
 export function MemberDashboard() {
@@ -16,9 +17,13 @@ export function MemberDashboard() {
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [reload, setReload] = useState(0);
+  const [withdrawn, setWithdrawn] = useState(false);
+  const completion = useRef<HTMLHeadingElement>(null);
+  useEffect(() => { if (withdrawn) completion.current?.focus(); }, [withdrawn]);
   const [tab, setTab] = useState<"saved" | "calendar" | "notifications">("saved");
   const [calendarFilter, setCalendarFilter] = useState<RecruitmentFilter>("");
   useEffect(() => {
+    if (withdrawn) return;
     const controller = new AbortController();
     (async () => {
       try {
@@ -31,7 +36,7 @@ export function MemberDashboard() {
       } catch { if (!controller.signal.aborted) setError("내 정보를 불러오지 못했어요. 다시 시도해주세요."); }
     })();
     return () => controller.abort();
-  }, [reload]);
+  }, [reload, withdrawn]);
   function reloadData() {
     setError(""); setPolicies(null); setUnreadCount(null); setSession(null);
     setReload(value => value + 1);
@@ -43,6 +48,11 @@ export function MemberDashboard() {
     catch (failure) { setError(failure instanceof Error ? failure.message : "요청에 실패했어요."); }
     finally { setBusy(false); }
   }
+  function completeWithdrawal() {
+    setWithdrawn(true); setSession(null); setPolicies(null); setUnreadCount(null); setError("");
+    sessionStorage.removeItem("ypm-pending-policy");
+    announceAccountChange();
+  }
   async function logout() {
     if (!session) return;
     setBusy(true);
@@ -53,6 +63,7 @@ export function MemberDashboard() {
       window.location.replace("/");
     } catch { setError("로그아웃을 완료하지 못했어요. 다시 시도해주세요."); setBusy(false); }
   }
+  if (withdrawn) return <section className="member-panel" role="status"><h2 ref={completion} tabIndex={-1}>탈퇴가 완료됐어요</h2><p>저장한 정보를 삭제하고 모든 기기에서 로그아웃했어요.</p><Link href="/" className="button-primary">홈으로</Link></section>;
   if (session && !session.authenticated) return <section className="member-panel"><h2>로그인하고 관심 정책을 저장하세요</h2><p>로그인하면 저장한 정책의 마감일과 알림을 볼 수 있어요.</p><Link href="/login" className="button-primary">로그인하기</Link><Link href="/policies" className="text-link">정책 둘러보기</Link></section>;
   return <>
     {error && <div className="member-panel" role="alert"><p>{error}</p><button className="button-secondary" onClick={reloadData}>다시 불러오기</button></div>}
@@ -67,5 +78,6 @@ export function MemberDashboard() {
       <summary>이메일 알림 설정</summary><MemberEmailSettings csrf={session.csrfToken} />
     </details>}
     {session?.authenticated && policies && <MemberNotifications csrf={session.csrfToken} active={tab === "notifications"} onUnreadCount={setUnreadCount} />}
+    {session?.authenticated && <MemberWithdrawal csrf={session.csrfToken} onDeleted={completeWithdrawal} />}
   </>;
 }

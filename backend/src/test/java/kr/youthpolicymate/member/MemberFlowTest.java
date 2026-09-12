@@ -63,6 +63,7 @@ class MemberFlowTest {
     @Autowired MemberEmailStore emails;
     @Autowired MemberEmailDelivery emailDelivery;
     @Autowired EmailCrypto crypto;
+    @org.springframework.test.context.bean.override.mockito.MockitoSpyBean org.springframework.session.jdbc.JdbcIndexedSessionRepository sessions;
     private ObjectNode raw;
     private UUID first;
     private UUID second;
@@ -94,6 +95,63 @@ class MemberFlowTest {
     }
 
     private static final String WEBHOOK_SECRET = "whsec_dGVzdC13ZWJob29rLXNlY3JldA==";
+
+    @Test @DisplayName("회원 존재 확인 장애는 비회원 상태로 숨기거나 인증된 요청을 통과시키지 않는다")
+    void reportsSessionLookupFailure() throws Exception {
+        org.mockito.Mockito.doThrow(new org.springframework.dao.DataAccessResourceFailureException("비공개 DB 장애 내용"))
+                .when(jdbc).sql("SELECT EXISTS (SELECT 1 FROM members WHERE id = :id)");
+        for (String path : List.of("/api/v1/session", "/api/v1/me/conditions")) {
+            var result = mvc.perform(get(path).with(oauth2Login().oauth2User(user(first))))
+                    .andExpect(status().isServiceUnavailable()).andExpect(header().string("Cache-Control", "no-store"))
+                    .andExpect(jsonPath("$.code").value("MEMBER_UNAVAILABLE")).andReturn();
+            assertThat(result.getResponse().getContentAsString()).doesNotContain("비공개 DB 장애 내용");
+        }
+    }
+
+    @Test @DisplayName("탈퇴는 본인 데이터와 발송 대기만 함께 삭제하고 다른 회원·공개 정책을 유지한다")
+    void withdrawsOwnAccount() throws Exception {
+        members.save(first, NUMBER); members.save(second, NUMBER);
+        members.saveConditions(first, mapper.readValue(INPUT, kr.youthpolicymate.policy.catalog.BasicConditions.class));
+        verifiedEmail(); emails.consent(first, true);
+        raw.put("plcyNm", "변경된 공고"); importPolicy(); members.refresh(first);
+        emails.request(second, "second@example.test");
+        UUID pending = pendingPolicyMail();
+        assertThat(notifications(first).items()).isNotEmpty();
+        var policyCount = count("policies"); var revisionCount = count("policy_revisions");
+        mvc.perform(delete("/api/v1/me/account").with(csrf())).andExpect(status().isUnauthorized());
+        mvc.perform(delete("/api/v1/me/account").with(oauth2Login().oauth2User(user(first))))
+                .andExpect(status().isForbidden());
+        assertThat(identities.exists(first)).isTrue();
+        mvc.perform(delete("/api/v1/me/account?memberId=" + second).with(oauth2Login().oauth2User(user(first))).with(csrf()))
+                .andExpect(status().isNoContent()).andExpect(header().string("Cache-Control", "no-store"));
+        assertThat(identities.exists(first)).isFalse();
+        for (String table : List.of("saved_policies", "policy_reminders", "member_notifications", "member_email_settings", "member_email_outbox")) {
+            assertThat(jdbc.sql("SELECT count(*) FROM " + table + " WHERE member_id = :member").param("member", first).query(Long.class).single())
+                    .as(table).isZero();
+        }
+        assertThat(members.saved(second).items()).hasSize(1);
+        assertThat(emails.settings(second).address()).isEqualTo("second@example.test");
+        assertThat(count("policies")).isEqualTo(policyCount);
+        assertThat(count("policy_revisions")).isEqualTo(revisionCount);
+        emailDelivery.deliver(pending);
+        org.mockito.Mockito.verify(emailSender, org.mockito.Mockito.never()).send(any(), any(), any(), any());
+        mvc.perform(webhook(pending, UUID.randomUUID(), "email.bounced", "2026-09-05T00:01:00Z")).andExpect(status().isOk());
+        assertThat(identities.login("kakao", "101", "재가입 회원")).isNotEqualTo(first);
+    }
+
+    @Test @DisplayName("세션 정리 실패는 회원·저장·이메일 삭제를 롤백하고 탈퇴 성공으로 응답하지 않는다")
+    void rollsBackWithdrawalOnSessionFailure() throws Exception {
+        members.save(first, NUMBER); emails.request(first, "first@example.test");
+        UUID mail = verificationMail();
+        org.mockito.Mockito.doThrow(new org.springframework.dao.DataAccessResourceFailureException("검증용 세션 저장소 장애"))
+                .when(sessions).findByIndexNameAndIndexValue(org.mockito.ArgumentMatchers.anyString(), org.mockito.ArgumentMatchers.eq(first.toString()));
+        mvc.perform(delete("/api/v1/me/account").with(oauth2Login().oauth2User(user(first))).with(csrf()))
+                .andExpect(status().isServiceUnavailable()).andExpect(jsonPath("$.code").value("MEMBER_UNAVAILABLE"));
+        assertThat(identities.exists(first)).isTrue();
+        assertThat(members.saved(first).items()).hasSize(1);
+        assertThat(emails.settings(first).address()).isEqualTo("first@example.test");
+        assertThat(mailState(mail)).isEqualTo("PENDING");
+    }
 
     private org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder webhook(
             UUID outbox, UUID message, String type, String occurred) throws Exception {

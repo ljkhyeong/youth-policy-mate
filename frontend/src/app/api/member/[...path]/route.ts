@@ -18,6 +18,7 @@ async function handle(request: NextRequest, context: { params: Promise<{ path: s
   const anonymous = path === "checks" || Boolean(question || evaluation || prefill);
   const allowed = (path === "session" && method === "GET")
     || (path === "logout" && method === "POST")
+    || (path === "account" && method === "DELETE")
     || (path === "checks" && method === "POST")
     || (Boolean(question) && method === "GET")
     || (Boolean(evaluation || prefill) && method === "POST")

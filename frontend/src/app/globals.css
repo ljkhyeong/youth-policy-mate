@@ -908,6 +908,9 @@ select {
 .member-email-disclosure { margin-bottom: 20px; }
 .member-email-disclosure > summary { width: fit-content; padding: 12px 0; cursor: pointer; font-weight: 650; }
 .member-email-disclosure > summary:focus-visible { outline: 3px solid var(--app-blue); outline-offset: 2px; }
+.member-withdrawal { margin-top: 32px; }
+.withdrawal-confirmation { display: flex; align-items: center; gap: 10px; padding: 12px 0; }
+.withdrawal-confirmation input { width: 20px; height: 20px; flex-shrink: 0; accent-color: var(--app-blue); }
 .member-panel[data-read="true"] { background: #f8fafc; }
 .policy-check-results { margin-top: 36px; padding-top: 28px; border-top: 1px solid var(--app-line); text-align: left; }
 .policy-check-results > h2 { font-size: 24px; font-weight: 750; }

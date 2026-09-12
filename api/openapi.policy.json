@@ -1545,6 +1545,39 @@
         "summary" : "현재 세션 로그아웃"
       }
     },
+    "/api/v1/me/account" : {
+      "delete" : {
+        "operationId" : "withdrawMember",
+        "parameters" : [ {
+          "description" : "GET /api/v1/session에서 받은 csrfToken",
+          "in" : "header",
+          "name" : "X-CSRF-TOKEN",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "204" : {
+            "description" : "탈퇴 완료"
+          },
+          "401" : {
+            "description" : "로그인 필요"
+          },
+          "403" : {
+            "description" : "권한 또는 CSRF 토큰 확인 필요"
+          },
+          "503" : {
+            "description" : "저장소 오류로 탈퇴 미완료"
+          }
+        },
+        "security" : [ {
+          "memberSession" : [ ]
+        } ],
+        "summary" : "회원 탈퇴와 개인 데이터·모든 로그인 세션 삭제",
+        "tags" : [ "member-account-controller" ]
+      }
+    },
     "/api/v1/me/conditions" : {
       "delete" : {
         "operationId" : "clearMemberConditions",

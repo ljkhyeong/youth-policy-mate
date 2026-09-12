@@ -316,6 +316,23 @@ export interface paths {
         readonly patch?: never;
         readonly trace?: never;
     };
+    readonly "/api/v1/me/account": {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header?: never;
+            readonly path?: never;
+            readonly cookie?: never;
+        };
+        readonly get?: never;
+        readonly put?: never;
+        readonly post?: never;
+        /** 회원 탈퇴와 개인 데이터·모든 로그인 세션 삭제 */
+        readonly delete: operations["withdrawMember"];
+        readonly options?: never;
+        readonly head?: never;
+        readonly patch?: never;
+        readonly trace?: never;
+    };
     readonly "/api/v1/me/conditions": {
         readonly parameters: {
             readonly query?: never;
@@ -2460,6 +2477,48 @@ export interface operations {
             };
             /** @description 권한 또는 CSRF 토큰 확인 필요 */
             readonly 403: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    readonly withdrawMember: {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header: {
+                /** @description GET /api/v1/session에서 받은 csrfToken */
+                readonly "X-CSRF-TOKEN": string;
+            };
+            readonly path?: never;
+            readonly cookie?: never;
+        };
+        readonly requestBody?: never;
+        readonly responses: {
+            /** @description 탈퇴 완료 */
+            readonly 204: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 로그인 필요 */
+            readonly 401: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 권한 또는 CSRF 토큰 확인 필요 */
+            readonly 403: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 저장소 오류로 탈퇴 미완료 */
+            readonly 503: {
                 headers: {
                     readonly [name: string]: unknown;
                 };

@@ -4,7 +4,7 @@
 
 ## 현재 작업
 
-- 이전 누적 작업은 `1b7fbdd`로 로컬·원격 `main`에 반영했고 [웹·전체 서버 CI](https://github.com/ljkhyeong/youth-policy-mate/actions/runs/34222499053)를 통과했다. 이후 작업은 `codex/policy-source-notices`에 있으며 원격에는 반영하지 않았다.
+- `codex/policy-source-notices`의 63개 커밋을 `033b7f1`까지 로컬 `main`에 충돌 없이 병합했다. 작업 브랜치와 코드가 같아 기존 검증 결과를 재사용했다. 원격 `main`은 [웹·전체 서버 CI](https://github.com/ljkhyeong/youth-policy-mate/actions/runs/34222499053)를 통과한 `1b7fbdd`이며, 이번 병합은 원격에 반영하지 않았다.
 - `37ef069`에서 정책 상세의 저장 상태 오류를 수정했다. 저장 목록 조회 실패를 미저장으로 취급하지 않고 재조회를 제공한다. 저장·해제 중 중복 요청, 응답 유실 후 추가 변경, 이전 화면의 늦은 응답을 막고 로그인 만료 시 해당 정책으로 돌아올 로그인 경로를 제공한다.
 - 웹 검사·정책 표시/로그인 복귀 테스트·운영 빌드를 통과했다. 별도 브라우저에서 수정 전 오류를 재현하고 재조회·응답 유실·로그인 만료·중복 방지·화면 이동·키보드 초점·모바일을 확인했다. 서버·계약·회원 중계는 변경하지 않아 이전 검사를 재사용했다. [명령·범위·로그](docs/development/policy-save-recovery.md#검증)
 - 로컬 Spring은 `/tmp/youth-unsubscribe-api-runtime.jar` 복사본·PID 40182·로그 `/tmp/youth-unsubscribe-api-runtime.log`와 V32를 유지한다. 기존 3000 포트 개발 서버에서 수정된 정책 상세를 확인했다. 변경 요청 5건은 모의 API에서만 처리했고 별도 브라우저는 종료했다. 실제 회원 변경·외부 공급자 호출·이미지 빌드는 실행하지 않았다.

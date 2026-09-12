@@ -17,7 +17,7 @@ function errorText(failure: unknown) {
   return "처리 결과를 확인하지 못했어요. 설정을 다시 불러와주세요.";
 }
 
-export function MemberEmailSettings({ csrf }: { csrf: string }) {
+export function MemberEmailSettings({ csrf, loginHref }: { csrf: string; loginHref: string }) {
   const [settings, setSettings] = useState<EmailSettings | null>(null);
   const [address, setAddress] = useState("");
   const [code, setCode] = useState("");
@@ -98,7 +98,7 @@ export function MemberEmailSettings({ csrf }: { csrf: string }) {
     {error && <div role="alert"><p>{error}</p>
       <div className="member-toolbar">
         <button ref={retryButton} type="button" className="text-button" disabled={busy} onClick={refresh}>설정 다시 불러오기</button>
-        {loginRequired && <Link className="button-secondary" href="/login">로그인하기</Link>}
+        {loginRequired && <Link className="button-secondary" href={loginHref}>로그인하기</Link>}
       </div>
     </div>}
     {notice && <p role="status">{notice}</p>}

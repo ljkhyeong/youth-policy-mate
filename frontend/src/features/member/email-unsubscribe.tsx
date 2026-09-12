@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { getMemberHref } from "./member-location";
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 
 function subscribe(change: () => void) {
@@ -46,7 +47,7 @@ function UnsubscribeForm({ token }: { token: string }) {
 
   if (!/^[A-Za-z0-9_-]{43}$/.test(token) || state === "invalid") return <section className="member-panel">
     <h2 ref={completion} tabIndex={-1}>사용할 수 없는 링크예요</h2><p>최근 받은 메일의 링크를 열거나 로그인 후 이메일 알림을 꺼주세요.</p>
-    <Link href="/my" className="button-secondary">내 알림 설정으로</Link>
+    <Link href={getMemberHref("email")} className="button-secondary">내 알림 설정으로</Link>
   </section>;
   if (state === "done") return <section className="member-panel" role="status">
     <h2 ref={completion} tabIndex={-1}>이메일 알림을 껐어요</h2>

@@ -53,4 +53,25 @@ describe("로그인 후 이동", () => {
     sessionStorage.setItem("ypm-pending-policy", "../admin");
     expect(consumeLoginDestination()).toBe("/my");
   });
+  it("이메일 설정 복귀는 이전 정책을 지우고 로그인 실패 후에도 유지한다", () => {
+    rememberLoginDestination(false, "123");
+    rememberLoginDestination(false, undefined, "/my?view=email&status=CLOSED");
+    expect(sessionStorage.getItem("ypm-pending-policy")).toBeNull();
+    expect(readLoginDestination()).toBe("/my?view=email&status=CLOSED");
+    expect(consumeLoginDestination()).toBe("/my?view=email&status=CLOSED");
+    expect(consumeLoginDestination()).toBe("/my");
+  });
+  it("관리자·정책 링크를 우선하고 일반 로그인에서는 이전 내 정책 화면도 지운다", () => {
+    expect(getLoginDestination(true, "123", "/my?view=email")).toBe("/admin/collection-exceptions");
+    expect(getLoginDestination(false, "123", "/my?view=email")).toBe("/policies/123");
+    rememberLoginDestination(false, undefined, "/my?view=email");
+    rememberLoginDestination(false);
+    expect(consumeLoginDestination()).toBe("/my");
+  });
+  it("이동 기록이 바뀌어도 허용된 화면 선택값만 로그인 완료에 사용한다", () => {
+    sessionStorage.setItem("ypm-login-destination", "/my?view=calendar&status=OPEN&token=private");
+    expect(consumeLoginDestination()).toBe("/my?view=calendar&status=OPEN");
+    rememberLoginDestination(false, undefined, "https://external.example");
+    expect(consumeLoginDestination()).toBe("/my");
+  });
 });

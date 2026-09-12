@@ -8,8 +8,8 @@ const receivedAt = new Intl.DateTimeFormat("ko-KR", {
   timeZone: "Asia/Seoul", dateStyle: "medium", timeStyle: "short",
 });
 
-export function MemberNotifications({ csrf, active, onUnreadCount }: {
-  csrf: string; active: boolean; onUnreadCount: (count: number | null) => void;
+export function MemberNotifications({ csrf, active, onUnreadCount, loginHref }: {
+  csrf: string; active: boolean; onUnreadCount: (count: number | null) => void; loginHref: string;
 }) {
   const [data, setData] = useState<Notifications | null>(null);
   const [page, setPage] = useState(1);
@@ -96,7 +96,7 @@ export function MemberNotifications({ csrf, active, onUnreadCount }: {
     </div>
     {error && <div className="member-panel" role="alert"><p>{error}</p>
       <button ref={retryButton} type="button" className="button-secondary" disabled={busy} onClick={() => changePage(page)}>다시 불러오기</button>
-      {loginRequired && <Link href="/login" className="text-link">로그인하기</Link>}
+      {loginRequired && <Link href={loginHref} className="text-link">로그인하기</Link>}
     </div>}
     {data && busy && <p role="status">읽음으로 표시하고 있어요.</p>}
     {!data && !error && <p role="status">알림을 불러오고 있어요.</p>}

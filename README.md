@@ -12,6 +12,8 @@
 
 [이메일 암호화 키 교체 명령](docs/development/email-key-rotation.md)은 주소와 수신 동의를 유지하며 저장 주소를 재암호화합니다. 사전 점검과 임시 DB 검증을 마쳤으며 실제 교체는 서비스 중지 후 운영자가 진행합니다.
 
+[OpenAI 월 비용 조회](docs/development/openai-costs.md)는 지정 프로젝트의 집계액을 통화별로 확인합니다. 별도 관리자 키를 사용하며 AI 생성이나 DB 정산을 실행하지 않습니다.
+
 운영 주소를 설정하면 [공개 페이지 검색·공유 정보](docs/development/public-page-metadata.md)를 제공합니다. 개인 화면과 검색·필터 결과는 검색에서 제외하며, 개발 환경의 검색 제외도 유지합니다.
 
 ## MVP

@@ -36,6 +36,7 @@ async function handle(request: NextRequest, context: { params: Promise<{ path: s
     || (path === "email-settings" && ["GET", "PUT", "DELETE"].includes(method))
     || (["email-verification", "email-verification/confirm"].includes(path) && method === "POST")
     || (path === "notifications" && method === "GET")
+    || (path === "notifications/read-all" && method === "POST")
     || (/^notifications\/[0-9a-f-]{36}\/read$/.test(path) && method === "POST");
   if (!allowed) return Response.json({ message: "지원하지 않는 요청이에요." }, { status: 404 });
   const frontendOrigin = new URL(process.env.PUBLIC_APP_URL || process.env.APP_FRONTEND_URL || "http://127.0.0.1:3000").origin;

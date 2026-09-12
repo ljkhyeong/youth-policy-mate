@@ -77,14 +77,14 @@ function NotificationList({ csrf, active, onUnreadCount, loginHref, page, filter
     else onNavigate(next, nextFilter);
   }
 
-  async function markRead(id: string) {
+  async function markRead(id?: string) {
     if (busy || readRequest.current || !data) return;
     const controller = new AbortController();
     readRequest.current = controller;
     restoreFocusRef.current = true;
     setBusy(true); setError("");
     try {
-      await memberApi(`notifications/${id}/read`, { method: "POST", csrf, signal: controller.signal });
+      await memberApi(id ? `notifications/${id}/read` : "notifications/read-all", { method: "POST", csrf, signal: controller.signal });
       if (!isCurrentRequest(controller, page, filter)) return;
       setData(null); onUnreadCount(null);
       if (filter === "UNREAD" && page > 1) onNavigate(1, filter, true);
@@ -111,6 +111,8 @@ function NotificationList({ csrf, active, onUnreadCount, loginHref, page, filter
         </select></div>
       <p className="field-help">최신순 · 받은 시각은 한국 시간입니다.</p>
       {data && <p role="status">{data.total}건 · 안 읽은 알림 {data.unreadCount}건</p>}
+      {data && <button type="button" className="button-secondary" disabled={busy || data.unreadCount === 0}
+        onClick={() => markRead()}>모두 읽음</button>}
     </div>
     {error && <div className="member-panel" role="alert"><p>{error}</p>
       <button ref={retryButton} type="button" className="button-secondary" disabled={busy} onClick={() => changePage(page)}>다시 불러오기</button>

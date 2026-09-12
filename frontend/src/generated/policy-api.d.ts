@@ -446,6 +446,26 @@ export interface paths {
         readonly patch?: never;
         readonly trace?: never;
     };
+    readonly "/api/v1/me/notifications/read-all": {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header?: never;
+            readonly path?: never;
+            readonly cookie?: never;
+        };
+        readonly get?: never;
+        readonly put?: never;
+        /**
+         * 내 알림 모두 읽음 처리
+         * @description 페이지·필터와 관계없이 본인의 미읽음 알림 전체를 처리한다. 갱신 쿼리 시작 후 도착한 알림과 기존 읽은 시각은 유지한다.
+         */
+        readonly post: operations["readAllMemberNotifications"];
+        readonly delete?: never;
+        readonly options?: never;
+        readonly head?: never;
+        readonly patch?: never;
+        readonly trace?: never;
+    };
     readonly "/api/v1/me/notifications/{id}/read": {
         readonly parameters: {
             readonly query?: never;
@@ -3112,6 +3132,41 @@ export interface operations {
                 content: {
                     readonly "*/*": components["schemas"]["MemberNotificationList"];
                 };
+            };
+            /** @description 로그인 필요 */
+            readonly 401: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 권한 또는 CSRF 토큰 확인 필요 */
+            readonly 403: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    readonly readAllMemberNotifications: {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header: {
+                /** @description GET /api/v1/session에서 받은 csrfToken */
+                readonly "X-CSRF-TOKEN": string;
+            };
+            readonly path?: never;
+            readonly cookie?: never;
+        };
+        readonly requestBody?: never;
+        readonly responses: {
+            /** @description No Content */
+            readonly 204: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description 로그인 필요 */
             readonly 401: {

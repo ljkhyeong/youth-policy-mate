@@ -187,6 +187,23 @@ describe("개인 API 중계", () => {
     expect(response.headers.get("cache-control")).toBe("no-store");
   });
 
+  it("모두 읽음은 같은 출처의 POST만 허용하고 회원 쿠키와 CSRF를 전달한다", async () => {
+    const fetch = vi.fn().mockResolvedValue(new Response(null, { status: 204 })); vi.stubGlobal("fetch", fetch);
+    const path = "notifications/read-all";
+    const response = await POST(new NextRequest(`${base}/api/member/${path}?memberId=other&filter=UNREAD&page=2`, {
+      method: "POST", headers: { origin: base, cookie: "YPM_SESSION=member", "X-CSRF-TOKEN": "confirmed" },
+    }), context(path));
+    const [url, request] = fetch.mock.calls[0];
+    expect(url.pathname).toBe("/api/v1/me/notifications/read-all");
+    expect(url.search).toBe("");
+    expect(request.headers).toEqual({ Accept: "application/json", Cookie: "YPM_SESSION=member", "X-CSRF-TOKEN": "confirmed" });
+    expect(response.status).toBe(204);
+    expect(response.headers.get("cache-control")).toBe("no-store");
+    expect((await GET(new NextRequest(`${base}/api/member/${path}`), context(path))).status).toBe(404);
+    expect((await POST(new NextRequest(`${base}/api/member/${path}`, { method: "POST", headers: { origin: "https://external.example" } }), context(path))).status).toBe(403);
+    expect(fetch).toHaveBeenCalledTimes(1);
+  });
+
   it("조건 검색·정렬·접수 상태만 쿼리로 전달하고 생년월일은 본문에 유지한다", async () => {
     const fetch = vi.fn().mockResolvedValue(Response.json({ items: [] })); vi.stubGlobal("fetch", fetch);
     const body = JSON.stringify({ birthDate: "2000-01-02", district: "강남구", employmentStatus: "NOT_EMPLOYED" });

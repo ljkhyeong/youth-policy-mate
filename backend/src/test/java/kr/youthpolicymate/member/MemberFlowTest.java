@@ -491,6 +491,58 @@ class MemberFlowTest {
     private static String notificationId(int number) { return "00000000-0000-0000-0000-%012d".formatted(number); }
 
     @Test
+    @DisplayName("모두 읽음은 인증·CSRF를 확인하고 모든 페이지의 본인 미읽음만 처리하며 최초 읽은 시각을 유지한다")
+    void readsAllOwnNotifications() throws Exception {
+        insertNotifications(first, 105, 0);
+        insertNotifications(second, 3, 1000);
+        var path = "/api/v1/me/notifications/read-all";
+        mvc.perform(post(path).with(csrf())).andExpect(status().isUnauthorized());
+        mvc.perform(post(path).with(oauth2Login().oauth2User(user(first)))).andExpect(status().isForbidden());
+        assertThat(notifications(first).unreadCount()).isEqualTo(53);
+
+        mvc.perform(post(path).param("memberId", second.toString()).with(oauth2Login().oauth2User(user(first))).with(csrf()))
+                .andExpect(status().isNoContent()).andExpect(content().string(""));
+        assertThat(notifications(first).unreadCount()).isZero();
+        assertThat(notifications(first).total()).isEqualTo(105);
+        assertThat(notifications(second).unreadCount()).isEqualTo(2);
+        assertThat(jdbc.sql("SELECT read_at FROM member_notifications WHERE id = :id")
+                .param("id", UUID.fromString(notificationId(2))).query((rs, row) -> rs.getTimestamp(1).toInstant()).single())
+                .isEqualTo(Instant.parse("2026-09-05T00:00:00Z"));
+
+        var readTimes = jdbc.sql("SELECT read_at FROM member_notifications WHERE member_id = :member ORDER BY id")
+                .param("member", first).query((rs, row) -> rs.getTimestamp(1).toInstant()).list();
+        mvc.perform(post(path).with(oauth2Login().oauth2User(user(first))).with(csrf())).andExpect(status().isNoContent());
+        assertThat(jdbc.sql("SELECT read_at FROM member_notifications WHERE member_id = :member ORDER BY id")
+                .param("member", first).query((rs, row) -> rs.getTimestamp(1).toInstant()).list()).isEqualTo(readTimes);
+    }
+
+    @Test
+    @DisplayName("모두 읽음 갱신 중 새로 도착한 알림은 미읽음으로 남는다")
+    void keepsNotificationsArrivingDuringReadAllUnread() throws Exception {
+        insertNotifications(first, 1, 0);
+        var transaction = new TransactionTemplate(transactions);
+        var updaterPid = new java.util.concurrent.atomic.AtomicInteger();
+        try (var pool = Executors.newSingleThreadExecutor()) {
+            var update = transaction.execute(status -> {
+                jdbc.sql("SELECT id FROM member_notifications WHERE id = :id FOR UPDATE")
+                        .param("id", UUID.fromString(notificationId(1))).query(UUID.class).single();
+                var result = pool.submit(() -> transaction.executeWithoutResult(other -> {
+                    updaterPid.set(jdbc.sql("SELECT pg_backend_pid()").query(Integer.class).single());
+                    members.readAll(first);
+                }));
+                org.awaitility.Awaitility.await().atMost(5, TimeUnit.SECONDS).until(() ->
+                        jdbc.sql("SELECT cardinality(pg_blocking_pids(:pid)) > 0").param("pid", updaterPid.get())
+                                .query(Boolean.class).single());
+                insertNotifications(first, 1, 2000);
+                return result;
+            });
+            update.get(5, TimeUnit.SECONDS);
+        }
+        assertThat(members.notifications(first, 1, 20, MemberResponses.NotificationFilter.UNREAD).items())
+                .extracting(MemberResponses.Notification::id).containsExactly(notificationId(2001));
+    }
+
+    @Test
     @DisplayName("공개 조건 확인은 실제 원문과 검토 필요를 반환하며 생년월일과 회원 조건을 저장하지 않는다")
     void checksWithoutSaving() throws Exception {
         var response = mvc.perform(post("/api/v1/policies/checks").contentType("application/json").content(INPUT))

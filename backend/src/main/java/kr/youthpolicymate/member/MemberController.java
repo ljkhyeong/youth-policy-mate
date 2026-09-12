@@ -85,6 +85,11 @@ public class MemberController {
     @ResponseStatus(org.springframework.http.HttpStatus.NO_CONTENT)
     @Operation(operationId = "readMemberNotification", summary = "내 알림 읽음 처리")
     public void read(@AuthenticationPrincipal OAuth2User user, @PathVariable UUID id) { store.read(member(user), id); }
+    @PostMapping("/me/notifications/read-all")
+    @ResponseStatus(org.springframework.http.HttpStatus.NO_CONTENT)
+    @Operation(operationId = "readAllMemberNotifications", summary = "내 알림 모두 읽음 처리",
+            description = "페이지·필터와 관계없이 본인의 미읽음 알림 전체를 처리한다. 갱신 쿼리 시작 후 도착한 알림과 기존 읽은 시각은 유지한다.")
+    public void readAll(@AuthenticationPrincipal OAuth2User user) { store.readAll(member(user)); }
 
     static UUID member(OAuth2User user) {
         if (user == null) throw new org.springframework.security.access.AccessDeniedException("로그인이 필요합니다.");

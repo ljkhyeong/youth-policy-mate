@@ -220,6 +220,10 @@ public class MemberPolicyStore {
         jdbc.sql("UPDATE member_notifications SET read_at = COALESCE(read_at,CURRENT_TIMESTAMP) WHERE id = :id AND member_id = :member")
                 .param("id",id).param("member",member).update();
     }
+    public void readAll(UUID member) {
+        jdbc.sql("UPDATE member_notifications SET read_at = CURRENT_TIMESTAMP WHERE member_id = :member AND read_at IS NULL")
+                .param("member", member).update();
+    }
     private record SavedVersion(String number, long revision, long savedRevision, UUID generation, String title) {}
     private record Due(UUID id, String number, UUID generation, long revision, int before, LocalDate date, String title) {}
     private record NotificationCounts(long total, long unread) {}

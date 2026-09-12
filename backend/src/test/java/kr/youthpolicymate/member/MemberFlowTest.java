@@ -117,15 +117,15 @@ class MemberFlowTest {
         emails.request(first, "first@example.test");
         UUID mail = verificationMail(); UUID message = UUID.randomUUID();
         doAnswer(call -> {
-            mvc.perform(webhook(mail, message, "email.delivered", "2026-09-07T12:00:02Z")).andExpect(status().isNoContent());
+            mvc.perform(webhook(mail, message, "email.delivered", "2026-09-07T12:00:02Z")).andExpect(status().isOk());
             return message.toString();
         }).when(emailSender).send(any(), any(), any(), any());
         emailDelivery.deliver(mail);
         assertThat(mailState(mail)).isEqualTo("DELIVERED");
-        mvc.perform(webhook(mail, message, "email.delivered", "2026-09-07T12:00:02Z")).andExpect(status().isNoContent());
-        mvc.perform(webhook(mail, message, "email.sent", "2026-09-07T12:00:03Z")).andExpect(status().isNoContent());
+        mvc.perform(webhook(mail, message, "email.delivered", "2026-09-07T12:00:02Z")).andExpect(status().isOk());
+        mvc.perform(webhook(mail, message, "email.sent", "2026-09-07T12:00:03Z")).andExpect(status().isOk());
         assertThat(emails.settings(first).verificationDelivery()).isEqualTo("DELIVERED");
-        mvc.perform(webhook(mail, UUID.randomUUID(), "email.bounced", "2026-09-07T12:00:04Z")).andExpect(status().isNoContent());
+        mvc.perform(webhook(mail, UUID.randomUUID(), "email.bounced", "2026-09-07T12:00:04Z")).andExpect(status().isOk());
         assertThat(mailState(mail)).isEqualTo("DELIVERED");
     }
 
@@ -141,17 +141,17 @@ class MemberFlowTest {
         UUID pending = UUID.randomUUID();
         jdbc.sql("INSERT INTO member_email_outbox(id, member_id, settings_version, kind, state, created_at) SELECT :pending, member_id, settings_version, 'VERIFICATION', 'PENDING', created_at FROM member_email_outbox WHERE id = :id")
                 .param("pending", pending).param("id", mail).update();
-        mvc.perform(webhook(mail, message, "email.sent", "2026-09-07T12:00:02Z")).andExpect(status().isNoContent());
+        mvc.perform(webhook(mail, message, "email.sent", "2026-09-07T12:00:02Z")).andExpect(status().isOk());
         assertThat(mailState(mail)).isEqualTo("SENT");
         // 지연 도착한 반송도 이미 접수된 주소의 추가 발송을 중단한다.
-        mvc.perform(webhook(mail, message, "email.bounced", "2026-09-07T12:00:01Z")).andExpect(status().isNoContent());
+        mvc.perform(webhook(mail, message, "email.bounced", "2026-09-07T12:00:01Z")).andExpect(status().isOk());
         assertThat(mailState(mail)).isEqualTo("BOUNCED");
         assertThat(mailState(pending)).isEqualTo("CANCELED");
         assertThat(emails.settings(first).deliveryIssue()).isEqualTo("BOUNCED");
         assertThat(emails.settings(first).enabled()).isFalse();
         assertThat(emails.settings(first).verified()).isFalse();
         assertThatThrownBy(() -> emails.consent(first, true)).isInstanceOf(MemberEmailStore.EmailException.class);
-        mvc.perform(webhook(mail, message, "email.delivered", "2026-09-07T12:00:09Z")).andExpect(status().isNoContent());
+        mvc.perform(webhook(mail, message, "email.delivered", "2026-09-07T12:00:09Z")).andExpect(status().isOk());
         assertThat(mailState(mail)).isEqualTo("BOUNCED");
     }
 
@@ -163,7 +163,7 @@ class MemberFlowTest {
         time("2026-09-08T15:00:00Z");
         emails.request(first, "new@example.test");
         assertThat(emails.confirm(first, pendingCode(first))).isTrue(); emails.consent(first, true);
-        mvc.perform(webhook(mail, message, "email.complained", "2026-09-08T15:00:01Z")).andExpect(status().isNoContent());
+        mvc.perform(webhook(mail, message, "email.complained", "2026-09-08T15:00:01Z")).andExpect(status().isOk());
         assertThat(emails.settings(first).address()).isEqualTo("new@example.test");
         assertThat(emails.settings(first).enabled()).isTrue();
         assertThat(emails.settings(first).deliveryIssue()).isNull();

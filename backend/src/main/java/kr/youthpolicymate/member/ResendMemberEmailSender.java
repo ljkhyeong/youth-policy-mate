@@ -36,7 +36,9 @@ public class ResendMemberEmailSender implements MemberEmailSender {
         factory.setReadTimeout(Duration.ofSeconds(10));
         client = builder.requestFactory(factory)
                 .baseUrl(env.getProperty("app.email.resend.base-url", "https://api.resend.com"))
-                .defaultHeader("Authorization", "Bearer " + key).build();
+                .defaultHeader("Authorization", "Bearer " + key)
+                .defaultHeader("User-Agent", "youth-policy-mate/1.0")
+                .build();
     }
 
     @Override public boolean available() { return enabled; }

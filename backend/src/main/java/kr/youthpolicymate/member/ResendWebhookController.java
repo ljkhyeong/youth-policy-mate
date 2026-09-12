@@ -49,12 +49,12 @@ public class ResendWebhookController {
         try {
             var event = mapper.readTree(payload);
             type = event.path("type").asString("");
-            if (!event.path("data").path("tags").hasNonNull("outbox_id")) return ResponseEntity.noContent().build();
+            if (!event.path("data").path("tags").hasNonNull("outbox_id")) return ResponseEntity.ok().build();
             occurred = Instant.parse(event.path("created_at").asString());
             outbox = UUID.fromString(event.path("data").path("tags").path("outbox_id").asString());
             message = UUID.fromString(event.path("data").path("email_id").asString());
         } catch (RuntimeException failure) { return ResponseEntity.badRequest().build(); }
         events.receive(type, occurred, outbox, message);
-        return ResponseEntity.noContent().build();
+        return ResponseEntity.ok().build();
     }
 }

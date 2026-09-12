@@ -30,6 +30,7 @@ class ResendTransportTest {
         server.createContext("/emails", exchange -> {
             assertThat(exchange.getRequestMethod()).isEqualTo("POST");
             assertThat(exchange.getRequestHeaders().getFirst("Authorization")).isEqualTo("Bearer test-api-key");
+            assertThat(exchange.getRequestHeaders().getFirst("User-Agent")).isEqualTo("youth-policy-mate/1.0");
             assertThat(exchange.getRequestHeaders().getFirst("Idempotency-Key")).isEqualTo("email/" + outbox);
             requests.add(new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8));
             byte[] response = (status.get() == 200 ? "{\"id\":\"" + message + "\"}" : "{\"message\":\"private-provider-error\"}").getBytes(StandardCharsets.UTF_8);

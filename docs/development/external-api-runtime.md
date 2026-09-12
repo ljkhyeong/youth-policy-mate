@@ -19,6 +19,7 @@
 `EMAIL_PROVIDER=resend`를 선택한다. `EMAIL_ENABLED=true`일 때 `EMAIL_ENCRYPTION_KEY`, `EMAIL_FROM`, `RESEND_API_KEY`, `RESEND_WEBHOOK_SECRET`가 필요하다. 암호화 키는 32바이트 난수의 Base64 문자열이며 재시작 때 유지한다. `.env.production.example`에는 실제 키를 넣지 않았다.
 
 - 발송: `POST https://api.resend.com/emails`. Outbox ID를 `Idempotency-Key: email/{id}`와 `outbox_id` 태그에 넣는다. Resend의 멱등 키 보관 기간은 24시간이므로 무기한 중복 방지를 보장하지 않는다. [공식 발송 API](https://resend.com/docs/api-reference/emails/send-email)·[멱등 키](https://resend.com/docs/dashboard/emails/idempotency-keys)
+- API 요청에는 공급자가 요구하는 `User-Agent: youth-policy-mate/1.0`을 명시한다. [API 공통 요구사항](https://resend.com/docs/api-reference/introduction)
 - 처리: 10초 간격으로 인증 메일을 우선하며 Resend는 한 번에 최대 5건, SMTP는 최대 50건을 배정한다. 연결 제한은 5초, Resend 응답 제한은 10초다. 운영 초기에는 API 한 인스턴스를 기준으로 한다. 공급자 계정 전체의 실제 호출·일/월 한도는 운영자가 확인한다. [공급자 한도](https://resend.com/docs/api-reference/rate-limit)
 - 발송 전 회원·주소 설정 버전·동의·저장 정책·최신 개정을 재확인한다. 외부 호출 중에는 DB 트랜잭션을 열지 않는다.
 - 명확한 요청 거절은 `FAILED`, 응답 단절·타임아웃·불확실한 오류는 `UNKNOWN`이다. 자동 재발송하지 않으며, Resend 웹훅으로 결과를 보완한다. 서비스 내 알림은 유지한다.
@@ -33,7 +34,7 @@
 | 저장 | 우리 `outbox_id` 태그가 있는 발송의 결과만 적용한다. 이메일 ID·상태·발생 시각만 추가 저장하며 주소·제목·본문·원문 웹훅은 저장하지 않는다. |
 | 순서·중복 | 동일 시각의 재전송은 상태를 바꾸지 않는다. API 응답보다 먼저 온 웹훅을 보존하며, 뒤늦은 접수·지연 이벤트가 전달 완료를 되돌리지 않는다. |
 | 반송·신고·차단 | 해당 주소 설정 버전의 동의·인증·코드를 해제하고 미발송 요청을 취소한다. 다시 받으려면 주소를 재인증한다. 이전 주소 이벤트는 새 설정을 변경하지 않는다. |
-| 응답 | 반영·중복·대상 없는 이벤트는 204다. DB 오류는 성공으로 응답하지 않아 공급자가 재시도할 수 있다. |
+| 응답 | 반영·중복·대상 없는 이벤트는 공급자 계약에 맞춰 200이다. DB 오류는 성공으로 응답하지 않아 공급자가 재시도할 수 있다. |
 
 웹훅의 `DELIVERED`는 **수신 메일 서버 접수**를 뜻하며 사용자의 열람이나 받은편지함 도착을 보장하지 않는다. 공개 회원 API 계약은 생성 OpenAPI를 사용하고, 외부 웹훅 본문은 [Resend 계약](https://resend.com/docs/webhooks/emails/delivered)을 따른다. [서명 검증](https://resend.com/docs/webhooks/verify-webhooks-requests)
 
@@ -89,9 +90,9 @@ API는 JDK 25로 `bootJar`를 만들고 JRE 25의 일반 UID로 실행한다. �
 
 - `npm run verify -- test:email`: Resend 요청·웹훅 서명·중복·순서 역전·이전 주소 격리·기존 회원 발송 경계 통과.
 - `npm run generate:api`로 계약 생성 후 `check:api-types`, `check:web`, 개인 API 중계 `test:web` 통과.
-- `npm run verify -- check:backend`: 전체 서버 테스트·V29·HTTPS 로그인/쿠키·DB 준비 검사·실행 파일 빌드 통과.
+- `npm run verify -- check:backend`: 전체 서버 테스트·V30·HTTPS 로그인/쿠키·DB 준비 검사·실행 파일 빌드 통과.
 - `npm run verify -- build:web`: 웹 단독 실행 빌드 통과. Node 24.21.0에서 상태·세션·정책 조회 200, 다른 출처 변경 요청 403을 확인했다. 내부 API 비회원 요청은 401이었다.
 - 별도 브라우저 응답으로 반송·신고·전달·지연 안내와 390px 화면의 가로 넘침 없음을 확인했다. 실제 회원·메일 공급자를 수정하거나 호출하지 않았다.
 - 외부 Resend 발송·공급자 웹훅 재전송, 실제 OAuth 등록, 공개 HTTPS/Ingress, 홈서버 이미지 실행은 운영 설정 이후 확인해야 한다. 코드·모의 연동 검증을 실제 공급자 검증으로 간주하지 않는다.
 
-로컬 로그: 이메일 `.local/verification/1789185957544-e5a8ffe0.log`, 전체 서버 `1789186104754-7beef2d1.log`, 웹 검사 `1789186100144-43cf39eb.log`, 중계 검사 `1789186100144-35232bb2.log`, 계약 `1789186100148-99c3e1f5.log`, 웹 빌드 `1789186141173-80c8f43c.log`. 브라우저 결과와 화면은 `/tmp/youth-resend-ui/`에 있다. 웹 빌드 이후 Dockerfile에서 실제로 존재하지 않는 `public` 디렉터리 복사를 제거했으며 앱 코드·빌드 산출물은 그대로다.
+로컬 로그: 이메일 `.local/verification/1789187521181-d7fd7098.log`, 전체 서버 `.local/verification/1789187847384-dafe088b.log`, 웹 검사 `1789186100144-43cf39eb.log`, 중계 검사 `1789186100144-35232bb2.log`, 계약 `1789186100148-99c3e1f5.log`, 웹 빌드 `1789186141173-80c8f43c.log`. 브라우저 결과와 화면은 `/tmp/youth-resend-ui/`에 있다. 웹 빌드 이후 Dockerfile에서 실제로 존재하지 않는 `public` 디렉터리 복사를 제거했으며 앱 코드·빌드 산출물은 그대로다.

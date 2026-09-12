@@ -6,9 +6,10 @@
 
 - 이전 누적 작업은 `1b7fbdd`로 로컬·원격 `main`에 반영했고 [웹·전체 서버 CI](https://github.com/ljkhyeong/youth-policy-mate/actions/runs/34222499053)를 통과했다.
 - 현재 `codex/policy-source-notices`의 `ebaad91`에서 관리자 이메일 발송 현황을 추가했다. `/admin/collection-exceptions/email`에서 기간·상태·종류별 내역과 기간 전체 건수를 조회한다. 회원·주소·본문·인증 코드를 반환하지 않으며 조회로 재발송하거나 상태를 바꾸지 않는다.
+- `28fa9e6`에서 Resend API가 요구하는 User-Agent와 웹훅 `200 OK` 응답을 명시하고 운영 예시의 알림 주기 환경변수명을 실제 코드와 맞췄다.
 - 관리자 API의 권한·조회·개인정보 제외·읽기 전용 동작, 관련 웹 테스트·웹 검사·생성 계약·웹 빌드·서버 실행 파일 검증을 통과했다. 별도 Node 24/임시 API/브라우저에서 필터·페이지·오류·키보드·390px 화면을 확인했다. [구현과 검증 로그](docs/development/admin-email-deliveries.md#검증)
 - 로컬 Spring은 `/tmp/youth-admin-email-api-runtime.jar` 복사본·PID 82345·로그 `/tmp/youth-admin-email-api-runtime.log`다. Next 개발 서버는 PID 10257·로그 `/tmp/youth-admin-ai-web.log`를 유지했다. 상태 200·관리자 API 비회원 401·새 웹 페이지 200을 확인했다. DB는 V30이며 정책 40건을 유지했다. 임시 웹/API와 브라우저 검증 세션은 종료했다.
-- 별도로 수정된 미커밋 파일 6개를 보존했다: `.env.production.example`, `ResendMemberEmailSender.java`, `ResendWebhookController.java`, `MemberFlowTest.java`, `ResendTransportTest.java`, `docs/development/external-api-runtime.md`. Resend User-Agent·웹훅 200 응답·알림 환경변수명 수정이며 이번 커밋에 포함하지 않았다. 현재 실행 파일에는 이 수정이 포함된다. `test:email`의 `.local/verification/1789187521181-d7fd7098.log`가 통과했고 현재 관련 파일 해시와 일치해 재사용했다.
+- Resend 요청·웹훅 전용 검사는 `.local/verification/1789187521181-d7fd7098.log`, 최신 전체 서버 테스트와 실행 파일 빌드는 `.local/verification/1789187847384-dafe088b.log`에서 통과했다.
 - 실제 회원 설정·이메일·AI 호출은 실행하지 않았다. 자동 추출·정기 수집·이메일·알림은 비활성화다. 이미지 빌드·공급자 등록·공유기·TLS·k3s 설정은 사용자가 직접 수행하며 이번 브랜치는 원격에 반영하지 않았다.
 
 ## 구현·검증 범위
@@ -22,7 +23,7 @@
 - 이메일: 주소 확인·동의·암호화 저장·Outbox·SMTP/Resend 어댑터와 서명 웹훅, [관리자 발송 현황](docs/development/admin-email-deliveries.md)을 구현했다. 실제 공급자 계정·발신 도메인과 외부 수신 확인은 남아 있다. [이메일 구현과 설정](docs/development/member-email-reminders.md)
 - AI: 공고 원문·OpenAI 호출·예산 예약·원 응답·규칙 초안을 연결했다. 응답 유실에는 예약을 유지하고 재호출하지 않는다. 수집된 신규/변경 공고의 자동 추출과 실제 청구·무과금 확인 명령을 제공한다. 공급자 청구 자동 조회·실제 생성 품질 검증은 남아 있다. 모델·요금·월 한도는 설정값으로 받고 미설정 상태에는 호출하지 않는다. [규칙 추출과 설정](docs/development/ai-rule-drafts.md)·[자동 추출](docs/development/ai-rule-automation.md)·[요청 판단](docs/development/ai-request-admission.md)·[복구 실행](docs/development/ai-reservation-recovery-work-runs.md)
 - 백업: [수동 백업·임시 DB 복구 검증](docs/development/database-backup.md)을 제공한다. PostgreSQL 기본 도구를 사용하며 원본 DB를 덮어쓰지 않는다. 정기 백업의 주기·보관 기간·외부 보관과 운영 DB 전환은 미정이다.
-- 검증 기준: 새 관리자 이메일 기능은 `ebaad91`의 관련 API·웹·계약·빌드로 확인했다. 별도 Resend 수정은 위 이메일 테스트 기록을 사용한다. 변경하지 않은 전체 서버의 기준은 `be626f1`이며 이번 조회 추가만으로 전체 서버 검사를 반복하지 않았다. 실제 공급자 송수신·홈서버 이미지 실행·원격 CI는 미검증이다.
+- 검증 기준: 새 관리자 이메일 기능은 `ebaad91`의 관련 API·웹·계약·빌드로 확인했다. Resend 운영 계약까지 포함한 최신 전체 서버 기준은 `28fa9e6`이며 테스트와 실행 JAR 빌드를 통과했다. 실제 공급자 송수신·홈서버 이미지 실행·원격 CI는 미검증이다.
 - 검증 도구의 성공·실패·실행 중 변경 시나리오와 기존 도구 검사를 통과했다. 컴파일·패키징 명령의 Gradle 실행 계획에 테스트 실행이 없음을 확인했다. `npm run verify -- status`에서 실행 기록을 확인한다. 검증 도구를 정리할 당시에는 앱 기능을 변경하지 않아 전체 앱 테스트를 재실행하지 않았다.
 
 ## 남은 작업

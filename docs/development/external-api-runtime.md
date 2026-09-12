@@ -24,6 +24,7 @@
 - 발송 전 회원·주소 설정 버전·동의·저장 정책·최신 개정을 재확인한다. 외부 호출 중에는 DB 트랜잭션을 열지 않는다.
 - 명확한 요청 거절은 `FAILED`, 응답 단절·타임아웃·불확실한 오류는 `UNKNOWN`이다. 자동 재발송하지 않으며, Resend 웹훅으로 결과를 보완한다. 서비스 내 알림은 유지한다.
 - 발송 키와 웹훅 키는 다르다. `EMAIL_ENABLED=false`여도 Resend와 웹훅 키가 설정돼 있으면 이미 발송한 이메일의 결과를 받는다.
+- 정책 메일에는 [로그인 없는 수신 해제](email-unsubscribe.md)를 제공한다. 기존 공개 주소·Ingress를 사용하며, 운영자는 DKIM 서명과 실제 수신 서비스의 버튼·본문 링크를 확인한다.
 
 운영자가 등록할 웹훅 주소는 **`https://<공개 도메인>/api/v1/webhooks/resend`**다. 이벤트는 `email.sent`, `email.delivered`, `email.delivery_delayed`, `email.failed`, `email.bounced`, `email.complained`, `email.suppressed`를 선택한다. 열람·클릭 추적은 사용하지 않는다. [공식 이벤트](https://resend.com/docs/webhooks/event-types)
 
@@ -68,7 +69,7 @@
 - API는 `0.0.0.0:8080`에서 실행하며 전달된 HTTPS 헤더를 처리하고 `Secure; HttpOnly; SameSite=Lax` 세션 쿠키를 사용한다. 프록시가 전달 헤더를 설정·덮어쓰고 API 포트는 내부에서만 접근하도록 운영자가 구성한다.
 - API 시작·생존 확인: `/actuator/health/liveness`. 준비 확인: `/actuator/health/readiness`이며 DB 연결을 포함한다. DB 장애를 생존 검사에 넣어 재시작을 반복하지 않는다. `/actuator`는 외부 Ingress에 연결하지 않는다.
 - 웹 시작·생존 확인: `/healthz`. API·DB 상태는 API의 준비 검사에서 판단한다.
-- API 종료 대기 시간은 30초다. Pod의 종료 유예 시간은 이보다 길게 설정한다. DB는 PostgreSQL 18 계열을 기준으로 검증했으며 Flyway가 V31까지 적용한다.
+- API 종료 대기 시간은 30초다. Pod의 종료 유예 시간은 이보다 길게 설정한다. DB는 PostgreSQL 18 계열을 기준으로 검증했으며 Flyway가 V32까지 적용한다.
 - 앱은 DB 세션을 사용한다. 초기 API 인스턴스는 1개를 기준으로 하고, 여러 인스턴스의 수집·외부 공급자 호출량은 별도 검증 후 늘린다.
 
 Spring 기본 [상태 확인 기능](https://docs.spring.io/spring-boot/reference/actuator/endpoints.html)을 사용한다. 라우터·인증서·Ingress·PVC·자원 제한·백업 주기는 이 저장소에서 운영 적용하지 않았다.

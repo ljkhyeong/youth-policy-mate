@@ -114,6 +114,22 @@ describe("개인 API 중계", () => {
     expect(fetch).toHaveBeenCalledTimes(2);
   });
 
+  it("관심 정책 변경 조회는 회원 경로의 GET만 허용하며 비교 기준 쿼리를 임의로 전달하지 않는다", async () => {
+    const fetch = vi.fn().mockResolvedValue(Response.json({})); vi.stubGlobal("fetch", fetch);
+    const path = "policies/20260903005400113371/changes";
+    const response = await GET(new NextRequest(`${base}/api/member/${path}?memberId=other&revision=999`, {
+      headers: { cookie: "other=private; YPM_SESSION=member" },
+    }), context(path));
+    const [url, request] = fetch.mock.calls[0];
+    expect(url.pathname).toBe(`/api/v1/me/${path}`);
+    expect(url.search).toBe("");
+    expect(request.headers).toEqual({ Accept: "application/json", Cookie: "YPM_SESSION=member" });
+    expect(request.cache).toBe("no-store");
+    expect(response.headers.get("cache-control")).toBe("no-store");
+    expect((await POST(new NextRequest(`${base}/api/member/${path}`, { method: "POST", headers: { origin: base } }), context(path))).status).toBe(404);
+    expect(fetch).toHaveBeenCalledTimes(1);
+  });
+
   it("알림 페이지와 필터만 회원 API에 전달하고 회원 식별자 쿼리는 제외한다", async () => {
     const fetch = vi.fn().mockResolvedValue(Response.json({ items: [], unreadCount: 0 })); vi.stubGlobal("fetch", fetch);
     const response = await GET(new NextRequest(`${base}/api/member/notifications?page=3&pageSize=20&filter=UNREAD&memberId=other`, {

@@ -66,6 +66,12 @@ public class MemberController {
     @ResponseStatus(org.springframework.http.HttpStatus.NO_CONTENT)
     @Operation(operationId = "removeSavedPolicy", summary = "내 관심 정책 해제와 미발송 알림 취소")
     public void remove(@AuthenticationPrincipal OAuth2User user, @PathVariable String number) { store.remove(member(user), number); }
+    @GetMapping("/me/policies/{number}/changes")
+    @Operation(operationId = "getSavedPolicyChanges", summary = "관심 정책의 저장 당시 내용과 현재 내용 조회",
+            description = "본인이 저장한 정책만 조회한다. 같은 정책번호의 저장 당시 개정과 현재 공개 개정을 비교하며 저장 기준이나 알림 상태를 변경하지 않는다.")
+    public ResponseEntity<MemberResponses.SavedChanges> changes(@AuthenticationPrincipal OAuth2User user, @PathVariable String number) {
+        return privateResponse(store.changes(member(user), number));
+    }
     @GetMapping("/me/notifications")
     @Operation(operationId = "listMemberNotifications", summary = "내 알림 페이지·안 읽은 알림 수 조회",
             description = "최신순으로 정렬하고 필터를 전체 알림에 적용한 뒤 페이지를 나눈다. unreadCount는 필터와 무관한 회원 전체의 안 읽은 알림 수다.")

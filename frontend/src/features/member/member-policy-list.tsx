@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { SavedPolicyChanges } from "./saved-policy-changes";
 import { PolicyRecruitment, RecruitmentOptions, type RecruitmentFilter } from "@/features/policies/policy-recruitment";
 import type { SavedPolicies } from "./member-api";
 
@@ -26,7 +27,10 @@ export function MemberPolicyList({ policies, calendar, filter, onFilterChange, b
         <h2><Link href={`/policies/${policy.policyNumber}`}>{policy.title}</Link></h2>
         <p className="policy-period">신청기간: {policy.applicationPeriod}</p>
         <p>{policy.deadline.note}</p>
-        {policy.savedRevision !== policy.currentRevision && <p className="member-change">저장한 뒤 정책 내용이 바뀌었어요. 최신 안내를 확인해주세요.</p>}
+        {policy.savedRevision !== policy.currentRevision && <>
+          <p className="member-change">저장한 뒤 정책 내용이 바뀌었어요. 최신 안내를 확인해주세요.</p>
+          <SavedPolicyChanges key={`${policy.savedRevision}:${policy.currentRevision}`} policyNumber={policy.policyNumber} />
+        </>}
         {calendar && policy.deadline.date && policy.recruitment.status !== "CLOSED" && <p className="field-help">마감 7·3·1일 전 ‘알림’ 탭에 안내해요. 지난 알림 날짜는 건너뛰어요.</p>}
         <button className="text-button" type="button" disabled={busy} onClick={() => onRemove(policy.policyNumber)}>저장 해제</button>
       </article>)}

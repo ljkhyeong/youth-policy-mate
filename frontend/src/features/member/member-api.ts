@@ -6,6 +6,7 @@ export type EmailCode = components["schemas"]["MemberEmailCode"];
 export type EmailConsent = components["schemas"]["MemberEmailConsent"];
 
 export type MemberSession = components["schemas"]["MemberSession"];
+export type SavedPolicyChanges = components["schemas"]["SavedPolicyChanges"];
 export type SavedPolicies = components["schemas"]["SavedPolicyList"];
 export type NotificationFilter = NonNullable<NonNullable<operations["listMemberNotifications"]["parameters"]["query"]>["filter"]>;
 export type Notifications = components["schemas"]["MemberNotificationList"];

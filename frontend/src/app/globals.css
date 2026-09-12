@@ -877,7 +877,7 @@ select {
 .exception-text { white-space: pre-wrap; line-height: 1.8; }
 .exception-section { border-top: 1px solid var(--app-line); margin-top: 20px; padding-top: 20px; }
 .exception-section h4 { font-weight: 700; margin-bottom: 8px; }
-.revision-values { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+.revision-values { overflow-wrap: anywhere; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
 .revision-values > div { min-width: 0; padding: 12px; background: #f8fafc; border-radius: 8px; }
 .revision-values dt { font-size: 13px; font-weight: 650; color: var(--app-muted); margin-bottom: 8px; }
 .member-panel .revision-field h3 { font-size: 16px; }
@@ -900,6 +900,7 @@ select {
 .member-tabs button { padding: 14px 18px; font-weight: 650; cursor: pointer; }
 .member-tabs button[aria-current] { color: var(--app-blue-dark); border-bottom: 3px solid var(--app-blue); }
 .member-deadline { font-weight: 750; color: var(--app-blue-dark); }
+.saved-policy-changes { margin: 12px 0 20px; }
 .member-calendar-filter { width: 100%; min-height: 48px; padding: 10px 12px; border: 1px solid var(--app-line); border-radius: 10px; background: white; color: inherit; font: inherit; }
 .member-calendar-filter:focus-visible { outline: 3px solid var(--app-blue); outline-offset: 2px; }
 @media (max-width: 600px) { .member-account-toolbar > strong { flex-basis: 100%; } }

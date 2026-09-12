@@ -19,6 +19,14 @@ describe("내 정책 마감 일정", () => {
     expect(html).not.toContain("마감일 확인 필요");
     expect(html).not.toContain("member-deadline");
     expect(html).toContain("저장한 뒤 정책 내용이 바뀌었어요");
+    expect(html).toContain("변경 내용 보기");
+    expect(html).toContain('aria-expanded="false"');
+  });
+
+  it("저장 이후 개정되지 않은 정책에는 변경 비교 버튼을 표시하지 않는다", () => {
+    const html = renderToStaticMarkup(<MemberPolicyList {...base} policies={[{ ...item, currentRevision: item.savedRevision }]} />);
+    expect(html).not.toContain("변경 내용 보기");
+    expect(html).not.toContain("저장한 뒤 정책 내용이 바뀌었어요");
   });
 
   it("서버의 종료 상태와 날짜를 그대로 표시하고 지난 마감의 알림을 약속하지 않는다", () => {

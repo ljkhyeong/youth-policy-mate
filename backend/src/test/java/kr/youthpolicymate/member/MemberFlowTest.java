@@ -135,6 +135,48 @@ class MemberFlowTest {
     }
 
     @Test
+    @DisplayName("변경 비교는 본인의 저장 당시부터 최신 개정까지 조회하며 저장 기준과 알림을 변경하지 않는다")
+    void comparesSavedPolicyWithLatestRevision() throws Exception {
+        var original = policies.find(NUMBER).orElseThrow().content();
+        members.save(first, NUMBER);
+        raw.put("plcyNm", "중간 공고").put("aplyYmd", "20260901 ~ 20260920");
+        importPolicy();
+        members.save(second, NUMBER);
+        raw.put("plcyNm", "최신 공고").put("aplyYmd", "20260901 ~ 20260930").put("apiKeyNm", "not-public-test-value");
+        importPolicy();
+
+        mvc.perform(get("/api/v1/me/policies/" + NUMBER + "/changes")).andExpect(status().isUnauthorized());
+        var result = mvc.perform(get("/api/v1/me/policies/" + NUMBER + "/changes").with(oauth2Login().oauth2User(user(first))))
+                .andExpect(status().isOk()).andExpect(header().string("Cache-Control", "no-store"))
+                .andExpect(jsonPath("$.policyNumber").value(NUMBER)).andExpect(jsonPath("$.savedAt").isNotEmpty())
+                .andExpect(jsonPath("$.saved.revision").value(1)).andExpect(jsonPath("$.current.revision").value(3))
+                .andExpect(jsonPath("$.saved.content.title").value(original.title()))
+                .andExpect(jsonPath("$.current.content.title").value("최신 공고"))
+                .andExpect(jsonPath("$.saved.content.applicationPeriod").value(original.applicationPeriod()))
+                .andExpect(jsonPath("$.current.content.applicationPeriod").value("20260901 ~ 20260930"))
+                .andExpect(jsonPath("$.saved.sourceCapturedAt").isNotEmpty()).andExpect(jsonPath("$.current.sourceCapturedAt").isNotEmpty())
+                .andReturn().getResponse().getContentAsString();
+        assertThat(result).doesNotContain("apiKeyNm", "not-public-test-value", first.toString(), second.toString(), "rawPolicy");
+        assertThat(members.changes(second, NUMBER).saved().revision()).isEqualTo(2);
+        assertThat(members.changes(first, NUMBER).saved().revision()).isEqualTo(1);
+        assertThat(jdbc.sql("SELECT current_revision FROM saved_policies WHERE member_id = :member").param("member", first)
+                .query(Long.class).single()).isEqualTo(1);
+        assertThat(jdbc.sql("SELECT DISTINCT policy_revision FROM policy_reminders WHERE member_id = :member").param("member", first)
+                .query(Long.class).single()).isEqualTo(1);
+        assertThat(count("member_notifications")).isZero();
+        assertThat(count("member_email_outbox")).isZero();
+        members.remove(first, NUMBER);
+        mvc.perform(get("/api/v1/me/policies/" + NUMBER + "/changes").with(oauth2Login().oauth2User(user(first))))
+                .andExpect(status().isNotFound()).andExpect(jsonPath("$.code").value("POLICY_NOT_FOUND"));
+        assertThat(members.changes(second, NUMBER).saved().revision()).isEqualTo(2);
+        members.save(first, NUMBER);
+        var savedAgain = members.changes(first, NUMBER);
+        assertThat(savedAgain.saved().revision()).isEqualTo(3);
+        assertThat(savedAgain.saved().content()).isEqualTo(savedAgain.current().content());
+        assertThat(savedAgain.saved().sourceCapturedAt()).isEqualTo(savedAgain.current().sourceCapturedAt());
+    }
+
+    @Test
     @DisplayName("알림은 100건 이후에도 조회하고 같은 시각의 순서와 전체 미읽음 수를 유지한다")
     void pagesNotificationsAndCountsUnread() throws Exception {
         insertNotifications(first, 105, 0);

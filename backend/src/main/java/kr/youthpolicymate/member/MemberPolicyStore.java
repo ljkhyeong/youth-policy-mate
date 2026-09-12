@@ -120,6 +120,26 @@ public class MemberPolicyStore {
                 .sorted(Comparator.comparing(item -> item.recruitment().status() == kr.youthpolicymate.policy.RecruitmentStatus.CLOSED)).toList();
         return new MemberResponses.SavedList(items);
     }
+    public MemberResponses.SavedChanges changes(UUID member, String number) {
+        return jdbc.sql("""
+                SELECT s.saved_at, saved.revision AS saved_revision, saved.content AS saved_content,
+                       saved_source.captured_at AS saved_captured_at, latest.revision AS current_revision,
+                       latest.content AS current_content, current_source.captured_at AS current_captured_at
+                FROM saved_policies s
+                JOIN policies p ON p.policy_number = s.policy_number AND p.current_revision > 0
+                JOIN policy_revisions saved ON saved.policy_number = s.policy_number AND saved.revision = s.saved_revision
+                JOIN policy_source_snapshots saved_source ON saved_source.id = saved.source_snapshot_id
+                JOIN policy_revisions latest ON latest.policy_number = p.policy_number AND latest.revision = p.current_revision
+                JOIN policy_source_snapshots current_source ON current_source.id = latest.source_snapshot_id
+                WHERE s.member_id = :member AND s.policy_number = :number
+                """).param("member", member).param("number", number).query((rs, row) -> new MemberResponses.SavedChanges(
+                        number, rs.getObject("saved_at", OffsetDateTime.class).toInstant(),
+                        new MemberResponses.SavedVersion(rs.getLong("saved_revision"), rs.getObject("saved_captured_at", OffsetDateTime.class).toInstant(),
+                                mapper.readValue(rs.getString("saved_content"), PolicyContent.class)),
+                        new MemberResponses.SavedVersion(rs.getLong("current_revision"), rs.getObject("current_captured_at", OffsetDateTime.class).toInstant(),
+                                mapper.readValue(rs.getString("current_content"), PolicyContent.class))))
+                .optional().orElseThrow(PolicyNotFoundException::new);
+    }
     @Transactional
     public void refresh(UUID member) {
         lock(member);

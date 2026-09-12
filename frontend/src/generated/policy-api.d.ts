@@ -440,6 +440,26 @@ export interface paths {
         readonly patch?: never;
         readonly trace?: never;
     };
+    readonly "/api/v1/me/policies/{number}/changes": {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header?: never;
+            readonly path?: never;
+            readonly cookie?: never;
+        };
+        /**
+         * 관심 정책의 저장 당시 내용과 현재 내용 조회
+         * @description 본인이 저장한 정책만 조회한다. 같은 정책번호의 저장 당시 개정과 현재 공개 개정을 비교하며 저장 기준이나 알림 상태를 변경하지 않는다.
+         */
+        readonly get: operations["getSavedPolicyChanges"];
+        readonly put?: never;
+        readonly post?: never;
+        readonly delete?: never;
+        readonly options?: never;
+        readonly head?: never;
+        readonly patch?: never;
+        readonly trace?: never;
+    };
     readonly "/api/v1/policies": {
         readonly parameters: {
             readonly query?: never;
@@ -1246,8 +1266,22 @@ export interface components {
             readonly savedRevision: number;
             readonly title: string;
         };
+        readonly SavedPolicyChanges: {
+            readonly current: components["schemas"]["SavedPolicyVersion"];
+            readonly policyNumber: string;
+            readonly saved: components["schemas"]["SavedPolicyVersion"];
+            /** Format: date-time */
+            readonly savedAt: string;
+        };
         readonly SavedPolicyList: {
             readonly items: readonly components["schemas"]["SavedPolicy"][];
+        };
+        readonly SavedPolicyVersion: {
+            readonly content: components["schemas"]["PolicyContent"];
+            /** Format: int64 */
+            readonly revision: number;
+            /** Format: date-time */
+            readonly sourceCapturedAt: string;
         };
     };
     responses: never;
@@ -2943,6 +2977,42 @@ export interface operations {
                     readonly [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description 로그인 필요 */
+            readonly 401: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 권한 또는 CSRF 토큰 확인 필요 */
+            readonly 403: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    readonly getSavedPolicyChanges: {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header?: never;
+            readonly path: {
+                readonly number: string;
+            };
+            readonly cookie?: never;
+        };
+        readonly requestBody?: never;
+        readonly responses: {
+            /** @description OK */
+            readonly 200: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "*/*": components["schemas"]["SavedPolicyChanges"];
+                };
             };
             /** @description 로그인 필요 */
             readonly 401: {

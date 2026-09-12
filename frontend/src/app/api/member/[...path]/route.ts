@@ -27,6 +27,7 @@ async function handle(request: NextRequest, context: { params: Promise<{ path: s
     || (ruleFile && method === "GET")
     || (path === "conditions" && ["GET", "PUT", "DELETE"].includes(method))
     || (path === "policies" && method === "GET")
+    || (/^policies\/[0-9]{1,100}\/changes$/.test(path) && method === "GET")
     || (/^policies\/[0-9]{1,100}$/.test(path) && ["PUT", "DELETE"].includes(method))
     || (path === "email-settings" && ["GET", "PUT", "DELETE"].includes(method))
     || (["email-verification", "email-verification/confirm"].includes(path) && method === "POST")

@@ -2098,6 +2098,43 @@
         "tags" : [ "member-controller" ]
       }
     },
+    "/api/v1/me/policies/{number}/changes" : {
+      "get" : {
+        "description" : "본인이 저장한 정책만 조회한다. 같은 정책번호의 저장 당시 개정과 현재 공개 개정을 비교하며 저장 기준이나 알림 상태를 변경하지 않는다.",
+        "operationId" : "getSavedPolicyChanges",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "number",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/SavedPolicyChanges"
+                }
+              }
+            },
+            "description" : "OK"
+          },
+          "401" : {
+            "description" : "로그인 필요"
+          },
+          "403" : {
+            "description" : "권한 또는 CSRF 토큰 확인 필요"
+          }
+        },
+        "security" : [ {
+          "memberSession" : [ ]
+        } ],
+        "summary" : "관심 정책의 저장 당시 내용과 현재 내용 조회",
+        "tags" : [ "member-controller" ]
+      }
+    },
     "/api/v1/policies" : {
       "get" : {
         "operationId" : "listPolicies",
@@ -4402,6 +4439,25 @@
         },
         "required" : [ "applicationPeriod", "currentRevision", "deadline", "policyNumber", "recruitment", "savedAt", "savedRevision", "title" ]
       },
+      "SavedPolicyChanges" : {
+        "type" : "object",
+        "properties" : {
+          "current" : {
+            "$ref" : "#/components/schemas/SavedPolicyVersion"
+          },
+          "policyNumber" : {
+            "type" : "string"
+          },
+          "saved" : {
+            "$ref" : "#/components/schemas/SavedPolicyVersion"
+          },
+          "savedAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          }
+        },
+        "required" : [ "current", "policyNumber", "saved", "savedAt" ]
+      },
       "SavedPolicyList" : {
         "type" : "object",
         "properties" : {
@@ -4413,6 +4469,23 @@
           }
         },
         "required" : [ "items" ]
+      },
+      "SavedPolicyVersion" : {
+        "type" : "object",
+        "properties" : {
+          "content" : {
+            "$ref" : "#/components/schemas/PolicyContent"
+          },
+          "revision" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "sourceCapturedAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          }
+        },
+        "required" : [ "content", "revision", "sourceCapturedAt" ]
       }
     },
     "securitySchemes" : {

@@ -13,7 +13,7 @@
 - 내 정책의 [요청 처리와 오류 복구](member-dashboard-recovery.md)는 목록 조회·저장 해제·로그아웃·탈퇴의 중복을 막는다. 결과가 불명확하면 개인 상태를 숨겨 재조회하며, 늦은 응답으로 이동한 화면을 바꾸지 않는다.
 - 정책 상세의 [저장 상태 오류 복구](policy-save-recovery.md)는 조회 실패와 미저장을 구분한다. 응답 유실 뒤에는 상태부터 다시 조회하고, 중복 요청과 이전 화면의 늦은 응답을 막는다.
 - `/my`: 관심 정책, 날짜순 마감 일정, [알림 페이지·안 읽은 알림 필터·읽음 처리](member-notifications.md)를 제공한다. 알림 조회 오류는 관심 정책과 마감 일정에 영향을 주지 않는다. 저장한 뒤 정책 내용이 바뀌면 최신 내용과 변경 표시를 보여주고 [저장 당시·현재 내용 비교](saved-policy-changes.md)를 제공한다.
-- 로그아웃은 서버 세션을 삭제하고 전체 화면을 새로 연다. 같은 출처의 다른 탭에도 계정 변경을 알려 화면 상태를 초기화한다. 브라우저 뒤로 가기의 보관 화면도 다시 조회한다.
+- 로그아웃은 서버 세션을 삭제하고 전체 화면을 새로 연다. 탭 간 통신을 지원하면 같은 출처의 다른 탭에도 계정 변경을 알려 화면 상태를 초기화한다. 뒤로 가기의 보관 화면 복원은 통신 지원 여부와 무관하게 생년월일 메모리를 지우고 다시 조회한다.
 
 ## 인증과 로컬 설정
 
@@ -93,6 +93,28 @@ bash /Users/lim/.codex/skills/playwright/scripts/playwright_cli.sh --session you
 ```
 
 결과는 `/tmp/youth-login-notification-recovery/login-result.log`에 있다. 로그인 검증 뒤 변경한 모바일 스크롤 여백은 [알림 화면](member-notifications.md#검증)에서 확인했고, 복귀 주소 로직·테스트는 같아 다시 실행하지 않았다. 위 웹 검사·빌드는 스크롤 수정까지 포함한다. 검증 브라우저를 종료했으며 사용자 창·탭은 조작하지 않았다.
+
+## 계정 전환과 보관 화면 복원 검증
+
+2026-09-12, 코드 `72c8013`. `AccountTransitions`의 복원 이벤트 등록을 `BroadcastChannel` 지원 여부에서 분리했다. 계정 변경 알림과 보관 화면 복원은 같은 함수로 확인한 생년월일을 지우고 화면을 다시 조회한다. 일반 페이지 표시와 관계없는 알림은 입력을 유지한다.
+
+| 명령·범위 | 결과·로그 |
+|---|---|
+| `npm run verify -- check:web` | 통과. `.local/verification/1789212037363-9b621b44.log` |
+| `npm run verify -- test:web -- src/features/conditions/confirmed-birth.test.ts src/features/member/login-destination.test.ts` | 통과. `.local/verification/1789212037353-db961274.log` |
+| 통신 미지원 상태의 복원 이벤트 | 수정 전 이전 계정명·입력이 남는 문제를 재현했고 수정 후 재조회·초기화를 확인했다. `/tmp/youth-account-restore/before.log`·`after.log` |
+| 헤드리스 브라우저의 탭 간 전환 | 로그인·로그아웃 후 다른 탭 초기화, 이전 조건 응답 무시, 중복 새로고침 방지, 통신 지원 상태의 복원 이벤트를 통과했다. `/tmp/youth-account-restore/cross-tab.log` |
+
+브라우저 실행 코드는 `/tmp/youth-account-restore/restore-flow.js`와 `cross-tab-flow.js`다. 전용 헤드리스 세션에서 다음 명령으로 실행했다.
+
+```sh
+bash /Users/lim/.codex/skills/playwright/scripts/playwright_cli.sh --session youth-account-restore run-code --filename /tmp/youth-account-restore/restore-flow.js
+bash /Users/lim/.codex/skills/playwright/scripts/playwright_cli.sh --session youth-account-restore run-code --filename /tmp/youth-account-restore/cross-tab-flow.js
+```
+
+복원 검증은 `pageshow` 이벤트의 `persisted` 값을 지정해 수행했다. 브라우저가 실제 페이지를 bfcache에 보관하고 복원하는 과정 전체를 검증한 것은 아니다. Next.js의 자체 복원에서도 주소 상태 변경 이벤트가 발생하므로 문서 재조회 요청과 입력·계정 표시로 결과를 판단했다.
+
+회원 API는 모의 응답이며 실제 계정 변경·외부 공급자 호출은 없었다. 검증 탭과 세션을 모두 종료했고 사용자 창·탭은 조작하지 않았다. 클라이언트 이벤트 처리만 변경해 배포 빌드는 반복하지 않았다. 마지막 빌드는 `8d650c9`의 `.local/verification/1789209508903-b985fc06.log`이며 현재 코드의 새 빌드 결과는 아니다.
 
 ## OAuth 전체 흐름 검증
 

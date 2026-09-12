@@ -1,6 +1,6 @@
 # AI 추출 결과의 규칙 초안 저장
 
-`915b175` 기준. 수집한 공고 개정에 추출 요청과 결과를 연결하고 유효한 최신 결과를 관리자 규칙 초안으로 저장한다. 명시적인 운영 명령으로 OpenAI 호출·예산 예약·응답 보관·청구 확인을 처리한다. 수집 후 자동 실행과 공급자 청구 자동 대사는 아직 연결하지 않았다.
+수집한 공고 개정에 추출 요청과 결과를 연결하고 유효한 최신 결과를 관리자 규칙 초안으로 저장한다. 운영 명령으로 OpenAI 호출·예산 예약·응답 보관·청구 확인을 처리하며 [수집 공고 자동 추출](ai-rule-automation.md)도 같은 경로를 사용한다. 공급자 청구 자동 대사는 아직 연결하지 않았다.
 
 ## 처리 흐름
 
@@ -40,7 +40,7 @@ npm run ai:policy-rules -- --args='status <요청UUID>'
 - `complete`: 별도로 확보한 규칙 JSON을 저장한다. 외부 호출을 실행하지 않는다.
 - `status`: 후보 상태·초안 ID·예약 상태·최대 예약액·원 응답 보관 여부를 조회한다. 본문과 인증키는 출력하지 않는다.
 
-명령은 정기 수집·알림·이메일 발송을 비활성화한다. `generate`만 외부 API를 호출한다. 새 UUID를 준비하는 것은 새 추출 요청이며, 같은 공고라도 추가 비용이 발생할 수 있다. 명시적 재시도에만 사용한다.
+명령은 정기 수집·알림·이메일·AI 정기 실행을 비활성화한다. `generate`와 `auto-run`은 외부 API를 호출할 수 있다. 새 UUID를 준비하는 것은 새 추출 요청이며, 같은 공고라도 추가 비용이 발생할 수 있다. 명시적 재시도에만 사용한다.
 
 ## OpenAI 설정과 비용
 
@@ -85,9 +85,9 @@ Java 25.0.3·PostgreSQL 18.6에서 확인했다.
 
 | 검증 | 결과 |
 |---|---|
-| `npm run verify -- test:ai-rule-generation` | 가짜 HTTP 공급자·실제 DB로 예약 후 발송, 동시/반복 호출 차단, 예산 부족·설정/토큰 확인 실패, 원문/요청 변경, 연결 유실, 응답 재처리, 청구/무과금 확인과 기존 초안·실행기 테스트 통과. `.local/verification/1789174200286-42034dc0.log` |
-| `npm run verify -- check:backend` | 전체 서버·DB·계약 검사 통과. `.local/verification/1789174249543-f911aa92.log` |
-| 운영 명령·로컬 서버 | 빈 요청 UUID로 `status` 실행·V27 적용·정상 기동·상태 조회 200 확인. `/tmp/youth-openai-rule-command.log`, `/tmp/youth-openai-rule-runtime.log` |
+| `npm run verify -- test:ai-rule-auto` | 기존 생성 경로와 자동 배정·중단 복구·일일 한도·스케줄러 검사 통과. `.local/verification/1789175310104-87761747.log` |
+| `npm run verify -- check:backend` | 전체 서버·DB·계약 검사 통과. `.local/verification/1789175362712-74f1cda6.log` |
+| 운영 명령·로컬 서버 | `auto-status` 실행·V28 적용·정상 기동·상태 조회 200 확인. `/tmp/youth-ai-auto-command.log`, `/tmp/youth-ai-auto-runtime.log` |
 
 마지막 검증 이후 변경은 문서뿐이다. 로컬 실제 데이터는 정책 40건·적용 규칙 11건·AI 요청/호출 0건을 확인했다. 키·모델·요금·한도가 없어 실제 OpenAI 호출과 생성 품질·청구는 검증하지 않았다. 테스트의 모델·가격·응답은 인공 값이며 운영 권장값이 아니다.
 

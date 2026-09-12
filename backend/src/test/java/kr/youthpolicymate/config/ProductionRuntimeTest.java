@@ -22,6 +22,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @ActiveProfiles("prod")
 @SpringBootTest(properties = {"PUBLIC_APP_URL=https://policy.example.test", "DB_HOST=unused", "DB_NAME=unused", "DB_USER=unused", "DB_PASSWORD=unused",
         "KAKAO_CLIENT_ID=test-client", "KAKAO_CLIENT_SECRET=test-secret", "app.email.enabled=false",
+        "app.email.provider=resend", "app.email.resend.read-api-key=",
         "app.reminders.enabled=false", "app.ontong.schedule.enabled=false", "app.ai.auto.enabled=false"})
 @AutoConfigureMockMvc
 class ProductionRuntimeTest {
@@ -29,6 +30,14 @@ class ProductionRuntimeTest {
     static final PostgreSQLContainer postgres = new PostgreSQLContainer("postgres:18.6-alpine");
     @Autowired MockMvc mvc;
     @Autowired Environment environment;
+    @Autowired kr.youthpolicymate.member.MemberEmailSender emailSender;
+
+    @Test
+    @DisplayName("운영에서 실제 Resend 모듈을 구성하되 발송은 명시적으로 켜기 전까지 비활성화한다")
+    void preparesResendWithoutSending() {
+        assertThat(emailSender).isInstanceOf(kr.youthpolicymate.member.ResendMemberEmailSender.class);
+        assertThat(emailSender.available()).isFalse();
+    }
 
     @Test
     @DisplayName("운영 프로필은 HTTPS 로그인 주소·보안 쿠키와 DB를 포함한 준비 상태를 제공한다")

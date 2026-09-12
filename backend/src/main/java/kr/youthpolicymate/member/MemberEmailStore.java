@@ -112,6 +112,10 @@ public class MemberEmailStore {
         lock(member);
         if (enabled) {
             requireAvailable();
+            jdbc.sql("""
+                    UPDATE member_email_outbox SET unsubscribe_token_hash = NULL WHERE member_id = :member AND unsubscribe_token_hash IS NOT NULL
+                    AND EXISTS (SELECT 1 FROM member_email_settings WHERE member_id = :member AND NOT enabled)
+                    """).param("member", member).update();
             int changed = jdbc.sql("UPDATE member_email_settings SET enabled = true, consented_at = COALESCE(consented_at,:now) WHERE member_id = :member AND verified_at IS NOT NULL")
                     .param("member", member).param("now", at(clock.instant())).update();
             if (changed == 0) throw new EmailException(409, "EMAIL_NOT_VERIFIED", "먼저 이메일 주소를 확인해주세요.");

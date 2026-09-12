@@ -1516,6 +1516,71 @@
         "tags" : [ "policy-rule-management-controller" ]
       }
     },
+    "/api/v1/email-unsubscribe/{token}" : {
+      "get" : {
+        "operationId" : "openEmailUnsubscribe",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "token",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "pattern" : "[A-Za-z0-9_-]{43}"
+          }
+        } ],
+        "responses" : {
+          "303" : {
+            "description" : "확인 화면 이동"
+          }
+        },
+        "summary" : "수신 해제 확인 화면 이동 · 설정 변경 없음",
+        "tags" : [ "member-email-unsubscribe-controller" ]
+      },
+      "post" : {
+        "description" : "쿠키·로그인·CSRF 토큰 없이 수신 해제 전용 토큰으로 처리한다. 이전 주소 링크는 새 설정을 변경하지 않는다.",
+        "operationId" : "unsubscribeEmail",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "token",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "pattern" : "[A-Za-z0-9_-]{43}"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/x-www-form-urlencoded" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/EmailUnsubscribeForm"
+              }
+            },
+            "multipart/form-data" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/EmailUnsubscribeForm"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "수신 해제 처리 완료 · 이미 해제된 주소도 같은 응답"
+          },
+          "400" : {
+            "description" : "토큰 형식 또는 One-Click 요청 오류"
+          },
+          "404" : {
+            "description" : "사용할 수 없는 링크"
+          },
+          "503" : {
+            "description" : "저장소 사용 불가"
+          }
+        },
+        "summary" : "메일 링크로 이메일 알림 수신 해제",
+        "tags" : [ "member-email-unsubscribe-controller" ]
+      }
+    },
     "/api/v1/logout" : {
       "post" : {
         "operationId" : "logoutMember",
@@ -3145,6 +3210,17 @@
           }
         },
         "required" : [ "actorId", "attempt", "expectedAttempts", "itemIndex", "outcome", "policyNumber", "policyRevision", "processedAt", "reason", "requestId", "runId" ]
+      },
+      "EmailUnsubscribeForm" : {
+        "type" : "object",
+        "properties" : {
+          "List-Unsubscribe" : {
+            "type" : "string",
+            "enum" : [ "One-Click" ],
+            "pattern" : "One-Click"
+          }
+        },
+        "required" : [ "List-Unsubscribe" ]
       },
       "LoginProvider" : {
         "type" : "object",

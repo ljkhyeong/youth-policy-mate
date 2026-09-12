@@ -44,12 +44,12 @@ public class ResendMemberEmailSender implements MemberEmailSender {
     @Override public boolean available() { return enabled; }
     @Override public String provider() { return "resend"; }
 
-    @Override public String send(UUID requestId, String address, String subject, String body) {
+    @Override public String send(UUID requestId, String address, String subject, String body, Map<String, String> headers) {
         if (!enabled) throw new IllegalStateException("이메일 발송이 꺼져 있습니다.");
         try {
             var result = client.post().uri("/emails").header("Idempotency-Key", "email/" + requestId)
                     .body(Map.of("from", from, "to", List.of(address), "subject", subject, "text", body,
-                            "tags", List.of(Map.of("name", "outbox_id", "value", requestId.toString()))))
+                            "tags", List.of(Map.of("name", "outbox_id", "value", requestId.toString())), "headers", headers))
                     .retrieve().body(Receipt.class);
             if (result == null || result.id() == null) throw new IllegalStateException("이메일 접수 결과를 확인할 수 없습니다.");
             return result.id().toString();

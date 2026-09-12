@@ -25,6 +25,16 @@ public class EmailCrypto {
     }
     boolean ready() { return key != null; }
     String code() { return "%08d".formatted(random.nextInt(100_000_000)); }
+    String token() {
+        byte[] bytes = new byte[32]; random.nextBytes(bytes);
+        return Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
+    }
+    static String tokenHash(String token) {
+        try {
+            return java.util.HexFormat.of().formatHex(java.security.MessageDigest.getInstance("SHA-256")
+                    .digest(token.getBytes(StandardCharsets.US_ASCII)));
+        } catch (java.security.NoSuchAlgorithmException failure) { throw new IllegalStateException(failure); }
+    }
     String hash(String context, String value) {
         try {
             var mac = Mac.getInstance("HmacSHA256");

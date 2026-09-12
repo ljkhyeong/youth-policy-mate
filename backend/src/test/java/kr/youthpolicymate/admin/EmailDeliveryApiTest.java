@@ -108,7 +108,7 @@ class EmailDeliveryApiTest {
                 .andExpect(jsonPath("$.items[0].finishedAt").isEmpty()).andReturn().getResponse().getContentAsString();
         assertThat(response).doesNotContain("private-encrypted-code", "private-subject", "비공개 회원", MEMBER.toString(), "memberId", "settingsVersion", "address", "codeCipher");
         assertThat(jdbc.sql("SELECT row_to_json(o)::text FROM member_email_outbox o").query(String.class).single()).isEqualTo(before);
-        verify(sender, never()).send(any(), any(), any(), any());
+        verify(sender, never()).send(any(), any(), any(), any(), any());
     }
 
     @Test @DisplayName("잘못된 조회 조건과 DB 실패를 빈 목록으로 응답하지 않는다")

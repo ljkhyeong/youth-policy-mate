@@ -5,7 +5,7 @@ import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.context.annotation.Profile;
 import org.springframework.core.env.Environment;
-import org.springframework.mail.SimpleMailMessage;
+import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.mail.javamail.JavaMailSenderImpl;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
@@ -34,11 +34,13 @@ public class SmtpMemberEmailSender implements MemberEmailSender {
     }
     @Override public boolean available() { return enabled; }
     @Override public String provider() { return "smtp"; }
-    @Override public String send(java.util.UUID requestId, String address, String subject, String body) {
+    @Override public String send(java.util.UUID requestId, String address, String subject, String body, java.util.Map<String, String> headers) {
         if (!enabled) throw new IllegalStateException("이메일 발송이 꺼져 있습니다.");
-        var message = new SimpleMailMessage();
-        message.setFrom(from); message.setTo(address); message.setSubject(subject); message.setText(body);
-        sender.send(message);
+        sender.send(message -> {
+            var helper = new MimeMessageHelper(message, "UTF-8");
+            helper.setFrom(from); helper.setTo(address); helper.setSubject(subject); helper.setText(body);
+            for (var header : headers.entrySet()) message.setHeader(header.getKey(), header.getValue());
+        });
         return null;
     }
 }

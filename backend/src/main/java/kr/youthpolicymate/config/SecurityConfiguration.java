@@ -28,7 +28,7 @@ class SecurityConfiguration {
             ObjectProvider<InMemoryClientRegistrationRepository> registrations, ObjectProvider<SocialMemberService> social,
             ObjectProvider<OAuth2AuthorizedClientService> authorizedClients, ObjectProvider<MemberIdentityStore> identities) throws Exception {
         http
-                .csrf(csrf -> csrf.ignoringRequestMatchers("/api/v1/webhooks/resend", "/api/v1/policies/checks", "/api/v1/policies/*/evaluation", "/api/v1/policies/*/question-prefill"))
+                .csrf(csrf -> csrf.ignoringRequestMatchers("/api/v1/email-unsubscribe/*", "/api/v1/webhooks/resend", "/api/v1/policies/checks", "/api/v1/policies/*/evaluation", "/api/v1/policies/*/question-prefill"))
                 .requestCache(cache -> cache.disable())
                 .exceptionHandling(errors -> errors
                         .authenticationEntryPoint((request, response, exception) -> {
@@ -44,6 +44,8 @@ class SecurityConfiguration {
                 .authorizeHttpRequests(requests -> requests
                         .requestMatchers(HttpMethod.GET, "/actuator/health", "/actuator/health/liveness", "/actuator/health/readiness").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/v1/webhooks/resend").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/v1/email-unsubscribe/*").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/v1/email-unsubscribe/*").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/session", "/oauth2/authorization/*", "/login/oauth2/code/*").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/policies", "/api/v1/policies/*", "/api/v1/policies/*/questions").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/v1/policies/checks", "/api/v1/policies/*/evaluation", "/api/v1/policies/*/question-prefill").permitAll()

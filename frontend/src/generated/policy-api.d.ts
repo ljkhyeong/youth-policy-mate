@@ -299,6 +299,27 @@ export interface paths {
         readonly patch?: never;
         readonly trace?: never;
     };
+    readonly "/api/v1/email-unsubscribe/{token}": {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header?: never;
+            readonly path?: never;
+            readonly cookie?: never;
+        };
+        /** 수신 해제 확인 화면 이동 · 설정 변경 없음 */
+        readonly get: operations["openEmailUnsubscribe"];
+        readonly put?: never;
+        /**
+         * 메일 링크로 이메일 알림 수신 해제
+         * @description 쿠키·로그인·CSRF 토큰 없이 수신 해제 전용 토큰으로 처리한다. 이전 주소 링크는 새 설정을 변경하지 않는다.
+         */
+        readonly post: operations["unsubscribeEmail"];
+        readonly delete?: never;
+        readonly options?: never;
+        readonly head?: never;
+        readonly patch?: never;
+        readonly trace?: never;
+    };
     readonly "/api/v1/logout": {
         readonly parameters: {
             readonly query?: never;
@@ -805,6 +826,10 @@ export interface components {
             readonly requestId: string;
             /** Format: uuid */
             readonly runId: string;
+        };
+        readonly EmailUnsubscribeForm: {
+            /** @enum {string} */
+            readonly "List-Unsubscribe": "One-Click";
         };
         readonly LoginProvider: {
             readonly id: string;
@@ -2446,6 +2471,72 @@ export interface operations {
                 content: {
                     readonly "*/*": components["schemas"]["PolicyApiError"];
                 };
+            };
+        };
+    };
+    readonly openEmailUnsubscribe: {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header?: never;
+            readonly path: {
+                readonly token: string;
+            };
+            readonly cookie?: never;
+        };
+        readonly requestBody?: never;
+        readonly responses: {
+            /** @description 확인 화면 이동 */
+            readonly 303: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    readonly unsubscribeEmail: {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header?: never;
+            readonly path: {
+                readonly token: string;
+            };
+            readonly cookie?: never;
+        };
+        readonly requestBody: {
+            readonly content: {
+                readonly "application/x-www-form-urlencoded": components["schemas"]["EmailUnsubscribeForm"];
+                readonly "multipart/form-data": components["schemas"]["EmailUnsubscribeForm"];
+            };
+        };
+        readonly responses: {
+            /** @description 수신 해제 처리 완료 · 이미 해제된 주소도 같은 응답 */
+            readonly 200: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 토큰 형식 또는 One-Click 요청 오류 */
+            readonly 400: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 사용할 수 없는 링크 */
+            readonly 404: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 저장소 사용 불가 */
+            readonly 503: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };

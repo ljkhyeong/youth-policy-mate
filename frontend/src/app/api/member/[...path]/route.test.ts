@@ -7,6 +7,23 @@ const context = (path: string) => ({ params: Promise.resolve({ path: path.split(
 afterEach(() => { vi.unstubAllGlobals(); vi.unstubAllEnvs(); });
 
 describe("개인 API 중계", () => {
+  it("수신 해제는 토큰만 표준 폼으로 전달하고 쿠키·CSRF·쿼리·입력 본문을 제외한다", async () => {
+    const fetch = vi.fn().mockResolvedValue(new Response(null, { status: 200, headers: { "Set-Cookie": "YPM_SESSION=unexpected" } }));
+    vi.stubGlobal("fetch", fetch);
+    const path = `email-unsubscribe/${"A".repeat(43)}`;
+    const response = await POST(new NextRequest(`${base}/api/member/${path}?email=private`, { method: "POST",
+      headers: { origin: base, cookie: "YPM_SESSION=private", "X-CSRF-TOKEN": "private" }, body: "untrusted body" }), context(path));
+    expect(response.status).toBe(200);
+    expect(fetch.mock.calls[0][0].pathname).toBe(`/api/v1/${path}`);
+    expect(fetch.mock.calls[0][0].search).toBe("");
+    expect(fetch.mock.calls[0][1].headers).toEqual({ Accept: "application/json", "Content-Type": "application/x-www-form-urlencoded" });
+    expect(fetch.mock.calls[0][1].body).toBe("List-Unsubscribe=One-Click");
+    expect(response.headers.get("set-cookie")).toBeNull();
+    expect(response.headers.get("cache-control")).toBe("no-store");
+    expect((await GET(new NextRequest(`${base}/api/member/${path}`), context(path))).status).toBe(404);
+    expect((await POST(new NextRequest(`${base}/api/member/${path}`, { method: "POST" }), context(path))).status).toBe(403);
+    expect(fetch).toHaveBeenCalledTimes(1);
+  });
   it("탈퇴는 본인 세션의 DELETE만 허용하고 다른 회원 식별자를 전달하지 않는다", async () => {
     const fetch = vi.fn().mockResolvedValue(new Response(null, { status: 204, headers: { "Set-Cookie": "YPM_SESSION=; Path=/; Max-Age=0" } }));
     vi.stubGlobal("fetch", fetch);

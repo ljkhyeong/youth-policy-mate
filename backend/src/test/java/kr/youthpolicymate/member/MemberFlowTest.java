@@ -43,6 +43,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @Testcontainers
 @SpringBootTest(properties = {"app.reminders.enabled=false", "app.email.enabled=false",
+        "APP_BACKEND_URL=https://policy.example.test",
         "app.email.provider=resend", "app.email.resend.webhook-secret=whsec_dGVzdC13ZWJob29rLXNlY3JldA==",
         "KAKAO_CLIENT_ID=test-kakao", "KAKAO_CLIENT_SECRET=test-secret",
         "NAVER_CLIENT_ID=test-naver", "NAVER_CLIENT_SECRET=test-secret",
@@ -96,6 +97,104 @@ class MemberFlowTest {
 
     private static final String WEBHOOK_SECRET = "whsec_dGVzdC13ZWJob29rLXNlY3JldA==";
 
+    @Test @DisplayName("수신 해제는 GET 조회로 바뀌지 않고 로그인 없이 해당 주소의 미발송 정책 메일만 취소한다")
+    void unsubscribesWithoutLogin() throws Exception {
+        String token = sentUnsubscribeToken();
+        raw.put("plcyNm", "추가 변경 알림"); importPolicy(); members.refresh(first);
+        UUID pending = pendingPolicyMail();
+        members.save(second, NUMBER); emails.request(second, "second@example.test");
+        var notifications = notifications(first).items();
+        mvc.perform(get("/api/v1/email-unsubscribe/" + token)).andExpect(status().isSeeOther())
+                .andExpect(header().string("Location", "http://127.0.0.1:3000/email-unsubscribe#" + token))
+                .andExpect(header().string("Cache-Control", "no-store"));
+        assertThat(emails.settings(first).enabled()).isTrue();
+        assertThat(mailState(pending)).isEqualTo("PENDING");
+        mvc.perform(post("/api/v1/email-unsubscribe/" + token).contentType("application/json").content("{}"))
+                .andExpect(status().isUnsupportedMediaType());
+        mvc.perform(post("/api/v1/email-unsubscribe/" + token).contentType("application/x-www-form-urlencoded")
+                .param("List-Unsubscribe", "wrong")).andExpect(status().isBadRequest());
+        mvc.perform(post("/api/v1/email-unsubscribe/" + token).contentType("application/x-www-form-urlencoded"))
+                .andExpect(status().isBadRequest());
+        mvc.perform(unsubscribe("A".repeat(43))).andExpect(status().isNotFound());
+        when(emailSender.available()).thenReturn(false);
+        mvc.perform(unsubscribe(token).with(oauth2Login().oauth2User(user(second))))
+                .andExpect(status().isOk()).andExpect(content().string(""))
+                .andExpect(header().string("Cache-Control", "no-store"));
+        assertThat(emails.settings(first).enabled()).isFalse();
+        assertThat(emails.settings(first).verified()).isTrue();
+        assertThat(mailState(pending)).isEqualTo("CANCELED");
+        assertThat(members.saved(first).items()).hasSize(1);
+        assertThat(notifications(first).items()).isEqualTo(notifications);
+        assertThat(emails.settings(second).address()).isEqualTo("second@example.test");
+        assertThat(members.saved(second).items()).hasSize(1);
+        mvc.perform(multipart("/api/v1/email-unsubscribe/" + token).param("List-Unsubscribe", "One-Click"))
+                .andExpect(status().isOk());
+        org.mockito.Mockito.verify(emailSender, org.mockito.Mockito.times(1)).send(any(), any(), any(), any(), any());
+    }
+
+    @Test @DisplayName("예전 링크는 새 주소와 재동의를 해제하지 않고 탈퇴 후에는 사용할 수 없다")
+    void invalidatesUnsubscribeForNewConsentAndAccount() throws Exception {
+        String token = sentUnsubscribeToken();
+        time("2026-09-04T15:01:01Z"); emails.request(first, "new@example.test");
+        mvc.perform(unsubscribe(token)).andExpect(status().isOk());
+        assertThat(emails.settings(first).address()).isEqualTo("new@example.test");
+        assertThat(emails.confirm(first, pendingCode(first))).isTrue(); emails.consent(first, true);
+        mvc.perform(unsubscribe(token)).andExpect(status().isNotFound());
+        assertThat(emails.settings(first).enabled()).isTrue();
+        raw.put("plcyNm", "새 주소 알림"); importPolicy(); members.refresh(first);
+        String current = captureUnsubscribeToken(pendingPolicyMail());
+        emails.consent(first, true);
+        mvc.perform(unsubscribe(current)).andExpect(status().isOk());
+        emails.consent(first, true);
+        mvc.perform(unsubscribe(current)).andExpect(status().isNotFound());
+        assertThat(emails.settings(first).enabled()).isTrue();
+        raw.put("plcyNm", "재동의 후 알림"); importPolicy(); members.refresh(first);
+        String last = captureUnsubscribeToken(pendingPolicyMail());
+        mvc.perform(delete("/api/v1/me/account").with(oauth2Login().oauth2User(user(first))).with(csrf()))
+                .andExpect(status().isNoContent());
+        mvc.perform(unsubscribe(last)).andExpect(status().isNotFound());
+    }
+
+    @Test @DisplayName("대기 메일 취소 오류는 수신 동의 해제도 롤백하고 재시도할 수 있다")
+    void rollsBackUnsubscribeOnStorageFailure() throws Exception {
+        String token = sentUnsubscribeToken();
+        raw.put("plcyNm", "발송 대기 알림"); importPolicy(); members.refresh(first);
+        UUID pending = pendingPolicyMail();
+        org.mockito.Mockito.doThrow(new org.springframework.dao.DataAccessResourceFailureException("비공개 저장 오류"))
+                .when(jdbc).sql("UPDATE member_email_outbox SET state = 'CANCELED' WHERE member_id = :member AND kind = 'POLICY' AND state = 'PENDING'");
+        mvc.perform(unsubscribe(token)).andExpect(status().isServiceUnavailable());
+        assertThat(emails.settings(first).enabled()).isTrue();
+        assertThat(mailState(pending)).isEqualTo("PENDING");
+    }
+
+    private org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder unsubscribe(String token) {
+        return post("/api/v1/email-unsubscribe/" + token).contentType("application/x-www-form-urlencoded")
+                .param("List-Unsubscribe", "One-Click");
+    }
+
+    private String sentUnsubscribeToken() {
+        members.save(first, NUMBER); verifiedEmail(); emails.consent(first, true);
+        raw.put("plcyNm", "링크 포함 알림"); importPolicy(); members.refresh(first);
+        return captureUnsubscribeToken(pendingPolicyMail());
+    }
+
+    private String captureUnsubscribeToken(UUID outbox) {
+        var value = new java.util.concurrent.atomic.AtomicReference<String>();
+        doAnswer(call -> {
+            Map<String, String> headers = call.getArgument(4);
+            assertThat(headers.get("List-Unsubscribe-Post")).isEqualTo("List-Unsubscribe=One-Click");
+            String link = headers.get("List-Unsubscribe");
+            String token = link.substring(link.lastIndexOf('/') + 1, link.length() - 1);
+            assertThat(token).matches("[A-Za-z0-9_-]{43}");
+            assertThat((String) call.getArgument(3)).contains("/email-unsubscribe#" + token);
+            assertThat(jdbc.sql("SELECT unsubscribe_token_hash FROM member_email_outbox WHERE id = :id")
+                    .param("id", outbox).query(String.class).single()).isEqualTo(EmailCrypto.tokenHash(token)).doesNotContain(token);
+            value.set(token); return UUID.randomUUID().toString();
+        }).when(emailSender).send(any(), any(), any(), any(), any());
+        emailDelivery.deliver(outbox);
+        return value.get();
+    }
+
     @Test @DisplayName("회원 존재 확인 장애는 비회원 상태로 숨기거나 인증된 요청을 통과시키지 않는다")
     void reportsSessionLookupFailure() throws Exception {
         org.mockito.Mockito.doThrow(new org.springframework.dao.DataAccessResourceFailureException("비공개 DB 장애 내용"))
@@ -134,7 +233,7 @@ class MemberFlowTest {
         assertThat(count("policies")).isEqualTo(policyCount);
         assertThat(count("policy_revisions")).isEqualTo(revisionCount);
         emailDelivery.deliver(pending);
-        org.mockito.Mockito.verify(emailSender, org.mockito.Mockito.never()).send(any(), any(), any(), any());
+        org.mockito.Mockito.verify(emailSender, org.mockito.Mockito.never()).send(any(), any(), any(), any(), any());
         mvc.perform(webhook(pending, UUID.randomUUID(), "email.bounced", "2026-09-05T00:01:00Z")).andExpect(status().isOk());
         assertThat(identities.login("kakao", "101", "재가입 회원")).isNotEqualTo(first);
     }
@@ -177,7 +276,7 @@ class MemberFlowTest {
         doAnswer(call -> {
             mvc.perform(webhook(mail, message, "email.delivered", "2026-09-07T12:00:02Z")).andExpect(status().isOk());
             return message.toString();
-        }).when(emailSender).send(any(), any(), any(), any());
+        }).when(emailSender).send(any(), any(), any(), any(), any());
         emailDelivery.deliver(mail);
         assertThat(mailState(mail)).isEqualTo("DELIVERED");
         mvc.perform(webhook(mail, message, "email.delivered", "2026-09-07T12:00:02Z")).andExpect(status().isOk());
@@ -601,7 +700,7 @@ class MemberFlowTest {
         UUID mail = policyMailIds().getFirst(); emailDelivery.deliver(mail);
         assertThat(mailState(mail)).isEqualTo("SENT");
         var body = org.mockito.ArgumentCaptor.forClass(String.class);
-        org.mockito.Mockito.verify(emailSender).send(any(), org.mockito.ArgumentMatchers.eq("first@example.test"), any(), body.capture());
+        org.mockito.Mockito.verify(emailSender).send(any(), org.mockito.ArgumentMatchers.eq("first@example.test"), any(), body.capture(), any());
         assertThat(body.getValue()).contains("마감 3일 전", "/policies/" + NUMBER, "이메일 수신 해제:");
         assertThat(jdbc.sql("SELECT address_cipher FROM member_email_settings WHERE member_id = :member").param("member", first).query(String.class).single())
                 .doesNotContain("first@example.test");
@@ -681,12 +780,12 @@ class MemberFlowTest {
             assertThat(call.getArgument(1, String.class)).isEqualTo("first@example.test");
             assertThat(call.getArgument(3, String.class)).contains("확인 코드:");
             return null;
-        }).when(emailSender).send(any(), any(), any(), any());
+        }).when(emailSender).send(any(), any(), any(), any(), any());
         try (var pool = Executors.newFixedThreadPool(2)) {
             var a = pool.submit(() -> emailDelivery.deliver(id)); var b = pool.submit(() -> emailDelivery.deliver(id));
             a.get(10, TimeUnit.SECONDS); b.get(10, TimeUnit.SECONDS);
         }
-        org.mockito.Mockito.verify(emailSender, org.mockito.Mockito.times(1)).send(any(), any(), any(), any());
+        org.mockito.Mockito.verify(emailSender, org.mockito.Mockito.times(1)).send(any(), any(), any(), any(), any());
         assertThat(mailState(id)).isEqualTo("SENT");
         assertThat(emails.settings(first).verificationDelivery()).isEqualTo("SENT");
         new TransactionTemplate(transactions).executeWithoutResult(tx ->
@@ -697,10 +796,10 @@ class MemberFlowTest {
     @DisplayName("결과 미확인과 중단된 발송은 다시 보내지 않고 암호화한 코드도 지운다")
     void doesNotRetryUnknownDelivery() {
         emails.request(first, "first@example.test");
-        org.mockito.Mockito.doThrow(new org.springframework.mail.MailSendException("인공 전송 중단")).when(emailSender).send(any(), any(), any(), any());
+        org.mockito.Mockito.doThrow(new org.springframework.mail.MailSendException("인공 전송 중단")).when(emailSender).send(any(), any(), any(), any(), any());
         emailDelivery.deliverPending(); emailDelivery.deliverPending();
         assertThat(emails.settings(first).verificationDelivery()).isEqualTo("UNKNOWN");
-        org.mockito.Mockito.verify(emailSender, org.mockito.Mockito.times(1)).send(any(), any(), any(), any());
+        org.mockito.Mockito.verify(emailSender, org.mockito.Mockito.times(1)).send(any(), any(), any(), any(), any());
         time("2026-09-04T15:01:00Z"); emails.request(first, "first@example.test");
         jdbc.sql("UPDATE member_email_outbox SET state = 'SENDING', started_at = :now WHERE state = 'PENDING'")
                 .param("now", MemberEmailStore.at(clock.instant())).update();
@@ -725,7 +824,7 @@ class MemberFlowTest {
         UUID current = pendingPolicyMail(); time("2026-09-04T15:01:00Z"); emails.request(first, "new@example.test"); emailDelivery.deliver(current);
         assertThat(mailState(current)).isEqualTo("CANCELED");
         assertThat(emails.settings(first).verified()).isFalse(); assertThat(emails.settings(first).enabled()).isFalse();
-        org.mockito.Mockito.verify(emailSender, org.mockito.Mockito.never()).send(any(), any(), any(), any());
+        org.mockito.Mockito.verify(emailSender, org.mockito.Mockito.never()).send(any(), any(), any(), any(), any());
     }
 
     @Test
@@ -737,7 +836,7 @@ class MemberFlowTest {
         members.deliver(first); UUID id = policyMailIds().getFirst();
         time("2026-09-05T15:00:00Z"); emailDelivery.deliver(id);
         assertThat(mailState(id)).isEqualTo("CANCELED");
-        org.mockito.Mockito.verify(emailSender, org.mockito.Mockito.never()).send(any(), any(), any(), any());
+        org.mockito.Mockito.verify(emailSender, org.mockito.Mockito.never()).send(any(), any(), any(), any(), any());
     }
 
     private void verifiedEmail() {

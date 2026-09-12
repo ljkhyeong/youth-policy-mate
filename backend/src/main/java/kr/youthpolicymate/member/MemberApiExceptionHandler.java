@@ -6,7 +6,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
-@RestControllerAdvice(assignableTypes = {MemberController.class, MemberEmailController.class, MemberAccountController.class})
+@RestControllerAdvice(assignableTypes = {MemberController.class, MemberEmailController.class, MemberAccountController.class, MemberEmailUnsubscribeController.class})
 public class MemberApiExceptionHandler {
     @ExceptionHandler(MemberEmailStore.EmailException.class)
     ResponseEntity<PolicyApiError> email(MemberEmailStore.EmailException failure) {

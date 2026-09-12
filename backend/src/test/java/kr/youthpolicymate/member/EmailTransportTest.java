@@ -98,10 +98,36 @@ class EmailTransportTest {
                     "app.email.port=" + server.getLocalPort(), "app.email.from=sender@example.test").run(context -> {
                 var sender = context.getBean(SmtpMemberEmailSender.class);
                 assertThat(context.getBean(JavaMailSenderImpl.class).getJavaMailProperties()).containsEntry("mail.smtp.auth", "false");
-                assertThatThrownBy(() -> sender.send(java.util.UUID.randomUUID(), "recipient@example.test", "확인", "전송하면 안 되는 본문"))
+                assertThatThrownBy(() -> sender.send(java.util.UUID.randomUUID(), "recipient@example.test", "확인", "전송하면 안 되는 본문", java.util.Map.of()))
                         .isInstanceOf(org.springframework.mail.MailException.class);
             });
             assertThat(conversation.get(10, TimeUnit.SECONDS)).noneMatch(command -> command.startsWith("MAIL") || command.startsWith("RCPT") || command.startsWith("DATA"));
         }
+    }
+
+    @Test @DisplayName("SMTP 메일에 수신 해제 헤더와 UTF-8 본문을 넣고 확인 메일에는 헤더를 넣지 않는다")
+    void preparesUnsubscribeHeaders() {
+        var mail = org.mockito.Mockito.mock(JavaMailSenderImpl.class);
+        org.mockito.Mockito.when(mail.getHost()).thenReturn("localhost");
+        org.mockito.Mockito.when(mail.getJavaMailProperties()).thenReturn(new java.util.Properties());
+        contextRunner.withBean(JavaMailSenderImpl.class, () -> mail)
+                .withPropertyValues("app.email.enabled=true", "app.email.from=sender@example.test").run(context -> {
+                    var sender = context.getBean(SmtpMemberEmailSender.class);
+                    var headers = java.util.Map.of("List-Unsubscribe", "<https://policy.example.test/api/v1/email-unsubscribe/token>",
+                            "List-Unsubscribe-Post", "List-Unsubscribe=One-Click");
+                    sender.send(java.util.UUID.randomUUID(), "recipient@example.test", "정책 알림", "한글 본문", headers);
+                    sender.send(java.util.UUID.randomUUID(), "recipient@example.test", "확인 코드", "인증 본문", java.util.Map.of());
+                    var captured = org.mockito.ArgumentCaptor.forClass(org.springframework.mail.javamail.MimeMessagePreparator.class);
+                    org.mockito.Mockito.verify(mail, org.mockito.Mockito.times(2)).send(captured.capture());
+                    var policy = new jakarta.mail.internet.MimeMessage(jakarta.mail.Session.getInstance(new java.util.Properties()));
+                    captured.getAllValues().getFirst().prepare(policy);
+                    assertThat(policy.getHeader("List-Unsubscribe", null)).isEqualTo(headers.get("List-Unsubscribe"));
+                    assertThat(policy.getHeader("List-Unsubscribe-Post", null)).isEqualTo("List-Unsubscribe=One-Click");
+                    assertThat(policy.getSubject()).isEqualTo("정책 알림");
+                    assertThat(policy.getContent()).isEqualTo("한글 본문");
+                    var verification = new jakarta.mail.internet.MimeMessage(jakarta.mail.Session.getInstance(new java.util.Properties()));
+                    captured.getAllValues().getLast().prepare(verification);
+                    assertThat(verification.getHeader("List-Unsubscribe")).isNull();
+                });
     }
 }

@@ -1,4 +1,5 @@
 import { NextRequest } from "next/server";
+import type { components } from "@/generated/policy-api";
 
 export const dynamic = "force-dynamic";
 
@@ -6,6 +7,7 @@ export const dynamic = "force-dynamic";
 async function handle(request: NextRequest, context: { params: Promise<{ path: string[] }> }) {
   const path = (await context.params).path.join("/");
   const method = request.method;
+  const unsubscribe = /^email-unsubscribe\/[A-Za-z0-9_-]{43}$/.test(path);
   const question = /^policy-questions\/([0-9]{1,100})$/.exec(path);
   const prefill = /^policy-prefill\/([0-9]{1,100})$/.exec(path);
   const evaluation = /^policy-evaluation\/([0-9]{1,100})$/.exec(path);
@@ -15,10 +17,11 @@ async function handle(request: NextRequest, context: { params: Promise<{ path: s
   const ruleDraft = /^policy-rule-reviews\/[0-9]{20}\/drafts$/.test(path);
   const ruleFile = /^policy-rule-reviews\/[0-9]{20}\/versions\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(path);
   const rulePublish = /^policy-rule-reviews\/[0-9]{20}\/versions\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\/publish$/i.test(path);
-  const anonymous = path === "checks" || Boolean(question || evaluation || prefill);
+  const anonymous = unsubscribe || path === "checks" || Boolean(question || evaluation || prefill);
   const allowed = (path === "session" && method === "GET")
     || (path === "logout" && method === "POST")
     || (path === "account" && method === "DELETE")
+    || (unsubscribe && method === "POST")
     || (path === "checks" && method === "POST")
     || (Boolean(question) && method === "GET")
     || (Boolean(evaluation || prefill) && method === "POST")
@@ -56,7 +59,7 @@ async function handle(request: NextRequest, context: { params: Promise<{ path: s
       if (length) { const bytes = new Uint8Array(length); let offset = 0; for (const chunk of chunks) { bytes.set(chunk, offset); offset += chunk.length; } body = new TextDecoder().decode(bytes); }
     }
     const base = process.env.POLICY_API_BASE_URL || "http://127.0.0.1:8080";
-    const apiPath = collectionReplay ? `/api/v1/admin/collection-exceptions/${collectionReplay[1]}/${collectionReplay[2]}/replays`
+    const apiPath = unsubscribe ? `/api/v1/${path}` : collectionReplay ? `/api/v1/admin/collection-exceptions/${collectionReplay[1]}/${collectionReplay[2]}/replays`
       : correction || ruleDraft || ruleFile || rulePublish ? `/api/v1/admin/${path}`
       : question ? `/api/v1/policies/${question[1]}/questions`
       : prefill ? `/api/v1/policies/${prefill[1]}/question-prefill`
@@ -76,6 +79,11 @@ async function handle(request: NextRequest, context: { params: Promise<{ path: s
     }
     const headers: Record<string, string> = { Accept: "application/json" };
     if (body) headers["Content-Type"] = "application/json";
+    if (unsubscribe) {
+      const form: components["schemas"]["EmailUnsubscribeForm"] = { "List-Unsubscribe": "One-Click" };
+      body = new URLSearchParams(form).toString();
+      headers["Content-Type"] = "application/x-www-form-urlencoded";
+    }
     const cookie = request.headers.get("cookie")?.split(";").map(value => value.trim()).find(value => value.startsWith("YPM_SESSION="));
     if (cookie && cookie.length < 1024 && !anonymous) headers.Cookie = cookie;
     const csrf = request.headers.get("x-csrf-token");

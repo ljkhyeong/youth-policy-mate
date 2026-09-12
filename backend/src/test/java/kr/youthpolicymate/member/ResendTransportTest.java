@@ -45,17 +45,24 @@ class ResendTransportTest {
                     .withProperty("app.email.from", "sender@example.test").withProperty("app.email.resend.api-key", "test-api-key")
                     .withProperty("app.email.resend.base-url", "http://127.0.0.1:" + server.getAddress().getPort());
             var sender = new ResendMemberEmailSender(env, new EmailCrypto(env), validators.getValidator(), RestClient.builder());
-            assertThat(sender.send(outbox, "recipient@example.test", "인증", "확인 코드: 12345678")).isEqualTo(message.toString());
+            assertThat(sender.send(outbox, "recipient@example.test", "인증", "확인 코드: 12345678", java.util.Map.of())).isEqualTo(message.toString());
             var request = mapper.readTree(requests.getFirst());
             assertThat(request.path("to").get(0).asString()).isEqualTo("recipient@example.test");
             assertThat(request.path("text").asString()).contains("12345678");
             assertThat(request.path("tags").get(0).path("name").asString()).isEqualTo("outbox_id");
             assertThat(request.path("tags").get(0).path("value").asString()).isEqualTo(outbox.toString());
+            assertThat(request.path("headers").isEmpty()).isTrue();
+            var headers = java.util.Map.of("List-Unsubscribe", "<https://policy.example.test/api/v1/email-unsubscribe/token>",
+                    "List-Unsubscribe-Post", "List-Unsubscribe=One-Click");
+            sender.send(outbox, "recipient@example.test", "정책 알림", "본문", headers);
+            var policyHeaders = mapper.readTree(requests.getLast()).path("headers");
+            assertThat(policyHeaders.path("List-Unsubscribe").asString()).isEqualTo(headers.get("List-Unsubscribe"));
+            assertThat(policyHeaders.path("List-Unsubscribe-Post").asString()).isEqualTo("List-Unsubscribe=One-Click");
             status.set(422);
-            assertThatThrownBy(() -> sender.send(outbox, "recipient@example.test", "인증", "본문"))
+            assertThatThrownBy(() -> sender.send(outbox, "recipient@example.test", "인증", "본문", java.util.Map.of()))
                     .isInstanceOf(MailPreparationException.class).hasMessageNotContaining("private-provider-error");
             status.set(503);
-            assertThatThrownBy(() -> sender.send(outbox, "recipient@example.test", "인증", "본문"))
+            assertThatThrownBy(() -> sender.send(outbox, "recipient@example.test", "인증", "본문", java.util.Map.of()))
                     .isInstanceOf(IllegalStateException.class).hasMessageNotContaining("private-provider-error");
         } finally { server.stop(0); }
     }

@@ -6,6 +6,8 @@
 
 [외부 API 연동과 홈서버 실행 준비](docs/development/external-api-runtime.md)에 Resend 발송·웹훅, 운영 환경변수, Dockerfile 사용법과 Ingress 경로를 정리했습니다. 앱 빌드와 모의 연동은 검증했으며 이미지 빌드·실제 공급자 등록·홈서버 배포는 운영자가 진행합니다.
 
+관리자는 [이메일 발송 현황](docs/development/admin-email-deliveries.md)에서 기간·상태·종류별 내역과 건수를 조회할 수 있습니다. 주소·본문을 노출하지 않으며 조회로 재발송하지 않습니다.
+
 ## MVP
 
 - 서울 거주 만 19~34세 청년 대상. 온통청년의 전국 공통·서울시·서울 자치구 정책 제공

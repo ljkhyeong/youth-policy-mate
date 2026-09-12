@@ -5,10 +5,11 @@
 ## 현재 작업
 
 - 이전 누적 작업은 `1b7fbdd`로 로컬·원격 `main`에 반영했고 [웹·전체 서버 CI](https://github.com/ljkhyeong/youth-policy-mate/actions/runs/34222499053)를 통과했다.
-- 현재 `codex/policy-source-notices`의 `be626f1`에서 Resend 발송 API·서명 웹훅과 홈서버 실행 준비를 완료했다. SMTP는 선택 가능하며, 반송·신고·차단은 주소 설정 버전별로 동의·미발송 요청을 해제한다. 새 주소에 이전 웹훅을 적용하지 않는다.
-- 전체 서버 테스트·빌드, 관련 이메일/회원·웹 중계 검사, API 계약·웹 타입 검사·단독 실행 빌드를 통과했다. Node 24.21.0에서 상태·정책·세션 조회와 출처 차단을 확인했고 PC/390px 브라우저에서 이메일 상태 안내를 확인했다. 명령·로그·실제 공급자 검증의 제약은 [외부 API와 홈서버 준비](docs/development/external-api-runtime.md#검증)에 있다. 마지막 앱 검증 뒤에는 Dockerfile의 존재하지 않는 public 복사를 제거하고 문서만 변경했다.
-- 로컬 Spring은 `/tmp/youth-resend-api-runtime.jar` 복사본·PID 30104·로그 `/tmp/youth-resend-api-runtime.log`로 실행한다. 빌드 디렉터리의 실행 중 JAR을 덮어쓰면 일부 요청이 멈추므로 별도 복사본을 사용한다. Next 개발 서버는 PID 10257·로그 `/tmp/youth-admin-ai-web.log`를 유지했고 세션 응답 200을 확인했다. 임시 Node 24/25 웹 서버와 검증용 브라우저는 종료했다.
-- DB는 V29이며 정책 40건을 유지했다. 실제 회원 데이터를 수정하거나 외부 메일·AI를 호출하지 않았다. 로컬 자동 추출·정기 수집·이메일·알림은 비활성화했다. 운영 예시는 `.env.production.example`에 있으며 실제 키는 비어 있다. 이미지 빌드·공급자 등록·공유기·TLS·k3s 설정은 사용자가 직접 수행한다. 이번 브랜치는 원격에 반영하지 않았다.
+- 현재 `codex/policy-source-notices`의 `ebaad91`에서 관리자 이메일 발송 현황을 추가했다. `/admin/collection-exceptions/email`에서 기간·상태·종류별 내역과 기간 전체 건수를 조회한다. 회원·주소·본문·인증 코드를 반환하지 않으며 조회로 재발송하거나 상태를 바꾸지 않는다.
+- 관리자 API의 권한·조회·개인정보 제외·읽기 전용 동작, 관련 웹 테스트·웹 검사·생성 계약·웹 빌드·서버 실행 파일 검증을 통과했다. 별도 Node 24/임시 API/브라우저에서 필터·페이지·오류·키보드·390px 화면을 확인했다. [구현과 검증 로그](docs/development/admin-email-deliveries.md#검증)
+- 로컬 Spring은 `/tmp/youth-admin-email-api-runtime.jar` 복사본·PID 82345·로그 `/tmp/youth-admin-email-api-runtime.log`다. Next 개발 서버는 PID 10257·로그 `/tmp/youth-admin-ai-web.log`를 유지했다. 상태 200·관리자 API 비회원 401·새 웹 페이지 200을 확인했다. DB는 V30이며 정책 40건을 유지했다. 임시 웹/API와 브라우저 검증 세션은 종료했다.
+- 별도로 수정된 미커밋 파일 6개를 보존했다: `.env.production.example`, `ResendMemberEmailSender.java`, `ResendWebhookController.java`, `MemberFlowTest.java`, `ResendTransportTest.java`, `docs/development/external-api-runtime.md`. Resend User-Agent·웹훅 200 응답·알림 환경변수명 수정이며 이번 커밋에 포함하지 않았다. 현재 실행 파일에는 이 수정이 포함된다. `test:email`의 `.local/verification/1789187521181-d7fd7098.log`가 통과했고 현재 관련 파일 해시와 일치해 재사용했다.
+- 실제 회원 설정·이메일·AI 호출은 실행하지 않았다. 자동 추출·정기 수집·이메일·알림은 비활성화다. 이미지 빌드·공급자 등록·공유기·TLS·k3s 설정은 사용자가 직접 수행하며 이번 브랜치는 원격에 반영하지 않았다.
 
 ## 구현·검증 범위
 
@@ -18,10 +19,10 @@
 - 접수 상태: 목록·상세·내 조건에서 날짜형·시각형·상시·마감·미확인을 구분하며 공개 목록과 내 조건을 상태별로 검색한다. 검색·질문 필터·정렬과 함께 전체 결과에 적용한 뒤 페이지를 나눈다. Flyway V18로 기존 정책의 검색용 기간을 이전했다. 기존 마감 알림과 원문 해석을 공유한다. 날짜 충돌·회차·소진 안내를 임의로 접수 중으로 바꾸지 않는다.
 - 개인 조건 탐색: 미래 청년 일자리를 포함한 9개 정책의 연령을 비교하고 전체 정책에서 검색·정렬한다. 정책별 기준일·출생일 범위·병역 예외를 구분하며 햇살론유스·청년 미래이음 대출은 오늘 보증·대출신청을 가정한다. 거주·취업·소득은 추가 확인으로 남긴다. 검색·페이지 이동·오류 재시도·모바일 화면을 로컬 실제 정책으로 확인했다.
 - 회원 기능: OAuth 로그인 코드, 관심 정책 저장·해제·[저장 당시와 현재 내용 비교](docs/development/saved-policy-changes.md), 일정·[서비스 내 알림 페이지와 미읽음 필터](docs/development/member-notifications.md)를 연결했다. [마감 일정](docs/development/member-calendar.md)에서 접수 상태를 구분하고 가까운 마감순 정렬·상태 필터·새로고침을 제공한다. 테스트 제공자와 실제 HTTP·DB로 코드 교환부터 관리자 접근·세션 종료까지 확인했다. 로컬 카카오·네이버 ID/Secret과 관리자 ID가 없어 실제 제공자 로그인은 미검증이다. [회원 기능](docs/development/member-policy-flow.md)
-- 이메일: 주소 확인·동의·암호화 저장·Outbox·SMTP/Resend 어댑터와 서명 웹훅을 구현했다. 실제 공급자 계정·발신 도메인과 외부 수신 확인은 남아 있다. [이메일 구현과 설정](docs/development/member-email-reminders.md)
+- 이메일: 주소 확인·동의·암호화 저장·Outbox·SMTP/Resend 어댑터와 서명 웹훅, [관리자 발송 현황](docs/development/admin-email-deliveries.md)을 구현했다. 실제 공급자 계정·발신 도메인과 외부 수신 확인은 남아 있다. [이메일 구현과 설정](docs/development/member-email-reminders.md)
 - AI: 공고 원문·OpenAI 호출·예산 예약·원 응답·규칙 초안을 연결했다. 응답 유실에는 예약을 유지하고 재호출하지 않는다. 수집된 신규/변경 공고의 자동 추출과 실제 청구·무과금 확인 명령을 제공한다. 공급자 청구 자동 조회·실제 생성 품질 검증은 남아 있다. 모델·요금·월 한도는 설정값으로 받고 미설정 상태에는 호출하지 않는다. [규칙 추출과 설정](docs/development/ai-rule-drafts.md)·[자동 추출](docs/development/ai-rule-automation.md)·[요청 판단](docs/development/ai-request-admission.md)·[복구 실행](docs/development/ai-reservation-recovery-work-runs.md)
 - 백업: [수동 백업·임시 DB 복구 검증](docs/development/database-backup.md)을 제공한다. PostgreSQL 기본 도구를 사용하며 원본 DB를 덮어쓰지 않는다. 정기 백업의 주기·보관 기간·외부 보관과 운영 DB 전환은 미정이다.
-- 검증 기준: 현재 앱 코드 `be626f1`의 전체 서버·관련 웹·생성 계약·실행 파일을 검증했다. Docker 이미지 실행·실제 제공자 로그인·AI 품질/청구·Resend 발송·원격 CI는 미검증이다.
+- 검증 기준: 새 관리자 이메일 기능은 `ebaad91`의 관련 API·웹·계약·빌드로 확인했다. 별도 Resend 수정은 위 이메일 테스트 기록을 사용한다. 변경하지 않은 전체 서버의 기준은 `be626f1`이며 이번 조회 추가만으로 전체 서버 검사를 반복하지 않았다. 실제 공급자 송수신·홈서버 이미지 실행·원격 CI는 미검증이다.
 - 검증 도구의 성공·실패·실행 중 변경 시나리오와 기존 도구 검사를 통과했다. 컴파일·패키징 명령의 Gradle 실행 계획에 테스트 실행이 없음을 확인했다. `npm run verify -- status`에서 실행 기록을 확인한다. 검증 도구를 정리할 당시에는 앱 기능을 변경하지 않아 전체 앱 테스트를 재실행하지 않았다.
 
 ## 남은 작업

@@ -5,9 +5,9 @@
 ## 현재 작업
 
 - 로컬 `main`의 `24c924c`까지 원격에 푸시했고 [웹·전체 서버 CI](https://github.com/ljkhyeong/youth-policy-mate/actions/runs/34684593518)를 통과했다. 이후 작업은 `codex/condition-member-recovery`에 있으며 원격에는 반영하지 않았다.
-- `98f3ac5`에서 OpenAI 프로젝트의 UTC 월 비용 조회 명령을 추가했다. 통화별 합계·조회 기간·시각을 표시하고 페이지 누락·권한 오류를 구분한다. 별도 관리자 키와 프로젝트 ID의 빈 환경변수 예시를 제공하며 생성·DB 연결·자동 정산은 하지 않는다. [명령·설정·범위](docs/development/openai-costs.md)
-- 로컬 HTTP 모의 공급자 테스트·배포 JAR 빌드·독립 명령 진입을 통과했다. 기존 앱의 빈·DB·웹·계약을 바꾸지 않아 `42e8c78`의 전체 서버 검사와 기존 웹 검증을 재사용했다. [범위·로그](docs/development/openai-costs.md#검증)
-- 모의 공급자·명령과 별도 웹 3103·헤드리스 브라우저를 종료했다. 실제 회원 변경·외부 공급자 호출·이미지 빌드는 없었다. 기존 3000 서버·운영 설정·사용자 창·탭은 유지했다. 검색의 서버 응답 지연 문제는 배포 빌드에서 해당 요청이 발생하지 않아 재현하지 못했고 웹 코드는 변경하지 않았다.
+- `52f29fb`에서 프로젝트의 중복 구현을 점검하고 AI 저장소·비용 조회 11개 파일을 정리했다. 저장소 6곳의 문자열 검사를 Spring `Assert.hasText`로 교체하고, Spring 빈 생성자의 중복 null 검사 10곳을 제거했다. 저장소 7곳의 DB 시각 변환을 기존 `AiDatabaseTime`으로 통합하고 비용 조회의 중복 정렬을 제거했다. 제품 코드는 순감 51줄이다.
+- `npm run verify -- check:backend` 전체 서버 테스트·빌드를 통과했다(111.7초). 로그: `.local/verification/1789224989150-4f76519f.log`. 문자열 검사의 예외·문구, 필수/선택 DB 시각 처리, 예산·잠금·재시도 규칙을 유지한다. 새 의존성·테스트·DB 스키마·API 계약 변경은 없다.
+- 검증은 임시 PostgreSQL과 모의 외부 연동으로 진행했다. 실제 회원·공급자·운영 설정은 변경하지 않았고 사용자 창·탭이나 브라우저를 조작하지 않았다. 웹 코드가 같아 기존 웹 검증을 재사용했다.
 - 정기 수집·AI 자동 처리·이메일·알림은 비활성화다. 실제 OAuth·Resend 연동, 이미지 빌드·공유기·TLS·k3s·백업 운영 설정은 사용자가 진행한다. 백업·외부 공급자 데이터의 보관/삭제와 관리자 기록 보관 기준은 남아 있다.
 
 ## 구현·검증 범위
@@ -22,7 +22,7 @@
 - 이메일: 주소 확인·동의·암호화 저장·Outbox·SMTP/Resend 어댑터와 서명 웹훅, [관리자 발송 현황](docs/development/admin-email-deliveries.md)·[공급자 상태 조회](docs/development/email-provider-status.md), [로그인 없는 수신 해제](docs/development/email-unsubscribe.md), [설정 오류 복구](docs/development/email-settings-recovery.md)·[키 점검과 교체 명령](docs/development/email-key-rotation.md)을 구현했다. 실제 공급자 계정·발신 도메인·외부 수신 확인과 운영 키 관리는 남아 있다. [이메일 구현과 설정](docs/development/member-email-reminders.md)
 - AI: 공고 원문·OpenAI 호출·예산 예약·원 응답·규칙 초안을 연결했다. 응답 유실에는 예약을 유지하고 재호출하지 않는다. 신규/변경 공고의 자동 추출·수동 정산·[프로젝트 월 비용 조회](docs/development/openai-costs.md)를 제공한다. 요청별 청구 자동 대사·정산과 실제 생성 품질 검증은 남아 있다. 모델·요금·월 한도는 설정값으로 받고 미설정 상태에는 호출하지 않는다. [규칙 추출과 설정](docs/development/ai-rule-drafts.md)·[자동 추출](docs/development/ai-rule-automation.md)·[요청 판단](docs/development/ai-request-admission.md)·[복구 실행](docs/development/ai-reservation-recovery-work-runs.md)
 - 백업: [수동 백업·임시 DB 복구 검증](docs/development/database-backup.md)을 제공한다. PostgreSQL 기본 도구를 사용하며 원본 DB를 덮어쓰지 않는다. 정기 백업의 주기·보관 기간·외부 보관과 운영 DB 전환은 미정이다.
-- 검증 기준: `98f3ac5`의 비용 조회 테스트·서버 패키징을 통과했다. 기존 앱은 `42e8c78`의 전체 서버 테스트·빌드 결과를 유지한다. 웹·생성 계약은 `1547da6`에서 바뀌지 않아 기존 검사·빌드·헤드리스 결과를 유지했다. 원격 CI 기준은 `main`의 `24c924c`다. 이후 문서만 변경했으며 미커밋 코드는 없다. 실제 비용 조회·운영 키 교체·bfcache 저장/복원 전체 과정·공급자 송수신/상태 조회·홈서버 이미지 실행·실제 검색 색인과 작업 브랜치의 원격 CI는 미검증이다.
+- 검증 기준: `52f29fb`의 전체 서버 테스트·배포 JAR 빌드를 통과했다. 웹·생성 계약은 `1547da6`에서 바뀌지 않아 기존 검사·빌드·헤드리스 결과를 유지했다. 원격 CI 기준은 `main`의 `24c924c`다. 이후 인계 문서만 변경했으며 미커밋 코드는 없다. 실제 비용 조회·운영 키 교체·bfcache 저장/복원 전체 과정·공급자 송수신/상태 조회·홈서버 이미지 실행·실제 검색 색인과 작업 브랜치의 원격 CI는 미검증이다.
 - 검증 도구의 성공·실패·실행 중 변경 시나리오와 기존 도구 검사를 통과했다. 컴파일·패키징 명령의 Gradle 실행 계획에 테스트 실행이 없음을 확인했다. `npm run verify -- status`에서 실행 기록을 확인한다. 검증 도구를 정리할 당시에는 앱 기능을 변경하지 않아 전체 앱 테스트를 재실행하지 않았다.
 
 ## 남은 작업

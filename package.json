@@ -14,6 +14,8 @@
     "dev:backend": "./backend/gradlew -p backend bootRun --no-daemon --args='--spring.profiles.active=local'",
     "dev:preview-api": "./backend/gradlew -p backend bootRun --no-daemon --args='--spring.profiles.active=preview'",
     "generate:api": "./backend/gradlew -p backend exportPreviewOpenApi exportPolicyOpenApi --no-daemon && npm run generate:api-types --workspace frontend",
+    "ai:policy-rules": "./backend/gradlew -p backend managePolicyAiRules --no-daemon",
+    "test:ai-rule-drafts": "./backend/gradlew -p backend test --tests 'kr.youthpolicymate.ingestion.PolicyAiRuleDraftStoreTest' --no-daemon",
     "import:policy": "./backend/gradlew -p backend importPolicyCapture --no-daemon",
     "rules:policy": "./backend/gradlew -p backend managePolicyRules --no-daemon",
     "collect:policy": "./backend/gradlew -p backend collectPolicyPage --no-daemon",

@@ -1,6 +1,7 @@
 package kr.youthpolicymate.ingestion;
 
 import static kr.youthpolicymate.ingestion.AiDatabaseTime.dbTime;
+import static kr.youthpolicymate.ingestion.AiDatabaseTime.instant;
 import static kr.youthpolicymate.ingestion.AiDatabaseTime.sameDatabaseInstant;
 
 import kr.youthpolicymate.ingestion.AiBudgetReservationState.Phase;
@@ -9,11 +10,11 @@ import org.springframework.context.annotation.Profile;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.Assert;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.Instant;
-import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
@@ -24,7 +25,7 @@ public class AiReservationRecoveryLeaseRenewalStore {
     private final JdbcClient jdbcClient;
 
     public AiReservationRecoveryLeaseRenewalStore(JdbcClient jdbcClient) {
-        this.jdbcClient = Objects.requireNonNull(jdbcClient, "AI 예약 복구 임대 갱신 DB 접근이 필요합니다.");
+        this.jdbcClient = jdbcClient;
     }
 
     @Transactional
@@ -116,7 +117,7 @@ public class AiReservationRecoveryLeaseRenewalStore {
 
     @Transactional(readOnly = true)
     public List<RenewalRecord> history(String attemptId) {
-        requireText(attemptId, "조회할 AI 예약 복구 시도 식별자가 필요합니다.");
+        Assert.hasText(attemptId, "조회할 AI 예약 복구 시도 식별자가 필요합니다.");
         return jdbcClient.sql(select() + """
                 where renewal.attempt_id = :attemptId
                 order by renewal.renewed_at, renewal.renewal_id
@@ -128,7 +129,7 @@ public class AiReservationRecoveryLeaseRenewalStore {
 
     @Transactional(readOnly = true)
     public Optional<RenewalRecord> find(String renewalId) {
-        requireText(renewalId, "조회할 AI 예약 복구 임대 갱신 식별자가 필요합니다.");
+        Assert.hasText(renewalId, "조회할 AI 예약 복구 임대 갱신 식별자가 필요합니다.");
         return findByRenewalId(renewalId);
     }
 
@@ -214,14 +215,6 @@ public class AiReservationRecoveryLeaseRenewalStore {
         if (updated != 1) throw new IllegalStateException("AI 예약 복구 임대 갱신을 저장하지 못했습니다.");
     }
 
-    private static void requireText(String value, String message) {
-        if (value == null || value.isBlank()) throw new IllegalArgumentException(message);
-    }
-
-    private static Instant instant(ResultSet resultSet, String column) throws SQLException {
-        return resultSet.getObject(column, OffsetDateTime.class).toInstant();
-    }
-
     public enum RenewalDecision {
         RENEWED,
         REPLAYED,
@@ -248,11 +241,11 @@ public class AiReservationRecoveryLeaseRenewalStore {
             Instant renewedLeaseUntil
     ) {
         public RenewalCommand {
-            requireText(renewalId, "AI 예약 복구 임대 갱신 식별자가 필요합니다.");
-            requireText(reservationId, "AI 요청 예약 식별자가 필요합니다.");
-            requireText(attemptId, "AI 예약 복구 시도 식별자가 필요합니다.");
+            Assert.hasText(renewalId, "AI 예약 복구 임대 갱신 식별자가 필요합니다.");
+            Assert.hasText(reservationId, "AI 요청 예약 식별자가 필요합니다.");
+            Assert.hasText(attemptId, "AI 예약 복구 시도 식별자가 필요합니다.");
             if (attemptNumber < 1) throw new IllegalArgumentException("AI 예약 복구 시도 순번은 1 이상이어야 합니다.");
-            requireText(ownerId, "AI 예약 복구 작업자 식별자가 필요합니다.");
+            Assert.hasText(ownerId, "AI 예약 복구 작업자 식별자가 필요합니다.");
             Objects.requireNonNull(observedLeaseUntil, "확인한 AI 예약 복구 임대 만료 시각이 필요합니다.");
             Objects.requireNonNull(renewedAt, "AI 예약 복구 임대 갱신 시각이 필요합니다.");
             Objects.requireNonNull(renewedLeaseUntil, "갱신할 AI 예약 복구 임대 만료 시각이 필요합니다.");
@@ -276,11 +269,11 @@ public class AiReservationRecoveryLeaseRenewalStore {
             Instant renewedLeaseUntil
     ) {
         public RenewalRecord {
-            requireText(renewalId, "AI 예약 복구 임대 갱신 식별자가 필요합니다.");
-            requireText(reservationId, "AI 요청 예약 식별자가 필요합니다.");
-            requireText(attemptId, "AI 예약 복구 시도 식별자가 필요합니다.");
+            Assert.hasText(renewalId, "AI 예약 복구 임대 갱신 식별자가 필요합니다.");
+            Assert.hasText(reservationId, "AI 요청 예약 식별자가 필요합니다.");
+            Assert.hasText(attemptId, "AI 예약 복구 시도 식별자가 필요합니다.");
             if (attemptNumber < 1) throw new IllegalArgumentException("AI 예약 복구 시도 순번은 1 이상이어야 합니다.");
-            requireText(ownerId, "AI 예약 복구 작업자 식별자가 필요합니다.");
+            Assert.hasText(ownerId, "AI 예약 복구 작업자 식별자가 필요합니다.");
             Objects.requireNonNull(observedLeaseUntil, "확인한 AI 예약 복구 임대 만료 시각이 필요합니다.");
             Objects.requireNonNull(renewedAt, "AI 예약 복구 임대 갱신 시각이 필요합니다.");
             Objects.requireNonNull(renewedLeaseUntil, "갱신한 AI 예약 복구 임대 만료 시각이 필요합니다.");

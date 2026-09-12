@@ -1,6 +1,7 @@
 package kr.youthpolicymate.ingestion;
 
 import static kr.youthpolicymate.ingestion.AiDatabaseTime.dbTime;
+import static kr.youthpolicymate.ingestion.AiDatabaseTime.instant;
 import static kr.youthpolicymate.ingestion.AiDatabaseTime.sameDatabaseInstant;
 
 import kr.youthpolicymate.ingestion.AiRequestBudget.Balance;
@@ -12,12 +13,12 @@ import org.springframework.context.annotation.Profile;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.Assert;
 
 import java.math.BigDecimal;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.Instant;
-import java.time.OffsetDateTime;
 import java.util.Objects;
 import java.util.Optional;
 
@@ -33,7 +34,7 @@ public class AiBudgetReservationStore {
     // 예산 행 잠금과 예약 INSERT를 한 트랜잭션에서 처리한다. 외부 AI 호출은 이 메서드 밖에서 수행한다.
     @Transactional
     public Attempt reserve(String reservationId, ReservationRequired required, Instant at) {
-        requireText(reservationId, "AI 요청 예약 식별자가 필요합니다.");
+        Assert.hasText(reservationId, "AI 요청 예약 식별자가 필요합니다.");
         Objects.requireNonNull(required, "사전 판단의 예약 필요 결과가 필요합니다.");
         Objects.requireNonNull(at, "예약 시각이 필요합니다.");
         var requiredBalance = Objects.requireNonNull(required.balance(), "예약 판단에 사용한 AI 예산 잔액이 필요합니다.");
@@ -195,10 +196,6 @@ public class AiBudgetReservationStore {
                 resultSet.getBigDecimal("maximum_won"));
     }
 
-    private static Instant instant(ResultSet resultSet, String column) throws SQLException {
-        return resultSet.getObject(column, OffsetDateTime.class).toInstant();
-    }
-
     private static boolean sameBalance(Balance actual, Balance expected) {
         return actual.budgetId().equals(expected.budgetId())
                 && sameDatabaseInstant(actual.startsAt(), expected.startsAt())
@@ -211,10 +208,6 @@ public class AiBudgetReservationStore {
     private static boolean sameMoney(BigDecimal left, BigDecimal right) { return left.compareTo(right) == 0; }
     private static Attempt attempt(Decision decision, Balance balance) {
         return new Attempt(decision, Optional.of(balance));
-    }
-
-    private static void requireText(String value, String message) {
-        if (value == null || value.isBlank()) throw new IllegalArgumentException(message);
     }
 
     public enum Decision {

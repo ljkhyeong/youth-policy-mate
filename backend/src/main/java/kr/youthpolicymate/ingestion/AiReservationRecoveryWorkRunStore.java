@@ -1,6 +1,8 @@
 package kr.youthpolicymate.ingestion;
 
 import static kr.youthpolicymate.ingestion.AiDatabaseTime.dbTime;
+import static kr.youthpolicymate.ingestion.AiDatabaseTime.instant;
+import static kr.youthpolicymate.ingestion.AiDatabaseTime.nullableInstant;
 import static kr.youthpolicymate.ingestion.AiDatabaseTime.sameDatabaseInstant;
 
 import kr.youthpolicymate.ingestion.AiReservationRecoveryOperationsQuery.Criteria;
@@ -9,12 +11,12 @@ import org.springframework.context.annotation.Profile;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.Assert;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.Duration;
 import java.time.Instant;
-import java.time.OffsetDateTime;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
@@ -27,7 +29,7 @@ public class AiReservationRecoveryWorkRunStore {
     private final JdbcClient jdbcClient;
 
     public AiReservationRecoveryWorkRunStore(JdbcClient jdbcClient) {
-        this.jdbcClient = Objects.requireNonNull(jdbcClient, "AI 예약 복구 작업 실행 저장소용 DB 접근이 필요합니다.");
+        this.jdbcClient = jdbcClient;
     }
 
     @Transactional
@@ -194,7 +196,7 @@ public class AiReservationRecoveryWorkRunStore {
 
     @Transactional(readOnly = true)
     public Optional<WorkRun> find(String runId) {
-        requireText(runId, "조회할 AI 예약 복구 작업 실행 식별자가 필요합니다.");
+        Assert.hasText(runId, "조회할 AI 예약 복구 작업 실행 식별자가 필요합니다.");
         return jdbcClient.sql(select() + " where run_id = :runId")
                 .param("runId", runId)
                 .query(AiReservationRecoveryWorkRunStore::run)
@@ -262,19 +264,6 @@ public class AiReservationRecoveryWorkRunStore {
         return Arrays.stream(encoded.split(",")).map(Duration::parse).toList();
     }
 
-    private static Instant instant(ResultSet resultSet, String column) throws SQLException {
-        return resultSet.getObject(column, OffsetDateTime.class).toInstant();
-    }
-
-    private static Optional<Instant> nullableInstant(ResultSet resultSet, String column) throws SQLException {
-        OffsetDateTime value = resultSet.getObject(column, OffsetDateTime.class);
-        return value == null ? Optional.empty() : Optional.of(value.toInstant());
-    }
-
-    private static void requireText(String value, String message) {
-        if (value == null || value.isBlank()) throw new IllegalArgumentException(message);
-    }
-
     private static void requireSingleUpdate(int updated) {
         if (updated != 1) throw new IllegalStateException("AI 예약 복구 작업 실행을 갱신하지 못했습니다.");
     }
@@ -290,8 +279,8 @@ public class AiReservationRecoveryWorkRunStore {
 
     public record StartRequest(String runId, String workerId, Criteria criteria) {
         public StartRequest {
-            requireText(runId, "AI 예약 복구 작업 실행 식별자가 필요합니다.");
-            requireText(workerId, "AI 예약 복구 작업자 식별자가 필요합니다.");
+            Assert.hasText(runId, "AI 예약 복구 작업 실행 식별자가 필요합니다.");
+            Assert.hasText(workerId, "AI 예약 복구 작업자 식별자가 필요합니다.");
             Objects.requireNonNull(criteria, "AI 예약 복구 운영 조회 조건이 필요합니다.");
         }
     }
@@ -330,8 +319,8 @@ public class AiReservationRecoveryWorkRunStore {
 
     public record RunCompletion(String runId, String workerId, Instant finishedAt, Summary summary) {
         public RunCompletion {
-            requireText(runId, "완료할 AI 예약 복구 작업 실행 식별자가 필요합니다.");
-            requireText(workerId, "완료할 AI 예약 복구 작업자 식별자가 필요합니다.");
+            Assert.hasText(runId, "완료할 AI 예약 복구 작업 실행 식별자가 필요합니다.");
+            Assert.hasText(workerId, "완료할 AI 예약 복구 작업자 식별자가 필요합니다.");
             Objects.requireNonNull(finishedAt, "AI 예약 복구 작업 완료 시각이 필요합니다.");
             Objects.requireNonNull(summary, "AI 예약 복구 작업 실행 집계가 필요합니다.");
         }
@@ -339,8 +328,8 @@ public class AiReservationRecoveryWorkRunStore {
 
     public record RunFailure(String runId, String workerId, Instant failedAt) {
         public RunFailure {
-            requireText(runId, "실패한 AI 예약 복구 작업 실행 식별자가 필요합니다.");
-            requireText(workerId, "실패한 AI 예약 복구 작업자 식별자가 필요합니다.");
+            Assert.hasText(runId, "실패한 AI 예약 복구 작업 실행 식별자가 필요합니다.");
+            Assert.hasText(workerId, "실패한 AI 예약 복구 작업자 식별자가 필요합니다.");
             Objects.requireNonNull(failedAt, "AI 예약 복구 작업 실패 시각이 필요합니다.");
         }
     }
@@ -372,7 +361,7 @@ public class AiReservationRecoveryWorkRunStore {
 
     public record AbortCommand(String operatorId, AbortReason reason, Instant abortedAt) {
         public AbortCommand {
-            requireText(operatorId, "AI 예약 복구 작업 실행을 중단한 운영자 식별자가 필요합니다.");
+            Assert.hasText(operatorId, "AI 예약 복구 작업 실행을 중단한 운영자 식별자가 필요합니다.");
             Objects.requireNonNull(reason, "AI 예약 복구 작업 실행 중단 사유가 필요합니다.");
             Objects.requireNonNull(abortedAt, "AI 예약 복구 작업 실행 중단 시각이 필요합니다.");
         }
@@ -395,7 +384,7 @@ public class AiReservationRecoveryWorkRunStore {
     public record AbortRecord(AbortReason reason, String operatorId, Instant abortedAt) {
         public AbortRecord {
             Objects.requireNonNull(reason, "AI 예약 복구 작업 실행 중단 사유가 필요합니다.");
-            requireText(operatorId, "AI 예약 복구 작업 실행을 중단한 운영자 식별자가 필요합니다.");
+            Assert.hasText(operatorId, "AI 예약 복구 작업 실행을 중단한 운영자 식별자가 필요합니다.");
             Objects.requireNonNull(abortedAt, "AI 예약 복구 작업 실행 중단 시각이 필요합니다.");
         }
     }
@@ -410,8 +399,8 @@ public class AiReservationRecoveryWorkRunStore {
             Optional<AbortRecord> abort
     ) {
         public WorkRun {
-            requireText(runId, "AI 예약 복구 작업 실행 식별자가 필요합니다.");
-            requireText(workerId, "AI 예약 복구 작업자 식별자가 필요합니다.");
+            Assert.hasText(runId, "AI 예약 복구 작업 실행 식별자가 필요합니다.");
+            Assert.hasText(workerId, "AI 예약 복구 작업자 식별자가 필요합니다.");
             Objects.requireNonNull(criteria, "AI 예약 복구 운영 조회 조건이 필요합니다.");
             Objects.requireNonNull(status, "AI 예약 복구 작업 실행 상태가 필요합니다.");
             Objects.requireNonNull(finishedAt, "AI 예약 복구 작업 종료 시각의 존재 여부가 필요합니다.");

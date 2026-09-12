@@ -1,6 +1,8 @@
 package kr.youthpolicymate.ingestion;
 
 import static kr.youthpolicymate.ingestion.AiDatabaseTime.dbTime;
+import static kr.youthpolicymate.ingestion.AiDatabaseTime.instant;
+import static kr.youthpolicymate.ingestion.AiDatabaseTime.nullableInstant;
 import static kr.youthpolicymate.ingestion.AiDatabaseTime.sameDatabaseInstant;
 
 import kr.youthpolicymate.ingestion.AiBudgetReservationState.ChargeConfirmation;
@@ -20,7 +22,6 @@ import java.math.BigDecimal;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.Instant;
-import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
@@ -441,13 +442,6 @@ public class AiBudgetReservationLifecycleStore {
     }
 
     private static boolean sameMoney(BigDecimal left, BigDecimal right) { return left.compareTo(right) == 0; }
-    private static Instant instant(ResultSet resultSet, String column) throws SQLException {
-        return resultSet.getObject(column, OffsetDateTime.class).toInstant();
-    }
-    private static Optional<Instant> nullableInstant(ResultSet resultSet, String column) throws SQLException {
-        var value = resultSet.getObject(column, OffsetDateTime.class);
-        return value == null ? Optional.empty() : Optional.of(value.toInstant());
-    }
 
     public enum Decision {
         REPLAYED, RESERVATION_NOT_FOUND, DISPATCHED, DISPATCH_CONFLICT, OUTCOME_UNKNOWN,

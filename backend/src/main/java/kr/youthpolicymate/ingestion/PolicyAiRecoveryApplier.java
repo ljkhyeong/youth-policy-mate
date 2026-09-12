@@ -35,8 +35,8 @@ public class PolicyAiRecoveryApplier {
 
     public PolicyAiRecoveryApplier(AiBudgetReservationLifecycleStore lifecycleStore,
                                    AiReservationRecoveryStore recoveryStore) {
-        this.lifecycleStore = Objects.requireNonNull(lifecycleStore, "AI 예약 상태 저장소가 필요합니다.");
-        this.recoveryStore = Objects.requireNonNull(recoveryStore, "AI 예약 복구 저장소가 필요합니다.");
+        this.lifecycleStore = lifecycleStore;
+        this.recoveryStore = recoveryStore;
     }
 
     // 외부 확인이 끝난 뒤 호출한다. 예약 상태 변경과 복구 시도 완료를 한 트랜잭션에 묶는다.

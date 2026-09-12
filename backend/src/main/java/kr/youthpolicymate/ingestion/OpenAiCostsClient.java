@@ -12,11 +12,11 @@ import java.time.Instant;
 import java.time.YearMonth;
 import java.time.ZoneOffset;
 import java.util.Currency;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import java.util.TreeMap;
 
 /** 운영 조회 명령에서만 사용한다. 생성·예산 정산·DB 연결은 하지 않는다. */
 final class OpenAiCostsClient {
@@ -38,7 +38,7 @@ final class OpenAiCostsClient {
         var next = month.plusMonths(1).atDay(1).atStartOfDay().toInstant(ZoneOffset.UTC);
         var end = checkedAt.isBefore(next) ? checkedAt : next;
         if (start.getEpochSecond() >= end.getEpochSecond()) throw new Unavailable("조회 월은 현재 UTC 월 또는 이전 월로 지정해주세요.");
-        var totals = new TreeMap<String, BigDecimal>();
+        var totals = new HashMap<String, BigDecimal>();
         var cursors = new HashSet<String>();
         var buckets = new HashSet<Long>();
         String cursor = null;

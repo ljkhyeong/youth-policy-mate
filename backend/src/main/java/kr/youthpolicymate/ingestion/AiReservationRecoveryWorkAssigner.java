@@ -19,7 +19,7 @@ public class AiReservationRecoveryWorkAssigner {
     private final AiReservationRecoveryStore recoveryStore;
 
     public AiReservationRecoveryWorkAssigner(AiReservationRecoveryStore recoveryStore) {
-        this.recoveryStore = Objects.requireNonNull(recoveryStore, "AI 예약 복구 저장소가 필요합니다.");
+        this.recoveryStore = recoveryStore;
     }
 
     public ReadyClaimOutcome assign(Report report, Item candidate, Lease lease) {

@@ -1,6 +1,8 @@
 package kr.youthpolicymate.ingestion;
 
 import static kr.youthpolicymate.ingestion.AiDatabaseTime.dbTime;
+import static kr.youthpolicymate.ingestion.AiDatabaseTime.instant;
+import static kr.youthpolicymate.ingestion.AiDatabaseTime.nullableInstant;
 import static kr.youthpolicymate.ingestion.AiDatabaseTime.sameDatabaseInstant;
 
 import kr.youthpolicymate.ingestion.AiBudgetReservationState.Phase;
@@ -10,11 +12,11 @@ import org.springframework.context.annotation.Profile;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.Assert;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.Instant;
-import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
@@ -25,7 +27,7 @@ public class AiReservationRecoveryReviewStore {
     private final JdbcClient jdbcClient;
 
     public AiReservationRecoveryReviewStore(JdbcClient jdbcClient) {
-        this.jdbcClient = Objects.requireNonNull(jdbcClient, "AI 예약 복구 수동 검토 DB 접근이 필요합니다.");
+        this.jdbcClient = jdbcClient;
     }
 
     @Transactional
@@ -97,7 +99,7 @@ public class AiReservationRecoveryReviewStore {
 
     @Transactional(readOnly = true)
     public List<ResumeRecord> history(String reservationId) {
-        requireText(reservationId, "조회할 AI 요청 예약 식별자가 필요합니다.");
+        Assert.hasText(reservationId, "조회할 AI 요청 예약 식별자가 필요합니다.");
         return jdbcClient.sql(select() + """
                 where attempt.reservation_id = :reservationId
                 order by resume.resumed_at, resume.resume_id
@@ -109,7 +111,7 @@ public class AiReservationRecoveryReviewStore {
 
     @Transactional(readOnly = true)
     public Optional<ResumeRecord> find(String resumeId) {
-        requireText(resumeId, "조회할 AI 예약 복구 수동 검토 재개 식별자가 필요합니다.");
+        Assert.hasText(resumeId, "조회할 AI 예약 복구 수동 검토 재개 식별자가 필요합니다.");
         return findByResumeId(resumeId);
     }
 
@@ -215,19 +217,6 @@ public class AiReservationRecoveryReviewStore {
         if (updated != 1) throw new IllegalStateException("AI 예약 복구 수동 검토 재개를 저장하지 못했습니다.");
     }
 
-    private static void requireText(String value, String message) {
-        if (value == null || value.isBlank()) throw new IllegalArgumentException(message);
-    }
-
-    private static Instant instant(ResultSet resultSet, String column) throws SQLException {
-        return resultSet.getObject(column, OffsetDateTime.class).toInstant();
-    }
-
-    private static Optional<Instant> nullableInstant(ResultSet resultSet, String column) throws SQLException {
-        OffsetDateTime value = resultSet.getObject(column, OffsetDateTime.class);
-        return value == null ? Optional.empty() : Optional.of(value.toInstant());
-    }
-
     public enum ResumeDecision {
         RESUMED,
         REPLAYED,
@@ -258,10 +247,10 @@ public class AiReservationRecoveryReviewStore {
             Instant resumedAt
     ) {
         public ResumeCommand {
-            requireText(resumeId, "AI 예약 복구 수동 검토 재개 식별자가 필요합니다.");
-            requireText(reservationId, "재개할 AI 요청 예약 식별자가 필요합니다.");
-            requireText(manualAttemptId, "재개할 수동 검토 복구 시도 식별자가 필요합니다.");
-            requireText(operatorId, "수동 검토 재개 운영자 식별자가 필요합니다.");
+            Assert.hasText(resumeId, "AI 예약 복구 수동 검토 재개 식별자가 필요합니다.");
+            Assert.hasText(reservationId, "재개할 AI 요청 예약 식별자가 필요합니다.");
+            Assert.hasText(manualAttemptId, "재개할 수동 검토 복구 시도 식별자가 필요합니다.");
+            Assert.hasText(operatorId, "수동 검토 재개 운영자 식별자가 필요합니다.");
             Objects.requireNonNull(reason, "수동 검토 재개 사유가 필요합니다.");
             Objects.requireNonNull(observedPhase, "수동 검토 재개 시 확인한 예약 단계가 필요합니다.");
             Objects.requireNonNull(observedUpdatedAt, "수동 검토 재개 시 확인한 예약 갱신 시각이 필요합니다.");
@@ -283,10 +272,10 @@ public class AiReservationRecoveryReviewStore {
             Instant resumedAt
     ) {
         public ResumeRecord {
-            requireText(resumeId, "AI 예약 복구 수동 검토 재개 식별자가 필요합니다.");
-            requireText(reservationId, "재개한 AI 요청 예약 식별자가 필요합니다.");
-            requireText(manualAttemptId, "재개한 수동 검토 복구 시도 식별자가 필요합니다.");
-            requireText(operatorId, "수동 검토 재개 운영자 식별자가 필요합니다.");
+            Assert.hasText(resumeId, "AI 예약 복구 수동 검토 재개 식별자가 필요합니다.");
+            Assert.hasText(reservationId, "재개한 AI 요청 예약 식별자가 필요합니다.");
+            Assert.hasText(manualAttemptId, "재개한 수동 검토 복구 시도 식별자가 필요합니다.");
+            Assert.hasText(operatorId, "수동 검토 재개 운영자 식별자가 필요합니다.");
             Objects.requireNonNull(reason, "수동 검토 재개 사유가 필요합니다.");
             Objects.requireNonNull(observedPhase, "수동 검토 재개 시 확인한 예약 단계가 필요합니다.");
             Objects.requireNonNull(observedUpdatedAt, "수동 검토 재개 시 확인한 예약 갱신 시각이 필요합니다.");

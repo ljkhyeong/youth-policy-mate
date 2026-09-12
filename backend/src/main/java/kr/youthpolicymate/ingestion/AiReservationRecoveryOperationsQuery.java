@@ -1,6 +1,8 @@
 package kr.youthpolicymate.ingestion;
 
 import static kr.youthpolicymate.ingestion.AiDatabaseTime.dbTime;
+import static kr.youthpolicymate.ingestion.AiDatabaseTime.instant;
+import static kr.youthpolicymate.ingestion.AiDatabaseTime.nullableInstant;
 
 import kr.youthpolicymate.ingestion.AiBudgetReservationLifecycleStore.Snapshot;
 import kr.youthpolicymate.ingestion.AiBudgetReservationState.Dispatch;
@@ -19,11 +21,11 @@ import org.springframework.context.annotation.Profile;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.Assert;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.Instant;
-import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -38,7 +40,7 @@ public class AiReservationRecoveryOperationsQuery {
     private final AiReservationRecoveryRetryPolicy retryPolicy = new AiReservationRecoveryRetryPolicy();
 
     public AiReservationRecoveryOperationsQuery(JdbcClient jdbcClient) {
-        this.jdbcClient = Objects.requireNonNull(jdbcClient, "AI 예약 복구 운영 조회용 DB 접근이 필요합니다.");
+        this.jdbcClient = jdbcClient;
     }
 
     @Transactional(readOnly = true)
@@ -155,19 +157,6 @@ public class AiReservationRecoveryOperationsQuery {
                 instant(resultSet, "resumed_at")));
     }
 
-    private static Instant instant(ResultSet resultSet, String column) throws SQLException {
-        return resultSet.getObject(column, OffsetDateTime.class).toInstant();
-    }
-
-    private static Optional<Instant> nullableInstant(ResultSet resultSet, String column) throws SQLException {
-        var value = resultSet.getObject(column, OffsetDateTime.class);
-        return value == null ? Optional.empty() : Optional.of(value.toInstant());
-    }
-
-    private static void requireText(String value, String message) {
-        if (value == null || value.isBlank()) throw new IllegalArgumentException(message);
-    }
-
     public record Criteria(Schedule schedule, Instant staleAtOrBefore, Instant evaluatedAt, int limit) {
         public Criteria {
             Objects.requireNonNull(schedule, "AI 예약 복구 재확인 일정이 필요합니다.");
@@ -182,9 +171,9 @@ public class AiReservationRecoveryOperationsQuery {
 
     public record Scope(String policyId, Kind kind, String generationVersion, long requestSequence) {
         public Scope {
-            requireText(policyId, "운영 조회할 정책 식별자가 필요합니다.");
+            Assert.hasText(policyId, "운영 조회할 정책 식별자가 필요합니다.");
             Objects.requireNonNull(kind, "운영 조회할 AI 작업 종류가 필요합니다.");
-            requireText(generationVersion, "운영 조회할 AI 생성 방식 버전이 필요합니다.");
+            Assert.hasText(generationVersion, "운영 조회할 AI 생성 방식 버전이 필요합니다.");
             if (requestSequence < 1) throw new IllegalArgumentException("운영 조회할 AI 요청 순번은 1 이상이어야 합니다.");
         }
     }

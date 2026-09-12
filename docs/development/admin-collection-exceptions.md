@@ -55,6 +55,7 @@
 - 처리·시도 이력·관리자 기록을 하나의 트랜잭션으로 저장한다. 기록은 V19의 `admin_collection_replays`에 남고 항목 시도 이력을 참조한다. DB 장애는 모두 롤백하고 `503 COLLECTION_UNAVAILABLE`로 응답한다. 롤백된 요청은 완료 이력에 없으며 같은 ID로 재시도할 수 있다.
 - 결과는 `APPLIED`·`UNCHANGED`·`REPLAYED`·`STALE`·`INVALID_ITEM`·`CORRECTION_CONFLICT`다. `policyRevision`은 처리 후 개정이며, `STALE`·`INVALID_ITEM`·`CORRECTION_CONFLICT`는 null이다. 원본을 읽거나 해당 항목을 처리할 수 없으면 `409 COLLECTION_REPLAY_UNAVAILABLE`이다. 입력 오류는 400으로 반환한다.
 - 웹은 기존 개인 API 중계를 사용해 지정한 관리자 경로로 POST·세션 쿠키·CSRF만 전달한다. 다른 출처의 요청은 중계 전에 차단한다. 응답을 못 받으면 사유를 잠그고 같은 요청으로 재확인한다. 상태 충돌·권한 오류는 버튼을 막고 최신 목록 확인을 안내한다. 사유·요청을 브라우저 저장소에 보관하지 않는다.
+- 웹의 재처리·보정·규칙 등록/적용은 `useAdminMutation`으로 로그인 확인부터 응답까지 중복 전송을 막는다. 화면 이동·컴포넌트 정리 후에는 후속 변경을 보내거나 이전 결과를 표시하지 않는다. 이미 보낸 요청을 취소해도 서버 작업이 되돌아간 것으로 안내하지 않는다.
 - 이력은 기록 시각 역순·같은 시각에는 요청 ID 순으로 조회한다. 완료된 실패 항목이 목록에서 사라진 뒤에도 이력은 남는다. 원본 값 수정·보정 적용·페이지 전체 재처리는 이 API의 범위가 아니다.
 
 ## 구현과 남은 범위
@@ -65,4 +66,20 @@
 
 ## 검증
 
-현재 기능 코드 `152e331`의 검사 명령·로그·브라우저 범위·실제 로컬 서버 상태는 [정책 보정 검증](policy-corrections.md#검증)에 있다. 기존 관리자 조회·재처리 테스트를 포함해 전체 서버 검사와 관련 웹 검사를 통과했다. 로그인 복귀·계정 변경·페이지 실패·직전 개정 비교의 기존 브라우저 동작은 바뀌지 않아 반복하지 않았다.
+2026-09-12, 웹 코드 `d2b887f`. 저장소 루트에서 실행했다.
+
+| 명령·범위 | 결과·로그 |
+|---|---|
+| `npm run verify -- check:web` | 통과. `.local/verification/1789207993202-5d164b4d.log` |
+| `npm run verify -- test:web -- src/features/admin/collection-exception-pages.test.tsx src/features/admin/policy-rule-review-pages.test.tsx src/features/admin/policy-rule-editor.test.tsx 'src/app/api/member/[...path]/route.test.ts'` | 관리자 화면·규칙 편집·API 중계 검사 통과. `.local/verification/1789207993202-fec45ad9.log` |
+| Playwright CLI 헤드리스 브라우저 | 다섯 관리자 작업의 대표 흐름 통과. `/tmp/youth-admin-mutation/result.log` |
+
+브라우저에서는 재처리, 보정 적용·충돌 해소, 규칙 초안 저장·적용을 확인했다. 로그인 조회 중 화면 이동 시 POST 차단, 조회/변경 중 연속 제출 차단, 응답 유실 후 같은 요청번호·입력 유지, 입력 오류 후 새 요청 생성, 비회원·권한·개정 오류 차단, 늦은 결과 무시, 키보드 제출·모바일 표시를 검증했다. 변경 요청 42건은 모의 API에서만 처리했다.
+
+실제 폼 컴포넌트를 렌더링하는 개발 전용 검증 화면을 잠시 추가하고 모든 관리자 요청을 모의 응답으로 처리했다. 검증 후 화면을 제거한 최종 코드로 위 웹 검사를 실행했다. 검증용 화면·스크립트·결과는 `/tmp/youth-admin-mutation/`에 있으며 사용자 창·탭은 조작하지 않았고 전용 브라우저를 종료했다.
+
+```sh
+bash /Users/lim/.codex/skills/playwright/scripts/playwright_cli.sh --session youth-admin-mutation run-code --filename /tmp/youth-admin-mutation/browser-flow.js
+```
+
+이번 변경은 클라이언트의 요청 처리에 한정한다. 라우팅·서버 렌더링·의존성·서버·API 계약은 바꾸지 않아 배포 빌드와 전체 서버 검사를 반복하지 않았다. 기존 서버 검증 명령과 실제 로컬 서버 상태는 [정책 보정 검증](policy-corrections.md#검증)에 있다. 실제 관리자 계정 연결과 운영 데이터 변경은 검증하지 않았다.

@@ -12,14 +12,18 @@ export function SavedPolicyChanges({ policyNumber }: { policyNumber: string }) {
   const [data, setData] = useState<Changes | null>(null);
   const [error, setError] = useState("");
   const [reload, setReload] = useState(0);
-  const restoreFocus = useRef(false);
+  const restoreFocus = useRef("");
   const retryButton = useRef<HTMLButtonElement>(null);
   const comparison = useRef<HTMLDivElement>(null);
   useEffect(() => {
     if (!restoreFocus.current || (!data && !error)) return;
-    (data ? comparison : retryButton).current?.focus();
-    restoreFocus.current = false;
-  }, [data, error]);
+    const location = restoreFocus.current;
+    restoreFocus.current = "";
+    if (open && location === window.location.pathname + window.location.search
+      && (document.activeElement === document.body || document.activeElement === retryButton.current)) {
+      (data ? comparison : retryButton).current?.focus();
+    }
+  }, [data, error, open]);
   useEffect(() => {
     if (!open) return;
     const controller = new AbortController();
@@ -36,11 +40,11 @@ export function SavedPolicyChanges({ policyNumber }: { policyNumber: string }) {
 
   return <div className="saved-policy-changes">
     <button type="button" className="text-button" aria-expanded={open} aria-controls={id}
-      onClick={() => { restoreFocus.current = false; setData(null); setError(""); setOpen(value => !value); }}>{open ? "변경 내용 접기" : "변경 내용 보기"}</button>
+      onClick={() => { restoreFocus.current = ""; setData(null); setError(""); setOpen(value => !value); }}>{open ? "변경 내용 접기" : "변경 내용 보기"}</button>
     <div ref={comparison} id={id} hidden={!open} role="region" aria-label="정책 변경 내용" tabIndex={-1}>
       {open && !data && !error && <p role="status">변경 내용을 불러오고 있어요.</p>}
       {error && <div role="alert"><p>{error}</p><button ref={retryButton} type="button" className="text-button"
-        onClick={() => { restoreFocus.current = true; setError(""); setReload(value => value + 1); }}>다시 불러오기</button></div>}
+        onClick={() => { restoreFocus.current = window.location.pathname + window.location.search; setError(""); setReload(value => value + 1); }}>다시 불러오기</button></div>}
       {data && <>
         <p className="field-help">같은 정책번호의 저장 당시 내용과 현재 수집 내용을 비교합니다.</p>
         <p className="field-help">저장일: <time dateTime={data.savedAt}>{timestamp.format(new Date(data.savedAt))}</time><br />

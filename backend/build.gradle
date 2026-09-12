@@ -52,6 +52,7 @@ tasks.named('test') {
     useJUnitPlatform()
     systemProperty 'preview.contract.path', rootProject.file('../api/openapi.preview.json').absolutePath
     systemProperty 'policy.contract.path', rootProject.file('../api/openapi.policy.json').absolutePath
+    systemProperty 'email.rotation.classpath', sourceSets.main.runtimeClasspath.asPath
 }
 
 tasks.register('importPolicyCapture', JavaExec) {
@@ -107,5 +108,13 @@ tasks.register('managePolicyAiRules', JavaExec) {
     group = 'application'
     classpath = sourceSets.main.runtimeClasspath
     mainClass = 'kr.youthpolicymate.ingestion.PolicyAiRuleCommand'
+    workingDir = rootProject.file('..')
+}
+
+tasks.register('rotateEmailKey', JavaExec) {
+    description = '이메일 주소 복호화를 점검하거나 서비스 중지 후 암호화 키를 교체한다.'
+    group = 'application'
+    classpath = sourceSets.main.runtimeClasspath
+    mainClass = 'kr.youthpolicymate.member.EmailKeyRotationCommand'
     workingDir = rootProject.file('..')
 }

@@ -49,6 +49,8 @@
     "test:member-login": "./backend/gradlew -p backend test --tests 'kr.youthpolicymate.member.OAuthLoginFlowTest' --tests 'kr.youthpolicymate.member.SocialMemberServiceTest' --no-daemon",
     "test:admin-email": "./backend/gradlew -p backend test --tests 'kr.youthpolicymate.admin.EmailDeliveryApiTest' --no-daemon",
     "test:email": "./backend/gradlew -p backend test --tests 'kr.youthpolicymate.member.*TransportTest' --tests 'kr.youthpolicymate.member.MemberFlowTest' --no-daemon",
+    "email:rotate-key": "./backend/gradlew -p backend rotateEmailKey --no-daemon",
+    "test:email-key-rotation": "./backend/gradlew -p backend test --tests 'kr.youthpolicymate.member.EmailKeyRotationTest' --no-daemon",
     "test:runtime": "./backend/gradlew -p backend test --tests 'kr.youthpolicymate.config.ProductionRuntimeTest' --no-daemon",
     "test:member-flow": "./backend/gradlew -p backend test --tests 'kr.youthpolicymate.member.MemberFlowTest' --no-daemon",
     "test:reminders": "./backend/gradlew -p backend test --tests 'kr.youthpolicymate.schedule.*' --no-daemon",

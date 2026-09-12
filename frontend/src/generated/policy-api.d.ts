@@ -101,6 +101,26 @@ export interface paths {
         readonly patch?: never;
         readonly trace?: never;
     };
+    readonly "/api/v1/admin/policy-ai-runs": {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header?: never;
+            readonly path?: never;
+            readonly cookie?: never;
+        };
+        /**
+         * AI 자동 추출 상태 조회
+         * @description 요청별 마지막 자동 시도를 최근 순으로 조회한다. 검색·필터 후 페이지를 나누며 조회로 실행·재호출·정산하지 않는다.
+         */
+        readonly get: operations["listPolicyAiRuns"];
+        readonly put?: never;
+        readonly post?: never;
+        readonly delete?: never;
+        readonly options?: never;
+        readonly head?: never;
+        readonly patch?: never;
+        readonly trace?: never;
+    };
     readonly "/api/v1/admin/policy-corrections": {
         readonly parameters: {
             readonly query?: never;
@@ -727,6 +747,50 @@ export interface components {
             readonly displayName: string;
             readonly providers: readonly components["schemas"]["LoginProvider"][];
             readonly suggestedBirthDate: string;
+        };
+        readonly PolicyAiRunItem: {
+            /** Format: int32 */
+            readonly attempt: number;
+            /** @description 조회 시점의 추출 결과. 마지막 시도 종료 후 저장됐을 수 있다 */
+            readonly candidateStatus: string | null;
+            /** Format: int64 */
+            readonly currentRevision: number;
+            /** Format: date-time */
+            readonly finishedAt: string | null;
+            readonly latestRequest: boolean;
+            readonly policyNumber: string;
+            /** Format: uuid */
+            readonly requestId: string;
+            /** @description 조회 시점의 비용 예약 상태 */
+            readonly reservationPhase: string | null;
+            readonly responseStored: boolean;
+            /** @description 마지막 시도 종료 시 기록한 처리 코드 */
+            readonly resultCode: string | null;
+            /** Format: int64 */
+            readonly revision: number;
+            readonly sourceMatches: boolean;
+            /** Format: date-time */
+            readonly startedAt: string;
+            /**
+             * @description 요청별 마지막 자동 시도 상태. 실행 기한이 지난 RUNNING은 LEASE_EXPIRED로 표시하며 DB는 변경하지 않는다
+             * @enum {string}
+             */
+            readonly state: "RUNNING" | "COMPLETED" | "RETRY_PENDING" | "INTERRUPTED" | "REVIEW_REQUIRED" | "SUPERSEDED" | "LEASE_EXPIRED";
+            readonly title: string;
+        };
+        readonly PolicyAiRunPage: {
+            /** @description 자동 실행 스위치. AI 설정·예산·일일 한도 충족 여부를 뜻하지 않는다 */
+            readonly automationEnabled: boolean;
+            /** Format: date-time */
+            readonly checkedAt: string;
+            readonly hasNext: boolean;
+            readonly items: readonly components["schemas"]["PolicyAiRunItem"][];
+            /** Format: int32 */
+            readonly page: number;
+            /** Format: int32 */
+            readonly pageSize: number;
+            /** Format: int64 */
+            readonly total: number;
         };
         readonly PolicyAnswer: {
             readonly questionId: string;
@@ -1488,6 +1552,67 @@ export interface operations {
                 };
             };
             /** @description 수집 처리 또는 이력 조회 실패 */
+            readonly 503: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "*/*": components["schemas"]["PolicyApiError"];
+                };
+            };
+        };
+    };
+    readonly listPolicyAiRuns: {
+        readonly parameters: {
+            readonly query?: {
+                readonly page?: number;
+                readonly pageSize?: number;
+                readonly filter?: "ALL" | "RUNNING" | "COMPLETED" | "RETRY_PENDING" | "INTERRUPTED" | "REVIEW_REQUIRED" | "SUPERSEDED" | "LEASE_EXPIRED";
+                readonly query?: string;
+            };
+            readonly header?: never;
+            readonly path?: never;
+            readonly cookie?: never;
+        };
+        readonly requestBody?: never;
+        readonly responses: {
+            /** @description OK */
+            readonly 200: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "*/*": components["schemas"]["PolicyAiRunPage"];
+                };
+            };
+            /** @description 조회 조건 오류 */
+            readonly 400: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "*/*": components["schemas"]["PolicyApiError"];
+                };
+            };
+            /** @description 로그인 필요 */
+            readonly 401: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "*/*": components["schemas"]["PolicyApiError"];
+                };
+            };
+            /** @description 관리자 권한 없음 */
+            readonly 403: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "*/*": components["schemas"]["PolicyApiError"];
+                };
+            };
+            /** @description 조회 실패 */
             readonly 503: {
                 headers: {
                     readonly [name: string]: unknown;

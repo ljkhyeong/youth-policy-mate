@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cookies } from "next/headers";
-import { collectionPage, loadCollectionException, loadCollectionExceptions, loadCollectionPageFailures, loadPolicyCorrections, loadCorrectionPolicy, loadRuleReviews, loadRuleReview } from "./load-collection-exceptions";
+import { collectionPage, loadCollectionException, loadCollectionExceptions, loadCollectionPageFailures, loadPolicyCorrections, loadCorrectionPolicy, loadRuleReviews, loadRuleReview, loadAiRuns } from "./load-collection-exceptions";
 
 vi.mock("next/headers", () => ({ cookies: vi.fn() }));
 const run = "10000000-0000-0000-0000-000000000001";
@@ -8,6 +8,15 @@ beforeEach(() => vi.mocked(cookies).mockResolvedValue({ get: (name: string) => n
 afterEach(() => { vi.unstubAllGlobals(); vi.resetAllMocks(); });
 
 describe("관리자 수집 예외 서버 조회", () => {
+  it("AI 추출 검색 조건과 관리자 세션을 전용 조회 API로 전달한다", async () => {
+    const fetch = vi.fn().mockResolvedValue(Response.json({ items: [] })); vi.stubGlobal("fetch", fetch);
+    await loadAiRuns(2, "LEASE_EXPIRED", "청년 & 지원");
+    const [url, options] = fetch.mock.calls[0];
+    expect(url.pathname).toBe("/api/v1/admin/policy-ai-runs");
+    expect(Object.fromEntries(url.searchParams)).toEqual({ page: "2", pageSize: "20", filter: "LEASE_EXPIRED", query: "청년 & 지원" });
+    expect(options.cache).toBe("no-store");
+    expect(options.headers.Cookie).toBe("YPM_SESSION=fixture-session");
+  });
   it("조건 검토의 검색어를 인코딩하고 잘못된 정책번호는 전송하지 않는다", async () => {
     const fetch = vi.fn().mockResolvedValue(Response.json({ items: [] })); vi.stubGlobal("fetch", fetch);
     await loadRuleReviews(2, "SOURCE_CHANGED", "청년 & 지원");

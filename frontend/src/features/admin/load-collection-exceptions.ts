@@ -74,3 +74,9 @@ export function loadRuleReview(number: string): Promise<Loaded<RuleReviewDetail>
   if (!/^[0-9]{1,100}$/.test(number)) return Promise.resolve({ status: "missing" });
   return load<RuleReviewDetail>(`policy-rule-reviews/${number}`);
 }
+
+export type AiRunPage = components["schemas"]["PolicyAiRunPage"];
+
+export function loadAiRuns(page: number, filter: string, query: string) {
+  return load<AiRunPage>(`policy-ai-runs?${new URLSearchParams({ page: String(page), pageSize: "20", filter, query })}`);
+}

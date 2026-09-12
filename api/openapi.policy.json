@@ -460,6 +460,111 @@
         "tags" : [ "collection-exception-controller" ]
       }
     },
+    "/api/v1/admin/policy-ai-runs" : {
+      "get" : {
+        "description" : "요청별 마지막 자동 시도를 최근 순으로 조회한다. 검색·필터 후 페이지를 나누며 조회로 실행·재호출·정산하지 않는다.",
+        "operationId" : "listPolicyAiRuns",
+        "parameters" : [ {
+          "in" : "query",
+          "name" : "page",
+          "required" : false,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int32",
+            "default" : 1,
+            "maximum" : 1000,
+            "minimum" : 1
+          }
+        }, {
+          "in" : "query",
+          "name" : "pageSize",
+          "required" : false,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int32",
+            "default" : 20,
+            "maximum" : 50,
+            "minimum" : 1
+          }
+        }, {
+          "in" : "query",
+          "name" : "filter",
+          "required" : false,
+          "schema" : {
+            "type" : "string",
+            "default" : "ALL",
+            "enum" : [ "ALL", "RUNNING", "COMPLETED", "RETRY_PENDING", "INTERRUPTED", "REVIEW_REQUIRED", "SUPERSEDED", "LEASE_EXPIRED" ]
+          }
+        }, {
+          "in" : "query",
+          "name" : "query",
+          "required" : false,
+          "schema" : {
+            "type" : "string",
+            "default" : "",
+            "maxLength" : 100,
+            "minLength" : 0
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PolicyAiRunPage"
+                }
+              }
+            },
+            "description" : "OK"
+          },
+          "400" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PolicyApiError"
+                }
+              }
+            },
+            "description" : "조회 조건 오류"
+          },
+          "401" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PolicyApiError"
+                }
+              }
+            },
+            "description" : "로그인 필요"
+          },
+          "403" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PolicyApiError"
+                }
+              }
+            },
+            "description" : "관리자 권한 없음"
+          },
+          "503" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PolicyApiError"
+                }
+              }
+            },
+            "description" : "조회 실패"
+          }
+        },
+        "security" : [ {
+          "memberSession" : [ ]
+        } ],
+        "summary" : "AI 자동 추출 상태 조회",
+        "tags" : [ "policy-ai-run-controller" ]
+      }
+    },
     "/api/v1/admin/policy-corrections" : {
       "get" : {
         "operationId" : "listPolicyCorrections",
@@ -2870,6 +2975,103 @@
           }
         },
         "required" : [ "authenticated", "csrfToken", "displayName", "providers", "suggestedBirthDate" ]
+      },
+      "PolicyAiRunItem" : {
+        "type" : "object",
+        "properties" : {
+          "attempt" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "candidateStatus" : {
+            "type" : [ "string", "null" ],
+            "description" : "조회 시점의 추출 결과. 마지막 시도 종료 후 저장됐을 수 있다"
+          },
+          "currentRevision" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "finishedAt" : {
+            "type" : [ "string", "null" ],
+            "format" : "date-time"
+          },
+          "latestRequest" : {
+            "type" : "boolean"
+          },
+          "policyNumber" : {
+            "type" : "string"
+          },
+          "requestId" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "reservationPhase" : {
+            "type" : [ "string", "null" ],
+            "description" : "조회 시점의 비용 예약 상태"
+          },
+          "responseStored" : {
+            "type" : "boolean"
+          },
+          "resultCode" : {
+            "type" : [ "string", "null" ],
+            "description" : "마지막 시도 종료 시 기록한 처리 코드"
+          },
+          "revision" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "sourceMatches" : {
+            "type" : "boolean"
+          },
+          "startedAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "state" : {
+            "type" : "string",
+            "description" : "요청별 마지막 자동 시도 상태. 실행 기한이 지난 RUNNING은 LEASE_EXPIRED로 표시하며 DB는 변경하지 않는다",
+            "enum" : [ "RUNNING", "COMPLETED", "RETRY_PENDING", "INTERRUPTED", "REVIEW_REQUIRED", "SUPERSEDED", "LEASE_EXPIRED" ]
+          },
+          "title" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "attempt", "candidateStatus", "currentRevision", "finishedAt", "latestRequest", "policyNumber", "requestId", "reservationPhase", "responseStored", "resultCode", "revision", "sourceMatches", "startedAt", "state", "title" ]
+      },
+      "PolicyAiRunPage" : {
+        "type" : "object",
+        "properties" : {
+          "automationEnabled" : {
+            "type" : "boolean",
+            "description" : "자동 실행 스위치. AI 설정·예산·일일 한도 충족 여부를 뜻하지 않는다"
+          },
+          "checkedAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "hasNext" : {
+            "type" : "boolean"
+          },
+          "items" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/PolicyAiRunItem"
+            }
+          },
+          "page" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "pageSize" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "total" : {
+            "type" : "integer",
+            "format" : "int64"
+          }
+        },
+        "required" : [ "automationEnabled", "checkedAt", "hasNext", "items", "page", "pageSize", "total" ]
       },
       "PolicyAnswer" : {
         "type" : "object",

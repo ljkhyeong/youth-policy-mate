@@ -14,13 +14,14 @@ const timestamp = new Intl.DateTimeFormat("ko-KR", {
 const dateLabel = (value: string | null) => value ? timestamp.format(new Date(value)) : "기록 없음";
 export { dateLabel as collectionTime };
 
-export function CollectionNavigation({ active }: { active: "items" | "pages" | "replays" | "corrections" | "rules" }) {
+export function CollectionNavigation({ active }: { active: "items" | "pages" | "replays" | "corrections" | "rules" | "ai" }) {
   return <nav className="policy-filters mb-6" aria-label="수집 오류·보정 메뉴">
     <a href={COLLECTION_PATH} aria-current={active === "items" ? "page" : undefined}>항목 오류</a>
     <a href={PAGE_FAILURES_PATH} aria-current={active === "pages" ? "page" : undefined}>페이지 오류</a>
     <a href={REPLAYS_PATH} aria-current={active === "replays" ? "page" : undefined}>재처리 이력</a>
     <a href={CORRECTIONS_PATH} aria-current={active === "corrections" ? "page" : undefined}>보정 관리</a>
     <a href={`${COLLECTION_PATH}/rules`} aria-current={active === "rules" ? "page" : undefined}>조건 검토</a>
+    <a href={`${COLLECTION_PATH}/ai`} aria-current={active === "ai" ? "page" : undefined}>AI 추출</a>
   </nav>;
 }
 

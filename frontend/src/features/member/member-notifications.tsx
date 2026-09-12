@@ -1,50 +1,67 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type RefObject } from "react";
 import { memberApi, MemberApiError, type NotificationFilter, type Notifications } from "./member-api";
+import { readMemberLocation } from "./member-location";
 
 const receivedAt = new Intl.DateTimeFormat("ko-KR", {
   timeZone: "Asia/Seoul", dateStyle: "medium", timeStyle: "short",
 });
 
-export function MemberNotifications({ csrf, active, onUnreadCount, loginHref }: {
+function isCurrentRequest(controller: AbortController, page: number, filter: NotificationFilter) {
+  if (controller.signal.aborted || window.location.pathname !== "/my") return false;
+  const current = readMemberLocation(new URLSearchParams(window.location.search));
+  return current.page === page && current.filter === filter;
+}
+
+type NotificationProps = {
   csrf: string; active: boolean; onUnreadCount: (count: number | null) => void; loginHref: string;
-}) {
+  page: number; filter: NotificationFilter;
+  onNavigate: (page: number, filter: NotificationFilter, replace?: boolean) => void;
+};
+
+export function MemberNotifications(props: NotificationProps) {
+  const restoreFocusRef = useRef(false);
+  return <NotificationList key={`${props.page}:${props.filter}`} {...props} restoreFocusRef={restoreFocusRef} />;
+}
+
+function NotificationList({ csrf, active, onUnreadCount, loginHref, page, filter, onNavigate, restoreFocusRef }: NotificationProps & { restoreFocusRef: RefObject<boolean> }) {
   const [data, setData] = useState<Notifications | null>(null);
-  const [page, setPage] = useState(1);
-  const [filter, setFilter] = useState<NotificationFilter>("ALL");
   const [reload, setReload] = useState(0);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(true);
   const [loginRequired, setLoginRequired] = useState(false);
   const readRequest = useRef<AbortController | null>(null);
-  const restoreFocus = useRef(false);
+  const panelRef = useRef<HTMLElement>(null);
   const filterSelect = useRef<HTMLSelectElement>(null);
   const retryButton = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
-    if (!restoreFocus.current || busy) return;
-    if (active) (error ? retryButton : filterSelect).current?.focus();
-    restoreFocus.current = false;
-  }, [active, busy, error]);
+    if (!restoreFocusRef.current || busy) return;
+    const focus = document.activeElement;
+    if (active && (focus === document.body || panelRef.current?.contains(focus))) {
+      (error ? retryButton : filterSelect).current?.focus();
+    }
+    restoreFocusRef.current = false;
+  }, [active, busy, error, restoreFocusRef]);
 
   useEffect(() => {
     const controller = new AbortController(); readRequest.current = controller;
     memberApi<Notifications>(`notifications?page=${page}&pageSize=20&filter=${filter}`, { signal: controller.signal })
       .then(result => {
-        if (controller.signal.aborted) return;
+        if (!isCurrentRequest(controller, page, filter)) return;
         setData(result);
         onUnreadCount(result.unreadCount);
       })
       .catch(failure => {
-        if (controller.signal.aborted) return;
+        if (!isCurrentRequest(controller, page, filter)) return;
         onUnreadCount(null);
         const expired = failure instanceof MemberApiError && failure.status === 401;
         setLoginRequired(expired);
         setError(expired ? failure.message : "알림을 불러오지 못했어요. 다시 시도해주세요.");
       }).finally(() => {
-        if (!controller.signal.aborted) setBusy(false);
+        if (isCurrentRequest(controller, page, filter)) setBusy(false);
         if (readRequest.current === controller) readRequest.current = null;
       });
     return () => controller.abort();
@@ -52,27 +69,28 @@ export function MemberNotifications({ csrf, active, onUnreadCount, loginHref }: 
 
   useEffect(() => () => readRequest.current?.abort(), []);
 
-  function changePage(next: number) {
+  function changePage(next: number, nextFilter = filter) {
     if (busy || readRequest.current) return;
-    restoreFocus.current = true;
-    setData(null); setError(""); setLoginRequired(false); setBusy(true); setPage(next);
-    setReload(value => value + 1);
+    restoreFocusRef.current = true;
+    setData(null); setError(""); setLoginRequired(false); setBusy(true);
+    if (next === page && nextFilter === filter) setReload(value => value + 1);
+    else onNavigate(next, nextFilter);
   }
 
   async function markRead(id: string) {
     if (busy || readRequest.current || !data) return;
     const controller = new AbortController();
     readRequest.current = controller;
-    restoreFocus.current = true;
+    restoreFocusRef.current = true;
     setBusy(true); setError("");
     try {
       await memberApi(`notifications/${id}/read`, { method: "POST", csrf, signal: controller.signal });
-      if (controller.signal.aborted) return;
+      if (!isCurrentRequest(controller, page, filter)) return;
       setData(null); onUnreadCount(null);
-      if (filter === "UNREAD") setPage(1);
-      setReload(value => value + 1);
+      if (filter === "UNREAD" && page > 1) onNavigate(1, filter, true);
+      else setReload(value => value + 1);
     } catch (failure) {
-      if (controller.signal.aborted) return;
+      if (!isCurrentRequest(controller, page, filter)) return;
       setData(null); onUnreadCount(null);
       const expired = failure instanceof MemberApiError && failure.status === 401;
       setLoginRequired(expired);
@@ -84,11 +102,11 @@ export function MemberNotifications({ csrf, active, onUnreadCount, loginHref }: 
   }
 
   if (!active) return null;
-  return <section aria-label="서비스 알림" className="member-list">
+  return <section ref={panelRef} aria-label="서비스 알림" className="member-list">
     <div className="member-panel">
       <div className="rule-review-field"><label htmlFor="notification-filter">알림 보기</label>
         <select ref={filterSelect} id="notification-filter" className="member-calendar-filter" value={filter} disabled={busy}
-          onChange={event => { changePage(1); setFilter(event.target.value as NotificationFilter); }}>
+          onChange={event => changePage(1, event.target.value as NotificationFilter)}>
           <option value="ALL">전체 알림</option><option value="UNREAD">안 읽은 알림</option>
         </select></div>
       <p className="field-help">최신순 · 받은 시각은 한국 시간입니다.</p>

@@ -3,12 +3,11 @@ import { LoginPanel } from "./login-panel";
 import { getMemberHref } from "@/features/member/member-location";
 
 export const metadata = { title: "로그인 · 청년정책메이트", robots: { index: false, follow: false } };
-export default async function LoginPage({ searchParams }: { searchParams: Promise<{ next?: string | string[]; policy?: string | string[]; error?: string | string[]; view?: string | string[]; status?: string | string[] }> }) {
+export default async function LoginPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const params = await searchParams;
   const admin = params.next === "admin";
   const policy = typeof params.policy === "string" ? params.policy : undefined;
-  const member = params.next === "my" ? getMemberHref(typeof params.view === "string" ? params.view : undefined,
-    typeof params.status === "string" ? params.status : undefined) : undefined;
+  const member = params.next === "my" ? getMemberHref(params) : undefined;
   return <SiteShell active="my"><main id="main-content" className="member-main"><header>
     <p className="page-label">{admin ? "운영 관리" : "내 정책"}</p>
     <h1>{admin ? "관리자 계정으로 로그인하세요" : member ? "로그인 후 내 정책을 확인하세요" : "로그인하고 정책을 저장하세요"}</h1>

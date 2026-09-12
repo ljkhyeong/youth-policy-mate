@@ -7,9 +7,9 @@ import { MemberEmailSettings } from "@/features/member/member-email-settings";
 import { MemberNotifications } from "@/features/member/member-notifications";
 import { MemberPolicyList } from "@/features/member/member-policy-list";
 import { MemberWithdrawal } from "@/features/member/member-withdrawal";
-import { getMemberHref, getMemberLocation, getMemberLoginHref } from "@/features/member/member-location";
+import { getMemberHref, readMemberLocation, getMemberLoginHref } from "@/features/member/member-location";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { memberApi, MemberApiError, type MemberSession, type SavedPolicies } from "@/features/member/member-api";
+import { memberApi, MemberApiError, type MemberSession, type SavedPolicies, type NotificationFilter } from "@/features/member/member-api";
 
 type MemberAction = "remove" | "logout" | "withdraw";
 
@@ -26,9 +26,10 @@ function isCurrentRequest(controller: AbortController) {
 export function MemberDashboard() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { view, status: calendarFilter } = getMemberLocation(searchParams.get("view"), searchParams.get("status"));
+  const location = readMemberLocation(searchParams);
+  const { view, status: calendarFilter } = location;
   const tab = view === "email" ? "notifications" : view;
-  const loginHref = getMemberLoginHref(view, calendarFilter);
+  const loginHref = getMemberLoginHref(location);
   const [session, setSession] = useState<MemberSession | null>(null);
   const [policies, setPolicies] = useState<SavedPolicies | null>(null);
   const [unreadCount, setUnreadCount] = useState<number | null>(null);
@@ -121,6 +122,15 @@ export function MemberDashboard() {
       if (active.current === controller) active.current = null;
     }
   }
+  function navigateNotifications(page: number, filter: NotificationFilter, replace = false) {
+    if (window.location.pathname !== "/my") return;
+    // 읽음 응답을 기다리는 동안 다른 탭으로 이동했을 수 있다.
+    const current = readMemberLocation(new URLSearchParams(window.location.search));
+    const href = getMemberHref({ ...current, page, filter });
+    if (replace) router.replace(href, { scroll: false });
+    else router.push(href, { scroll: false });
+  }
+
   if (withdrawn) return <section className="member-panel" role="status"><h2 ref={completion} tabIndex={-1}>탈퇴가 완료됐어요</h2><p>저장한 정보를 삭제하고 모든 기기에서 로그아웃했어요.</p><Link href="/" className="button-primary">홈으로</Link></section>;
   if (session && !session.authenticated) return <section className="member-panel"><h2>로그인 후 내 정책을 확인하세요</h2><p>관심 정책과 마감 일정, 알림 설정을 확인할 수 있어요.</p><Link ref={loginLink} href={loginHref} className="button-primary">로그인하기</Link><Link href="/policies" className="text-link">정책 둘러보기</Link></section>;
   return <>
@@ -132,16 +142,17 @@ export function MemberDashboard() {
     {busy && <p role="status">{pending === "load" ? "내 정책을 불러오고 있어요." : pending === "remove" ? "저장을 해제하고 있어요." : pending === "logout" ? "로그아웃 중이에요." : "탈퇴 처리 중이에요."}</p>}
     {session?.authenticated && <div className="member-toolbar member-account-toolbar"><strong>{session.displayName}님의 정책</strong><Link href="/conditions">내 조건 관리</Link><button ref={refreshButton} type="button" className="text-button" disabled={busy} onClick={reloadData}>새로고침</button><button type="button" className="text-button" disabled={busy} onClick={() => runAction("logout")}>로그아웃</button></div>}
     <nav className="member-tabs" aria-label="내 정책 보기">
-      {(["saved", "calendar", "notifications"] as const).map(value => <Link href={getMemberHref(value, calendarFilter)} scroll={false} aria-current={tab === value ? "page" : undefined} key={value}>{value === "saved" ? "관심 정책" : value === "calendar" ? "마감 일정" : `알림${unreadCount ? ` (${unreadCount})` : ""}`}</Link>)}
+      {(["saved", "calendar", "notifications"] as const).map(value => <Link href={getMemberHref({ ...location, view: value })} scroll={false} aria-current={tab === value ? "page" : undefined} key={value}>{value === "saved" ? "관심 정책" : value === "calendar" ? "마감 일정" : `알림${unreadCount ? ` (${unreadCount})` : ""}`}</Link>)}
     </nav>
     {policies && !endingSession && tab !== "notifications" && <MemberPolicyList policies={policies.items} calendar={tab === "calendar"}
-      filter={calendarFilter} onFilterChange={status => router.push(getMemberHref(view, status), { scroll: false })} busy={busy} onRemove={number => runAction("remove", number)} />}
+      filter={calendarFilter} onFilterChange={status => router.push(getMemberHref({ ...location, status }), { scroll: false })} busy={busy} onRemove={number => runAction("remove", number)} />}
     {session?.authenticated && !endingSession && tab === "notifications" && <details className="member-email-disclosure" open={view === "email"} onToggle={event => {
-      if (event.currentTarget.open !== (view === "email")) router.replace(getMemberHref(event.currentTarget.open ? "email" : "notifications", calendarFilter), { scroll: false });
+      if (event.currentTarget.open !== (view === "email")) router.replace(getMemberHref({ ...location, view: event.currentTarget.open ? "email" : "notifications" }), { scroll: false });
     }}>
       <summary>이메일 알림 설정</summary><MemberEmailSettings csrf={session.csrfToken} loginHref={loginHref} />
     </details>}
-    {session?.authenticated && !endingSession && policies && <MemberNotifications csrf={session.csrfToken} active={tab === "notifications"} onUnreadCount={setUnreadCount} loginHref={loginHref} />}
+    {session?.authenticated && !endingSession && policies && <MemberNotifications csrf={session.csrfToken} active={tab === "notifications"} onUnreadCount={setUnreadCount} loginHref={loginHref}
+      page={location.page} filter={location.filter} onNavigate={navigateNotifications} />}
     {session?.authenticated && pending !== "logout" && <MemberWithdrawal busy={pending === "withdraw"} disabled={busy} onWithdraw={() => runAction("withdraw")} />}
   </>;
 }

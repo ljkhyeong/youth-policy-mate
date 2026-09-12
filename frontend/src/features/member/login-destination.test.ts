@@ -74,4 +74,10 @@ describe("로그인 후 이동", () => {
     rememberLoginDestination(false, undefined, "https://external.example");
     expect(consumeLoginDestination()).toBe("/my");
   });
+  it("알림의 페이지·안 읽은 필터를 로그인 실패와 완료 사이에 보관한다", () => {
+    rememberLoginDestination(false, undefined, "/my?view=notifications&page=3&filter=UNREAD");
+    expect(readLoginDestination()).toBe("/my?view=notifications&page=3&filter=UNREAD");
+    expect(consumeLoginDestination()).toBe("/my?view=notifications&page=3&filter=UNREAD");
+    expect(consumeLoginDestination()).toBe("/my");
+  });
 });

@@ -1,16 +1,16 @@
 # 관리자 조건 검토·적용
 
-`df2efb1` 기준. 공고 변경·미등록 정책을 찾고 규칙 파일 등록, 검토, 적용을 처리한다.
+`e05fa3d` 기준. 공고 변경·미등록 정책을 찾고 기존 규칙 편집, 파일 등록, 검토, 적용을 처리한다.
 
 ## 사용 흐름
 
 1. `/admin/collection-exceptions/rules`에서 정책명·정책번호와 상태를 검색한다. 기본값은 `검토 필요`다.
 2. 정책을 선택해 직전 공개 버전과의 차이, 현재 공개 내용·수집 원본, 등록된 질문·선택지·공식 근거를 확인한다.
-3. 기존 버전의 `전체 규칙 확인`에서 파일을 내려받는다. 외부 편집기에서 새 버전명·원문·연도·기간·질문·판정표·예외를 수정한다. 신규 정책도 같은 [규칙 형식](policy-rule-data.md#판정표-형식)을 사용한다.
-4. `새 초안 등록`에서 128KB 이하의 JSON 파일과 등록 사유를 제출한다. 현재 정책번호·원문 해시와 일치해야 하며, 작성에 필요한 값은 `규칙 작성용 원문 정보`에서 확인한다. 초안 저장으로 공개 질문이 바뀌지 않는다.
+3. 기존 버전의 `전체 규칙 확인` → `수정해서 새 초안 만들기`에서 새 버전명·적용 기간·안내·질문/선택지 문구·판정표를 수정한다. 판정 기준은 추가·삭제·이동할 수 있으며 첫 일치 기준을 적용한다. 원문이 달라졌으면 조건·예외 검토 확인 후 현재 원문에 연결한다.
+4. 등록 사유를 입력해 초안을 저장한다. 신규 질문·선택지나 별도 설정 변경은 `규칙 파일 받기`로 내려받아 편집하고 `새 초안 등록`에서 제출한다. 파일은 UTF-8 128KB 이하이며 현재 정책번호·원문과 일치해야 한다. 신규 정책도 같은 [규칙 형식](policy-rule-data.md#판정표-형식)을 사용한다. 초안 저장으로 공개 질문이 바뀌지 않는다.
 5. 최신 내용을 다시 열어 초안의 질문·근거와 `전체 규칙 확인`을 검토한다. 적용 가능한 초안에만 적용 폼이 나타난다. 확인 항목에 체크하고 사유를 입력해 적용한다.
 
-규칙 파일의 원문 해시·연도·기간을 자동 변경하지 않는다. 원문과 예외를 함께 검토한다. [기존 운영 명령](policy-rule-data.md#운영-명령)도 같은 저장소 검사를 사용하며 계속 사용할 수 있다.
+연도·기간을 자동 변경하지 않는다. 편집 화면의 시각은 서울 기준이며 수정하지 않은 원래 시각을 유지한다. 기존 연령 범위·기준일·시기별 안내는 수정할 수 있다. 질문/선택지 식별자, 월별 버전, 연령 선택지 연결, 답변 표시와 답변별 추가 안내는 보존한다. 별도 설정은 펼쳐 확인하고 파일에서 수정한다. 원문과 예외를 함께 검토한다. [기존 운영 명령](policy-rule-data.md#운영-명령)도 같은 저장소 검사를 사용하며 계속 사용할 수 있다.
 
 | 상태 | 판단 기준 |
 |---|---|
@@ -36,30 +36,38 @@
 
 - `POST /api/v1/admin/policy-rule-reviews/{number}/drafts`: 요청 ID·조회한 개정·규칙 파일 내용·사유를 받는다. 형식 검사는 `PolicyRuleDefinition`, 저장은 `PolicyRuleStore`를 재사용한다.
 - `POST /api/v1/admin/policy-rule-reviews/{number}/versions/{id}/publish`: 요청 ID·조회한 개정·현재 적용 버전·사유를 받는다. 첫 적용의 현재 버전은 `none`이다. 공개 질문의 월별 접미사가 아닌 저장된 버전명을 사용한다.
-- `GET /api/v1/admin/policy-rule-reviews/{number}/versions/{id}`: 원본 규칙 정의를 JSON 문자열로 반환한다. 다른 정책의 버전은 반환하지 않는다.
+- `GET /api/v1/admin/policy-rule-reviews/{number}/versions/{id}`: `PolicyRuleDefinition` 객체를 `definition`에 반환한다. 편집 타입은 이 서버 계약에서 생성하고 파일은 브라우저에서 JSON으로 내려받는다. 이전 `definitionJson` 응답 필드는 사용하지 않는다. 웹과 서버를 함께 반영해야 한다. 다른 정책의 버전은 반환하지 않는다.
 - Flyway V25의 `admin_policy_rule_actions`에 요청·작업자·사유·대상 버전·조회한 개정·처리 시각을 저장한다. 규칙 변경과 이력 저장은 같은 트랜잭션이며 이력 실패 시 모두 취소한다. 상세의 등록·적용 이력에서 작업자와 사유를 확인한다. 이전 운영 명령 적용에 별도 사유가 없으면 기록 없음으로 표시한다.
 - 같은 정책 행을 잠근 뒤 요청 기록과 개정을 확인한다. 같은 요청·입력·작업자는 기존 결과를 반환한다. 재시도 사이에 원문이나 적용 버전이 바뀌어도 이전 성공 결과만 반환하며 재적용하지 않는다. 입력·작업자·대상 버전이 다른 요청 ID 재사용은 거절한다.
 - 응답을 확인하지 못하면 화면은 입력을 잠그고 같은 요청으로 재확인한다. 409 이후에는 적용을 막고 최신 내용으로 이동하게 한다. 파일과 요청은 화면 메모리에만 보관한다.
 - Next.js는 지정된 관리자 경로·메서드만 중계한다. 일반 요청의 16KB 한도를 유지하고 규칙 파일 등록 요청만 JSON 전송을 위한 512KB 한도를 사용한다. 서버의 규칙 파일 한도는 UTF-8 128KB다.
 
-실제 관리자 계정 연결, AI 추출 본문 저장·초안 자동 생성, 브라우저에서 조건 자체를 편집하는 폼은 남아 있다. 현재 파일 편집은 외부 편집기를 사용하며 공고별 검토를 완전히 자동화한 상태는 아니다.
+실제 관리자 계정 연결과 AI 추출 본문 저장·초안 자동 생성은 남아 있다. 기존 규칙 편집을 제공하며 공고별 검토를 완전히 자동화한 상태는 아니다.
 
 ## 검증
 
-Java 25.0.3·PostgreSQL 18.6·Node 25.4.0에서 확인했다. 아래 결과는 `df2efb1`에 적용된다. 이후 변경은 문서뿐이다.
+Java 25.0.3·PostgreSQL 18.6·Node 25.4.0에서 `e05fa3d`를 확인했다. 이후 변경은 문서뿐이다.
 
 | 검증 | 결과와 로그 |
 |---|---|
-| `./backend/gradlew -p backend test --tests 'kr.youthpolicymate.admin.PolicyRuleReviewApiTest' --no-daemon` | 관리자 권한·CSRF·등록과 적용 분리·재시도·경합·원문/기간 변경·롤백 통과. `/tmp/youth-rule-management-api.log` |
-| `npm run generate:api` | 계약 생성 통과. `/tmp/youth-rule-management-contract.log` |
-| `npm run verify -- check:backend` | 전체 서버·DB·계약 검사와 추가한 동시 중복 등록 테스트 통과. `.local/verification/1789170101714-d6d14e1c.log` |
-| `npm run verify -- test:web -- src/features/admin/policy-rule-review-pages.test.tsx src/features/admin/load-collection-exceptions.test.ts src/features/admin/collection-exception-pages.test.tsx 'src/app/api/member/[...path]/route.test.ts'` | 관리자 화면·전체 규칙 확인 전 적용 차단·중계 경로/용량/세션/출처 검사 통과. `.local/verification/1789170102924-be5fe092.log` |
-| `npm run verify -- check:web` | 린트·타입 검사 통과. `.local/verification/1789170098316-a614f8e1.log` |
-| `npm run verify -- check:api-types` | 생성 타입 일치. `.local/verification/1789170102003-41b97669.log` |
-| `npm run verify -- build:web` | 배포 빌드 통과. `.local/verification/1789170156995-ba6e4d4c.log` |
+| `./backend/gradlew -p backend test --tests 'kr.youthpolicymate.admin.PolicyRuleReviewApiTest' exportPreviewOpenApi exportPolicyOpenApi --no-daemon` | 구조화된 규칙 반환·초안/적용·권한·재시도·경합·롤백과 계약 생성 통과. `/tmp/youth-rule-editor-api.log` |
+| `npm run generate:api-types --workspace frontend` | 서버 계약에서 생성 타입 갱신. `/tmp/youth-rule-editor-api.log` |
+| `npm run verify -- test:web -- src/features/admin/policy-rule-editor.test.tsx src/features/admin/policy-rule-review-pages.test.tsx` | 기존 11개 규칙의 별도 설정 보존·새 버전/원문 확인·판정 순서·미응답·서울 시각·화면 통과. `.local/verification/1789171096370-91d50834.log` |
+| `npm run verify -- check:web` | 린트·타입 검사 통과. `.local/verification/1789171096370-0f123b2c.log` |
+| `npm run verify -- check:api-types` | 생성 타입 일치. `.local/verification/1789171096370-077d36dc.log` |
+| `npm run verify -- build:web` | 배포 빌드 통과. `.local/verification/1789171182719-91cd296f.log` |
+| `npm run verify -- package:backend` | `bootJar` 성공. 검사 도중 변경된 파일이 문서 4개뿐임을 확인했다. 기록 도구는 종료 코드 2로 표시하며 서버 코드는 검사 중 바뀌지 않았다. `.local/verification/1789171210426-546014bc.log` |
 
-전체 검사 후 코드 변경이 없어 통과한 검증을 반복하지 않았다. `test:admin-collection`은 새 등록·적용 테스트도 포함한다.
+`JAVA_HOME`은 `/Users/lim/.gradle/jdks/eclipse_adoptium-25-aarch64-os_x.2/jdk-25.0.3+9/Contents/Home`이다. Java/Docker와 배포 빌드는 필요한 권한으로 실행했다. 첫 웹 부분 검사의 문법 오류를 수정한 뒤 실패한 두 파일만 재검사했다. 배포 빌드의 포트 권한 오류가 캐시에 남아 `frontend/.next/cache/turbopack`을 `/tmp/youth-rule-editor-ui/turbopack-cache-before`로 옮긴 뒤 통과했다. 개발 서버 캐시는 변경하지 않았다. 서버의 저장·판정 계산은 바꾸지 않아 전체 서버 검사를 반복하지 않았다. 이전 전체 검사는 `df2efb1` 기준이다.
 
-브라우저 검증은 별도 포트 3100의 배포 웹과 19082의 테스트 API를 사용했다. 파일 용량 차단, 등록·적용 각각의 응답 유실 후 같은 요청 재확인, 작업 중복 없음, 전체 규칙 확인·확인 항목 체크 전 적용 제한, 다운로드 파일 일치, 409 이후 재적용 차단을 확인했다. 1280px·390px에서 가로 넘침이 없고 키보드로 재확인할 수 있었다. 기록·이미지·다운로드 파일은 `/tmp/youth-rule-management-ui/`에 있다. 테스트 API와 브라우저는 검증 후 종료했다. 실제 소셜 제공자의 관리자 로그인을 검증한 것은 아니다.
+별도 포트 3100의 배포 웹과 19082의 테스트 API에서 다음을 확인했다.
 
-실제 로컬 Spring도 새 빌드로 교체해 V25 적용·정상 기동과 규칙 파일 API의 비회원 401을 확인했다. 실제 정책의 질문 규칙은 변경하지 않았다. 원격 CI·배포·실제 관리자 로그인은 이번 작업에서 실행하지 않았다.
+- 질문·선택지·연령 기준일·판정 순서/항목·적용 기간 편집, 서울 시각 저장, 별도 설정 보존
+- 원문 검토 확인 전 저장 차단, 초안 저장 후 기존 공개 규칙 유지
+- 저장·적용 응답 유실 후 입력 잠금과 같은 요청 재확인, 초안 1건·적용 1건만 처리
+- 저장한 편집본과 내려받은 파일 일치, 전체 규칙 검토 후 적용, 409 이후 추가 저장 차단
+- 390px·1280px 배치·가로 넘침 없음, 키보드 재시도, 접힌 필수 입력 오류의 펼침·초점 이동
+
+기록·이미지·파일은 `/tmp/youth-rule-editor-ui/`에 있다. 테스트 API·웹·브라우저는 검증 후 종료했다. 실제 소셜 제공자의 관리자 로그인을 검증한 것은 아니다.
+
+실제 로컬 Spring은 새 실행 파일로 교체해 정상 기동·상태 조회 200·규칙 API의 비회원 401을 확인했다. 실제 정책의 질문 규칙은 변경하지 않았다. 이번 브랜치의 원격 CI·배포·실제 관리자 로그인·AI 자동 초안 생성은 미실행이다.

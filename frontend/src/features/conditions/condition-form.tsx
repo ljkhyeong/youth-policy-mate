@@ -16,6 +16,7 @@ export function ConditionForm({ today }: { today: string }) {
   const [confirmed, setConfirmed] = useState(false);
   const [notice, setNotice] = useState("");
   const [showResults, setShowResults] = useState(false);
+  const inputRevision = useRef(0);
   const suggestedOnce = useRef(false);
   const suggestBirthDate = useCallback((birthDate: string) => {
     if (suggestedOnce.current) return;
@@ -30,6 +31,8 @@ export function ConditionForm({ today }: { today: string }) {
   }, [confirmed]);
 
   function change(field: keyof ConditionDraft, value: string) {
+    inputRevision.current += 1;
+    if (field === "birthDate") suggestedOnce.current = true;
     clearConfirmedBirth();
     setDraft((previous) => ({ ...previous, [field]: value }));
     setErrors((previous) => ({ ...previous, [field]: undefined }));
@@ -51,6 +54,7 @@ export function ConditionForm({ today }: { today: string }) {
   }
 
   function edit() {
+    inputRevision.current += 1;
     clearConfirmedBirth();
     setShowResults(false);
     setConfirmed(false);
@@ -58,6 +62,7 @@ export function ConditionForm({ today }: { today: string }) {
   }
 
   function reset() {
+    suggestedOnce.current = true;
     setDraft(EMPTY_CONDITION_DRAFT);
     setErrors({});
     setNotice("입력 내용을 모두 지웠어요.");
@@ -66,7 +71,18 @@ export function ConditionForm({ today }: { today: string }) {
 
   const employmentLabel = EMPLOYMENT_OPTIONS.find(({ value }) => value === draft.employmentStatus)?.label;
   const input = useMemo(() => ({ ...draft, employmentStatus: draft.employmentStatus as BasicConditions["employmentStatus"] }), [draft]);
-  function loadSaved(value: ConditionDraft) { setDraft(value); setErrors({}); edit(); }
+  function prepareLoad() {
+    const revision = inputRevision.current;
+    return (value: ConditionDraft) => {
+      if (revision !== inputRevision.current) return false;
+      suggestedOnce.current = true;
+      setDraft(value);
+      setErrors({});
+      setNotice("");
+      edit();
+      return true;
+    };
+  }
 
   return (
     <section className="condition-panel" aria-label="내 조건 입력과 확인">
@@ -105,7 +121,7 @@ export function ConditionForm({ today }: { today: string }) {
             <button type="button" className="button-secondary button-block" onClick={edit}>입력 수정</button>
             <button type="button" className="text-button" onClick={reset}>입력 내용 모두 지우기</button>
           </div>
-          <ConditionMemberControls input={input} onLoad={loadSaved} />
+          <ConditionMemberControls input={input} prepareLoad={prepareLoad} />
           {showResults && <PolicyCheckResults input={input} />}
         </div>
       ) : (
@@ -113,7 +129,7 @@ export function ConditionForm({ today }: { today: string }) {
           <div className="form-heading">
             <h2>기본 조건</h2>
           </div>
-          <ConditionMemberControls onLoad={loadSaved} onSuggestBirthDate={suggestBirthDate} />
+          <ConditionMemberControls prepareLoad={prepareLoad} onSuggestBirthDate={suggestBirthDate} />
           {Object.values(errors).some(Boolean) && <p role="alert" className="form-error-summary">표시된 입력 항목을 확인해주세요.</p>}
 
           {/* 기본 폼 제출로 개인정보가 전송되지 않도록 name을 두지 않고 화면 상태만 사용한다. */}

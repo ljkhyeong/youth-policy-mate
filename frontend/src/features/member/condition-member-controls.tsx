@@ -9,7 +9,11 @@ type SessionState = { phase: "loading" }
   | { phase: "error"; message: string; loginRequired: boolean };
 type ConditionAction = "load" | "save" | "clear";
 
-export function ConditionMemberControls({ input, onLoad, onSuggestBirthDate }: { input?: BasicConditions; onLoad: (value: ConditionDraft) => void; onSuggestBirthDate?: (value: string) => void }) {
+export function ConditionMemberControls({ input, prepareLoad, onSuggestBirthDate }: {
+  input?: BasicConditions;
+  prepareLoad: () => (value: ConditionDraft) => boolean;
+  onSuggestBirthDate?: (value: string) => void;
+}) {
   const [state, setState] = useState<SessionState>({ phase: "loading" });
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState<ConditionAction | null>(null);
@@ -48,9 +52,12 @@ export function ConditionMemberControls({ input, onLoad, onSuggestBirthDate }: {
     setBusy(action); setMessage("");
     try {
       if (action === "load") {
+        const applySaved = prepareLoad();
         const saved = await memberApi<SavedConditions>("conditions", { signal: controller.signal });
         if (controller.signal.aborted) return;
-        if (saved.conditions) { onLoad(saved.conditions); setMessage("저장한 조건을 불러왔어요. 현재 상황과 맞는지 확인해주세요."); }
+        if (saved.conditions) setMessage(applySaved(saved.conditions)
+          ? "저장한 조건을 불러왔어요. 현재 상황과 맞는지 확인해주세요."
+          : "입력 내용이 바뀌어 저장한 조건을 적용하지 않았어요.");
         else setMessage("저장한 조건이 없어요.");
       } else {
         await memberApi("conditions", { method: action === "save" ? "PUT" : "DELETE", body: action === "save" ? input : undefined, csrf: state.session.csrfToken, signal: controller.signal });

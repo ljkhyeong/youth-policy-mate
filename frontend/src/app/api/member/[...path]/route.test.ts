@@ -7,6 +7,21 @@ const context = (path: string) => ({ params: Promise.resolve({ path: path.split(
 afterEach(() => { vi.unstubAllGlobals(); vi.unstubAllEnvs(); });
 
 describe("개인 API 중계", () => {
+  it("공급자 상태 조회는 기록 ID의 관리자 GET만 허용하고 외부 발송 ID 쿼리를 전달하지 않는다", async () => {
+    const fetch = vi.fn().mockResolvedValue(Response.json({ event: "DELIVERED", checkedAt: "2026-09-12T00:00:00Z" }));
+    vi.stubGlobal("fetch", fetch);
+    const path = "email-deliveries/10000000-0000-0000-0000-000000000001/provider-status";
+    const response = await GET(new NextRequest(`${base}/api/member/${path}?messageId=other`, {
+      headers: { cookie: "other=private; YPM_SESSION=admin", Authorization: "private" },
+    }), context(path));
+    expect(fetch.mock.calls[0][0].pathname).toBe(`/api/v1/admin/${path}`);
+    expect(fetch.mock.calls[0][0].search).toBe("");
+    expect(fetch.mock.calls[0][1].headers).toEqual({ Accept: "application/json", Cookie: "YPM_SESSION=admin" });
+    expect(response.headers.get("cache-control")).toBe("no-store");
+    expect((await POST(new NextRequest(`${base}/api/member/${path}`, { method: "POST", headers: { origin: base } }), context(path))).status).toBe(404);
+    expect((await GET(new NextRequest(`${base}/api/member/email-deliveries/not-an-id/provider-status`), context("email-deliveries/not-an-id/provider-status"))).status).toBe(404);
+    expect(fetch).toHaveBeenCalledTimes(1);
+  });
   it("수신 해제는 토큰만 표준 폼으로 전달하고 쿠키·CSRF·쿼리·입력 본문을 제외한다", async () => {
     const fetch = vi.fn().mockResolvedValue(new Response(null, { status: 200, headers: { "Set-Cookie": "YPM_SESSION=unexpected" } }));
     vi.stubGlobal("fetch", fetch);

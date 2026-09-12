@@ -55,6 +55,7 @@ app:
     provider: ${EMAIL_PROVIDER:smtp}
     resend:
       api-key: ${RESEND_API_KEY:}
+      read-api-key: ${RESEND_READ_API_KEY:}
       webhook-secret: ${RESEND_WEBHOOK_SECRET:}
   ontong:
     schedule:

@@ -2,6 +2,7 @@ package kr.youthpolicymate.admin;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import io.swagger.v3.oas.annotations.media.Schema;
+import kr.youthpolicymate.member.ResendEmailLookup;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
@@ -10,6 +11,9 @@ public final class EmailDeliveries {
     private EmailDeliveries() {}
     public enum State { PENDING, SENDING, SENT, DELIVERED, DELAYED, FAILED, UNKNOWN, BOUNCED, COMPLAINED, SUPPRESSED, CANCELED }
     public enum Kind { VERIFICATION, POLICY }
+
+    @Schema(name = "AdminEmailProviderStatus", requiredProperties = {"event", "checkedAt"})
+    public record ProviderStatus(ResendEmailLookup.Event event, Instant checkedAt) {}
 
     @Schema(name = "AdminEmailDeliverySummary", requiredProperties = {"total", "failed", "unknown"})
     public record Summary(long total, long failed, long unknown) {}

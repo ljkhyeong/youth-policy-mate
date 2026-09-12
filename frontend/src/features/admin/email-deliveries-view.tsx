@@ -1,6 +1,7 @@
 import { PageState } from "@/components/page-state";
 import { CollectionFailure, collectionTime } from "./collection-exception-view";
 import type { EmailDeliveryPage, LoadFailure } from "./load-collection-exceptions";
+import { EmailProviderStatus } from "./email-provider-status";
 
 export const EMAIL_DELIVERIES_PATH = "/admin/collection-exceptions/email";
 const states = {
@@ -60,7 +61,10 @@ export function EmailDeliveryList({ data, filters }: { data: EmailDeliveryPage; 
           <dt>발송 시작</dt><dd>{collectionTime(item.startedAt)}</dd>
           <dt>처리 완료</dt><dd>{collectionTime(item.finishedAt)}</dd>
           <dt>공급자 이벤트 발생</dt><dd>{collectionTime(item.providerEventAt)}</dd>
-        </dl><p className="field-help">모든 시각은 서울 기준입니다. 기록이 없으면 접수·전달 여부를 추정하지 않습니다.</p></details>
+        </dl><p className="field-help">모든 시각은 서울 기준입니다. 기록이 없으면 접수·전달 여부를 추정하지 않습니다.</p>
+          {item.provider === "resend" && (item.providerMessageId ? <EmailProviderStatus id={item.id} />
+            : <p className="field-help">발송 ID가 없어 Resend 상태를 조회할 수 없습니다.</p>)}
+        </details>
       </li>)}
     </ul> : <PageState kind="empty" title={data.page > 1 ? "이 페이지에 발송 내역이 없습니다" : "조회 조건에 맞는 발송 내역이 없습니다"}
       description="기간·상태·종류를 바꿔 조회할 수 있습니다."

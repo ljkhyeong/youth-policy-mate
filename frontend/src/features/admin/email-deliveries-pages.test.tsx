@@ -16,6 +16,16 @@ const data: EmailDeliveryPage = { items: [item], page: 2, pageSize: 20, total: 4
   since: at, checkedAt: at, sendingEnabled: false, provider: "resend", summary: { total: 60, failed: 3, unknown: 41 } };
 
 describe("관리자 이메일 발송 화면", () => {
+  it("공급자 발송 ID가 있는 Resend 기록에만 상태 조회 버튼을 제공한다", async () => {
+    vi.mocked(loadEmailDeliveries).mockResolvedValue({ status: "available", data: { ...data, items: [
+      { ...item, providerMessageId: "20000000-0000-0000-0000-000000000002" },
+      { ...item, id: "missing" }, { ...item, id: "smtp", provider: "smtp", providerMessageId: "20000000-0000-0000-0000-000000000002" },
+    ] } });
+    const html = renderToStaticMarkup(await EmailDeliveriesPage({ searchParams: Promise.resolve({}) }));
+    expect(html.match(/>Resend 상태 조회<\/button>/g)).toHaveLength(1);
+    expect(html).toContain("발송 ID가 없어 Resend 상태를 조회할 수 없습니다.");
+    expect(html).not.toContain("조회 시각:");
+  });
   it("조회 조건과 기간 전체 요약을 구분하고 결과 미확인 상태에 재발송 버튼을 만들지 않는다", async () => {
     vi.mocked(loadEmailDeliveries).mockResolvedValue({ status: "available", data });
     const html = renderToStaticMarkup(await EmailDeliveriesPage({ searchParams: Promise.resolve({ page: "2", days: "30", state: "UNKNOWN", kind: "VERIFICATION" }) }));

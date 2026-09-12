@@ -573,6 +573,88 @@
         "tags" : [ "email-delivery-controller" ]
       }
     },
+    "/api/v1/admin/email-deliveries/{id}/provider-status" : {
+      "get" : {
+        "description" : "기록된 공급자 발송 ID로 조회한다. 주소·본문은 반환하지 않고 DB 상태·수신 동의·발송 요청을 변경하지 않는다. checkedAt은 조회 시각이며 이벤트 발생 시각이 아니다.",
+        "operationId" : "getAdminEmailProviderStatus",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AdminEmailProviderStatus"
+                }
+              }
+            },
+            "description" : "OK"
+          },
+          "400" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PolicyApiError"
+                }
+              }
+            },
+            "description" : "잘못된 요청 ID"
+          },
+          "401" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PolicyApiError"
+                }
+              }
+            },
+            "description" : "로그인 필요"
+          },
+          "403" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PolicyApiError"
+                }
+              }
+            },
+            "description" : "관리자 권한 없음"
+          },
+          "404" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PolicyApiError"
+                }
+              }
+            },
+            "description" : "조회 가능한 Resend 발송 기록 없음"
+          },
+          "503" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PolicyApiError"
+                }
+              }
+            },
+            "description" : "공급자 조회 불가"
+          }
+        },
+        "security" : [ {
+          "memberSession" : [ ]
+        } ],
+        "summary" : "Resend 이메일 최신 상태 조회",
+        "tags" : [ "email-delivery-controller" ]
+      }
+    },
     "/api/v1/admin/policy-ai-runs" : {
       "get" : {
         "description" : "요청별 마지막 자동 시도를 최근 순으로 조회한다. 검색·필터 후 페이지를 나누며 조회로 실행·재호출·정산하지 않는다.",
@@ -2927,6 +3009,20 @@
           }
         },
         "required" : [ "failed", "total", "unknown" ]
+      },
+      "AdminEmailProviderStatus" : {
+        "type" : "object",
+        "properties" : {
+          "checkedAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "event" : {
+            "type" : "string",
+            "enum" : [ "SENT", "DELIVERED", "DELIVERY_DELAYED", "BOUNCED", "COMPLAINED", "SUPPRESSED", "FAILED", "OPENED", "CLICKED", "SCHEDULED", "CANCELED", "QUEUED", "UNKNOWN" ]
+          }
+        },
+        "required" : [ "checkedAt", "event" ]
       },
       "BasicConditions" : {
         "type" : "object",

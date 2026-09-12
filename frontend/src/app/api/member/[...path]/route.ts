@@ -18,6 +18,7 @@ async function handle(request: NextRequest, context: { params: Promise<{ path: s
   const ruleFile = /^policy-rule-reviews\/[0-9]{20}\/versions\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(path);
   const rulePublish = /^policy-rule-reviews\/[0-9]{20}\/versions\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\/publish$/i.test(path);
   const anonymous = unsubscribe || path === "checks" || Boolean(question || evaluation || prefill);
+  const emailProviderStatus = /^email-deliveries\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\/provider-status$/i.test(path);
   const allowed = (path === "session" && method === "GET")
     || (path === "logout" && method === "POST")
     || (path === "account" && method === "DELETE")
@@ -29,6 +30,7 @@ async function handle(request: NextRequest, context: { params: Promise<{ path: s
     || (Boolean(collectionReplay) && method === "POST")
     || ((ruleDraft || rulePublish) && method === "POST")
     || (ruleFile && method === "GET")
+    || (emailProviderStatus && method === "GET")
     || (path === "conditions" && ["GET", "PUT", "DELETE"].includes(method))
     || (path === "policies" && method === "GET")
     || (/^policies\/[0-9]{1,100}\/changes$/.test(path) && method === "GET")
@@ -61,7 +63,7 @@ async function handle(request: NextRequest, context: { params: Promise<{ path: s
     }
     const base = process.env.POLICY_API_BASE_URL || "http://127.0.0.1:8080";
     const apiPath = unsubscribe ? `/api/v1/${path}` : collectionReplay ? `/api/v1/admin/collection-exceptions/${collectionReplay[1]}/${collectionReplay[2]}/replays`
-      : correction || ruleDraft || ruleFile || rulePublish ? `/api/v1/admin/${path}`
+      : correction || ruleDraft || ruleFile || rulePublish || emailProviderStatus ? `/api/v1/admin/${path}`
       : question ? `/api/v1/policies/${question[1]}/questions`
       : prefill ? `/api/v1/policies/${prefill[1]}/question-prefill`
       : evaluation ? `/api/v1/policies/${evaluation[1]}/evaluation` : path === "checks" ? "/api/v1/policies/checks" : ["session", "logout"].includes(path) ? `/api/v1/${path}` : `/api/v1/me/${path}`;

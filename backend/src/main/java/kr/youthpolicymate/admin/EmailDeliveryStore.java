@@ -56,6 +56,11 @@ public class EmailDeliveryStore {
                 sender.available(), sender.provider(), summary);
     }
 
+    public UUID providerMessageId(UUID id) {
+        return jdbc.sql("SELECT provider_message_id FROM member_email_outbox WHERE id = :id AND provider = 'resend' AND provider_message_id IS NOT NULL")
+                .param("id", id).query(UUID.class).optional().orElse(null);
+    }
+
     private JdbcClient.StatementSpec filtered(String sql, Instant since, Instant now, State state, Kind kind) {
         return jdbc.sql(sql).param("since", since.atOffset(ZoneOffset.UTC)).param("now", now.atOffset(ZoneOffset.UTC))
                 .param("state", state == null ? "" : state.name()).param("kind", kind == null ? "" : kind.name());

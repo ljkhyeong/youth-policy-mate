@@ -1,6 +1,7 @@
 package kr.youthpolicymate.admin;
 
 import kr.youthpolicymate.member.MemberEmailSender;
+import kr.youthpolicymate.member.ResendEmailLookup;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -48,6 +49,7 @@ class EmailDeliveryApiTest {
     @Autowired JdbcClient jdbc;
     @MockitoBean Clock clock;
     @MockitoBean MemberEmailSender sender;
+    @MockitoBean ResendEmailLookup lookup;
     @MockitoSpyBean EmailDeliveryStore deliveries;
 
     @BeforeEach void prepare() {
@@ -124,6 +126,55 @@ class EmailDeliveryApiTest {
     }
 
     private static UUID id(int value) { return UUID.fromString("30000000-0000-0000-0000-" + String.format("%012d", value)); }
+
+    @Test @DisplayName("관리자만 기록된 Resend ID로 외부 상태를 조회하며 트랜잭션·DB 변경·재발송 없이 상태만 응답한다")
+    void retrievesProviderStatusWithoutChangingRecords() throws Exception {
+        row(1, "UNKNOWN", NOW.minusSeconds(60));
+        UUID messageId = UUID.randomUUID();
+        jdbc.sql("UPDATE member_email_outbox SET provider_message_id = :message WHERE id = :id")
+                .param("message", messageId).param("id", id(1)).update();
+        var path = ROOT + "/" + id(1) + "/provider-status";
+        mvc.perform(get(path)).andExpect(status().isUnauthorized());
+        mvc.perform(get(path).with(social(MEMBER.toString()))).andExpect(status().isForbidden());
+        mvc.perform(post(path).with(social(ADMIN)).with(csrf())).andExpect(status().isForbidden());
+        verifyNoInteractions(lookup);
+        String before = jdbc.sql("SELECT row_to_json(o)::text FROM member_email_outbox o").query(String.class).single();
+        when(lookup.retrieve(messageId)).thenAnswer(invocation -> {
+            assertThat(org.springframework.transaction.support.TransactionSynchronizationManager.isActualTransactionActive()).isFalse();
+            return ResendEmailLookup.Event.DELIVERED;
+        });
+        String response = mvc.perform(get(path).param("messageId", UUID.randomUUID().toString()).with(social(ADMIN)))
+                .andExpect(status().isOk()).andExpect(header().string("Cache-Control", "no-store"))
+                .andExpect(jsonPath("$.event").value("DELIVERED")).andExpect(jsonPath("$.checkedAt").value(NOW.toString()))
+                .andReturn().getResponse().getContentAsString();
+        assertThat(response).doesNotContain("address", "html", "subject", "memberId", messageId.toString(), MEMBER.toString());
+        assertThat(jdbc.sql("SELECT row_to_json(o)::text FROM member_email_outbox o").query(String.class).single()).isEqualTo(before);
+        verify(lookup).retrieve(messageId);
+        verify(sender, never()).send(any(), any(), any(), any(), any());
+    }
+
+    @Test @DisplayName("발송 ID 없음·SMTP·잘못된 요청·공급자 조회 실패를 전달 실패와 구분한다")
+    void rejectsUnsupportedLookupsAndReportsProviderFailures() throws Exception {
+        row(1, "UNKNOWN", NOW);
+        var path = ROOT + "/" + id(1) + "/provider-status";
+        mvc.perform(get(path).with(social(ADMIN))).andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("EMAIL_PROVIDER_ID_MISSING"));
+        mvc.perform(get(ROOT + "/" + id(2) + "/provider-status").with(social(ADMIN))).andExpect(status().isNotFound());
+        mvc.perform(get(ROOT + "/invalid/provider-status").with(social(ADMIN))).andExpect(status().isBadRequest());
+        UUID message = UUID.randomUUID();
+        jdbc.sql("UPDATE member_email_outbox SET provider = 'smtp', provider_message_id = :message WHERE id = :id")
+                .param("message", message).param("id", id(1)).update();
+        mvc.perform(get(path).with(social(ADMIN))).andExpect(status().isNotFound());
+        verifyNoInteractions(lookup);
+        jdbc.sql("UPDATE member_email_outbox SET provider = 'resend' WHERE id = :id").param("id", id(1)).update();
+        for (var reason : ResendEmailLookup.Reason.values()) {
+            doThrow(new ResendEmailLookup.Unavailable(reason)).when(lookup).retrieve(message);
+            mvc.perform(get(path).with(social(ADMIN))).andExpect(status().isServiceUnavailable())
+                    .andExpect(header().string("Cache-Control", "no-store"))
+                    .andExpect(jsonPath("$.code").value("EMAIL_PROVIDER_" + reason.name()));
+        }
+        assertThat(jdbc.sql("SELECT state FROM member_email_outbox WHERE id = :id").param("id", id(1)).query(String.class).single()).isEqualTo("UNKNOWN");
+    }
     private void row(int value, String state, Instant created) {
         jdbc.sql("""
                 INSERT INTO member_email_outbox(id, member_id, settings_version, kind, state, created_at, provider)

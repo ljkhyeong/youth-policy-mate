@@ -121,6 +121,26 @@ export interface paths {
         readonly patch?: never;
         readonly trace?: never;
     };
+    readonly "/api/v1/admin/email-deliveries/{id}/provider-status": {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header?: never;
+            readonly path?: never;
+            readonly cookie?: never;
+        };
+        /**
+         * Resend 이메일 최신 상태 조회
+         * @description 기록된 공급자 발송 ID로 조회한다. 주소·본문은 반환하지 않고 DB 상태·수신 동의·발송 요청을 변경하지 않는다. checkedAt은 조회 시각이며 이벤트 발생 시각이 아니다.
+         */
+        readonly get: operations["getAdminEmailProviderStatus"];
+        readonly put?: never;
+        readonly post?: never;
+        readonly delete?: never;
+        readonly options?: never;
+        readonly head?: never;
+        readonly patch?: never;
+        readonly trace?: never;
+    };
     readonly "/api/v1/admin/policy-ai-runs": {
         readonly parameters: {
             readonly query?: never;
@@ -706,6 +726,12 @@ export interface components {
             readonly total: number;
             /** Format: int64 */
             readonly unknown: number;
+        };
+        readonly AdminEmailProviderStatus: {
+            /** Format: date-time */
+            readonly checkedAt: string;
+            /** @enum {string} */
+            readonly event: "SENT" | "DELIVERED" | "DELIVERY_DELAYED" | "BOUNCED" | "COMPLAINED" | "SUPPRESSED" | "FAILED" | "OPENED" | "CLICKED" | "SCHEDULED" | "CANCELED" | "QUEUED" | "UNKNOWN";
         };
         readonly BasicConditions: {
             /** Format: date */
@@ -1797,6 +1823,73 @@ export interface operations {
                 };
                 content: {
                     readonly "*/*": components["schemas"]["PolicyApiError"];
+                };
+            };
+        };
+    };
+    readonly getAdminEmailProviderStatus: {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header?: never;
+            readonly path: {
+                readonly id: string;
+            };
+            readonly cookie?: never;
+        };
+        readonly requestBody?: never;
+        readonly responses: {
+            /** @description OK */
+            readonly 200: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["AdminEmailProviderStatus"];
+                };
+            };
+            /** @description 잘못된 요청 ID */
+            readonly 400: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["PolicyApiError"];
+                };
+            };
+            /** @description 로그인 필요 */
+            readonly 401: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["PolicyApiError"];
+                };
+            };
+            /** @description 관리자 권한 없음 */
+            readonly 403: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["PolicyApiError"];
+                };
+            };
+            /** @description 조회 가능한 Resend 발송 기록 없음 */
+            readonly 404: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["PolicyApiError"];
+                };
+            };
+            /** @description 공급자 조회 불가 */
+            readonly 503: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["PolicyApiError"];
                 };
             };
         };

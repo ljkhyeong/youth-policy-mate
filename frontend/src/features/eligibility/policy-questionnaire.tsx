@@ -18,6 +18,13 @@ export function PolicyQuestionnaire({ policyNumber }: { policyNumber: string }) 
   const [error, setError] = useState("");
   const [attempt, setAttempt] = useState(0);
   const [changed, setChanged] = useState(false);
+  const restoreFocus = useRef(false);
+  useEffect(() => {
+    if (!restoreFocus.current || (!questions && !error)) return;
+    const section = sectionRef.current;
+    (section?.querySelector<HTMLElement>("button") ?? section)?.focus();
+    restoreFocus.current = false;
+  }, [questions, error]);
   useEffect(() => {
     const controller = new AbortController();
     memberApi<Questionnaire>(`policy-questions/${policyNumber}`, { signal: controller.signal }).then(value => {
@@ -26,6 +33,7 @@ export function PolicyQuestionnaire({ policyNumber }: { policyNumber: string }) 
     return () => controller.abort();
   }, [policyNumber, attempt]);
   function reload(policyChanged = false) {
+    restoreFocus.current = true;
     setQuestions(null); setError(""); setChanged(policyChanged); setAttempt(value => value + 1);
   }
   return <section ref={sectionRef} id="policy-questions" className="policy-questionnaire" aria-labelledby="policy-question-heading" tabIndex={-1}>
@@ -44,22 +52,28 @@ function QuestionForm({ questions, onChanged }: { questions: Questionnaire; onCh
   const [started, setStarted] = useState(false);
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [result, setResult] = useState<Evaluation | null>(null);
-  const [busy, setBusy] = useState(false);
+  const [pending, setPending] = useState<"prefill" | "evaluate" | null>(null);
+  const busy = pending !== null;
   const [error, setError] = useState("");
   const request = useRef<AbortController | null>(null);
+  const formRef = useRef<HTMLFormElement>(null);
   const resultHeading = useRef<HTMLHeadingElement>(null);
   useEffect(() => () => request.current?.abort(), []);
   useEffect(() => { if (result) resultHeading.current?.focus(); }, [result]);
+  useEffect(() => { if (started) formRef.current?.querySelector("select")?.focus(); }, [started]);
   function change(id: string, value: string) {
     request.current?.abort(); request.current = null;
-    setBusy(false); setError(""); setResult(null);
+    setPending(null); setError(""); setResult(null);
+    setPrefillNotice(pending === "prefill" ? "자동 입력을 중단했어요. 질문에 직접 답해주세요." : "");
     setAnswers(previous => ({ ...previous, [id]: value }));
   }
   async function start() {
+    if (started || request.current) return;
     setStarted(true);
     const birthDate = readConfirmedBirth();
     if (!birthDate) return;
     const controller = new AbortController(); request.current = controller;
+    setPending("prefill");
     const body: components["schemas"]["PolicyPrefillRequest"] = {
       revision: questions.revision, ruleVersion: questions.ruleVersion, birthDate,
     };
@@ -75,12 +89,17 @@ function QuestionForm({ questions, onChanged }: { questions: Questionnaire; onCh
       if (controller.signal.aborted) return;
       if (failure instanceof MemberApiError && failure.status === 409) { onChanged(); return; }
       setPrefillNotice("내 조건을 불러오지 못했어요. 아래 질문에 직접 답해주세요.");
+    } finally {
+      if (request.current === controller) {
+        request.current = null;
+        if (!controller.signal.aborted) setPending(null);
+      }
     }
   }
   async function evaluate() {
-    request.current?.abort();
+    if (busy || request.current) return;
     const controller = new AbortController(); request.current = controller;
-    setBusy(true); setError(""); setResult(null);
+    setPending("evaluate"); setError(""); setResult(null);
     const body: EvaluationRequest = { revision: questions.revision, ruleVersion: questions.ruleVersion,
       answers: Object.entries(answers).filter(([, value]) => value).map(([questionId, value]) => ({ questionId, value })) };
     try {
@@ -90,14 +109,25 @@ function QuestionForm({ questions, onChanged }: { questions: Questionnaire; onCh
       if (controller.signal.aborted) return;
       if (failure instanceof MemberApiError && failure.status === 409) { onChanged(); return; }
       setError("답변을 확인하지 못했어요. 입력한 답변은 그대로 있으니 다시 시도해주세요.");
-    } finally { if (request.current === controller && !controller.signal.aborted) setBusy(false); }
+    } finally {
+      if (request.current === controller) {
+        request.current = null;
+        if (!controller.signal.aborted) setPending(null);
+      }
+    }
+  }
+  function clearAnswers() {
+    request.current?.abort(); request.current = null;
+    clearConfirmedBirth(); setPrefillNotice(""); setAnswers({}); setResult(null); setError(""); setPending(null);
+    formRef.current?.querySelector("select")?.focus();
   }
   return <>
     <p className="question-scope">{questions.scope}</p>
     <p>{questions.reason}</p>
     <p className="question-privacy">답변은 저장하지 않아요. 확인한 생년월일은 연령 답변에 사용하며, 새로고침하면 지워져요.</p>
-    {!started ? <button type="button" className="button-primary" onClick={() => void start()}>질문에 답하기</button> : <form onSubmit={event => { event.preventDefault(); void evaluate(); }}>
+    {!started ? <button type="button" className="button-primary" onClick={() => void start()}>질문에 답하기</button> : <form ref={formRef} onSubmit={event => { event.preventDefault(); void evaluate(); }}>
       <p className="question-privacy">모르는 항목은 비워두거나 ‘모르겠어요’를 선택하세요.</p>
+      {pending === "prefill" && <p role="status">생년월일을 반영하고 있어요. 직접 답하면 자동 입력을 중단해요.</p>}
       {prefillNotice && <p role="status">{prefillNotice}</p>}
       <div className="policy-question-fields">
         {questions.questions.map((question, index) => <div className="policy-question-field" key={question.id}>
@@ -110,10 +140,10 @@ function QuestionForm({ questions, onChanged }: { questions: Questionnaire; onCh
         </div>)}
       </div>
       <div className="question-actions">
-        <button type="submit" className="button-primary" disabled={busy}>{busy ? "조건 비교 중…" : "조건 비교"}</button>
-        <button type="button" className="button-secondary" onClick={() => { request.current?.abort(); request.current = null; clearConfirmedBirth(); setPrefillNotice(""); setAnswers({}); setResult(null); setError(""); setBusy(false); }}>답변 지우기</button>
+        <button type="submit" className="button-primary" disabled={busy}>{pending === "prefill" ? "내 조건 반영 중…" : pending === "evaluate" ? "조건 비교 중…" : "조건 비교"}</button>
+        <button type="button" className="button-secondary" onClick={clearAnswers}>답변 지우기</button>
       </div>
-      {busy && <p role="status">입력한 답변을 확인하고 있어요.</p>}
+      {pending === "evaluate" && <p role="status">입력한 답변을 확인하고 있어요.</p>}
       {error && <p role="alert" className="question-feedback">{error}</p>}
     </form>}
     {result && <div className="policy-question-result">

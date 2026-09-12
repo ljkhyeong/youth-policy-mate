@@ -13,6 +13,8 @@
 
 형식 오류는 400, 사용할 수 없는 토큰은 404, 저장소 오류는 503이다. POST 응답은 리다이렉트하지 않는다. 수신 해제·이동 응답은 `no-store`, 확인 화면은 검색 제외·`no-referrer`다. 화면을 바꾸거나 다른 메일 링크를 열면 이전 응답을 무시한다.
 
+응답을 확인하지 못하면 해제 결과를 알 수 없다고 안내하고 재시도 버튼으로 키보드 초점을 옮긴다. 완료나 사용할 수 없는 링크 응답은 해당 안내 제목에 초점을 둔다. 키보드로 다음 링크까지 이동할 수 있다.
+
 ## 토큰과 동의
 
 - 발송 배정 트랜잭션에서 정책 메일별 32바이트 난수를 만들고 V32의 Outbox 열에 SHA-256 해시만 저장한다. 원래 토큰은 공급자에게 보낼 메일에만 포함한다. 토큰만으로 회원 정보 조회·로그인·주소 변경은 할 수 없다.
@@ -31,7 +33,7 @@ SMTP는 Spring의 `MimeMessageHelper`, Resend는 발송 API의 `headers`로 `Lis
 
 ## 검증
 
-2026-09-12, 코드 기준 `8bc3fbf`. 아래 검사는 같은 코드에서 통과했고 이후 문서만 변경했다. 로그는 Git에 포함하지 않는 로컬 파일이다.
+아래는 2026-09-12, 초기 구현 `8bc3fbf`의 검증 결과다. 서버·계약은 유지했으며 최신 화면 검증은 [키보드와 오류 복구 검증](#키보드와-오류-복구-검증)에 기록한다. 로그는 Git에 포함하지 않는 로컬 파일이다.
 
 | 명령·범위 | 결과·로그 |
 |---|---|
@@ -46,3 +48,23 @@ SMTP는 Spring의 `MimeMessageHelper`, Resend는 발송 API의 `headers`로 `Lis
 별도 브라우저에서 확인 버튼·키보드·오류 재시도·중복 방지·늦은 응답 무시·잘못된 링크·완료 초점과 데스크톱/모바일 표시를 확인했다. 처리 요청 4건은 모두 모의 응답이었으며 실제 수신 해제는 하지 않았다. 결과는 `/tmp/youth-unsubscribe-ui/result.log`, 화면은 같은 디렉터리의 `desktop.png`·`mobile.png`·`complete.png`에 있다. 검증 세션은 종료했다.
 
 로컬 JAR 복사본에 V32를 적용한 전후 회원·정책·저장·이메일 건수는 같았다. API 상태·확인 화면은 200, 비회원 조건 조회는 401, 확인 화면 이동은 303이었다. 존재하지 않는 토큰만 사용해 실제 URL 인코딩/multipart POST와 Next 중계의 404 응답을 확인했다. 결과는 `/tmp/youth-unsubscribe-runtime-check.json`, 실행 정보는 [HANDOFF](../../HANDOFF.md)에 있다. 실제 공급자 메일·DKIM·수신 서비스 버튼 표시·Docker 이미지 실행·원격 CI는 미검증이다.
+
+## 키보드와 오류 복구 검증
+
+2026-09-12, 코드 `0761490`. 수신 해제 실패·사용할 수 없는 링크 응답과 [정책 변경 재조회](saved-policy-changes.md#현재-화면-검증)에서 초점이 본문으로 돌아가는 문제를 수정했다. 실패 시 재시도 버튼, 완료·사용 불가 안내와 비교 성공 시 결과에 초점을 둔다. 서버·계약·의존성은 변경하지 않았다.
+
+| 명령·범위 | 결과·로그 |
+|---|---|
+| `npm run verify -- check:web` | 통과. `.local/verification/1789212792922-e3fb7cf0.log` |
+| `npm run verify -- test:web -- 'src/app/api/member/[...path]/route.test.ts' src/features/member/member-policy-list.test.tsx` | 중계·회원 목록 테스트 통과. `.local/verification/1789212792938-e5d1c952.log` |
+| 헤드리스 브라우저 | 수정 전 네 가지 초점 유실을 재현하고 같은 흐름에서 복구를 확인했다. `/tmp/youth-member-retry-focus/before.log`·`after-focus.log` |
+| 오류 복구와 기존 동작 | 키보드 재시도·응답 유실 안내·확인 전 요청 없음·인증 정보 제외·중복 방지·링크 변경 후 이전 응답 무시·다음 버튼 접근·모바일을 통과했다. `/tmp/youth-member-retry-focus/recovery.log` |
+
+브라우저 코드는 `/tmp/youth-member-retry-focus/before.js`와 `recovery-flow.js`다. 후자는 수신 해제와 정책 변경 조회의 기존 동작도 함께 확인한다. 전용 헤드리스 세션에서 다음 명령으로 실행했다.
+
+```sh
+bash /Users/lim/.codex/skills/playwright/scripts/playwright_cli.sh --session youth-member-retry-focus run-code --filename /tmp/youth-member-retry-focus/before.js
+bash /Users/lim/.codex/skills/playwright/scripts/playwright_cli.sh --session youth-member-retry-focus run-code --filename /tmp/youth-member-retry-focus/recovery-flow.js
+```
+
+회원 API는 모의 응답이며 실제 수신 해제·회원 변경·외부 공급자 호출은 없었다. 검증 세션은 종료했고 사용자 창·탭은 조작하지 않았다. 서버 렌더링·라우팅 변경이 없어 배포 빌드는 반복하지 않았다. 마지막 빌드는 `8d650c9`의 `.local/verification/1789209508903-b985fc06.log`이며 현재 코드의 새 빌드 결과는 아니다.

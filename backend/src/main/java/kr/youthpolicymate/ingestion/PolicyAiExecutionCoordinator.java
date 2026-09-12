@@ -14,6 +14,7 @@ import kr.youthpolicymate.ingestion.PolicyAiRequestAdmission.ReservationRequired
 import java.time.Instant;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.function.Supplier;
 
 // Spring 트랜잭션을 열지 않는다. 각 저장소 호출이 끝난 뒤 외부 실행 포트를 호출한다.
 public final class PolicyAiExecutionCoordinator {
@@ -30,6 +31,11 @@ public final class PolicyAiExecutionCoordinator {
     }
 
     public Run execute(String reservationId, ReservationRequired required, Instant reservedAt, Dispatch dispatch) {
+        return execute(reservationId, required, reservedAt, dispatch, () -> lifecycleStore.dispatch(reservationId, dispatch));
+    }
+
+    Run execute(String reservationId, ReservationRequired required, Instant reservedAt, Dispatch dispatch,
+                Supplier<Transition> guardedDispatch) {
         Objects.requireNonNull(required, "AI 요청의 예약 필요 결과가 필요합니다.");
         Objects.requireNonNull(reservedAt, "AI 요청 예약 시각이 필요합니다.");
         Objects.requireNonNull(dispatch, "외부 호출 식별 정보가 필요합니다.");
@@ -44,7 +50,7 @@ public final class PolicyAiExecutionCoordinator {
             return new NotStarted(StopReason.RESERVATION_REJECTED, reservation, Optional.empty());
         }
 
-        var dispatched = lifecycleStore.dispatch(reservationId, dispatch);
+        var dispatched = guardedDispatch.get();
         if (dispatched.decision() == AiBudgetReservationLifecycleStore.Decision.REPLAYED) {
             return new NotStarted(StopReason.ALREADY_DISPATCHED, reservation, Optional.of(dispatched));
         }

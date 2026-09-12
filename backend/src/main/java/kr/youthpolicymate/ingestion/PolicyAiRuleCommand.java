@@ -13,8 +13,9 @@ import java.util.UUID;
 public final class PolicyAiRuleCommand {
     public static void main(String[] args) throws Exception {
         if (!(args.length == 6 && args[0].equals("prepare") || args.length == 3 && args[0].equals("complete")
-                || args.length == 2 && args[0].equals("status")))
-            throw new IllegalArgumentException("사용법: prepare <정책번호> <개정> <생성 방식> <요청 UUID> <새 JSON 경로> | complete <요청 UUID> <결과 JSON 경로> | status <요청 UUID>");
+                || args.length == 2 && (args[0].equals("status") || args[0].equals("generate"))
+                || args.length == 5 && args[0].equals("settle") || args.length == 4 && args[0].equals("no-charge")))
+            throw new IllegalArgumentException("사용법: prepare <정책번호> <개정> <생성 방식> <요청 UUID> <새 JSON 경로> | generate <요청 UUID> | complete <요청 UUID> <결과 JSON 경로> | status <요청 UUID> | settle <요청 UUID> <청구 확인 ID> <확인 시각> <원화 청구액> | no-charge <요청 UUID> <무과금 확인 ID> <확인 시각>");
         var app = new SpringApplication(YouthPolicyMateApplication.class);
         app.setAdditionalProfiles("local");
         app.setWebApplicationType(WebApplicationType.NONE);
@@ -34,7 +35,12 @@ public final class PolicyAiRuleCommand {
                     if (Files.size(path) > 131072) throw new IllegalArgumentException("추출 결과는 128KB 이하의 파일을 사용해주세요.");
                     System.out.println(store.complete(UUID.fromString(args[1]), Files.readString(path)));
                 }
-                case "status" -> System.out.println(store.result(UUID.fromString(args[1])).map(Object::toString).orElse("저장된 결과 없음"));
+                case "generate" -> System.out.println(context.getBean(PolicyAiRuleGenerationService.class).generate(UUID.fromString(args[1])));
+                case "status" -> System.out.println(context.getBean(PolicyAiRuleGenerationService.class).status(UUID.fromString(args[1])));
+                case "settle" -> System.out.println(context.getBean(PolicyAiRuleGenerationService.class).settle(UUID.fromString(args[1]),
+                        args[2], java.time.Instant.parse(args[3]), new java.math.BigDecimal(args[4])));
+                case "no-charge" -> System.out.println(context.getBean(PolicyAiRuleGenerationService.class).noCharge(UUID.fromString(args[1]),
+                        args[2], java.time.Instant.parse(args[3])));
                 default -> throw new IllegalArgumentException("지원하지 않는 명령입니다.");
             }
         }

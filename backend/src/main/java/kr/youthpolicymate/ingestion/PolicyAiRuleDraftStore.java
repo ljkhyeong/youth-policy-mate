@@ -95,6 +95,17 @@ public class PolicyAiRuleDraftStore {
 
     public Optional<Result> result(UUID requestId) { return storedResult(requestId).map(StoredResult::result); }
 
+    public Prepared prepared(UUID id) {
+        return findPrepared(id).orElseThrow(() -> new IllegalArgumentException("AI 조건 추출 요청을 찾을 수 없습니다."));
+    }
+
+    // 호출 예약·발송 기록과 같은 트랜잭션에서 검사할 때 정책 행 잠금을 유지한다.
+    @Transactional
+    public boolean lockCurrent(Prepared request) {
+        return lockPolicy(request.policyNumber()).matches(request) && !hasNewerRequest(request)
+                && storedResult(request.id()).isEmpty();
+    }
+
     private boolean hasNewerRequest(Prepared request) {
         return jdbc.sql("SELECT EXISTS(SELECT 1 FROM policy_ai_rule_requests WHERE policy_number = :number AND sequence > :sequence)")
                 .param("number", request.policyNumber()).param("sequence", request.sequence()).query(Boolean.class).single();

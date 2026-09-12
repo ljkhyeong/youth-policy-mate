@@ -20,8 +20,12 @@ function UnsubscribeForm({ token }: { token: string }) {
   const [error, setError] = useState("");
   const pending = useRef<AbortController | null>(null);
   const completion = useRef<HTMLHeadingElement>(null);
+  const actionButton = useRef<HTMLButtonElement>(null);
   useEffect(() => () => pending.current?.abort(), []);
-  useEffect(() => { if (state === "done") completion.current?.focus(); }, [state]);
+  useEffect(() => {
+    if (state === "done" || state === "invalid") completion.current?.focus();
+    else if (error) actionButton.current?.focus();
+  }, [state, error]);
 
   async function unsubscribe() {
     if (pending.current) return;
@@ -36,12 +40,12 @@ function UnsubscribeForm({ token }: { token: string }) {
       if (!response.ok) throw new Error();
       setState("done");
     } catch {
-      if (!controller.signal.aborted) { setState("ready"); setError("수신 해제를 완료하지 못했어요. 다시 시도해주세요."); }
+      if (!controller.signal.aborted) { setState("ready"); setError("수신 해제 결과를 확인하지 못했어요. 다시 시도해주세요."); }
     } finally { pending.current = null; }
   }
 
   if (!/^[A-Za-z0-9_-]{43}$/.test(token) || state === "invalid") return <section className="member-panel">
-    <h2>사용할 수 없는 링크예요</h2><p>최근 받은 메일의 링크를 열거나 로그인 후 이메일 알림을 꺼주세요.</p>
+    <h2 ref={completion} tabIndex={-1}>사용할 수 없는 링크예요</h2><p>최근 받은 메일의 링크를 열거나 로그인 후 이메일 알림을 꺼주세요.</p>
     <Link href="/my" className="button-secondary">내 알림 설정으로</Link>
   </section>;
   if (state === "done") return <section className="member-panel" role="status">
@@ -54,7 +58,7 @@ function UnsubscribeForm({ token }: { token: string }) {
     <p>이 메일을 받은 주소의 정책 알림을 중단해요. 관심 정책과 서비스 내 알림은 유지돼요.</p>
     <p className="field-help">발송 중인 메일은 취소할 수 없어요. 주소를 바꿨다면 새 주소의 설정은 유지돼요.</p>
     {error && <p role="alert">{error}</p>}
-    <button type="button" className="button-primary" disabled={state === "sending"} onClick={unsubscribe}>
+    <button ref={actionButton} type="button" className="button-primary" disabled={state === "sending"} onClick={unsubscribe}>
       {state === "sending" ? "수신 해제 중…" : "이메일 알림 끄기"}
     </button>
   </section>;

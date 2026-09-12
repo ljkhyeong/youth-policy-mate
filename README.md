@@ -4,6 +4,8 @@
 
 현재 제공하는 11개 정책의 질문·판정은 [공고별 조건 데이터](docs/development/policy-rule-data.md)로 관리합니다. 검토한 새 버전을 적용하면 서버 재시작 없이 질문과 조건 비교가 바뀝니다. [관리자 조건 검토·적용](docs/development/policy-rule-review.md)에서 원문 변경·미등록 정책을 찾고 기존 규칙 편집·초안 저장·검토 후 적용을 처리합니다. 파일 등록도 지원합니다. 확인한 생년월일은 9개 정책의 연령 질문에 재사용합니다. [AI 규칙 추출](docs/development/ai-rule-drafts.md)은 운영 명령으로 OpenAI 호출·예산 예약·원 응답 보관·검토용 초안 저장·청구 확인을 처리합니다. [수집 공고 자동 추출](docs/development/ai-rule-automation.md)은 신규·변경 공고를 처리량 제한 안에서 선택하고 중단 후 같은 요청으로 재개합니다. [관리자 AI 추출](docs/development/admin-ai-runs.md)에서 실행 상태·추출 결과·비용 상태를 검색하고 초안을 검토합니다. 실제 모델·키·요금 설정과 생성 품질·청구 검증은 남아 있습니다.
 
+[외부 API 연동과 홈서버 실행 준비](docs/development/external-api-runtime.md)에 Resend 발송·웹훅, 운영 환경변수, Dockerfile 사용법과 Ingress 경로를 정리했습니다. 앱 빌드와 모의 연동은 검증했으며 이미지 빌드·실제 공급자 등록·홈서버 배포는 운영자가 진행합니다.
+
 ## MVP
 
 - 서울 거주 만 19~34세 청년 대상. 온통청년의 전국 공통·서울시·서울 자치구 정책 제공

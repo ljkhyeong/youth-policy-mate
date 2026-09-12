@@ -253,3 +253,15 @@ PostgreSQL 원자적 예약 추가 후에는 전용 DB 5건과 전체 서버 247
 - [Gradle Foojay resolver](https://plugins.gradle.org/plugin/org.gradle.toolchains.foojay-resolver-convention)
 - [PostgreSQL 공식 컨테이너와 18 버전 볼륨 경로](https://hub.docker.com/_/postgres)
 - [Node.js 릴리스 상태](https://nodejs.org/en/about/previous-releases)
+
+## 실행 파일과 빌드 분리
+
+빌드 디렉터리의 JAR을 계속 실행한 상태에서 다시 빌드하면 실행 중인 서버가 일부 클래스를 읽지 못할 수 있다. `package:backend` 또는 서버 빌드 후 실행 파일을 별도 경로에 복사해 실행한다. 이미 실행 중인 복사본은 덮어쓰지 않고 새 경로를 사용한다.
+
+```sh
+runtime_jar="/tmp/youth-policy-api-$(git rev-parse --short HEAD)-$(date +%s).jar"
+cp backend/build/libs/youth-policy-mate-0.0.1-SNAPSHOT.jar "$runtime_jar"
+java -jar "$runtime_jar" --spring.profiles.active=local --app.email.enabled=false --app.reminders.enabled=false --app.ontong.schedule.enabled=false --app.ai.auto.enabled=false
+```
+
+기존 프로세스와 포트 사용을 확인한 뒤 교체한다. 운영 실행은 [외부 API와 홈서버 준비](external-api-runtime.md)를 따른다.

@@ -18,6 +18,8 @@
 
 `EMAIL_PROVIDER=resend`를 선택한다. `EMAIL_ENABLED=true`일 때 `EMAIL_ENCRYPTION_KEY`, `EMAIL_FROM`, `RESEND_API_KEY`, `RESEND_WEBHOOK_SECRET`가 필요하다. 암호화 키는 32바이트 난수의 Base64 문자열이며 재시작 때 유지한다. `.env.production.example`에는 실제 키를 넣지 않았다.
 
+관리자에서 [Resend 발송 상태 조회](email-provider-status.md)를 사용하려면 선택 값 `RESEND_READ_API_KEY`를 설정한다. Resend `full_access` 권한이 필요하며, 발송 전용 `RESEND_API_KEY`와 별도로 사용한다. 미설정 시 조회만 사용할 수 없고 발송 설정은 바뀌지 않는다.
+
 - 발송: `POST https://api.resend.com/emails`. Outbox ID를 `Idempotency-Key: email/{id}`와 `outbox_id` 태그에 넣는다. Resend의 멱등 키 보관 기간은 24시간이므로 무기한 중복 방지를 보장하지 않는다. [공식 발송 API](https://resend.com/docs/api-reference/emails/send-email)·[멱등 키](https://resend.com/docs/dashboard/emails/idempotency-keys)
 - API 요청에는 공급자가 요구하는 `User-Agent: youth-policy-mate/1.0`을 명시한다. [API 공통 요구사항](https://resend.com/docs/api-reference/introduction)
 - 처리: 10초 간격으로 인증 메일을 우선하며 Resend는 한 번에 최대 5건, SMTP는 최대 50건을 배정한다. 연결 제한은 5초, Resend 응답 제한은 10초다. 운영 초기에는 API 한 인스턴스를 기준으로 한다. 공급자 계정 전체의 실제 호출·일/월 한도는 운영자가 확인한다. [공급자 한도](https://resend.com/docs/api-reference/rate-limit)

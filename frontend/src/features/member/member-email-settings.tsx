@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import Link from "next/link";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { memberApi, MemberApiError, type EmailSettings, type EmailAddress, type EmailCode, type EmailConsent } from "./member-api";
 
 function errorText(failure: unknown) {
@@ -13,59 +14,95 @@ function errorText(failure: unknown) {
     }
     return failure.message;
   }
-  return "이메일 설정 요청을 완료하지 못했어요. 다시 시도해주세요.";
+  return "처리 결과를 확인하지 못했어요. 설정을 다시 불러와주세요.";
 }
 
 export function MemberEmailSettings({ csrf }: { csrf: string }) {
   const [settings, setSettings] = useState<EmailSettings | null>(null);
   const [address, setAddress] = useState("");
   const [code, setCode] = useState("");
-  const [busy, setBusy] = useState(false);
+  const [busy, setBusy] = useState(true);
   const [error, setError] = useState("");
+  const [loginRequired, setLoginRequired] = useState(false);
   const [notice, setNotice] = useState("");
   const [reload, setReload] = useState(0);
   const active = useRef<AbortController | null>(null);
-  const submitting = useRef(false);
+  const heading = useRef<HTMLHeadingElement>(null);
+  const retryButton = useRef<HTMLButtonElement>(null);
+  const restoreFocus = useRef(false);
+
+  useEffect(() => {
+    if (!restoreFocus.current || busy) return;
+    (!settings && error ? retryButton : heading).current?.focus();
+    restoreFocus.current = false;
+  }, [busy, error, settings]);
+
+  const loadSettings = useCallback((controller: AbortController) =>
+    memberApi<EmailSettings>("email-settings", { signal: controller.signal }).then(value => {
+      if (!controller.signal.aborted) setSettings(value);
+    }).catch(failure => {
+      if (controller.signal.aborted) return;
+      const expired = failure instanceof MemberApiError && failure.status === 401;
+      setSettings(null); setLoginRequired(expired);
+      setError(expired ? failure.message : "이메일 설정을 불러오지 못했어요. 다시 불러와주세요.");
+      if (expired) { setAddress(""); setCode(""); }
+    }), []);
 
   useEffect(() => {
     const controller = new AbortController(); active.current = controller;
-    memberApi<EmailSettings>("email-settings", { signal: controller.signal })
-      .then(value => { if (!controller.signal.aborted) setSettings(value); })
-      .catch(failure => { if (!controller.signal.aborted) setError(errorText(failure)); });
+    void loadSettings(controller).finally(() => {
+      if (!controller.signal.aborted) setBusy(false);
+      if (active.current === controller) active.current = null;
+    });
     return () => { controller.abort(); active.current?.abort(); };
-  }, [reload]);
+  }, [loadSettings, reload]);
+
+  function refresh() {
+    if (active.current) return;
+    restoreFocus.current = true;
+    setSettings(null); setBusy(true); setError(""); setNotice(""); setLoginRequired(false);
+    setReload(value => value + 1);
+  }
 
   async function change(path: string, method: string, body: EmailAddress | EmailCode | EmailConsent | undefined, message: string) {
-    if (submitting.current) return;
-    submitting.current = true; active.current?.abort();
+    if (!settings || busy || active.current) return;
     const controller = new AbortController(); active.current = controller;
-    setBusy(true); setError(""); setNotice("");
+    restoreFocus.current = true;
+    setBusy(true); setError(""); setNotice(""); setLoginRequired(false);
     try {
       await memberApi(path, { method, body, csrf, signal: controller.signal });
       if (controller.signal.aborted) return;
       setAddress(""); setCode(""); setNotice(message); setSettings(null);
-      const value = await memberApi<EmailSettings>("email-settings", { signal: controller.signal });
-      if (!controller.signal.aborted) setSettings(value);
+      await loadSettings(controller);
     } catch (failure) {
       if (!controller.signal.aborted) {
         setError(errorText(failure));
-        if (failure instanceof MemberApiError && failure.status === 401) setSettings(null);
-        if (failure instanceof MemberApiError && failure.code === "EMAIL_CODE_INVALID") {
-          const value = await memberApi<EmailSettings>("email-settings", { signal: controller.signal }).catch(() => null);
-          if (value && !controller.signal.aborted) setSettings(value);
+        if (failure instanceof MemberApiError && failure.status === 401) {
+          setSettings(null); setAddress(""); setCode(""); setLoginRequired(true);
+        } else if (!(failure instanceof MemberApiError && failure.code === "EMAIL_RATE_LIMITED")) {
+          setSettings(null);
+          if (failure instanceof MemberApiError && ["EMAIL_CODE_INVALID", "EMAIL_NOT_VERIFIED", "EMAIL_UNAVAILABLE"].includes(failure.code ?? "")) {
+            await loadSettings(controller);
+          }
         }
       }
     } finally {
-      if (!controller.signal.aborted) { setBusy(false); submitting.current = false; }
+      if (!controller.signal.aborted) setBusy(false);
+      if (active.current === controller) active.current = null;
     }
   }
 
   return <section className="member-panel email-settings" aria-labelledby="email-settings-title">
-    <h2 id="email-settings-title">이메일 알림</h2>
+    <h2 ref={heading} tabIndex={-1} id="email-settings-title">이메일 알림</h2>
     <p>이메일 인증 후 수신에 동의하면 저장한 정책의 마감과 변경 알림을 받을 수 있어요.</p>
-    {error && <div role="alert"><p>{error}</p><button type="button" className="text-button" disabled={busy} onClick={() => { setError(""); setReload(value => value + 1); }}>설정 다시 불러오기</button></div>}
+    {error && <div role="alert"><p>{error}</p>
+      <div className="member-toolbar">
+        <button ref={retryButton} type="button" className="text-button" disabled={busy} onClick={refresh}>설정 다시 불러오기</button>
+        {loginRequired && <Link className="button-secondary" href="/login">로그인하기</Link>}
+      </div>
+    </div>}
     {notice && <p role="status">{notice}</p>}
-    {!settings && !error && <p role="status">이메일 설정을 불러오고 있어요.</p>}
+    {busy && <p role="status">{settings ? "이메일 설정을 변경하고 있어요." : "이메일 설정을 불러오고 있어요."}</p>}
     {settings && <>
       {!settings.available && <p className="field-help">현재 이메일 알림을 이용할 수 없어요. ‘마감 일정’과 ‘알림’ 탭은 이용할 수 있어요.</p>}
       {settings.addressRegistered && <div className="email-current">
@@ -96,7 +133,7 @@ export function MemberEmailSettings({ csrf }: { csrf: string }) {
             : settings.verificationDelivery === "UNKNOWN" ? "메일 발송 여부를 확인할 수 없어요. 메일함을 확인하고, 메일이 없으면 새 코드를 요청해주세요."
             : settings.verificationDelivery === "FAILED" ? "인증 메일을 보내지 못했어요. 잠시 후 새 코드를 요청해주세요."
             : settings.verificationDelivery === "PENDING" || settings.verificationDelivery === "SENDING" ? "인증 메일을 보내는 중이에요. 잠시 후 메일함을 확인해주세요." : "새 인증 메일을 요청해주세요."}</p>
-          <button type="button" className="text-button" disabled={busy} onClick={() => setReload(value => value + 1)}>발송 상태 새로고침</button>
+          <button type="button" className="text-button" disabled={busy} onClick={refresh}>발송 상태 새로고침</button>
           <form onSubmit={event => { event.preventDefault(); void change("email-verification/confirm", "POST", { code }, "이메일 인증을 마쳤어요. 수신에 동의하면 이메일 알림을 받을 수 있어요."); }}>
             <fieldset disabled={busy || !settings.verificationExpiresAt}>
               <label htmlFor="email-verification-code">8자리 인증 코드</label>

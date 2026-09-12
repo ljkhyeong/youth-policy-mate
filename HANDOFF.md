@@ -4,13 +4,12 @@
 
 ## 현재 작업
 
-- 이전 누적 작업은 `1b7fbdd`로 로컬·원격 `main`에 반영했고 [웹·전체 서버 CI](https://github.com/ljkhyeong/youth-policy-mate/actions/runs/34222499053)를 통과했다.
-- 현재 `codex/policy-source-notices`의 `ebaad91`에서 관리자 이메일 발송 현황을 추가했다. `/admin/collection-exceptions/email`에서 기간·상태·종류별 내역과 기간 전체 건수를 조회한다. 회원·주소·본문·인증 코드를 반환하지 않으며 조회로 재발송하거나 상태를 바꾸지 않는다.
-- `28fa9e6`에서 Resend API가 요구하는 User-Agent와 웹훅 `200 OK` 응답을 명시하고 운영 예시의 알림 주기 환경변수명을 실제 코드와 맞췄다.
-- 관리자 API의 권한·조회·개인정보 제외·읽기 전용 동작, 관련 웹 테스트·웹 검사·생성 계약·웹 빌드·서버 실행 파일 검증을 통과했다. 별도 Node 24/임시 API/브라우저에서 필터·페이지·오류·키보드·390px 화면을 확인했다. [구현과 검증 로그](docs/development/admin-email-deliveries.md#검증)
-- 로컬 Spring은 `/tmp/youth-admin-email-api-runtime.jar` 복사본·PID 82345·로그 `/tmp/youth-admin-email-api-runtime.log`다. Next 개발 서버는 PID 10257·로그 `/tmp/youth-admin-ai-web.log`를 유지했다. 상태 200·관리자 API 비회원 401·새 웹 페이지 200을 확인했다. DB는 V30이며 정책 40건을 유지했다. 임시 웹/API와 브라우저 검증 세션은 종료했다.
-- Resend 요청·웹훅 전용 검사는 `.local/verification/1789187521181-d7fd7098.log`, 최신 전체 서버 테스트와 실행 파일 빌드는 `.local/verification/1789187847384-dafe088b.log`에서 통과했다.
-- 실제 회원 설정·이메일·AI 호출은 실행하지 않았다. 자동 추출·정기 수집·이메일·알림은 비활성화다. 이미지 빌드·공급자 등록·공유기·TLS·k3s 설정은 사용자가 직접 수행하며 이번 브랜치는 원격에 반영하지 않았다.
+- 이전 누적 작업은 `1b7fbdd`로 로컬·원격 `main`에 반영했고 [웹·전체 서버 CI](https://github.com/ljkhyeong/youth-policy-mate/actions/runs/34222499053)를 통과했다. 이후 작업은 `codex/policy-source-notices`에 있으며 원격에는 반영하지 않았다.
+- `f58f24a`에서 `/my`의 회원 탈퇴와 `DELETE /api/v1/me/account`를 추가했다. 현재 DB의 회원·조건·저장·예약·알림·이메일 정보를 함께 삭제하고 모든 세션을 정리한다. 삭제된 회원의 늦은 로그인 세션도 회원·관리자 요청에서 차단한다. 다른 회원·공개 정책은 유지하고 재가입 시 새 회원 ID를 부여한다.
+- 삭제·롤백·권한·CSRF·재가입·다중 기기·만료/늦은 세션을 확인했다. 전체 서버 검사에서 기존 테스트 준비 3건을 보정한 뒤 해당 범위와 새 회원 검사를 통과했다. 다른 통과 범위는 코드가 같아 재사용했다. 웹 검사·중계 테스트·생성 계약·서버/웹 빌드와 브라우저의 확인·실패·중복·초점·탭 전환·모바일·늦은 응답 검증을 마쳤다. [범위와 로그](docs/development/member-withdrawal.md#검증)
+- 로컬 Spring은 `/tmp/youth-withdrawal-api-runtime.jar` 복사본·PID 5515·로그 `/tmp/youth-withdrawal-api-runtime.log`다. 웹 3000 포트의 Next 프로세스는 PID 20419를 유지했다. API 상태 200·회원 조회 비회원 401·웹 `/my` 200을 확인했다. DB V31 적용 전후 회원·정책·저장·이메일 건수는 같았으며 실제 탈퇴 요청은 실행하지 않았다. 별도 브라우저 검증 세션은 종료했다.
+- Resend API/서명 웹훅과 관리자 발송 현황은 기존 구현을 유지했다. 발송 요청의 User-Agent·웹훅 200 응답과 `REMINDER_DELIVERY_TIME`·`REMINDER_POLL_MS` 운영 예시 수정도 포함한다.
+- 정기 수집·AI 자동 처리·이메일·알림은 비활성화다. 실제 OAuth·Resend 연동, 이미지 빌드·공유기·TLS·k3s·백업 운영 설정은 사용자가 진행한다. 백업·외부 공급자 데이터의 보관/삭제와 관리자 기록 보관 기준은 남아 있다.
 
 ## 구현·검증 범위
 
@@ -19,11 +18,11 @@
 - 조건 질문: 국가근로장학금·응시료 지원·K-패스·청년주택드림청약통장·서울청년정책네트워크·상반기 이사비 지원·청년내일저축계좌·전세보증금반환보증 보증료 지원·햇살론유스·청년 미래이음 대출·미래 청년 일자리 5월 모집을 제공한다. 정책별 소득·중복지원·참여 제한·보증한도의 미확인을 구분한다. 실제 증빙·기타 제한·선발은 기관 심사가 필요하며 전체 자격은 추가 확인으로 유지한다. [질문 탐색](docs/development/policy-question-discovery.md)·[이사비](docs/development/moving-fee-questions.md)·[저축계좌](docs/development/youth-tomorrow-savings-questions.md)·[보증료](docs/development/guarantee-fee-questions.md)·[햇살론유스](docs/development/haetsalron-youth-questions.md)·[미래이음](docs/development/miso-youth-future-questions.md)·[미래 청년 일자리](docs/development/future-youth-jobs-questions.md)
 - 접수 상태: 목록·상세·내 조건에서 날짜형·시각형·상시·마감·미확인을 구분하며 공개 목록과 내 조건을 상태별로 검색한다. 검색·질문 필터·정렬과 함께 전체 결과에 적용한 뒤 페이지를 나눈다. Flyway V18로 기존 정책의 검색용 기간을 이전했다. 기존 마감 알림과 원문 해석을 공유한다. 날짜 충돌·회차·소진 안내를 임의로 접수 중으로 바꾸지 않는다.
 - 개인 조건 탐색: 미래 청년 일자리를 포함한 9개 정책의 연령을 비교하고 전체 정책에서 검색·정렬한다. 정책별 기준일·출생일 범위·병역 예외를 구분하며 햇살론유스·청년 미래이음 대출은 오늘 보증·대출신청을 가정한다. 거주·취업·소득은 추가 확인으로 남긴다. 검색·페이지 이동·오류 재시도·모바일 화면을 로컬 실제 정책으로 확인했다.
-- 회원 기능: OAuth 로그인 코드, 관심 정책 저장·해제·[저장 당시와 현재 내용 비교](docs/development/saved-policy-changes.md), 일정·[서비스 내 알림 페이지와 미읽음 필터](docs/development/member-notifications.md)를 연결했다. [마감 일정](docs/development/member-calendar.md)에서 접수 상태를 구분하고 가까운 마감순 정렬·상태 필터·새로고침을 제공한다. 테스트 제공자와 실제 HTTP·DB로 코드 교환부터 관리자 접근·세션 종료까지 확인했다. 로컬 카카오·네이버 ID/Secret과 관리자 ID가 없어 실제 제공자 로그인은 미검증이다. [회원 기능](docs/development/member-policy-flow.md)
+- 회원 기능: [회원 탈퇴·개인 데이터·전체 세션 삭제](docs/development/member-withdrawal.md), OAuth 로그인 코드, 관심 정책 저장·해제·[저장 당시와 현재 내용 비교](docs/development/saved-policy-changes.md), 일정·[서비스 내 알림 페이지와 미읽음 필터](docs/development/member-notifications.md)를 연결했다. [마감 일정](docs/development/member-calendar.md)에서 접수 상태를 구분하고 가까운 마감순 정렬·상태 필터·새로고침을 제공한다. 테스트 제공자와 실제 HTTP·DB로 코드 교환부터 관리자 접근·세션 종료까지 확인했다. 로컬 카카오·네이버 ID/Secret과 관리자 ID가 없어 실제 제공자 로그인은 미검증이다. [회원 기능](docs/development/member-policy-flow.md)
 - 이메일: 주소 확인·동의·암호화 저장·Outbox·SMTP/Resend 어댑터와 서명 웹훅, [관리자 발송 현황](docs/development/admin-email-deliveries.md)을 구현했다. 실제 공급자 계정·발신 도메인과 외부 수신 확인은 남아 있다. [이메일 구현과 설정](docs/development/member-email-reminders.md)
 - AI: 공고 원문·OpenAI 호출·예산 예약·원 응답·규칙 초안을 연결했다. 응답 유실에는 예약을 유지하고 재호출하지 않는다. 수집된 신규/변경 공고의 자동 추출과 실제 청구·무과금 확인 명령을 제공한다. 공급자 청구 자동 조회·실제 생성 품질 검증은 남아 있다. 모델·요금·월 한도는 설정값으로 받고 미설정 상태에는 호출하지 않는다. [규칙 추출과 설정](docs/development/ai-rule-drafts.md)·[자동 추출](docs/development/ai-rule-automation.md)·[요청 판단](docs/development/ai-request-admission.md)·[복구 실행](docs/development/ai-reservation-recovery-work-runs.md)
 - 백업: [수동 백업·임시 DB 복구 검증](docs/development/database-backup.md)을 제공한다. PostgreSQL 기본 도구를 사용하며 원본 DB를 덮어쓰지 않는다. 정기 백업의 주기·보관 기간·외부 보관과 운영 DB 전환은 미정이다.
-- 검증 기준: 새 관리자 이메일 기능은 `ebaad91`의 관련 API·웹·계약·빌드로 확인했다. Resend 운영 계약까지 포함한 최신 전체 서버 기준은 `28fa9e6`이며 테스트와 실행 JAR 빌드를 통과했다. 실제 공급자 송수신·홈서버 이미지 실행·원격 CI는 미검증이다.
+- 검증 기준: 현재 코드 기준은 `f58f24a`다. 전체 서버 검사와 실패 범위 보정 후 재검증, 최종 서버/웹 빌드를 조합해 확인했다. 명령·범위·로그는 회원 탈퇴 문서에 있다. 실제 공급자 송수신·홈서버 이미지 실행·원격 CI는 미검증이다.
 - 검증 도구의 성공·실패·실행 중 변경 시나리오와 기존 도구 검사를 통과했다. 컴파일·패키징 명령의 Gradle 실행 계획에 테스트 실행이 없음을 확인했다. `npm run verify -- status`에서 실행 기록을 확인한다. 검증 도구를 정리할 당시에는 앱 기능을 변경하지 않아 전체 앱 테스트를 재실행하지 않았다.
 
 ## 남은 작업
@@ -33,7 +32,7 @@
 3. 자격·마감 조건이나 미공개 정책의 보정이 필요하면 허용 범위·공개 기준을 먼저 정한다. 현재는 공개 정책의 정책명·운영 기관 한 항목만 보정한다.
 4. 사용자가 Resend 계정·발신 도메인·웹훅을 등록한 뒤 실제 수신·반송·수신 해제를 검증한다. 서명·중복·상태 전이는 모의 연동과 PostgreSQL로 검증했다.
 5. 실제 수집 한도·범위·주기를 정해 정기 수집을 활성화하고 실패 후 재개를 확인한다.
-6. 월 3만 원 예산 안에서 배포·정기 백업의 주기/보관/외부 저장·운영 DB 복구 전환·운영 인증·개인정보 보관/삭제를 정하고 원격 CI를 확인한다. 수동 백업과 임시 DB 복구 검증은 구현했다.
+6. 월 3만 원 예산 안에서 배포·정기 백업의 주기/보관/외부 저장·운영 DB 복구 전환·운영 인증·개인정보 처리 안내·백업/외부 공급자/관리자 기록의 보관·삭제 기준을 정하고 원격 CI를 확인한다. 회원 탈퇴와 현재 DB의 개인 데이터 삭제, 수동 백업과 임시 DB 복구 검증은 구현했다.
 
 ## 이어서 작업할 때
 
@@ -41,4 +40,4 @@
 - 로컬 실행은 [개발 환경](docs/development/local-development.md), 실제 정책 서버 연결은 [조회 문서](docs/development/policy-catalog.md)를 참고한다. 현재 프로세스·브랜치·환경 설정은 실행 시점에 확인한다.
 - 최근 검증의 `JAVA_HOME`은 `/Users/lim/.gradle/jdks/eclipse_adoptium-25-aarch64-os_x.2/jdk-25.0.3+9/Contents/Home`이다. `test:ai-reservations`는 PostgreSQL 검사로 Docker가 필요하다.
 - 수집 필드·미확인 계약은 [온통청년 API 조사](docs/research/ontong-api-contract.md)에 있다. API 키 설정과 실제 응답 확보는 완료했으며 비밀값·전체 캡처는 Git에 넣지 않는다.
-- 정기 수집·SMTP·AI 자동 추출·AI 복구 실행기의 기본값은 비활성화다. 외부 연동 검증에는 실제 설정이 필요하다. 운영은 사용자 홈서버 k3s를 대상으로 준비했으며 실제 환경 설정과 개인정보 보관·삭제 정책은 사용자가 정한다.
+- 정기 수집·SMTP·AI 자동 추출·AI 복구 실행기의 기본값은 비활성화다. 외부 연동 검증에는 실제 설정이 필요하다. 운영은 사용자 홈서버 k3s를 대상으로 준비했으며 실제 환경 설정과 백업·외부 공급자·관리자 기록의 보관/삭제 기준은 사용자가 정한다.

@@ -80,7 +80,7 @@ class PolicyRuleReviewApiTest {
                 .andExpect(jsonPath("$.contentHash").value(policy.contentHash())).andExpect(jsonPath("$.versions[0].canPublish").value(true));
         var exported = mvc.perform(get(ROOT + "/" + policy.number() + "/versions/" + id).with(social(ADMIN)))
                 .andExpect(status().isOk()).andExpect(header().string("Cache-Control", "no-store")).andReturn();
-        assertThat(mapper.readValue(mapper.readTree(exported.getResponse().getContentAsString()).path("definitionJson").asString(), PolicyRuleDefinition.class)).isEqualTo(payload);
+        assertThat(mapper.treeToValue(mapper.readTree(exported.getResponse().getContentAsString()).path("definition"), PolicyRuleDefinition.class)).isEqualTo(payload);
 
         var publish = new PolicyRuleActions.Publish(UUID.randomUUID(), 1L, "none", "질문과 판정표 확인");
         var applied = publish(policy.number(), id, publish).andExpect(status().isOk()).andReturn().getResponse().getContentAsString();

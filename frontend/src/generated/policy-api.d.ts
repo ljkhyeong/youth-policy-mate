@@ -972,6 +972,68 @@ export interface components {
             /** Format: uuid */
             readonly versionId: string;
         };
+        readonly PolicyRuleAgeBinding: {
+            readonly above?: string | null;
+            readonly below: string;
+            /** Format: int32 */
+            readonly maximumInclusive?: number | null;
+            /** Format: int32 */
+            readonly minimumInclusive: number;
+            readonly questionId: string;
+            /** Format: date */
+            readonly referenceDate?: string | null;
+            readonly showCalculatedAge: boolean;
+            readonly within: string;
+        };
+        readonly PolicyRuleBirthBinding: {
+            readonly above?: string | null;
+            readonly below?: string | null;
+            /** Format: date */
+            readonly maximumInclusive?: string | null;
+            /** Format: date */
+            readonly minimumInclusive?: string | null;
+            readonly questionId: string;
+            readonly within: string;
+        };
+        readonly PolicyRuleCase: {
+            readonly explanation: string;
+            /** @enum {string} */
+            readonly outcome: "MET" | "NOT_MET" | "UNKNOWN";
+            readonly when: {
+                readonly [key: string]: readonly string[];
+            };
+        };
+        readonly PolicyRuleCheck: {
+            readonly cases: readonly components["schemas"]["PolicyRuleCase"][];
+            readonly evidence: string;
+            readonly label: string;
+            readonly providedAnswers?: readonly components["schemas"]["PolicyRuleProvidedAnswer"][] | null;
+            readonly questionId: string;
+            readonly separator?: string | null;
+            readonly unknownExplanation: string;
+        };
+        readonly PolicyRuleDefinition: {
+            readonly ageBinding?: components["schemas"]["PolicyRuleAgeBinding"] | null;
+            readonly ageNotice?: string | null;
+            readonly birthBinding?: components["schemas"]["PolicyRuleBirthBinding"] | null;
+            readonly checks: readonly components["schemas"]["PolicyRuleCheck"][];
+            readonly contentHash: string;
+            readonly explanation: string;
+            readonly monthly: boolean;
+            readonly periodNotice?: components["schemas"]["PolicyRulePeriodNotice"] | null;
+            readonly policyNumber: string;
+            readonly questions: readonly components["schemas"]["PolicyQuestion"][];
+            readonly reason: string;
+            readonly remainingChecks: readonly string[];
+            readonly remainingVariant?: components["schemas"]["PolicyRuleRemainingVariant"] | null;
+            readonly ruleVersion: string;
+            readonly scope: string;
+            readonly sourceUrl: string;
+            /** Format: date-time */
+            readonly validFrom: string;
+            /** Format: date-time */
+            readonly validUntil: string;
+        };
         readonly PolicyRuleDraftRequest: {
             readonly definitionJson: string;
             /** Format: int64 */
@@ -981,7 +1043,20 @@ export interface components {
             readonly requestId: string;
         };
         readonly PolicyRuleFile: {
-            readonly definitionJson: string;
+            readonly definition: components["schemas"]["PolicyRuleDefinition"];
+        };
+        readonly PolicyRulePeriodNotice: {
+            readonly before: string;
+            readonly closed: string;
+            /** Format: date-time */
+            readonly closesAt: string;
+            readonly open: string;
+            /** Format: date-time */
+            readonly opensAt: string;
+        };
+        readonly PolicyRuleProvidedAnswer: {
+            readonly prefix: string;
+            readonly questionId: string;
         };
         readonly PolicyRulePublishRequest: {
             /** Format: int64 */
@@ -990,6 +1065,14 @@ export interface components {
             readonly reason: string;
             /** Format: uuid */
             readonly requestId: string;
+        };
+        readonly PolicyRuleRemainingVariant: {
+            readonly byValue: {
+                readonly [key: string]: string;
+            };
+            /** Format: int32 */
+            readonly index: number;
+            readonly questionId: string;
         };
         readonly PolicyRuleReviewDetail: {
             /** Format: date-time */

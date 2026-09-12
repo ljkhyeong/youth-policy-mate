@@ -7,11 +7,24 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Profile;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 @Configuration(proxyBeanMethods = false)
 @Profile("!preview")
 class AdminApiConfiguration {
+    @Bean
+    OpenApiCustomizer policyRuleContract() {
+        return api -> {
+            var definition = api.getComponents().getSchemas().get("PolicyRuleDefinition");
+            if (definition == null) return;
+            Map.of("ageBinding", "PolicyRuleAgeBinding", "birthBinding", "PolicyRuleBirthBinding",
+                    "periodNotice", "PolicyRulePeriodNotice", "remainingVariant", "PolicyRuleRemainingVariant")
+                    .forEach((field, type) -> definition.addProperty(field, new Schema<>().anyOf(List.of(
+                            new Schema<>().$ref("#/components/schemas/" + type), new Schema<>().types(Set.of("null"))))));
+        };
+    }
+
     @Bean
     OpenApiCustomizer collectionExceptionContract() {
         return api -> {

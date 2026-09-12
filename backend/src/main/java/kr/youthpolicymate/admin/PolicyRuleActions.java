@@ -4,6 +4,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.*;
 import java.time.Instant;
 import java.util.UUID;
+import kr.youthpolicymate.policy.catalog.PolicyRuleDefinition;
 
 public final class PolicyRuleActions {
     private PolicyRuleActions() {}
@@ -21,8 +22,8 @@ public final class PolicyRuleActions {
     public record Result(UUID requestId, UUID versionId, String policyNumber, String ruleVersion, Action action,
                          UUID actorId, long revision, String reason, Instant performedAt) {}
 
-    @Schema(name = "PolicyRuleFile", requiredProperties = {"definitionJson"})
-    public record File(String definitionJson) {}
+    @Schema(name = "PolicyRuleFile", requiredProperties = {"definition"})
+    public record File(PolicyRuleDefinition definition) {}
 
     static class Invalid extends RuntimeException {}
     static class Changed extends RuntimeException {}

@@ -59,7 +59,7 @@ class PolicyRuleManagementService {
 
     @Transactional(readOnly = true)
     public PolicyRuleActions.File file(String number, UUID id) {
-        return new PolicyRuleActions.File(mapper.writerWithDefaultPrettyPrinter().writeValueAsString(scopedDefinition(number, id)));
+        return new PolicyRuleActions.File(scopedDefinition(number, id));
     }
 
     private PolicyRuleDefinition scopedDefinition(String number, UUID id) {

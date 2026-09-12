@@ -1,6 +1,7 @@
 package kr.youthpolicymate.policy.catalog;
 
 import jakarta.validation.Valid;
+import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.*;
 import kr.youthpolicymate.eligibility.*;
 import java.time.*;
@@ -9,6 +10,8 @@ import static kr.youthpolicymate.policy.catalog.PolicyQuestions.*;
 import static kr.youthpolicymate.eligibility.ConditionAssessment.Outcome.UNKNOWN;
 
 /** 공고의 선택지 판정표. 첫 일치 행을 적용하고 미일치는 추가 확인으로 남긴다. */
+@Schema(name = "PolicyRuleDefinition", requiredProperties = {"policyNumber", "ruleVersion", "contentHash", "validFrom", "validUntil",
+        "scope", "reason", "explanation", "sourceUrl", "remainingChecks", "questions", "checks", "monthly"})
 public record PolicyRuleDefinition(
         @Pattern(regexp = "[0-9]{20}") @NotNull String policyNumber,
         @NotBlank @Size(max = 80) String ruleVersion,
@@ -20,24 +23,32 @@ public record PolicyRuleDefinition(
         @NotEmpty @Size(max = 20) List<@NotNull Question> questions,
         @NotEmpty List<@NotNull @Valid RuleCheck> checks,
         @Valid BirthBinding birthBinding, @Valid AgeBinding ageBinding,
-        Boolean monthly, @Valid PeriodNotice periodNotice, String ageNotice,
+        Boolean monthly, @Valid PeriodNotice periodNotice,
+        @Schema(types = {"string", "null"}) String ageNotice,
         @Valid RemainingVariant remainingVariant) {
     private static final ZoneId SEOUL = ZoneId.of("Asia/Seoul");
     public PolicyRuleDefinition { monthly = Boolean.TRUE.equals(monthly); }
 
+    @Schema(name = "PolicyRuleCheck", requiredProperties = {"questionId", "label", "evidence", "cases", "unknownExplanation"})
     public record RuleCheck(@NotBlank String questionId, @NotBlank String label, @NotBlank String evidence,
                             @NotEmpty List<@NotNull @Valid RuleCase> cases, @NotBlank String unknownExplanation,
-                            List<@NotNull @Valid ProvidedAnswer> providedAnswers, String separator) {}
+                            @Schema(types = {"array", "null"}) List<@NotNull @Valid ProvidedAnswer> providedAnswers,
+                            @Schema(types = {"string", "null"}) String separator) {}
+    @Schema(name = "PolicyRuleProvidedAnswer", requiredProperties = {"questionId", "prefix"})
     public record ProvidedAnswer(@NotBlank String questionId, @NotNull String prefix) {}
+    @Schema(name = "PolicyRulePeriodNotice", requiredProperties = {"opensAt", "closesAt", "before", "open", "closed"})
     public record PeriodNotice(@NotNull Instant opensAt, @NotNull Instant closesAt,
                                @NotBlank String before, @NotBlank String open, @NotBlank String closed) {
         String at(Instant now) { return now.isBefore(opensAt) ? before : now.isBefore(closesAt) ? open : closed; }
     }
+    @Schema(name = "PolicyRuleRemainingVariant", requiredProperties = {"index", "questionId", "byValue"})
     public record RemainingVariant(@PositiveOrZero int index, @NotBlank String questionId,
                                     @NotEmpty Map<@NotBlank String, @NotBlank String> byValue) {}
+    @Schema(name = "PolicyRuleAgeBinding", requiredProperties = {"questionId", "minimumInclusive", "below", "within", "showCalculatedAge"})
     public record AgeBinding(@NotBlank String questionId, @PositiveOrZero int minimumInclusive,
-                             @PositiveOrZero Integer maximumInclusive, LocalDate referenceDate,
-                             @NotBlank String below, @NotBlank String within, String above, boolean showCalculatedAge) {
+                             @Schema(types = {"integer", "null"}) @PositiveOrZero Integer maximumInclusive,
+                             @Schema(types = {"string", "null"}, format = "date") LocalDate referenceDate,
+                             @NotBlank String below, @NotBlank String within, @Schema(types = {"string", "null"}) String above, boolean showCalculatedAge) {
         LocalDate referenceAt(Instant now) { return referenceDate == null ? now.atZone(SEOUL).toLocalDate() : referenceDate; }
         ConditionAssessment assessment(LocalDate birth, Instant now, SourceEvidence evidence) {
             return AgeConditionEvaluator.evaluate(new AgeCondition.CompletedYears(questionId, minimumInclusive,
@@ -50,10 +61,15 @@ public record PolicyRuleDefinition(
                     : birth.isAfter(referenceAt(now).minusYears(minimumInclusive)) ? below : above;
         }
     }
+    @Schema(name = "PolicyRuleCase", requiredProperties = {"when", "outcome", "explanation"})
     public record RuleCase(@NotEmpty Map<@NotBlank String, @NotEmpty Set<@NotNull @Size(max = 40) String>> when,
                            @NotNull ConditionAssessment.Outcome outcome, @NotBlank String explanation) {}
-    public record BirthBinding(@NotBlank String questionId, LocalDate minimumInclusive, LocalDate maximumInclusive,
-                               String below, @NotBlank String within, String above) {
+    @Schema(name = "PolicyRuleBirthBinding", requiredProperties = {"questionId", "within"})
+    public record BirthBinding(@NotBlank String questionId,
+                               @Schema(types = {"string", "null"}, format = "date") LocalDate minimumInclusive,
+                               @Schema(types = {"string", "null"}, format = "date") LocalDate maximumInclusive,
+                               @Schema(types = {"string", "null"}) String below, @NotBlank String within,
+                               @Schema(types = {"string", "null"}) String above) {
         String answer(LocalDate birth) {
             if (minimumInclusive != null && birth.isBefore(minimumInclusive)) return below;
             if (maximumInclusive != null && birth.isAfter(maximumInclusive)) return above;

@@ -108,7 +108,7 @@ export function RuleReviewContent({ data }: { data: RuleReviewDetail }) {
           <ul>{question.options.map(option => <li key={option.value}>{option.label}</li>)}</ul>
         </li>)}</ol>
         <h4>기관 확인이 필요한 항목</h4><ul>{version.remainingChecks.map((check, index) => <li key={index}>{check}</li>)}</ul>
-        <RuleVersionControls policyNumber={data.item.policyNumber} revision={data.item.revision} expectedRuleVersion={expectedRuleVersion} version={version} />
+        <RuleVersionControls policyNumber={data.item.policyNumber} revision={data.item.revision} contentHash={data.contentHash} expectedRuleVersion={expectedRuleVersion} version={version} />
       </details>)}
     </section>
   </>;

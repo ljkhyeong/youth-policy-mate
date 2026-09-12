@@ -964,6 +964,26 @@ select {
 .rule-review-confirm input { margin-top: 7px; flex-shrink: 0; }
 .rule-version-controls { margin-top: 20px; }
 .rule-version-controls > button { margin-top: 12px; }
+.rule-version-controls > button + button { margin-left: 12px; }
+.rule-editor { margin-top: 28px; border-top: 1px solid var(--app-line); padding-top: 24px; }
+.rule-editor-fields { border: 0; padding: 0; margin: 0; min-width: 0; }
+.rule-editor .form-field { margin-top: 18px; }
+.rule-editor .form-field label { line-height: 1.6; overflow-wrap: anywhere; }
+.rule-editor-group { min-width: 0; margin: 20px 0; border: 1px solid #dce1e8; border-radius: 12px; padding: 16px; }
+.rule-editor-group > legend { padding: 0 6px; font-weight: 700; font-size: 14px; }
+.rule-editor-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+.rule-condition { min-width: 0; border: 0; border-bottom: 1px solid #e5e7eb; margin: 16px 0; padding: 0 0 16px; }
+.rule-condition legend { font-weight: 700; font-size: 14px; }
+.rule-condition .rule-review-confirm { margin: 10px 0; }
+.rule-condition-picker { display: grid; gap: 8px; margin-top: 18px; font-size: 14px; font-weight: 700; }
+.rule-condition-picker select { width: 100%; min-width: 0; min-height: 48px; border: 1px solid #cfd5de; border-radius: 10px; background: white; padding: 10px; }
+.rule-editor button:disabled { opacity: 0.45; cursor: default; }
+.rule-editor .form-actions button { min-height: 44px; }
+@media (max-width: 640px) {
+  .rule-editor-grid { grid-template-columns: 1fr; gap: 0; }
+  .rule-editor-group { padding: 12px; }
+  .rule-version-controls > button + button { margin-left: 0; }
+}
 @media (min-width: 760px) { .rule-review-search { grid-template-columns: minmax(0, 1fr) 160px auto; align-items: end; } }
 
 @layer components {

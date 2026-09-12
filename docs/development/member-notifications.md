@@ -1,50 +1,49 @@
-# 회원 알림 조회
+# 회원 알림
 
-화면은 `c1c9014`, 서버·계약은 기존 `f189078` 구현 기준이다. `/my`에서 이전 알림까지 페이지로 조회하고 안 읽은 알림을 따로 볼 수 있다. [화면 복원과 최신 검증](member-navigation.md#검증)
+2026-09-12, 코드 `b92d2cc` 기준. 알림 탭에서 페이지 조회·미읽음 필터·개별 읽음·모두 읽음을 제공한다. [화면 주소와 로그인 복귀](member-navigation.md)
 
 ## 동작
 
-- 화면은 최신순으로 20건씩 표시한다. 최근 100건 제한을 없애고 이전·다음 페이지를 제공한다.
-- ‘알림’ 탭의 숫자는 회원 전체의 안 읽은 알림 수다. 전체·안 읽은 알림 필터와 받은 시각을 표시하며 시각은 한국 시간으로 변환한다.
-- 페이지·전체/안 읽은 필터를 주소에 반영해 새로고침·뒤로 가기·새 탭·로그인 후 복원한다. 필터를 바꾸면 첫 페이지로 이동한다.
-- 안 읽은 목록에서 읽음 처리하면 필터를 유지하고 첫 페이지 주소로 교체한다. 읽음 처리로 목록이 줄어들 때 다음 항목을 건너뛰지 않도록 한다. 전체 목록은 현재 페이지를 유지한다.
-- 알림 조회·읽음 처리로 관심 정책과 마감 일정을 다시 조회하지 않는다. 알림 오류는 해당 영역에 표시하고 재시도를 제공한다. 빈 목록과 오류를 구분하고 늦게 도착한 이전 조회 결과는 반영하지 않는다.
-- 조회·읽음 요청과 변경 후 재조회 중에는 필터·페이지·읽음 버튼을 잠근다. 읽음 결과가 불명확하면 이전 목록과 미읽음 수를 숨기며 다시 불러오기는 조회만 수행한다. 로그인 만료 시 로그인 링크를 제공한다.
-- 재시도나 읽음 처리 후에는 오류 버튼 또는 필터에 초점을 돌린다. 다른 탭이나 영역으로 초점을 옮겼다면 다시 빼앗지 않는다. 모바일 스크롤은 하단 고정 메뉴의 공간을 확보한다.
-- 이메일 알림 설정은 펼침 메뉴로 제공한다. 키보드로 열고 닫을 수 있으며 기존 인증·동의 기능을 유지한다. [설정 바로가기](member-navigation.md)와 로그인 후 복귀는 이메일 설정을 펼쳐서 표시한다.
+- 최신순으로 20건씩 표시하고 이전·다음 페이지, 전체/안 읽은 필터, 한국 시간의 받은 시각을 제공한다. 탭의 숫자는 회원 전체의 미읽음 수다.
+- 페이지·필터는 주소에 반영해 새로고침·뒤로 가기·새 탭·로그인 후 복원한다. 필터를 바꾸면 첫 페이지로 이동한다.
+- ‘모두 읽음’은 현재 페이지와 관계없이 본인의 미읽음 전체에 적용한다. 미읽음이 없으면 버튼을 비활성화한다. 갱신 시작 뒤 도착한 알림은 미읽음으로 남고, 이미 읽은 시각·알림 내용·이메일 발송 상태는 유지한다.
+- 개별·전체 읽음 후 목록과 미읽음 수를 다시 조회한다. 안 읽은 목록은 필터를 유지하고 첫 페이지 주소로 교체하며, 전체 목록은 현재 페이지를 유지한다. 관심 정책·마감 일정은 다시 조회하지 않는다.
+- 조회·읽음·변경 후 재조회 중에는 필터·페이지·읽음 버튼을 잠근다. 결과가 불명확하면 이전 목록과 미읽음 수를 숨기고 다시 불러오기를 제공한다. 재조회는 변경 요청을 반복하지 않는다. 로그인 만료 시 현재 화면으로 복귀하는 로그인 링크를 제공한다.
+- 재시도나 읽음 후 오류 버튼 또는 필터로 초점을 돌린다. 다른 탭이나 영역으로 옮긴 초점은 유지하고, 늦은 응답이 현재 화면을 바꾸지 않도록 한다.
+- 이메일 설정은 펼침 메뉴로 제공한다. 서비스 내 읽음 처리와 이메일 수신 동의는 별개다.
 
 ## API와 데이터
 
-`GET /api/v1/me/notifications`는 `page`(기본 1, 최소 1), `pageSize`(기본 20, 1~50), `filter`(`ALL` 또는 `UNREAD`, 기본 `ALL`)를 받는다. 응답은 `items`, `page`, `pageSize`, `total`, `hasNext`, `unreadCount`다. `total`은 선택한 필터의 전체 개수이며 `unreadCount`는 필터와 무관하다.
+| 요청 | 동작 |
+|---|---|
+| `GET /api/v1/me/notifications` | `page` 기본 1, `pageSize` 기본 20·최대 50, `filter`는 `ALL`/`UNREAD` |
+| `POST /api/v1/me/notifications/{id}/read` | 본인 알림 한 건 읽음, 성공 시 204 |
+| `POST /api/v1/me/notifications/read-all` | 본인 미읽음 전체 처리, 본문 없이 요청하고 성공 시 204 |
 
-Spring 요청 검증으로 잘못된 페이지·크기·필터를 400으로 처리한다. 인증된 회원 ID만 사용하고 응답은 `no-store`다. 프런트 중계는 세 쿼리만 전달하며 타입은 서버 OpenAPI에서 생성한다. 응답 필드와 기본 조회 개수가 바뀌므로 서버와 웹을 함께 반영한다.
+조회 응답은 `items`, `page`, `pageSize`, `total`, `hasNext`, `unreadCount`다. `total`은 선택한 필터의 전체 개수, `unreadCount`는 필터와 무관한 미읽음 수다. 잘못된 조회 조건은 400으로 처리한다.
 
-`MemberPolicyStore`는 읽기 전용 `REPEATABLE_READ` 트랜잭션에서 개수와 목록을 조회한다. 필터를 적용한 뒤 `created_at DESC, id DESC`로 정렬한다. 같은 시각의 알림도 순서가 고정된다. 페이지 간 데이터 시점까지 고정하지는 않는다. 마이그레이션과 기존 알림 생성·발송 경로는 변경하지 않았다.
+인증된 회원 ID만 사용하고 변경 요청에는 CSRF 검증을 적용한다. 비회원은 401, CSRF 누락은 403이다. Next 중계는 고정된 회원 API로만 전달하며 알림 조회의 세 쿼리 외에는 전달하지 않는다. 회원 응답은 공용 캐시에서 제외하고 OpenAPI·웹 타입은 서버에서 생성한다. 새 경로를 포함한 서버와 웹을 함께 반영한다.
 
-읽음 처리는 기존 `POST /api/v1/me/notifications/{id}/read`를 사용한다. 본인 알림에만 적용하고 CSRF 검증을 거친다. 반복 요청으로 최초 읽은 시각을 바꾸지 않는다.
+`MemberPolicyStore.notifications`는 읽기 전용 `REPEATABLE_READ` 트랜잭션에서 개수와 목록을 조회한다. 필터를 적용한 뒤 `created_at DESC, id DESC`로 정렬하며 페이지 간 데이터 시점까지 고정하지는 않는다.
+
+`readAll`은 `member_id`와 `read_at IS NULL` 조건으로 한 번 갱신한다. [PostgreSQL의 갱신 대상 조회 규칙](https://www.postgresql.org/docs/18/transaction-iso.html#XACT-READ-COMMITTED)에 따라 쿼리 시작 시 이미 커밋된 알림을 처리한다. 화면 조회 이후라도 갱신 시작 전에 도착한 알림은 포함한다. 새 컬럼·별도 배치·개별 API 반복 호출은 추가하지 않았다.
 
 ## 검증
 
-2026-09-12, 코드 `a6586c5`. [최종 웹 검사·빌드](member-policy-flow.md#로그인-화면-검증)를 통과했다. 별도 헤드리스 브라우저에서 조회 오류·키보드 재시도·중복 읽음 차단·변경 후 재조회·응답 유실 복구·조회/변경의 401·미읽음 페이지·다른 탭의 초점 유지·화면 이동 후 응답·모바일을 확인했다. 읽음 변경 7건은 모의 API에서만 처리했다. 서버·DB·중계 코드는 같아 기존 검증을 재사용했다.
-
-```sh
-bash /Users/lim/.codex/skills/playwright/scripts/playwright_cli.sh --session youth-login-notification-recovery run-code --filename /tmp/youth-login-notification-recovery/notification-flow.js
-```
-
-최종 결과는 `/tmp/youth-login-notification-recovery/notification-result.log`에 있다. 첫 실행 중 모바일 메뉴가 재시도 버튼을 가려 클릭 검사가 실패했다. `mobile-focus-before.log`에서 겹침을 재현하고 `globals.css`의 모바일 스크롤 여백을 보완했다. `mobile-focus-after.log`에서 겹침 해소를 확인한 뒤 알림 전체 흐름과 웹 검사·빌드를 통과했다. 로그·화면 파일은 같은 임시 폴더에 있으며 검증 브라우저는 종료했다. 사용자 창·탭과 실제 회원 정보는 변경하지 않았다.
-
-### 기존 서버·계약 검증
+저장소 루트에서 실행했다. Java는 `/Users/lim/.gradle/jdks/eclipse_adoptium-25-aarch64-os_x.2/jdk-25.0.3+9/Contents/Home`을 사용했다.
 
 | 명령 | 확인 범위·로그 |
 |---|---|
-| `npm run generate:api` | OpenAPI·TypeScript 생성. `/tmp/youth-notifications-contract.log` |
-| `npm run verify -- test:member-flow` | PostgreSQL에서 105건 페이지 조회·동시각 정렬·전체 미읽음 수·필터·잘못된 입력·회원 소유권·CSRF·읽음 중복 요청과 기존 회원 흐름. `.local/verification/1789181368554-d92b815d.log` |
-| `npm run verify -- test:web -- 'src/app/api/member/[...path]/route.test.ts' src/features/member/member-policy-list.test.tsx` | 허용 쿼리·쿠키·캐시 중계와 기존 마감 일정. `.local/verification/1789181369734-ca3d0531.log` |
-| `npm run verify -- check:web` | 최종 화면 린트·타입. `.local/verification/1789181635944-e5d887d4.log` |
-| `npm run verify -- check:api-types` | 생성 계약 일치. `.local/verification/1789181372106-033d5a53.log` |
-| `npm run verify -- build:web` | 이메일 설정 펼침 메뉴를 포함한 최종 배포 빌드. `.local/verification/1789181646134-5291945d.log` |
-| `npm run verify -- package:backend` | 검증한 서버 실행 파일 생성. `.local/verification/1789181410965-baca36f5.log` |
+| `npm run verify -- test:member-flow` | PostgreSQL 회원 통합 검사. 모든 페이지의 본인 미읽음 처리·인증/CSRF·다른 회원과 최초 읽은 시각 보존·갱신 중 도착한 알림 보존. `.local/verification/1789219264340-aa455341.log` |
+| `npm run generate:api` | OpenAPI·TypeScript 생성. `/tmp/youth-notifications-read-all-contract.log` |
+| `npm run verify -- check:api-types` | 생성 계약 일치. `.local/verification/1789219420161-f0809eb8.log` |
+| `npm run verify -- test:web -- 'src/app/api/member/[...path]/route.test.ts'` | 중계 경로·메서드·출처·쿠키/CSRF·쿼리 제한. `.local/verification/1789219265493-114dd6c6.log` |
+| `npm run verify -- check:web` | 웹 린트·타입 검사. `.local/verification/1789219420179-7c9f8609.log` |
+| `npm run verify -- build:web` | 배포용 웹 빌드. `.local/verification/1789219560663-975a1d21.log` |
+| `npm run verify -- package:backend` | 테스트 재실행 없는 서버 실행 파일 빌드. `.local/verification/1789219566420-88e0b149.log` |
 
-브라우저는 별도 `member-notifications` 세션과 테스트 회원 응답으로 확인했다. 100건 이후 이동·미읽음 수·키보드 읽음 처리·탭 간 필터 유지·불필요한 관심 정책 조회 방지·503 후 복구·늦은 응답 무시·빈 목록·390px/1280px 표시를 확인했다. 결과와 화면은 `/tmp/youth-member-notifications-ui/`에 있다. 대기는 `page.waitForTimeout`을 사용하고 오류 검사는 ‘서비스 알림’ 영역으로 한정한다.
+전용 헤드리스 세션 `youth-notifications-read-all`에서 `/tmp/youth-notifications-read-all/flow.js`를 실행했다. 결과는 같은 폴더의 `result-final.log`다. 전체 페이지 처리·중복 차단·변경 후 재조회·새 미읽음 표시·현재 페이지/검색 필터 보존·응답 유실 시 조회만 재시도·로그인 만료·다른 탭의 초점·개별 읽음·키보드·빈 상태·390px/1280px 화면을 통과했다. 화면은 `screen-390.png`, `screen-1280.png`로 확인했다.
 
-위 기존 통합 검사 이후 서버 코드·테스트·의존성은 동일해 DB 검사를 반복하지 않았다. 당시 로컬 서버 상태 200·비회원 알림 API 401·내 정책 화면 200을 확인했다. 현재 화면 검증은 이 절의 처음에 기록했다. 실제 소셜 제공자 로그인과 외부 이메일 전달은 검증하지 않았다.
+첫 실행은 탭 이동이 완료되기 전에 새로고침한 검증 스크립트 때문에 대기가 끝났다. 주소 변경을 기다리도록 스크립트를 수정한 뒤 통과했으며 이 실패로 앱 코드를 변경하지 않았다. 브라우저의 읽음 요청 7건은 모의 API에서만 처리했고 실제 회원 변경·외부 발송은 없었다. 기존 3000 포트 서버를 사용했으며 전용 브라우저는 종료했다.
+
+관련 서버·웹 검사는 통과했지만 전체 서버 검사를 재실행한 것은 아니다. 실제 소셜 제공자 로그인·외부 이메일 송수신·홈서버 이미지 실행과 운영 설정은 이번 검증 범위에서 제외했다.

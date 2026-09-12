@@ -5,9 +5,9 @@
 ## 현재 작업
 
 - 이전 누적 작업은 `1b7fbdd`로 로컬·원격 `main`에 반영했고 [웹·전체 서버 CI](https://github.com/ljkhyeong/youth-policy-mate/actions/runs/34222499053)를 통과했다.
-- 현재 `codex/policy-source-notices`의 `238a28a`에서 관심 정책 변경 비교를 추가했다. `/my`에서 저장 당시와 현재 신청 기간·지원 내용 등을 비교한다. 여러 개정이 있어도 저장 당시를 기준으로 하며 재저장하면 기준을 새로 잡는다. 비교 조회는 알림·저장 상태를 변경하지 않는다. 관리자 화면의 비교 표시를 공통으로 분리했다.
-- 회원 PostgreSQL 통합·회원 및 관리자 비교 웹 테스트·계약·린트·타입·배포 빌드를 통과했다. 브라우저에서 필요할 때만 조회·재시도·늦은 응답 취소·저장 해제 안내·390px/1280px 표시·키보드를 테스트 응답으로 확인했다. 명령·로그·범위는 [관심 정책 변경 비교](docs/development/saved-policy-changes.md#검증)에 있다. 최종 코드 검증 후 변경은 문서뿐이다.
-- 로컬 Spring은 `238a28a` 실행 파일·PID 87763·로그 `/tmp/youth-saved-policy-changes-runtime.log`, Next는 PID 10257·로그 `/tmp/youth-admin-ai-web.log`다. 상태 조회 200·비교 API 비회원 401·내 정책 화면 200을 확인했다. DB 마이그레이션은 V28을 유지했고 실제 회원 데이터를 변경하지 않았다. AI 키·모델·요금·한도는 미설정이다. 자동 추출·정기 수집·이메일·알림은 비활성화했고 실제 AI 호출은 실행하지 않았다. 실행 시점에 프로세스를 재확인하며 이번 브랜치는 원격에 반영하지 않았다.
+- 현재 `codex/policy-source-notices`의 `a3e7f6e`에서 PostgreSQL 수동 백업·분리된 복구 검증 명령을 추가했다. `db:backup`은 비공개 파일을 만들고 `db:verify-backup`은 현재 Compose 버전의 임시 DB에 복원한 뒤 제거한다. 기존 파일을 덮어쓰지 않고 실패·중단 시 임시 자원을 정리한다.
+- 백업·복구 PostgreSQL 통합 검사와 기존 개발 도구 검사를 통과했다. 실제 로컬 DB도 `.local/backups/youth-policy-2026-09-12-restore-verified.dump`로 백업해 복구를 확인했다. 파일 권한·Git 제외·검증용 컨테이너 제거·기존 서버 상태 200을 확인했다. 명령·로그·운영 적용의 제약은 [DB 백업과 복구 검증](docs/development/database-backup.md#검증)에 있다. 최종 코드 검증 후 변경은 문서뿐이다.
+- 앱 코드·스키마·의존성은 바꾸지 않았다. 로컬 Spring은 `238a28a` 실행 파일·PID 87763·로그 `/tmp/youth-saved-policy-changes-runtime.log`, Next는 PID 10257·로그 `/tmp/youth-admin-ai-web.log`를 유지했다. DB 마이그레이션은 V28이며 실제 회원 데이터를 수정하지 않았다. AI 키·모델·요금·한도는 미설정이다. 자동 추출·정기 수집·이메일·알림은 비활성화했고 실제 AI 호출은 실행하지 않았다. 실행 시점에 프로세스를 재확인하며 이번 브랜치는 원격에 반영하지 않았다.
 
 ## 구현·검증 범위
 
@@ -19,6 +19,7 @@
 - 회원 기능: OAuth 로그인 코드, 관심 정책 저장·해제·[저장 당시와 현재 내용 비교](docs/development/saved-policy-changes.md), 일정·[서비스 내 알림 페이지와 미읽음 필터](docs/development/member-notifications.md)를 연결했다. [마감 일정](docs/development/member-calendar.md)에서 접수 상태를 구분하고 가까운 마감순 정렬·상태 필터·새로고침을 제공한다. 테스트 제공자와 실제 HTTP·DB로 코드 교환부터 관리자 접근·세션 종료까지 확인했다. 로컬 카카오·네이버 ID/Secret과 관리자 ID가 없어 실제 제공자 로그인은 미검증이다. [회원 기능](docs/development/member-policy-flow.md)
 - 이메일: 주소 확인·동의·암호화 저장·Outbox·SMTP 어댑터를 구현했다. 실제 공급자·발신 도메인은 미정이며 외부 수신함 전달은 미검증이다. [이메일 구현과 설정](docs/development/member-email-reminders.md)
 - AI: 공고 원문·OpenAI 호출·예산 예약·원 응답·규칙 초안을 연결했다. 응답 유실에는 예약을 유지하고 재호출하지 않는다. 수집된 신규/변경 공고의 자동 추출과 실제 청구·무과금 확인 명령을 제공한다. 공급자 청구 자동 조회·실제 생성 품질 검증은 남아 있다. 모델·요금·월 한도는 설정값으로 받고 미설정 상태에는 호출하지 않는다. [규칙 추출과 설정](docs/development/ai-rule-drafts.md)·[자동 추출](docs/development/ai-rule-automation.md)·[요청 판단](docs/development/ai-request-admission.md)·[복구 실행](docs/development/ai-reservation-recovery-work-runs.md)
+- 백업: [수동 백업·임시 DB 복구 검증](docs/development/database-backup.md)을 제공한다. PostgreSQL 기본 도구를 사용하며 원본 DB를 덮어쓰지 않는다. 정기 백업의 주기·보관 기간·외부 보관과 운영 DB 전환은 미정이다.
 - 검증 기준: 회원·일정·알림 통합과 관련 웹·계약, 관리자 비교 표시는 `238a28a`, 변경하지 않은 관리자 API는 `280a12b`, 변경하지 않은 자동 추출·생성·비용 처리 등 전체 서버 기준은 `ee34aca`다. 실제 제공자 로그인·AI 품질/청구·원격 CI는 미검증이다.
 - 검증 도구의 성공·실패·실행 중 변경 시나리오와 기존 도구 검사를 통과했다. 컴파일·패키징 명령의 Gradle 실행 계획에 테스트 실행이 없음을 확인했다. `npm run verify -- status`에서 실행 기록을 확인한다. 검증 도구를 정리할 당시에는 앱 기능을 변경하지 않아 전체 앱 테스트를 재실행하지 않았다.
 
@@ -29,7 +30,7 @@
 3. 자격·마감 조건이나 미공개 정책의 보정이 필요하면 허용 범위·공개 기준을 먼저 정한다. 현재는 공개 정책의 정책명·운영 기관 한 항목만 보정한다.
 4. 이메일 공급자·발신 도메인을 정하고 수신함 전달·반송·수신 해제·결과 미확인 처리를 검증한다.
 5. 실제 수집 한도·범위·주기를 정해 정기 수집을 활성화하고 실패 후 재개를 확인한다.
-6. 월 3만 원 예산 안에서 배포·백업·운영 인증·개인정보 보관/삭제를 정하고 원격 CI를 확인한다.
+6. 월 3만 원 예산 안에서 배포·정기 백업의 주기/보관/외부 저장·운영 DB 복구 전환·운영 인증·개인정보 보관/삭제를 정하고 원격 CI를 확인한다. 수동 백업과 임시 DB 복구 검증은 구현했다.
 
 ## 이어서 작업할 때
 

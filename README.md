@@ -124,6 +124,8 @@ Flyway V1·V2와 PostgreSQL 예약 저장소도 추가했습니다. 최초 예�
 
 주요 스택은 Next.js 16·React 19·TypeScript, Java 25·Spring Boot 4.1 모듈러 모놀리스, PostgreSQL 18입니다. 전체 선택과 책임 경계는 ADR을 기준으로 합니다. 월 운영비 상한은 3만 원이며 운영 장비·클라우드는 아직 정하지 않았습니다.
 
+로컬 DB는 [백업과 복구 검증](docs/development/database-backup.md) 명령을 제공합니다. 백업 파일을 만든 뒤 별도 임시 DB에 실제 복원해 확인합니다.
+
 ## 문서
 
 - [PRD-0001: MVP 기준과 완료 조건](docs/PRD/0001_product-baseline/spec.md)

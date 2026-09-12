@@ -52,6 +52,8 @@ npm run dev:web
 npm run db:up
 ```
 
+DB 데이터는 [백업과 복구 검증](database-backup.md)의 `db:backup`·`db:verify-backup` 명령으로 확인한다.
+
 DB가 정상 상태가 되면 웹과 다른 터미널에서 서버를 실행한다.
 
 ```sh

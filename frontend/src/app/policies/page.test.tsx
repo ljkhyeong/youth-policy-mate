@@ -1,11 +1,11 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { components } from "@/generated/policy-api";
-import PoliciesPage from "./page";
+import PoliciesPage, { generateMetadata } from "./page";
 import { loadPolicies } from "./load-policies";
 
 vi.mock("./load-policies", () => ({ loadPolicies: vi.fn() }));
-afterEach(() => vi.resetAllMocks());
+afterEach(() => { vi.resetAllMocks(); vi.unstubAllEnvs(); });
 
 const policy: components["schemas"]["PolicySummary"] = {
   policyNumber: "123", title: "시험 지원", description: "지원 안내", category: "교육",
@@ -15,6 +15,28 @@ const policy: components["schemas"]["PolicySummary"] = {
 };
 
 describe("정책 목록의 공통요건 질문 탐색", () => {
+  it("운영 목록은 페이지별 대표 주소를 쓰고 검색어·필터는 검색 노출에서 제외한다", async () => {
+    vi.stubEnv("NODE_ENV", "production"); vi.stubEnv("PUBLIC_APP_URL", "https://policy.example.test");
+    vi.mocked(loadPolicies).mockResolvedValue({ status: "available", data: { items: [policy], page: 2, pageSize: 20, total: 41, hasNext: true } });
+    const metadata = await generateMetadata({ searchParams: Promise.resolve({ page: "2", q: "" }) });
+    expect(metadata.alternates).toEqual({ canonical: "https://policy.example.test/policies?page=2" });
+    expect(metadata.robots).toEqual({ index: true, follow: true });
+    for (const params of [{ q: "개인 검색어" }, { questionsOnly: "true" }, { recruitmentStatus: "OPEN" }]) {
+      const filtered = await generateMetadata({ searchParams: Promise.resolve(params) });
+      expect(filtered.robots).toEqual({ index: false, follow: true });
+      expect(filtered.alternates).toBeUndefined();
+      expect(JSON.stringify(filtered)).not.toContain("개인 검색어");
+    }
+  });
+
+  it("빈 페이지와 조회 실패는 정상 공개 목록으로 검색에 노출하지 않는다", async () => {
+    vi.stubEnv("NODE_ENV", "production"); vi.stubEnv("PUBLIC_APP_URL", "https://policy.example.test");
+    vi.mocked(loadPolicies).mockResolvedValue({ status: "available", data: { items: [], page: 2, pageSize: 20, total: 1, hasNext: false } });
+    expect((await generateMetadata({ searchParams: Promise.resolve({ page: "2" }) })).robots).toEqual({ index: false, follow: false });
+    vi.mocked(loadPolicies).mockResolvedValue({ status: "unavailable" });
+    expect((await generateMetadata({ searchParams: Promise.resolve({}) })).robots).toEqual({ index: false, follow: false });
+  });
+
   it("검색·페이지 이동에 필터를 유지하고 필터 전환은 첫 페이지로 돌아간다", async () => {
     vi.mocked(loadPolicies).mockResolvedValue({ status: "available", data: { items: [policy], page: 2, pageSize: 20, total: 41, hasNext: true } });
     const html = renderToStaticMarkup(await PoliciesPage({ searchParams: Promise.resolve({ q: "시험&지원", page: "2", questionsOnly: "true", recruitmentStatus: "OPEN" }) }));

@@ -1,5 +1,9 @@
 import Link from "next/link";
 import { SiteShell } from "@/components/site-shell";
+import { publicMetadata, siteName, siteDescription } from "@/lib/public-metadata";
+
+export const dynamic = "force-dynamic";
+export function generateMetadata() { return publicMetadata("/", siteName, siteDescription); }
 
 const searchTopics = ["일자리", "주거", "장학금", "저축"];
 

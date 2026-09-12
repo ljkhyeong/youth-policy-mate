@@ -7,6 +7,7 @@ import { PageState } from "@/components/page-state";
 import { loadPolicy } from "../load-policies";
 import { PolicyArticle } from "../policy-content";
 import { RetryPolicies } from "../retry-policies";
+import { publicMetadata } from "@/lib/public-metadata";
 
 export const dynamic = "force-dynamic";
 const readPolicy = cache(loadPolicy);
@@ -15,7 +16,7 @@ type Props = { params: Promise<{ policyNumber: string }> };
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const result = await readPolicy((await params).policyNumber);
   return result.status === "available"
-    ? { title: `${result.data.content.title} · 청년정책메이트`, description: result.data.content.description.slice(0, 150) }
+    ? publicMetadata(`/policies/${result.data.policyNumber}`, `${result.data.content.title} · 청년정책메이트`, result.data.content.description.replace(/\s+/g, " ").trim().slice(0, 150))
     : { title: "정책 확인 · 청년정책메이트", robots: { index: false, follow: false } };
 }
 

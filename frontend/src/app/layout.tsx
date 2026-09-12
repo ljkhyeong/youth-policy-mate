@@ -1,10 +1,11 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import { AccountTransitions } from "@/features/member/account-transitions";
+import { siteName, siteDescription } from "@/lib/public-metadata";
 
 export const metadata: Metadata = {
-  title: "청년정책메이트",
-  description: "서울 청년 정책의 지원 내용과 신청 조건을 확인하고, 관심 정책과 마감일을 관리하세요.",
+  title: siteName,
+  description: siteDescription,
   robots: { index: false, follow: false },
 };
 

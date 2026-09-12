@@ -1,24 +1,42 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { cache } from "react";
 import { SiteShell } from "@/components/site-shell";
 import { PageState } from "@/components/page-state";
 import { loadPolicies } from "./load-policies";
 import { PolicyCard } from "./policy-content";
 import { recruitmentLabels, RecruitmentOptions, type RecruitmentFilter } from "@/features/policies/policy-recruitment";
 import { RetryPolicies } from "./retry-policies";
+import { publicMetadata } from "@/lib/public-metadata";
 
 export const dynamic = "force-dynamic";
-export const metadata: Metadata = { title: "정책 찾기 · 청년정책메이트", description: "온통청년에서 확인한 청년 정책의 지원 내용과 신청 안내를 찾아보세요." };
+const title = "정책 찾기 · 청년정책메이트";
+const description = "온통청년에서 확인한 청년 정책의 지원 내용과 신청 안내를 찾아보세요.";
+const readPolicies = cache(loadPolicies);
+type Params = { q?: string; page?: string; questionsOnly?: string; recruitmentStatus?: string };
+type Props = { searchParams: Promise<Params> };
 
-export default async function PoliciesPage({ searchParams }: { searchParams: Promise<{ q?: string; page?: string; questionsOnly?: string; recruitmentStatus?: string }> }) {
-  const params = await searchParams;
+function filters(params: Params) {
   const query = typeof params.q === "string" ? params.q.trim().slice(0, 80) : "";
   const requestedPage = Number(params.page ?? 1);
   const page = Number.isInteger(requestedPage) && requestedPage >= 1 && requestedPage <= 1000 ? requestedPage : 1;
   const questionsOnly = params.questionsOnly === "true";
   const recruitmentStatus: RecruitmentFilter = typeof params.recruitmentStatus === "string" && Object.hasOwn(recruitmentLabels, params.recruitmentStatus)
     ? params.recruitmentStatus as RecruitmentFilter : "";
-  const result = await loadPolicies(query, page, questionsOnly, recruitmentStatus);
+  return { query, page, questionsOnly, recruitmentStatus };
+}
+
+export async function generateMetadata({ searchParams }: Props): Promise<Metadata> {
+  const { query, page, questionsOnly, recruitmentStatus } = filters(await searchParams);
+  if (query || questionsOnly || recruitmentStatus) return { title, description, robots: { index: false, follow: true } };
+  const result = await readPolicies(query, page, questionsOnly, recruitmentStatus);
+  if (result.status !== "available" || result.data.items.length === 0) return { title, description, robots: { index: false, follow: false } };
+  return publicMetadata(page === 1 ? "/policies" : `/policies?page=${page}`, title, description);
+}
+
+export default async function PoliciesPage({ searchParams }: Props) {
+  const { query, page, questionsOnly, recruitmentStatus } = filters(await searchParams);
+  const result = await readPolicies(query, page, questionsOnly, recruitmentStatus);
   const pageHref = (next: number, filtered = questionsOnly) => {
     const search = new URLSearchParams({ q: query, page: String(next) });
     if (filtered) search.set("questionsOnly", "true");

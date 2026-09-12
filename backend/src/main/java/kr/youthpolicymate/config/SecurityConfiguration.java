@@ -53,7 +53,7 @@ class SecurityConfiguration {
                                 "/api/v1/admin/collection-exceptions/*/*",
                                 "/api/v1/admin/policy-corrections", "/api/v1/admin/policy-corrections/policies/*",
                                 "/api/v1/admin/policy-rule-reviews", "/api/v1/admin/policy-rule-reviews/*",
-                                "/api/v1/admin/policy-rule-reviews/*/versions/*", "/api/v1/admin/policy-ai-runs")
+                                "/api/v1/admin/policy-rule-reviews/*/versions/*", "/api/v1/admin/policy-ai-runs", "/api/v1/admin/email-deliveries")
                             .access(adminAccess.authorization())
                         .anyRequest().denyAll())
                 .logout(logout -> logout.logoutUrl("/api/v1/logout").invalidateHttpSession(true)

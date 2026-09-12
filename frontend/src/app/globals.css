@@ -1001,3 +1001,6 @@ select {
 .recruitment-badge[data-status="UNKNOWN"], .recruitment-badge[data-status="UNTIL_EXHAUSTED"] { background: #fbf3dc; color: #806515; }
 
 }
+
+.email-delivery-list dd { overflow-wrap: anywhere; }
+@media (min-width: 1000px) { .email-delivery-search { grid-template-columns: repeat(3, minmax(0, 1fr)) auto; } }

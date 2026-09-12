@@ -101,6 +101,26 @@ export interface paths {
         readonly patch?: never;
         readonly trace?: never;
     };
+    readonly "/api/v1/admin/email-deliveries": {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header?: never;
+            readonly path?: never;
+            readonly cookie?: never;
+        };
+        /**
+         * 관리자 이메일 발송 현황
+         * @description 최근 기간의 전체 요약과 상태·종류별 목록을 같은 DB 스냅샷에서 조회한다. 주소·회원 식별자·본문은 반환하지 않으며 발송 상태를 변경하지 않는다.
+         */
+        readonly get: operations["listAdminEmailDeliveries"];
+        readonly put?: never;
+        readonly post?: never;
+        readonly delete?: never;
+        readonly options?: never;
+        readonly head?: never;
+        readonly patch?: never;
+        readonly trace?: never;
+    };
     readonly "/api/v1/admin/policy-ai-runs": {
         readonly parameters: {
             readonly query?: never;
@@ -583,6 +603,52 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        readonly AdminEmailDelivery: {
+            /** Format: date-time */
+            readonly createdAt: string;
+            /** Format: date-time */
+            readonly finishedAt: string | null;
+            /** Format: uuid */
+            readonly id: string;
+            /** @enum {string} */
+            readonly kind: "VERIFICATION" | "POLICY";
+            /** @enum {string|null} */
+            readonly provider: "smtp" | "resend" | null;
+            /** Format: date-time */
+            readonly providerEventAt: string | null;
+            /** Format: uuid */
+            readonly providerMessageId: string | null;
+            /** Format: date-time */
+            readonly startedAt: string | null;
+            /** @enum {string} */
+            readonly state: "PENDING" | "SENDING" | "SENT" | "DELIVERED" | "DELAYED" | "FAILED" | "UNKNOWN" | "BOUNCED" | "COMPLAINED" | "SUPPRESSED" | "CANCELED";
+        };
+        readonly AdminEmailDeliveryPage: {
+            /** Format: date-time */
+            readonly checkedAt: string;
+            readonly hasNext: boolean;
+            readonly items: readonly components["schemas"]["AdminEmailDelivery"][];
+            /** Format: int32 */
+            readonly page: number;
+            /** Format: int32 */
+            readonly pageSize: number;
+            /** @enum {string} */
+            readonly provider: "smtp" | "resend";
+            readonly sendingEnabled: boolean;
+            /** Format: date-time */
+            readonly since: string;
+            readonly summary: components["schemas"]["AdminEmailDeliverySummary"];
+            /** Format: int64 */
+            readonly total: number;
+        };
+        readonly AdminEmailDeliverySummary: {
+            /** Format: int64 */
+            readonly failed: number;
+            /** Format: int64 */
+            readonly total: number;
+            /** Format: int64 */
+            readonly unknown: number;
+        };
         readonly BasicConditions: {
             /** Format: date */
             readonly birthDate: string;
@@ -1601,6 +1667,68 @@ export interface operations {
                 };
             };
             /** @description 수집 처리 또는 이력 조회 실패 */
+            readonly 503: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "*/*": components["schemas"]["PolicyApiError"];
+                };
+            };
+        };
+    };
+    readonly listAdminEmailDeliveries: {
+        readonly parameters: {
+            readonly query?: {
+                readonly page?: number;
+                readonly pageSize?: number;
+                readonly days?: number;
+                readonly state?: "PENDING" | "SENDING" | "SENT" | "DELIVERED" | "DELAYED" | "FAILED" | "UNKNOWN" | "BOUNCED" | "COMPLAINED" | "SUPPRESSED" | "CANCELED";
+                readonly kind?: "VERIFICATION" | "POLICY";
+            };
+            readonly header?: never;
+            readonly path?: never;
+            readonly cookie?: never;
+        };
+        readonly requestBody?: never;
+        readonly responses: {
+            /** @description OK */
+            readonly 200: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "*/*": components["schemas"]["AdminEmailDeliveryPage"];
+                };
+            };
+            /** @description 조회 조건 오류 */
+            readonly 400: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "*/*": components["schemas"]["PolicyApiError"];
+                };
+            };
+            /** @description 로그인 필요 */
+            readonly 401: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "*/*": components["schemas"]["PolicyApiError"];
+                };
+            };
+            /** @description 관리자 권한 없음 */
+            readonly 403: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "*/*": components["schemas"]["PolicyApiError"];
+                };
+            };
+            /** @description 발송 현황 조회 실패 */
             readonly 503: {
                 headers: {
                     readonly [name: string]: unknown;

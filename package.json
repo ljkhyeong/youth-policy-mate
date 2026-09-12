@@ -47,6 +47,7 @@
     "test:ai-recovery-operations": "./backend/gradlew -p backend test --tests 'kr.youthpolicymate.ingestion.AiReservationRecoveryOperationsQueryTest' --no-daemon",
     "test:ai-recovery-work": "./backend/gradlew -p backend test --tests 'kr.youthpolicymate.ingestion.AiReservationRecoveryWork*Test' --no-daemon",
     "test:member-login": "./backend/gradlew -p backend test --tests 'kr.youthpolicymate.member.OAuthLoginFlowTest' --tests 'kr.youthpolicymate.member.SocialMemberServiceTest' --no-daemon",
+    "test:admin-email": "./backend/gradlew -p backend test --tests 'kr.youthpolicymate.admin.EmailDeliveryApiTest' --no-daemon",
     "test:email": "./backend/gradlew -p backend test --tests 'kr.youthpolicymate.member.*TransportTest' --tests 'kr.youthpolicymate.member.MemberFlowTest' --no-daemon",
     "test:runtime": "./backend/gradlew -p backend test --tests 'kr.youthpolicymate.config.ProductionRuntimeTest' --no-daemon",
     "test:member-flow": "./backend/gradlew -p backend test --tests 'kr.youthpolicymate.member.MemberFlowTest' --no-daemon",

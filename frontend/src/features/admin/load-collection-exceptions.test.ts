@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cookies } from "next/headers";
-import { collectionPage, loadCollectionException, loadCollectionExceptions, loadCollectionPageFailures, loadPolicyCorrections, loadCorrectionPolicy, loadRuleReviews, loadRuleReview, loadAiRuns } from "./load-collection-exceptions";
+import { collectionPage, loadCollectionException, loadCollectionExceptions, loadCollectionPageFailures, loadPolicyCorrections, loadCorrectionPolicy, loadRuleReviews, loadRuleReview, loadAiRuns, loadEmailDeliveries } from "./load-collection-exceptions";
 
 vi.mock("next/headers", () => ({ cookies: vi.fn() }));
 const run = "10000000-0000-0000-0000-000000000001";
@@ -8,6 +8,16 @@ beforeEach(() => vi.mocked(cookies).mockResolvedValue({ get: (name: string) => n
 afterEach(() => { vi.unstubAllGlobals(); vi.resetAllMocks(); });
 
 describe("관리자 수집 예외 서버 조회", () => {
+  it("이메일 조회 기간·상태·종류를 보내고 전체 필터는 생략한다", async () => {
+    const fetch = vi.fn().mockResolvedValue(Response.json({ items: [] })); vi.stubGlobal("fetch", fetch);
+    await loadEmailDeliveries(2, 30, "UNKNOWN", "VERIFICATION");
+    expect(fetch.mock.calls[0][0].pathname).toBe("/api/v1/admin/email-deliveries");
+    expect(Object.fromEntries(fetch.mock.calls[0][0].searchParams)).toEqual({ page: "2", pageSize: "20", days: "30", state: "UNKNOWN", kind: "VERIFICATION" });
+    expect(fetch.mock.calls[0][1].headers.Cookie).toBe("YPM_SESSION=fixture-session");
+    expect(fetch.mock.calls[0][1].cache).toBe("no-store");
+    await loadEmailDeliveries(1, 7, "ALL", "ALL");
+    expect(Object.fromEntries(fetch.mock.calls[1][0].searchParams)).toEqual({ page: "1", pageSize: "20", days: "7" });
+  });
   it("AI 추출 검색 조건과 관리자 세션을 전용 조회 API로 전달한다", async () => {
     const fetch = vi.fn().mockResolvedValue(Response.json({ items: [] })); vi.stubGlobal("fetch", fetch);
     await loadAiRuns(2, "LEASE_EXPIRED", "청년 & 지원");

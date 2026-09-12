@@ -80,3 +80,12 @@ export type AiRunPage = components["schemas"]["PolicyAiRunPage"];
 export function loadAiRuns(page: number, filter: string, query: string) {
   return load<AiRunPage>(`policy-ai-runs?${new URLSearchParams({ page: String(page), pageSize: "20", filter, query })}`);
 }
+
+export type EmailDeliveryPage = components["schemas"]["AdminEmailDeliveryPage"];
+
+export function loadEmailDeliveries(page: number, days: number, state: string, kind: string) {
+  const params = new URLSearchParams({ page: String(page), pageSize: "20", days: String(days) });
+  if (state !== "ALL") params.set("state", state);
+  if (kind !== "ALL") params.set("kind", kind);
+  return load<EmailDeliveryPage>(`email-deliveries?${params}`);
+}

@@ -118,3 +118,11 @@ tasks.register('rotateEmailKey', JavaExec) {
     mainClass = 'kr.youthpolicymate.member.EmailKeyRotationCommand'
     workingDir = rootProject.file('..')
 }
+
+tasks.register('queryOpenAiCosts', JavaExec) {
+    description = '지정 프로젝트의 UTC 월 비용을 OpenAI에서 조회한다. 생성·DB 정산은 하지 않는다.'
+    group = 'application'
+    classpath = sourceSets.main.runtimeClasspath
+    mainClass = 'kr.youthpolicymate.ingestion.OpenAiCostsCommand'
+    workingDir = rootProject.file('..')
+}

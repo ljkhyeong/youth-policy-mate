@@ -12,6 +12,7 @@ import org.springframework.util.StringUtils;
 
 @Component
 @Profile("!preview")
+@org.springframework.boot.autoconfigure.condition.ConditionalOnProperty(name = "app.email.provider", havingValue = "smtp", matchIfMissing = true)
 public class SmtpMemberEmailSender implements MemberEmailSender {
     private final JavaMailSender sender;
     private final boolean enabled;
@@ -32,10 +33,12 @@ public class SmtpMemberEmailSender implements MemberEmailSender {
                 Boolean.toString(StringUtils.hasText(configured.getUsername())));
     }
     @Override public boolean available() { return enabled; }
-    @Override public void send(String address, String subject, String body) {
+    @Override public String provider() { return "smtp"; }
+    @Override public String send(java.util.UUID requestId, String address, String subject, String body) {
         if (!enabled) throw new IllegalStateException("이메일 발송이 꺼져 있습니다.");
         var message = new SimpleMailMessage();
         message.setFrom(from); message.setTo(address); message.setSubject(subject); message.setText(body);
         sender.send(message);
+        return null;
     }
 }

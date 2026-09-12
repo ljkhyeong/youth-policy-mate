@@ -34,7 +34,7 @@ async function handle(request: NextRequest, context: { params: Promise<{ path: s
     || (path === "notifications" && method === "GET")
     || (/^notifications\/[0-9a-f-]{36}\/read$/.test(path) && method === "POST");
   if (!allowed) return Response.json({ message: "지원하지 않는 요청이에요." }, { status: 404 });
-  const frontendOrigin = new URL(process.env.APP_FRONTEND_URL || "http://127.0.0.1:3000").origin;
+  const frontendOrigin = new URL(process.env.PUBLIC_APP_URL || process.env.APP_FRONTEND_URL || "http://127.0.0.1:3000").origin;
   if (method !== "GET" && request.headers.get("origin") !== frontendOrigin) {
     return Response.json({ message: "현재 화면에서 다시 요청해주세요." }, { status: 403 });
   }

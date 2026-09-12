@@ -745,9 +745,11 @@ export interface components {
             readonly address: string | null;
             readonly addressRegistered: boolean;
             readonly available: boolean;
+            /** @enum {string|null} */
+            readonly deliveryIssue: "BOUNCED" | "COMPLAINED" | "SUPPRESSED" | null;
             readonly enabled: boolean;
             /** @enum {string|null} */
-            readonly verificationDelivery: "PENDING" | "SENDING" | "SENT" | "FAILED" | "UNKNOWN" | "CANCELED" | null;
+            readonly verificationDelivery: "PENDING" | "SENDING" | "SENT" | "FAILED" | "UNKNOWN" | "CANCELED" | "DELIVERED" | "DELAYED" | "BOUNCED" | "COMPLAINED" | "SUPPRESSED" | null;
             /** Format: date-time */
             readonly verificationExpiresAt: string | null;
             readonly verified: boolean;

@@ -30,12 +30,15 @@ public class MemberEmailDelivery {
     }
     public void deliverPending() {
         if (!sender.available() || !crypto.ready()) return;
-        // 중단된 발송은 자동 재시도하지 않는다. SMTP 접수 여부를 알 수 없기 때문이다.
+        // 중단된 발송은 자동 재시도하지 않는다. Resend는 서명된 웹훅으로 접수 결과를 보완한다.
         jdbc.sql("UPDATE member_email_outbox SET state = 'UNKNOWN', code_cipher = NULL, finished_at = :now WHERE state = 'SENDING' AND started_at < :before")
                 .param("now", at(clock.instant())).param("before", at(clock.instant().minusSeconds(120))).update();
         jdbc.sql("UPDATE member_email_settings SET code_hash = NULL, expires_at = NULL WHERE expires_at <= :now")
                 .param("now", at(clock.instant())).update();
-        for (var id : jdbc.sql("SELECT id FROM member_email_outbox WHERE state = 'PENDING' ORDER BY created_at, id LIMIT 50").query(UUID.class).list()) {
+        // 인증 메일을 먼저 보내고 Resend의 짧은 연속 요청을 줄인다. 처리기는 10초 간격이다.
+        int batchSize = "resend".equals(sender.provider()) ? 5 : 50;
+        for (var id : jdbc.sql("SELECT id FROM member_email_outbox WHERE state = 'PENDING' ORDER BY kind DESC, created_at, id LIMIT :limit")
+                .param("limit", batchSize).query(UUID.class).list()) {
             try { deliver(id); }
             catch (RuntimeException failure) {
                 org.slf4j.LoggerFactory.getLogger(getClass()).warn("이메일 대기 항목 처리 실패: {}", id);
@@ -49,8 +52,9 @@ public class MemberEmailDelivery {
         var payload = transaction.execute(status -> claim(id));
         if (payload == null) return;
         String outcome;
+        String messageId = null;
         try {
-            sender.send(payload.address(), payload.subject(), payload.body());
+            messageId = sender.send(id, payload.address(), payload.subject(), payload.body());
             outcome = "SENT";
         } catch (org.springframework.mail.MailAuthenticationException | org.springframework.mail.MailPreparationException failure) {
             outcome = "FAILED";
@@ -58,8 +62,11 @@ public class MemberEmailDelivery {
             outcome = "UNKNOWN";
         }
         // 외부 접수 이후 DB 기록에 실패해도 SENDING은 재발송 대상으로 되돌리지 않는다.
-        jdbc.sql("UPDATE member_email_outbox SET state = :state, code_cipher = NULL, finished_at = :now WHERE id = :id AND state IN ('SENDING','UNKNOWN')")
-                .param("state", outcome).param("now", at(clock.instant())).param("id", id).update();
+        jdbc.sql("""
+                UPDATE member_email_outbox SET state = :state, provider_message_id = :messageId, code_cipher = NULL, finished_at = :now
+                WHERE id = :id AND state IN ('SENDING','UNKNOWN') AND provider_event_at IS NULL
+                """).param("state", outcome).param("messageId", messageId == null ? null : UUID.fromString(messageId))
+                .param("now", at(clock.instant())).param("id", id).update();
     }
     private Payload claim(UUID id) {
         var owner = jdbc.sql("SELECT member_id, kind FROM member_email_outbox WHERE id = :id").param("id", id)
@@ -96,8 +103,8 @@ public class MemberEmailDelivery {
                     .param("id", id).param("now", at(clock.instant())).update();
             return null;
         }
-        jdbc.sql("UPDATE member_email_outbox SET state = 'SENDING', started_at = :now, code_cipher = NULL WHERE id = :id")
-                .param("id", id).param("now", at(clock.instant())).update();
+        jdbc.sql("UPDATE member_email_outbox SET state = 'SENDING', provider = :provider, started_at = :now, code_cipher = NULL WHERE id = :id")
+                .param("provider", sender.provider()).param("id", id).param("now", at(clock.instant())).update();
         return candidate.get();
     }
     private record Owner(UUID member, String kind) {}

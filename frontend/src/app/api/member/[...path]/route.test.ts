@@ -4,9 +4,21 @@ import { GET, POST, PUT } from "./route";
 
 const base = "http://127.0.0.1:3000";
 const context = (path: string) => ({ params: Promise.resolve({ path: path.split("/") }) });
-afterEach(() => vi.unstubAllGlobals());
+afterEach(() => { vi.unstubAllGlobals(); vi.unstubAllEnvs(); });
 
 describe("개인 API 중계", () => {
+  it("운영 공개 주소의 요청만 허용하고 실행 환경의 내부 API 주소를 사용한다", async () => {
+    vi.stubEnv("PUBLIC_APP_URL", "https://policy.example.test");
+    vi.stubEnv("POLICY_API_BASE_URL", "http://youth-policy-api:8080");
+    const fetch = vi.fn().mockResolvedValue(new Response(null, { status: 204 })); vi.stubGlobal("fetch", fetch);
+    const response = await PUT(new NextRequest(`${base}/api/member/email-settings`, {
+      method: "PUT", headers: { origin: "https://policy.example.test", "X-CSRF-TOKEN": "token" }, body: JSON.stringify({ enabled: false }),
+    }), context("email-settings"));
+    expect(response.status).toBe(204);
+    expect(fetch.mock.calls[0][0].href).toBe("http://youth-policy-api:8080/api/v1/me/email-settings");
+    expect((await PUT(new NextRequest(`${base}/api/member/email-settings`, { method: "PUT", headers: { origin: base } }), context("email-settings"))).status).toBe(403);
+    expect(fetch).toHaveBeenCalledTimes(1);
+  });
   it("규칙 파일 요청만 용량을 늘리고 관리자 경로·세션·CSRF를 제한해 중계한다", async () => {
     const fetch = vi.fn().mockImplementation(() => Promise.resolve(Response.json({}))); vi.stubGlobal("fetch", fetch);
     const root = "policy-rule-reviews/99990000000000000001";

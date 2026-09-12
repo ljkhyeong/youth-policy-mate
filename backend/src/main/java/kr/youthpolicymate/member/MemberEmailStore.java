@@ -45,8 +45,8 @@ public class MemberEmailStore {
                     var expires = rs.getObject("expires_at", OffsetDateTime.class);
                     boolean pending = expires != null && clock.instant().isBefore(expires.toInstant()) && rs.getInt("attempts") < 5;
                     return new Settings(available(), true, address, rs.getObject("verified_at") != null, rs.getBoolean("enabled"),
-                            pending ? expires.toInstant() : null, rs.getString("delivery"));
-                }).optional().orElse(new Settings(available(), false, null, false, false, null, null));
+                            pending ? expires.toInstant() : null, rs.getString("delivery"), rs.getString("delivery_issue"));
+                }).optional().orElse(new Settings(available(), false, null, false, false, null, null, null));
     }
     @Transactional
     public void request(UUID member, String address) {
@@ -67,7 +67,7 @@ public class MemberEmailStore {
                 VALUES (:member, :version, :address, :hash, :expires)
                 ON CONFLICT (member_id) DO UPDATE SET version = EXCLUDED.version, address_cipher = EXCLUDED.address_cipher,
                     code_hash = EXCLUDED.code_hash, expires_at = EXCLUDED.expires_at, attempts = 0,
-                    verified_at = NULL, enabled = false, consented_at = NULL
+                    verified_at = NULL, enabled = false, consented_at = NULL, delivery_issue = NULL
                 """).param("member", member).param("version", version)
                 .param("address", crypto.encrypt(context(member, version, "address"), address))
                 .param("hash", crypto.hash(context(member, version, "code"), code)).param("expires", at(expires)).update();
@@ -132,10 +132,11 @@ public class MemberEmailStore {
     static OffsetDateTime at(Instant instant) { return instant.atOffset(java.time.ZoneOffset.UTC); }
     private record Check(UUID version, String hash, OffsetDateTime expires, int attempts) {}
     @JsonInclude(JsonInclude.Include.ALWAYS)
-    @Schema(name = "MemberEmailSettings", requiredProperties = {"available", "addressRegistered", "address", "verified", "enabled", "verificationExpiresAt", "verificationDelivery"})
+    @Schema(name = "MemberEmailSettings", requiredProperties = {"available", "addressRegistered", "address", "verified", "enabled", "verificationExpiresAt", "verificationDelivery", "deliveryIssue"})
     public record Settings(boolean available, boolean addressRegistered, @Schema(types = {"string", "null"}) String address,
                            boolean verified, boolean enabled, @Schema(types = {"string", "null"}, format = "date-time") Instant verificationExpiresAt,
-                           @Schema(types = {"string", "null"}, allowableValues = {"PENDING", "SENDING", "SENT", "FAILED", "UNKNOWN", "CANCELED"}) String verificationDelivery) {}
+                           @Schema(types = {"string", "null"}, allowableValues = {"PENDING", "SENDING", "SENT", "FAILED", "UNKNOWN", "CANCELED", "DELIVERED", "DELAYED", "BOUNCED", "COMPLAINED", "SUPPRESSED"}) String verificationDelivery,
+                           @Schema(types = {"string", "null"}, allowableValues = {"BOUNCED", "COMPLAINED", "SUPPRESSED"}) String deliveryIssue) {}
     public static class EmailException extends RuntimeException {
         final int status; final String code;
         EmailException(int status, String code, String message) { super(message); this.status = status; this.code = code; }

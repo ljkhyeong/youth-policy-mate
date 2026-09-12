@@ -52,6 +52,10 @@ app:
     enabled: ${EMAIL_ENABLED:false}
     encryption-key: ${EMAIL_ENCRYPTION_KEY:}
     from: ${EMAIL_FROM:}
+    provider: ${EMAIL_PROVIDER:smtp}
+    resend:
+      api-key: ${RESEND_API_KEY:}
+      webhook-secret: ${RESEND_WEBHOOK_SECRET:}
   ontong:
     schedule:
       enabled: ${ONTONG_COLLECTION_SCHEDULE_ENABLED:false}

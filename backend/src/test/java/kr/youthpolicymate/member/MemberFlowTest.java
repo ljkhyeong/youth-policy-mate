@@ -43,6 +43,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @Testcontainers
 @SpringBootTest(properties = {"app.reminders.enabled=false", "app.email.enabled=false",
+        "app.email.provider=resend", "app.email.resend.webhook-secret=whsec_dGVzdC13ZWJob29rLXNlY3JldA==",
         "KAKAO_CLIENT_ID=test-kakao", "KAKAO_CLIENT_SECRET=test-secret",
         "NAVER_CLIENT_ID=test-naver", "NAVER_CLIENT_SECRET=test-secret",
         "app.email.encryption-key=AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="})
@@ -89,6 +90,96 @@ class MemberFlowTest {
         second = identities.login("naver", "101", "둘째 회원");
         time("2026-09-04T15:00:00Z");
         when(emailSender.available()).thenReturn(true);
+        when(emailSender.provider()).thenReturn("resend");
+    }
+
+    private static final String WEBHOOK_SECRET = "whsec_dGVzdC13ZWJob29rLXNlY3JldA==";
+
+    private org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder webhook(
+            UUID outbox, UUID message, String type, String occurred) throws Exception {
+        String body = mapper.writeValueAsString(Map.of("type", type, "created_at", occurred,
+                "data", Map.of("email_id", message.toString(), "tags", Map.of("outbox_id", outbox.toString()))));
+        String id = "msg-test-" + outbox;
+        long timestamp = Instant.now().getEpochSecond();
+        return post("/api/v1/webhooks/resend").contentType("application/json").content(body)
+                .header("svix-id", id).header("svix-timestamp", timestamp)
+                .header("svix-signature", new com.svix.Webhook(WEBHOOK_SECRET).sign(id, timestamp, body));
+    }
+
+    private UUID verificationMail() {
+        return jdbc.sql("SELECT id FROM member_email_outbox WHERE member_id = :member ORDER BY created_at DESC LIMIT 1")
+                .param("member", first).query(UUID.class).single();
+    }
+
+    @Test
+    @DisplayName("서명된 웹훅은 API 응답보다 먼저 와도 전달 결과를 보존하고 중복·순서 역전을 무시한다")
+    void keepsEarlyWebhookResult() throws Exception {
+        emails.request(first, "first@example.test");
+        UUID mail = verificationMail(); UUID message = UUID.randomUUID();
+        doAnswer(call -> {
+            mvc.perform(webhook(mail, message, "email.delivered", "2026-09-07T12:00:02Z")).andExpect(status().isNoContent());
+            return message.toString();
+        }).when(emailSender).send(any(), any(), any(), any());
+        emailDelivery.deliver(mail);
+        assertThat(mailState(mail)).isEqualTo("DELIVERED");
+        mvc.perform(webhook(mail, message, "email.delivered", "2026-09-07T12:00:02Z")).andExpect(status().isNoContent());
+        mvc.perform(webhook(mail, message, "email.sent", "2026-09-07T12:00:03Z")).andExpect(status().isNoContent());
+        assertThat(emails.settings(first).verificationDelivery()).isEqualTo("DELIVERED");
+        mvc.perform(webhook(mail, UUID.randomUUID(), "email.bounced", "2026-09-07T12:00:04Z")).andExpect(status().isNoContent());
+        assertThat(mailState(mail)).isEqualTo("DELIVERED");
+    }
+
+    @Test
+    @DisplayName("접수 결과 미확인은 웹훅으로 확정하며 반송 시 동의·코드·미발송 요청을 해제한다")
+    void reconcilesUnknownAndStopsBouncedAddress() throws Exception {
+        emails.request(first, "first@example.test");
+        UUID mail = verificationMail(); UUID message = UUID.randomUUID();
+        var code = pendingCode(first);
+        assertThat(emails.confirm(first, code)).isTrue();
+        emails.consent(first, true);
+        jdbc.sql("UPDATE member_email_outbox SET state = 'UNKNOWN', provider = 'resend' WHERE id = :id").param("id", mail).update();
+        UUID pending = UUID.randomUUID();
+        jdbc.sql("INSERT INTO member_email_outbox(id, member_id, settings_version, kind, state, created_at) SELECT :pending, member_id, settings_version, 'VERIFICATION', 'PENDING', created_at FROM member_email_outbox WHERE id = :id")
+                .param("pending", pending).param("id", mail).update();
+        mvc.perform(webhook(mail, message, "email.sent", "2026-09-07T12:00:02Z")).andExpect(status().isNoContent());
+        assertThat(mailState(mail)).isEqualTo("SENT");
+        // 지연 도착한 반송도 이미 접수된 주소의 추가 발송을 중단한다.
+        mvc.perform(webhook(mail, message, "email.bounced", "2026-09-07T12:00:01Z")).andExpect(status().isNoContent());
+        assertThat(mailState(mail)).isEqualTo("BOUNCED");
+        assertThat(mailState(pending)).isEqualTo("CANCELED");
+        assertThat(emails.settings(first).deliveryIssue()).isEqualTo("BOUNCED");
+        assertThat(emails.settings(first).enabled()).isFalse();
+        assertThat(emails.settings(first).verified()).isFalse();
+        assertThatThrownBy(() -> emails.consent(first, true)).isInstanceOf(MemberEmailStore.EmailException.class);
+        mvc.perform(webhook(mail, message, "email.delivered", "2026-09-07T12:00:09Z")).andExpect(status().isNoContent());
+        assertThat(mailState(mail)).isEqualTo("BOUNCED");
+    }
+
+    @Test
+    @DisplayName("이전 이메일의 신고는 새 주소·동의를 바꾸지 않고 잘못된 서명과 오래된 요청은 거절한다")
+    void isolatesSettingsAndVerifiesSignature() throws Exception {
+        emails.request(first, "first@example.test"); UUID mail = verificationMail(); UUID message = UUID.randomUUID();
+        emailDelivery.deliver(mail);
+        time("2026-09-08T15:00:00Z");
+        emails.request(first, "new@example.test");
+        assertThat(emails.confirm(first, pendingCode(first))).isTrue(); emails.consent(first, true);
+        mvc.perform(webhook(mail, message, "email.complained", "2026-09-08T15:00:01Z")).andExpect(status().isNoContent());
+        assertThat(emails.settings(first).address()).isEqualTo("new@example.test");
+        assertThat(emails.settings(first).enabled()).isTrue();
+        assertThat(emails.settings(first).deliveryIssue()).isNull();
+        mvc.perform(webhook(mail, message, "email.delivered", "2026-09-08T15:00:02Z").content("{}"))
+                .andExpect(status().isUnauthorized());
+        mvc.perform(post("/api/v1/webhooks/resend").contentType("application/json").content("{}"))
+                .andExpect(status().isUnauthorized());
+        String oldId = "old-message"; long oldTime = Instant.now().minusSeconds(601).getEpochSecond();
+        mvc.perform(post("/api/v1/webhooks/resend").contentType("application/json").content("{}")
+                .header("svix-id", oldId).header("svix-timestamp", oldTime)
+                .header("svix-signature", new com.svix.Webhook(WEBHOOK_SECRET).sign(oldId, oldTime, "{}")))
+                .andExpect(status().isUnauthorized());
+        mvc.perform(post("/api/v1/webhooks/resend").contentType("application/json").content("x".repeat(65537)))
+                .andExpect(status().isPayloadTooLarge());
+        mvc.perform(put("/api/v1/me/email-settings").with(oauth2Login().oauth2User(user(first))).contentType("application/json").content("{\"enabled\":true}"))
+                .andExpect(status().isForbidden());
     }
 
     @Test
@@ -452,7 +543,7 @@ class MemberFlowTest {
         UUID mail = policyMailIds().getFirst(); emailDelivery.deliver(mail);
         assertThat(mailState(mail)).isEqualTo("SENT");
         var body = org.mockito.ArgumentCaptor.forClass(String.class);
-        org.mockito.Mockito.verify(emailSender).send(org.mockito.ArgumentMatchers.eq("first@example.test"), any(), body.capture());
+        org.mockito.Mockito.verify(emailSender).send(any(), org.mockito.ArgumentMatchers.eq("first@example.test"), any(), body.capture());
         assertThat(body.getValue()).contains("마감 3일 전", "/policies/" + NUMBER, "이메일 수신 해제:");
         assertThat(jdbc.sql("SELECT address_cipher FROM member_email_settings WHERE member_id = :member").param("member", first).query(String.class).single())
                 .doesNotContain("first@example.test");
@@ -529,15 +620,15 @@ class MemberFlowTest {
         UUID id = jdbc.sql("SELECT id FROM member_email_outbox WHERE member_id = :member").param("member", first).query(UUID.class).single();
         doAnswer(call -> {
             assertThat(org.springframework.transaction.support.TransactionSynchronizationManager.isActualTransactionActive()).isFalse();
-            assertThat(call.getArgument(0, String.class)).isEqualTo("first@example.test");
-            assertThat(call.getArgument(2, String.class)).contains("확인 코드:");
+            assertThat(call.getArgument(1, String.class)).isEqualTo("first@example.test");
+            assertThat(call.getArgument(3, String.class)).contains("확인 코드:");
             return null;
-        }).when(emailSender).send(any(), any(), any());
+        }).when(emailSender).send(any(), any(), any(), any());
         try (var pool = Executors.newFixedThreadPool(2)) {
             var a = pool.submit(() -> emailDelivery.deliver(id)); var b = pool.submit(() -> emailDelivery.deliver(id));
             a.get(10, TimeUnit.SECONDS); b.get(10, TimeUnit.SECONDS);
         }
-        org.mockito.Mockito.verify(emailSender, org.mockito.Mockito.times(1)).send(any(), any(), any());
+        org.mockito.Mockito.verify(emailSender, org.mockito.Mockito.times(1)).send(any(), any(), any(), any());
         assertThat(mailState(id)).isEqualTo("SENT");
         assertThat(emails.settings(first).verificationDelivery()).isEqualTo("SENT");
         new TransactionTemplate(transactions).executeWithoutResult(tx ->
@@ -548,10 +639,10 @@ class MemberFlowTest {
     @DisplayName("결과 미확인과 중단된 발송은 다시 보내지 않고 암호화한 코드도 지운다")
     void doesNotRetryUnknownDelivery() {
         emails.request(first, "first@example.test");
-        org.mockito.Mockito.doThrow(new org.springframework.mail.MailSendException("인공 전송 중단")).when(emailSender).send(any(), any(), any());
+        org.mockito.Mockito.doThrow(new org.springframework.mail.MailSendException("인공 전송 중단")).when(emailSender).send(any(), any(), any(), any());
         emailDelivery.deliverPending(); emailDelivery.deliverPending();
         assertThat(emails.settings(first).verificationDelivery()).isEqualTo("UNKNOWN");
-        org.mockito.Mockito.verify(emailSender, org.mockito.Mockito.times(1)).send(any(), any(), any());
+        org.mockito.Mockito.verify(emailSender, org.mockito.Mockito.times(1)).send(any(), any(), any(), any());
         time("2026-09-04T15:01:00Z"); emails.request(first, "first@example.test");
         jdbc.sql("UPDATE member_email_outbox SET state = 'SENDING', started_at = :now WHERE state = 'PENDING'")
                 .param("now", MemberEmailStore.at(clock.instant())).update();
@@ -576,7 +667,7 @@ class MemberFlowTest {
         UUID current = pendingPolicyMail(); time("2026-09-04T15:01:00Z"); emails.request(first, "new@example.test"); emailDelivery.deliver(current);
         assertThat(mailState(current)).isEqualTo("CANCELED");
         assertThat(emails.settings(first).verified()).isFalse(); assertThat(emails.settings(first).enabled()).isFalse();
-        org.mockito.Mockito.verify(emailSender, org.mockito.Mockito.never()).send(any(), any(), any());
+        org.mockito.Mockito.verify(emailSender, org.mockito.Mockito.never()).send(any(), any(), any(), any());
     }
 
     @Test
@@ -588,7 +679,7 @@ class MemberFlowTest {
         members.deliver(first); UUID id = policyMailIds().getFirst();
         time("2026-09-05T15:00:00Z"); emailDelivery.deliver(id);
         assertThat(mailState(id)).isEqualTo("CANCELED");
-        org.mockito.Mockito.verify(emailSender, org.mockito.Mockito.never()).send(any(), any(), any());
+        org.mockito.Mockito.verify(emailSender, org.mockito.Mockito.never()).send(any(), any(), any(), any());
     }
 
     private void verifiedEmail() {

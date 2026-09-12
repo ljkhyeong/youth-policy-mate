@@ -98,7 +98,7 @@ class EmailTransportTest {
                     "app.email.port=" + server.getLocalPort(), "app.email.from=sender@example.test").run(context -> {
                 var sender = context.getBean(SmtpMemberEmailSender.class);
                 assertThat(context.getBean(JavaMailSenderImpl.class).getJavaMailProperties()).containsEntry("mail.smtp.auth", "false");
-                assertThatThrownBy(() -> sender.send("recipient@example.test", "확인", "전송하면 안 되는 본문"))
+                assertThatThrownBy(() -> sender.send(java.util.UUID.randomUUID(), "recipient@example.test", "확인", "전송하면 안 되는 본문"))
                         .isInstanceOf(org.springframework.mail.MailException.class);
             });
             assertThat(conversation.get(10, TimeUnit.SECONDS)).noneMatch(command -> command.startsWith("MAIL") || command.startsWith("RCPT") || command.startsWith("DATA"));

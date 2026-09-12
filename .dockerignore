@@ -1,0 +1,16 @@
+**
+!package.json
+!package-lock.json
+!frontend/
+!frontend/**
+!backend/
+!backend/**
+**/node_modules
+**/.next
+**/build
+**/.gradle
+**/.env
+**/.env.*
+**/*.log
+**/*.tsbuildinfo
+**/.DS_Store

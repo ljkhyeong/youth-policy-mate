@@ -71,6 +71,9 @@ export function MemberEmailSettings({ csrf }: { csrf: string }) {
       {settings.addressRegistered && <div className="email-current">
         <p><strong>{settings.address || "등록한 이메일 주소"}</strong></p>
         <p>{settings.verified ? "이메일 인증 완료" : "이메일 인증 필요"} · {settings.enabled ? "이메일 알림 켜짐" : "이메일 알림 꺼짐"}</p>
+        {settings.deliveryIssue && <p role="status" className="field-help">{settings.deliveryIssue === "COMPLAINED"
+          ? "스팸 신고로 이메일 알림을 껐어요. 다시 받으려면 이메일을 인증해주세요."
+          : "반송 또는 수신 차단으로 이메일 알림을 껐어요. 주소를 확인하고 다시 인증해주세요."}</p>}
         {settings.verified && <button type="button" className="button-secondary" disabled={busy || (!settings.available && !settings.enabled)}
           onClick={() => change("email-settings", "PUT", { enabled: !settings.enabled }, settings.enabled ? "이메일 알림을 끄고 발송 대기 중인 이메일을 취소했어요." : "이메일 알림을 켰어요. 새 알림부터 이메일로 보내요.")}>
           {settings.enabled ? "이메일 알림 끄기" : "수신 동의하고 알림 켜기"}
@@ -87,7 +90,9 @@ export function MemberEmailSettings({ csrf }: { csrf: string }) {
           </fieldset>
         </form>
         {!settings.verified && settings.addressRegistered && <>
-          <p className="field-help" role="status">{settings.verificationDelivery === "SENT" ? "메일 발송 요청이 접수됐어요. 받은편지함과 스팸함을 확인해주세요."
+          <p className="field-help" role="status">{settings.verificationDelivery === "DELIVERED" ? "수신 메일 서버에 전달됐어요. 받은편지함과 스팸함을 확인해주세요."
+            : settings.verificationDelivery === "DELAYED" ? "수신 메일 서버의 처리가 지연되고 있어요. 잠시 후 메일함을 확인해주세요."
+            : settings.verificationDelivery === "SENT" ? "메일 발송 요청이 접수됐어요. 받은편지함과 스팸함을 확인해주세요."
             : settings.verificationDelivery === "UNKNOWN" ? "메일 발송 여부를 확인할 수 없어요. 메일함을 확인하고, 메일이 없으면 새 코드를 요청해주세요."
             : settings.verificationDelivery === "FAILED" ? "인증 메일을 보내지 못했어요. 잠시 후 새 코드를 요청해주세요."
             : settings.verificationDelivery === "PENDING" || settings.verificationDelivery === "SENDING" ? "인증 메일을 보내는 중이에요. 잠시 후 메일함을 확인해주세요." : "새 인증 메일을 요청해주세요."}</p>

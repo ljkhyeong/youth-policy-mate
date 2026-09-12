@@ -2967,12 +2967,16 @@
           "available" : {
             "type" : "boolean"
           },
+          "deliveryIssue" : {
+            "type" : [ "string", "null" ],
+            "enum" : [ "BOUNCED", "COMPLAINED", "SUPPRESSED" ]
+          },
           "enabled" : {
             "type" : "boolean"
           },
           "verificationDelivery" : {
             "type" : [ "string", "null" ],
-            "enum" : [ "PENDING", "SENDING", "SENT", "FAILED", "UNKNOWN", "CANCELED", null ]
+            "enum" : [ "PENDING", "SENDING", "SENT", "FAILED", "UNKNOWN", "CANCELED", "DELIVERED", "DELAYED", "BOUNCED", "COMPLAINED", "SUPPRESSED", null ]
           },
           "verificationExpiresAt" : {
             "type" : [ "string", "null" ],
@@ -2982,7 +2986,7 @@
             "type" : "boolean"
           }
         },
-        "required" : [ "address", "addressRegistered", "available", "enabled", "verificationDelivery", "verificationExpiresAt", "verified" ]
+        "required" : [ "address", "addressRegistered", "available", "deliveryIssue", "enabled", "verificationDelivery", "verificationExpiresAt", "verified" ]
       },
       "MemberNotification" : {
         "type" : "object",

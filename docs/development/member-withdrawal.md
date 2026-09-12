@@ -10,6 +10,7 @@
 - Spring Session의 회원별 조회·삭제 API로 다른 기기의 세션까지 정리하고, Spring Security 로그아웃 처리로 현재 인증과 쿠키를 지운다. 세션 저장소는 별도 트랜잭션을 사용하므로 실패 시 일부 기기는 로그아웃될 수 있지만 회원 데이터 삭제는 롤백한다. [Spring Session 트랜잭션](https://docs.spring.io/spring-session/reference/configuration/jdbc.html)·[Spring Security 로그아웃](https://docs.spring.io/spring-security/reference/servlet/authentication/logout.html)
 - 탈퇴 전에 시작된 OAuth 콜백이 늦게 세션을 저장해도 세션 조회·회원·관리자 API에서 회원 존재 여부를 확인해 인증을 해제한다. DB 장애는 비회원 상태로 숨기지 않고 503으로 응답한다.
 - 성공한 화면은 개인 상태·임시 정책 저장·확인한 생년월일을 지우고 다른 탭에 계정 변경을 알린다. 응답이 끊기거나 실패하면 완료를 표시하지 않고 로그인 상태를 다시 확인하도록 안내한다.
+- 탈퇴 요청은 [대시보드의 요청 처리](member-dashboard-recovery.md)를 사용해 목록 조회·저장 해제·로그아웃과 겹치지 않는다. 실패 후에는 재조회부터 진행하고, 다시 탈퇴하려면 삭제 내용을 재확인한다.
 
 다른 회원과 공개 정책·원본·개정은 유지한다. 관리자가 탈퇴해도 정책 변경 이력의 작업자 UUID·사유는 남지만 삭제된 회원 프로필과 연결할 수 없다. 같은 소셜 계정으로 다시 로그인하면 새 UUID로 가입하며 기존 데이터나 관리자 권한을 복원하지 않는다.
 

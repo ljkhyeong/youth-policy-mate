@@ -58,7 +58,29 @@ npm run rules:policy -- --args='publish <등록한 초안 UUID> exam-fee-2026-v1
 
 생년월일은 URL·브라우저 저장소·DB에 남기지 않는다. 조건 수정·입력 삭제·질문 답변 삭제·계정 전환·새로고침 시 재사용 값을 지운다. 답변 수정 중 늦게 도착한 응답은 무시한다. 원문·규칙이 바뀌면 409로 이전 답변을 지우고 새 질문을 불러온다.
 
+자동 입력 중에는 진행 상태를 표시하고 조건 비교를 잠시 막는다. 직접 답변을 수정하면 자동 입력을 중단하고 안내하며, 답변 삭제는 진행 중인 요청과 재사용 생년월일을 함께 지운다. 자동 입력 실패나 적용할 답변이 없는 경우에는 직접 답할 수 있다. 비교 요청은 중복 전송하지 않고 답변 수정 시 이전 결과를 지운다. 질문 시작·재조회·개정 변경 후에는 다음 입력으로 키보드 초점을 옮긴다.
+
 ## 검증
+
+### 질문 화면 검증
+
+2026-09-12, 웹 코드 `8d650c9`. 기존 화면에서 자동 입력 중 비교 버튼이 활성화되고 빈 답변이 전송되는 문제와 질문 시작 후 초점 유실을 `/tmp/youth-question-recovery/before.log`에서 재현했다.
+
+| 명령·범위 | 결과·로그 |
+|---|---|
+| `npm run verify -- test:web -- src/features/eligibility/policy-questionnaire.test.tsx src/features/conditions/confirmed-birth.test.ts 'src/app/api/member/[...path]/route.test.ts'` | 결과 표시·생년월일 메모리·API 중계 검사 통과. `.local/verification/1789209486757-279ac58b.log` |
+| `npm run verify -- check:web` | 통과. `.local/verification/1789209486752-78a4c719.log` |
+| `npm run verify -- build:web` | 통과. `.local/verification/1789209508903-b985fc06.log` |
+
+Playwright CLI 헤드리스 검증에서 자동 입력 중 비교 차단, 연령 답변만 반영, 비교 중복 차단, 실패 후 답변 유지, 직접 수정·삭제 후 늦은 응답 무시, 생년월일 재사용 삭제, 자동 입력 실패·대상 없음의 직접 입력, 개정 변경 후 질문 재조회, 화면 이동·키보드 초점·모바일을 확인했다. 최종 결과는 `/tmp/youth-question-recovery/after.log`에 있다.
+
+```sh
+bash /Users/lim/.codex/skills/playwright/scripts/playwright_cli.sh --session youth-question-recovery run-code --filename /tmp/youth-question-recovery/after.js
+```
+
+실제 질문 컴포넌트와 임시 개발 화면을 사용했고 API는 모의 응답으로 처리했다. 검증 화면을 제거한 최종 코드로 위 검사를 실행했다. 검증용 화면·스크립트·결과는 `/tmp/youth-question-recovery/`에 있으며 전용 브라우저는 종료했다. 사용자 창·탭과 실제 회원 데이터는 변경하지 않았다. 서버의 자격 규칙·원문·API 계약은 바꾸지 않아 기존 서버 검증을 재사용했다.
+
+### 기존 규칙·DB 검증
 
 2026-09-12 로컬 검증. JDK·재실행 기준은 [검증 절차](verification-workflow.md)를 따른다.
 
@@ -69,4 +91,4 @@ npm run rules:policy -- --args='publish <등록한 초안 UUID> exam-fee-2026-v1
 - `npm run verify -- check:web` 통과: `.local/verification/1789167186822-a136e328.log`. 공개 API 경로·DTO·생성 타입은 변경하지 않았으며 전체 서버 검사에서 기존 OpenAPI 계약과 일치했다.
 - 로컬 DB V24 적용. K-패스의 생년월일 재사용·기준 월·첫 가입 월 예외, 청년주택드림청약통장의 병역 예외 확인 대기를 실제 화면에서 확인했다. 390px 모바일 가로 넘침이 없다. 운영 명령의 초안 등록·적용·내보내기 흐름은 이전 검증을 재사용했다.
 
-[AI 추출 결과 저장](ai-rule-drafts.md)은 공고 개정·원본·요청에 연결해 유효한 결과를 검토할 초안으로 만든다. 실제 공급자 호출·예산 실행 경로와 수집 후 자동 처리는 남아 있다. 연도만 바꿔 이전 공고를 자동 이월하지 않는다.
+[AI 추출 결과 저장](ai-rule-drafts.md)은 공고 개정·원본·요청에 연결해 유효한 결과를 검토할 초안으로 만든다. 공급자 호출·예산 관리와 [수집 후 자동 처리](ai-rule-automation.md)를 제공하며, 실제 운영 설정과 생성 품질·청구 검증은 남아 있다. 연도만 바꿔 이전 공고를 자동 이월하지 않는다.

@@ -25,7 +25,7 @@
 | 작업 | 스킬 |
 |---|---|
 | PRD·ADR·README·인계 문서 | [문서](skills/youth-policy-docs/SKILL.md) |
-| 공통 백엔드·인증·JPA/Flyway | [백엔드](skills/youth-policy-backend/SKILL.md) |
+| 공통 백엔드·인증·JDBC/Flyway | [백엔드](skills/youth-policy-backend/SKILL.md) |
 | REST API·OpenAPI·생성 타입 | [API 계약](skills/youth-policy-api-contract/SKILL.md) |
 | Next.js 화면·개인 상태 | [프런트엔드](skills/youth-policy-frontend/SKILL.md) |
 | 정책 수집·개정·AI 추출 | [수집](skills/youth-policy-ingestion/SKILL.md) |

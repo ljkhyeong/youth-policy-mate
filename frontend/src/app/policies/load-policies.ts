@@ -21,8 +21,8 @@ async function load<T>(path: string): Promise<Loaded<T>> {
   }
 }
 
-export function loadPolicies(query: string, page: number, questionsOnly = false, recruitmentStatus: RecruitmentFilter = "") {
-  const search = new URLSearchParams({ q: query, page: String(page), pageSize: "20" });
+export function loadPolicies(query: string, page: number, questionsOnly = false, recruitmentStatus: RecruitmentFilter = "", pageSize = 20) {
+  const search = new URLSearchParams({ q: query, page: String(page), pageSize: String(pageSize) });
   if (questionsOnly) search.set("questionsOnly", "true");
   if (recruitmentStatus) search.set("recruitmentStatus", recruitmentStatus);
   return load<PolicyList>(`/api/v1/policies?${search}`);

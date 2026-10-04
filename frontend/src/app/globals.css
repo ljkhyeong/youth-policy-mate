@@ -206,6 +206,24 @@ select {
   .home-followup h2 { margin: 0 0 8px; font-size: 17px; font-weight: 750; }
   .home-followup p { max-width: 34rem; margin: 0; color: var(--app-muted); font-size: 14px; line-height: 1.8; }
 
+  .home-open { margin-top: 40px; }
+  .home-section-heading { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 16px; }
+  .home-section-heading h2 { margin: 0; font-size: 20px; font-weight: 750; letter-spacing: -0.03em; }
+  .home-section-heading .text-link { flex-shrink: 0; font-size: 14px; }
+  .home-open-list { display: grid; gap: 12px; margin: 0; padding: 0; list-style: none; }
+  .home-open-list li { position: relative; display: grid; gap: 4px; padding: 18px 20px; border: 1px solid var(--app-line); border-radius: 16px; background: white; }
+  .home-open-list li:hover { border-color: #c7d6fb; }
+  .home-open-list li > a { color: var(--app-text); font-size: 17px; font-weight: 750; line-height: 1.45; letter-spacing: -0.03em; text-decoration: none; }
+  .home-open-list li:hover > a { color: var(--app-blue-dark); }
+  /* 제목 링크가 카드 전체를 덮어 어디를 눌러도 상세로 이동한다. */
+  .home-open-list li > a::after { content: ""; position: absolute; inset: 0; border-radius: 16px; }
+  .home-open-list li > a:focus-visible { outline: none; }
+  .home-open-list li:has(> a:focus-visible) { outline: 3px solid #8bb2ff; outline-offset: 3px; }
+  .home-open-list li > p:not(.policy-period) { margin: 0; color: var(--app-muted); font-size: 13px; }
+  .home-open-list .policy-period { margin-top: 6px; }
+  .home-open-empty { margin: 0; padding: 18px 20px; border: 1px solid var(--app-line); border-radius: 16px; background: white; color: var(--app-muted); font-size: 14px; line-height: 1.8; }
+  .home-open > .field-help { margin: 12px 0 0; }
+
 
   .location-label,
   .page-label {
@@ -732,6 +750,7 @@ select {
 
   .condition-panel { padding: 30px; }
   .home-followup { grid-template-columns: 1fr 1fr; gap: 48px; }
+  .home-open-list { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 
   .conditions-main {
     padding-top: 58px;
@@ -875,7 +894,9 @@ select {
 @media (max-width: 420px) { .policy-card { padding: 20px; } .policy-official-links { flex-direction: column; } }
 
 /* 내 정책과 조건 확인은 기존 한 열 입력 흐름과 같은 간격을 사용한다. */
-.member-main { width: min(100% - 40px, 880px); margin: 48px auto 64px; }
+.member-main { width: 100%; max-width: 880px; margin: 48px auto 64px; }
+.member-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 20px; margin-top: 16px; }
+.member-panel .member-actions .button-primary { margin-top: 0; }
 .exception-main { overflow-wrap: anywhere; }
 .exception-facts { display: grid; grid-template-columns: 100px minmax(0, 1fr); gap: 10px 16px; margin: 20px 0; font-size: 14px; line-height: 1.7; }
 .exception-facts dt { color: var(--app-muted); }
@@ -931,7 +952,7 @@ select {
 .policy-check-details p { margin: 8px 0; }
 .policy-check-details blockquote { white-space: pre-wrap; overflow-wrap: anywhere; border-left: 3px solid #cbd5e1; padding: 12px; margin-top: 12px; background: #f8fafc; line-height: 1.8; font-size: 14px; max-height: 320px; overflow-y: auto; }
 .condition-member-controls { padding: 18px 0; border-block: 1px solid var(--app-line); margin: 12px 0 24px; text-align: left; }
-@media (max-width: 600px) { .member-main { width: calc(100% - 32px); margin-top: 28px; } .member-panel { padding: 20px; } .member-toolbar { gap: 12px; } .member-tabs a { padding: 12px; flex: 1; } }
+@media (max-width: 600px) { .member-main { margin-top: 28px; } .member-panel { padding: 20px; } .member-toolbar { gap: 12px; } .member-tabs a { padding: 12px; flex: 1; } }
 @media (max-width: 600px) { .member-policy-search { flex-wrap: wrap; } .member-policy-search input { flex-basis: 100%; } }
 
 @layer components {
@@ -1011,6 +1032,7 @@ select {
 .policy-recruitment { margin: 12px 0; }
 .policy-recruitment p { margin: 8px 0 0; color: var(--app-muted); font-size: 13px; line-height: 1.65; font-weight: 400; }
 .recruitment-badge { display: inline-block; padding: 4px 9px; border-radius: 6px; background: #edf1ff; color: #354ab4; font-size: 12px; font-weight: 700; }
+.recruitment-badge[data-status="OPEN"], .recruitment-badge[data-status="ROLLING"] { background: #e6f6ee; color: #11734b; }
 .recruitment-badge[data-status="CLOSED"] { background: #eef0f3; color: #606775; }
 .recruitment-badge[data-status="UNKNOWN"], .recruitment-badge[data-status="UNTIL_EXHAUSTED"] { background: #fbf3dc; color: #806515; }
 

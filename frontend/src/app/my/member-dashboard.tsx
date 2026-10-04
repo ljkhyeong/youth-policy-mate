@@ -132,7 +132,7 @@ export function MemberDashboard() {
   }
 
   if (withdrawn) return <section className="member-panel" role="status"><h2 ref={completion} tabIndex={-1}>탈퇴가 완료됐어요</h2><p>저장한 정보를 삭제하고 모든 기기에서 로그아웃했어요.</p><Link href="/" className="button-primary">홈으로</Link></section>;
-  if (session && !session.authenticated) return <section className="member-panel"><h2>로그인 후 내 정책을 확인하세요</h2><p>관심 정책과 마감 일정, 알림 설정을 확인할 수 있어요.</p><Link ref={loginLink} href={loginHref} className="button-primary">로그인하기</Link><Link href="/policies" className="text-link">정책 둘러보기</Link></section>;
+  if (session && !session.authenticated) return <section className="member-panel"><h2>로그인 후 내 정책을 확인하세요</h2><p>관심 정책과 마감 일정, 알림 설정을 확인할 수 있어요.</p><div className="member-actions"><Link ref={loginLink} href={loginHref} className="button-primary">로그인하기</Link><Link href="/policies" className="text-link">정책 둘러보기</Link></div></section>;
   return <>
     {error && <div className="member-panel" role="alert"><p>{error}</p><div className="member-toolbar">
       <button ref={retryButton} type="button" className="button-secondary" disabled={busy} onClick={reloadData}>다시 불러오기</button>

@@ -1,13 +1,16 @@
 import Link from "next/link";
 import { SiteShell } from "@/components/site-shell";
 import { publicMetadata, siteName, siteDescription } from "@/lib/public-metadata";
+import { formatPolicyPeriod } from "@/features/policies/policy-period";
+import { loadPolicies } from "./policies/load-policies";
 
 export const dynamic = "force-dynamic";
 export function generateMetadata() { return publicMetadata("/", siteName, siteDescription); }
 
 const searchTopics = ["일자리", "주거", "장학금", "저축"];
 
-export default function HomePage() {
+export default async function HomePage() {
+  const open = await loadPolicies("", 1, false, "OPEN", 4);
   return (
     <SiteShell active="home">
       <main id="main-content" className="home-main">
@@ -40,6 +43,23 @@ export default function HomePage() {
             <p className="privacy-note">로그인 없이 이용할 수 있어요.<br />입력 내용은 조건 비교에만 사용하고 자동 저장하지 않아요.</p>
           </section>
         </div>
+
+        {/* 조회에 실패하면 빈 결과로 오해하지 않도록 영역을 표시하지 않는다. */}
+        {open.status === "available" && <section className="home-open" aria-labelledby="open-title">
+          <div className="home-section-heading">
+            <h2 id="open-title">지금 접수 중인 정책</h2>
+            {open.data.total > 0 && <Link className="text-link" href="/policies?recruitmentStatus=OPEN">{open.data.total}건 모두 보기</Link>}
+          </div>
+          {open.data.items.length > 0 ? <ul className="home-open-list">
+            {open.data.items.map(policy => <li key={policy.policyNumber}>
+              <span className="policy-category">{policy.category || "청년 정책"}</span>
+              <Link href={`/policies/${policy.policyNumber}`}>{policy.title}</Link>
+              <p>{policy.organization || "온통청년 제공"}</p>
+              <p className="policy-period"><strong>신청기간</strong><span>{formatPolicyPeriod(policy.applicationPeriod)}</span></p>
+            </li>)}
+          </ul> : <p className="home-open-empty">지금 접수 기간인 정책이 없어요. <Link className="text-link" href="/policies?recruitmentStatus=ROLLING">상시 모집 정책 보기</Link></p>}
+          <p className="field-help">접수 상태는 서울 날짜 기준이에요. 실제 접수 여부는 공식 신청처에서 확인해주세요.</p>
+        </section>}
 
         <section className="home-followup" aria-label="정책 이용 안내">
           <div>

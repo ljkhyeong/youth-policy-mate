@@ -29,11 +29,9 @@ import org.testcontainers.postgresql.PostgreSQLContainer;
 
 import java.time.Duration;
 import java.time.Instant;
-import java.time.OffsetDateTime;
-import java.time.ZoneOffset;
-import java.time.temporal.ChronoUnit;
 import java.util.List;
 
+import static kr.youthpolicymate.ingestion.AiDatabaseTime.dbTime;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
@@ -189,7 +187,4 @@ class AiReservationRecoveryWorkRunOperationsTest {
         return NOW.plusSeconds(seconds);
     }
 
-    private static OffsetDateTime dbTime(Instant instant) {
-        return instant.truncatedTo(ChronoUnit.MICROS).atOffset(ZoneOffset.UTC);
-    }
 }

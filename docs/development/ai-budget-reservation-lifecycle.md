@@ -24,7 +24,7 @@ V1이 예산·요청 예약 테이블을 만들고 V2가 호출 이후 상태 �
 | `ai_budgets` | 예산 ID·기간·한도·확정액·예약액 저장. 음수 금액과 잘못된 기간 차단 |
 | `ai_request_reservations` | 요청 근거·생성/가격 버전·최대 비용, 호출·미확인·완료 정보와 현재 단계 저장 |
 | `AiBudgetReservationStore` | 예산 행 잠금, 최신 잔액 재검사, 중복 분류, 예약 INSERT와 예약액 증가 |
-| `AiBudgetReservationLifecycleStore` | 호출 식별자·결과 미확인 저장, 정산·취소·무과금 해제, 미완료 예약 조회 |
+| `AiBudgetReservationLifecycleStore` | 호출 식별자·결과 미확인 저장, 정산·취소·무과금 해제 |
 
 `reserve`는 `@Transactional` 메서드다. 예산 행을 `FOR UPDATE`로 잠근 뒤 예약 ID와 정책·작업 종류·요청 순번의 중복을 확인한다. DB 잔액이 사전 판단과 다르거나 한도가 부족하면 저장하지 않는다. INSERT에는 `ON CONFLICT DO NOTHING`을 사용하고 충돌 행을 다시 읽어 재전달·예약 ID 충돌·요청 중복을 구분한다.
 
@@ -38,10 +38,10 @@ V2 제약은 단계별 필수 열, 식별자의 빈 문자열, 미확인 사유,
 
 ## 검사
 
-Docker가 실행 중인 환경에서 저장소 루트의 다음 명령을 실행한다. `test:ai-reservation-db`도 같은 검사를 실행하므로 둘을 반복할 필요는 없다.
+Docker가 실행 중인 환경에서 저장소 루트의 다음 명령을 실행한다.
 
 ```sh
-npm run verify -- test:ai-reservations
+npm run verify -- test:ai-reservation-db
 ```
 
 `AiBudgetReservationStoreTest`에서 예약액·잔액 갱신, 재전달·충돌, 오래된 잔액, 예산 시작·종료와 비용 만료, 호출 식별자, 결과 미확인 금액 보존, 정산·예약 초과, 취소·무과금 확인과 잘못된 전이 순서를 확인한다. 음수 청구와 역전된 시각도 거절한다.

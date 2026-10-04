@@ -60,14 +60,11 @@ class PolicyRuleManagementController {
 
     @ExceptionHandler({PolicyRuleActions.Invalid.class, MethodArgumentNotValidException.class, HttpMessageNotReadableException.class,
             HandlerMethodValidationException.class, MethodArgumentTypeMismatchException.class})
-    ResponseEntity<PolicyApiError> invalid() { return error(400, "INVALID_POLICY_RULE", "규칙 파일의 형식·정책번호·질문·기간과 사유를 확인해주세요."); }
+    ResponseEntity<PolicyApiError> invalid() { return PolicyApiError.noStore(400, "INVALID_POLICY_RULE", "규칙 파일의 형식·정책번호·질문·기간과 사유를 확인해주세요."); }
     @ExceptionHandler({PolicyRuleActions.Changed.class, DuplicateKeyException.class})
-    ResponseEntity<PolicyApiError> changed() { return error(409, "POLICY_RULE_CHANGED", "원문·기간·버전 또는 요청 정보가 바뀌었습니다. 최신 내용을 확인해주세요."); }
+    ResponseEntity<PolicyApiError> changed() { return PolicyApiError.noStore(409, "POLICY_RULE_CHANGED", "원문·기간·버전 또는 요청 정보가 바뀌었습니다. 최신 내용을 확인해주세요."); }
     @ExceptionHandler(PolicyRuleActions.Missing.class)
-    ResponseEntity<PolicyApiError> missing() { return error(404, "POLICY_RULE_NOT_FOUND", "정책이나 규칙을 찾을 수 없습니다."); }
+    ResponseEntity<PolicyApiError> missing() { return PolicyApiError.noStore(404, "POLICY_RULE_NOT_FOUND", "정책이나 규칙을 찾을 수 없습니다."); }
     @ExceptionHandler(DataAccessException.class)
-    ResponseEntity<PolicyApiError> unavailable() { return error(503, "POLICY_RULE_UNAVAILABLE", "처리 결과를 확인하지 못했습니다. 같은 요청으로 다시 확인해주세요."); }
-    private static ResponseEntity<PolicyApiError> error(int status, String code, String message) {
-        return ResponseEntity.status(status).cacheControl(CacheControl.noStore()).body(new PolicyApiError(code, message));
-    }
+    ResponseEntity<PolicyApiError> unavailable() { return PolicyApiError.noStore(503, "POLICY_RULE_UNAVAILABLE", "처리 결과를 확인하지 못했습니다. 같은 요청으로 다시 확인해주세요."); }
 }

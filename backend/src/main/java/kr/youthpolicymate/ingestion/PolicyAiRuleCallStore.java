@@ -19,6 +19,13 @@ import static kr.youthpolicymate.ingestion.AiDatabaseTime.dbTime;
 @Repository
 @Profile("!preview")
 public class PolicyAiRuleCallStore {
+    private static final ZoneId SEOUL = ZoneId.of("Asia/Seoul");
+
+    // 자동 실행의 예산 확인도 같은 서울 기준 월 예산을 사용한다.
+    static String monthlyBudgetId(Instant at) {
+        return "policy-ai-" + YearMonth.from(at.atZone(SEOUL));
+    }
+
     private final JdbcClient jdbc;
     private final ObjectMapper mapper;
     private final PolicyAiRuleDraftStore drafts;
@@ -36,10 +43,10 @@ public class PolicyAiRuleCallStore {
         if (!drafts.lockCurrent(source)) throw new IllegalStateException("공고·요청이 변경됐거나 이미 결과가 있습니다.");
         var previous = find(source.id());
         if (previous.isPresent()) return previous.get();
-        var month = YearMonth.from(at.atZone(ZoneId.of("Asia/Seoul")));
-        var start = month.atDay(1).atStartOfDay(ZoneId.of("Asia/Seoul")).toInstant();
-        var end = month.plusMonths(1).atDay(1).atStartOfDay(ZoneId.of("Asia/Seoul")).toInstant();
-        var budgetId = "policy-ai-" + month;
+        var month = YearMonth.from(at.atZone(SEOUL));
+        var start = month.atDay(1).atStartOfDay(SEOUL).toInstant();
+        var end = month.plusMonths(1).atDay(1).atStartOfDay(SEOUL).toInstant();
+        var budgetId = monthlyBudgetId(at);
         jdbc.sql("""
                 INSERT INTO ai_budgets(budget_id, starts_at, ends_at, limit_won, confirmed_won, reserved_won, created_at, updated_at)
                 VALUES (:id, :start, :end, :limit, 0, 0, :at, :at) ON CONFLICT DO NOTHING
@@ -85,8 +92,8 @@ public class PolicyAiRuleCallStore {
                 SELECT c.*, r.budget_id, r.pricing_version, r.cost_valid_until, r.maximum_won, r.reserved_at
                 FROM policy_ai_rule_calls c JOIN ai_request_reservations r ON r.reservation_id = c.reservation_id
                 WHERE c.request_id = :id
-                """).param("id", id).query((rs, row) -> new Call(rs.getObject("request_id", UUID.class), rs.getString("budget_id"),
-                        mapper.readTree(rs.getString("request_body")), rs.getLong("input_tokens"), rs.getString("pricing_version"),
+                """).param("id", id).query((rs, row) -> new Call(rs.getString("budget_id"),
+                        mapper.readTree(rs.getString("request_body")), rs.getString("pricing_version"),
                         rs.getObject("cost_valid_until", OffsetDateTime.class).toInstant(), rs.getBigDecimal("maximum_won"),
                         rs.getObject("reserved_at", OffsetDateTime.class).toInstant(), rs.getString("response_body") == null ? null
                         : new OpenAiRuleClient.Response(rs.getInt("response_status"), rs.getString("response_body")))).optional();
@@ -109,7 +116,7 @@ public class PolicyAiRuleCallStore {
                 source.generationVersion(), source.sequence(), source.preparedAt());
     }
 
-    record Call(UUID requestId, String budgetId, JsonNode body, long inputTokens, String pricingVersion, Instant validUntil,
+    record Call(String budgetId, JsonNode body, String pricingVersion, Instant validUntil,
                 BigDecimal maximumWon, Instant reservedAt, OpenAiRuleClient.Response response) {
         AiRequestBudget.CostCeiling cost(PolicyAiRuleDraftStore.Prepared source) {
             return new AiRequestBudget.CostCeiling(request(source), pricingVersion, validUntil, maximumWon);

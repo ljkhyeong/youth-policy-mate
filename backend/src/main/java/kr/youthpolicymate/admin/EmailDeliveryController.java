@@ -46,8 +46,7 @@ public class EmailDeliveryController {
     @ApiResponse(responseCode = "503", description = "공급자 조회 불가", content = @Content(schema = @Schema(implementation = PolicyApiError.class)))
     public ResponseEntity<?> providerStatus(@PathVariable UUID id) {
         UUID messageId = store.providerMessageId(id);
-        if (messageId == null) return ResponseEntity.status(404).cacheControl(CacheControl.noStore())
-                .body(new PolicyApiError("EMAIL_PROVIDER_ID_MISSING", "조회할 Resend 발송 ID가 없습니다."));
+        if (messageId == null) return PolicyApiError.noStore(404, "EMAIL_PROVIDER_ID_MISSING", "조회할 Resend 발송 ID가 없습니다.");
         var event = lookup.retrieve(messageId);
         return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(new EmailDeliveries.ProviderStatus(event, clock.instant()));
     }
@@ -61,8 +60,7 @@ public class EmailDeliveryController {
             case RATE_LIMITED -> "Resend 조회 한도에 도달했습니다. 잠시 후 다시 조회해주세요.";
             case UNAVAILABLE -> "Resend 상태를 불러오지 못했습니다. 잠시 후 다시 조회해주세요.";
         };
-        return ResponseEntity.status(503).cacheControl(CacheControl.noStore())
-                .body(new PolicyApiError("EMAIL_PROVIDER_" + failure.reason().name(), message));
+        return PolicyApiError.noStore(503, "EMAIL_PROVIDER_" + failure.reason().name(), message);
     }
 
     @GetMapping("/api/v1/admin/email-deliveries")
@@ -84,12 +82,10 @@ public class EmailDeliveryController {
 
     @ExceptionHandler({HandlerMethodValidationException.class, MethodArgumentTypeMismatchException.class})
     ResponseEntity<PolicyApiError> invalid() {
-        return ResponseEntity.badRequest().cacheControl(CacheControl.noStore())
-                .body(new PolicyApiError("INVALID_EMAIL_DELIVERY_QUERY", "조회 조건과 요청 ID를 확인해주세요."));
+        return PolicyApiError.noStore(400, "INVALID_EMAIL_DELIVERY_QUERY", "조회 조건과 요청 ID를 확인해주세요.");
     }
     @ExceptionHandler(DataAccessException.class)
     ResponseEntity<PolicyApiError> unavailable() {
-        return ResponseEntity.status(503).cacheControl(CacheControl.noStore())
-                .body(new PolicyApiError("EMAIL_DELIVERY_UNAVAILABLE", "이메일 발송 내역을 불러오지 못했습니다."));
+        return PolicyApiError.noStore(503, "EMAIL_DELIVERY_UNAVAILABLE", "이메일 발송 내역을 불러오지 못했습니다.");
     }
 }

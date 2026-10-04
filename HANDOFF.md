@@ -42,7 +42,7 @@
 
 - 제품 동작은 [PRD](docs/PRD/0001_product-baseline/spec.md), 기술 선택은 [ADR](docs/ADR/), 적용 스킬은 [AGENTS.md](AGENTS.md)를 따른다.
 - 로컬 실행은 [개발 환경](docs/development/local-development.md), 실제 정책 서버 연결은 [조회 문서](docs/development/policy-catalog.md)를 참고한다. 현재 프로세스·브랜치·환경 설정은 실행 시점에 확인한다.
-- 최근 검증의 `JAVA_HOME`은 `/Users/lim/.gradle/jdks/eclipse_adoptium-25-aarch64-os_x.2/jdk-25.0.3+9/Contents/Home`이다. `test:ai-reservations`는 PostgreSQL 검사로 Docker가 필요하다.
+- 최근 검증의 `JAVA_HOME`은 `/Users/lim/.gradle/jdks/eclipse_adoptium-25-aarch64-os_x.2/jdk-25.0.3+9/Contents/Home`이다. `test:ai-reservation-db`는 PostgreSQL 검사로 Docker가 필요하다.
 - 웹 빌드는 도구 내부 포트 사용 권한이 필요하다. 이전 제한 실행의 오류가 Turbopack 캐시에 남아 `frontend/.next/cache/turbopack`만 분리해 해결한 적이 있다. `43b85cd`에서는 정식 권한으로 캐시 변경 없이 통과했다. 같은 증상이 없으면 캐시를 지우지 않는다.
 - Resend 모듈은 `RestClient.Builder` 구성을 제공하는 `spring-boot-starter-restclient`가 필요하다. 의존성을 모의 빈으로 가린 검사만 재사용하지 않도록 실제 Resend 모듈로 운영 프로필 시작을 검사한다. 이번에 전체 서버 검사를 통과했으며 문서 변경만으로 반복하지 않는다. 공급자 상태 조회는 자동 재시도하지 않고 조회 한도를 별도로 안내한다.
 - 수집 필드·미확인 계약은 [온통청년 API 조사](docs/research/ontong-api-contract.md)에 있다. API 키 설정과 실제 응답 확보는 완료했으며 비밀값·전체 캡처는 Git에 넣지 않는다.

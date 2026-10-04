@@ -47,16 +47,12 @@ class PolicyRuleReviewController {
     @ApiResponse(responseCode = "404", description = "정책 없음", content = @Content(schema = @Schema(implementation = PolicyApiError.class)))
     public ResponseEntity<?> detail(@PathVariable @Pattern(regexp = "[0-9]{1,100}") String number) {
         return store.detail(number).<ResponseEntity<?>>map(value -> ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(value))
-                .orElseGet(() -> error(404, "POLICY_REVIEW_NOT_FOUND", "검토할 정책을 찾을 수 없습니다."));
+                .orElseGet(() -> PolicyApiError.noStore(404, "POLICY_REVIEW_NOT_FOUND", "검토할 정책을 찾을 수 없습니다."));
     }
 
     @ExceptionHandler({HandlerMethodValidationException.class, MethodArgumentTypeMismatchException.class})
-    ResponseEntity<PolicyApiError> invalid() { return error(400, "INVALID_POLICY_REVIEW_QUERY", "검색어·상태·페이지를 확인해주세요."); }
+    ResponseEntity<PolicyApiError> invalid() { return PolicyApiError.noStore(400, "INVALID_POLICY_REVIEW_QUERY", "검색어·상태·페이지를 확인해주세요."); }
 
     @ExceptionHandler(DataAccessException.class)
-    ResponseEntity<PolicyApiError> unavailable() { return error(503, "POLICY_REVIEW_UNAVAILABLE", "조건 검토 내용을 불러오지 못했습니다."); }
-
-    private static ResponseEntity<PolicyApiError> error(int status, String code, String message) {
-        return ResponseEntity.status(status).cacheControl(CacheControl.noStore()).body(new PolicyApiError(code, message));
-    }
+    ResponseEntity<PolicyApiError> unavailable() { return PolicyApiError.noStore(503, "POLICY_REVIEW_UNAVAILABLE", "조건 검토 내용을 불러오지 못했습니다."); }
 }

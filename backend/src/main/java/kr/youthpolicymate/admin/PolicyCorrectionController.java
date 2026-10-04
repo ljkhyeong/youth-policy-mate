@@ -54,7 +54,7 @@ public class PolicyCorrectionController {
     @ApiResponse(responseCode = "404", description = "공개 정책 없음", content = @Content(schema = @Schema(implementation = PolicyApiError.class)))
     public ResponseEntity<?> policy(@PathVariable @Pattern(regexp = "[0-9]{1,100}") String number) {
         return policies.currentPolicy(number).<ResponseEntity<?>>map(value -> ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(value))
-                .orElseGet(() -> error(404, "CORRECTION_POLICY_NOT_FOUND", "공개된 정책을 찾을 수 없습니다."));
+                .orElseGet(() -> PolicyApiError.noStore(404, "CORRECTION_POLICY_NOT_FOUND", "공개된 정책을 찾을 수 없습니다."));
     }
 
     @PostMapping
@@ -78,20 +78,16 @@ public class PolicyCorrectionController {
     @ExceptionHandler({PolicyCorrections.Invalid.class, MethodArgumentNotValidException.class, HttpMessageNotReadableException.class,
             HandlerMethodValidationException.class, MethodArgumentTypeMismatchException.class})
     ResponseEntity<PolicyApiError> invalid() {
-        return error(400, "INVALID_POLICY_CORRECTION", "보정 항목·값·사유와 요청 정보를 확인해주세요.");
+        return PolicyApiError.noStore(400, "INVALID_POLICY_CORRECTION", "보정 항목·값·사유와 요청 정보를 확인해주세요.");
     }
 
     @ExceptionHandler({PolicyCorrections.Changed.class, DuplicateKeyException.class})
     ResponseEntity<PolicyApiError> changed() {
-        return error(409, "POLICY_CORRECTION_CHANGED", "정책이나 보정 상태가 바뀌었습니다. 최신 내용을 다시 확인해주세요.");
+        return PolicyApiError.noStore(409, "POLICY_CORRECTION_CHANGED", "정책이나 보정 상태가 바뀌었습니다. 최신 내용을 다시 확인해주세요.");
     }
 
     @ExceptionHandler(DataAccessException.class)
     ResponseEntity<PolicyApiError> unavailable() {
-        return error(503, "POLICY_CORRECTION_UNAVAILABLE", "보정 처리 결과를 확인하지 못했습니다. 같은 요청으로 다시 확인해주세요.");
-    }
-
-    private static ResponseEntity<PolicyApiError> error(int status, String code, String message) {
-        return ResponseEntity.status(status).cacheControl(CacheControl.noStore()).body(new PolicyApiError(code, message));
+        return PolicyApiError.noStore(503, "POLICY_CORRECTION_UNAVAILABLE", "보정 처리 결과를 확인하지 못했습니다. 같은 요청으로 다시 확인해주세요.");
     }
 }

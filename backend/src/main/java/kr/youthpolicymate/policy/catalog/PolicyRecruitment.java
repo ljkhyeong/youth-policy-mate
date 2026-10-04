@@ -13,21 +13,9 @@ import java.util.Optional;
 @Schema(requiredProperties = {"status", "explanation", "evaluatedAt"})
 public record PolicyRecruitment(RecruitmentStatus status, String explanation, Instant evaluatedAt) {
     public static PolicyRecruitment from(String number, long revision, String hash, JsonNode raw, Instant now) {
-        var period = period(number, hash, raw);
-        var source = PolicyCatalogStore.sourceUrl(number);
-        var location = "온통청년 신청기간·추가 안내";
-        if ("20260520005400213208".equals(number) && "f5ae512cf9721607bb849c8d466db4b21e17eb2c8b84eb8dda013fa158d98ca7".equals(hash)) {
-            source = "https://youth.seoul.go.kr/bbs/view.do?key=2303300002&pstSn=2605150002";
-            location = "2026년 하반기 서울청년정책네트워크 참여 조건";
-        } else if ("20260614005400213232".equals(number) && "e3f828c1c37c1ecddde5a2dc59065e1179642d0fd7be3e919ec8cb9b07441c42".equals(hash)) {
-            source = "https://youth.seoul.go.kr/bbs/view.do?key=2303300002&pstSn=2604010002";
-            location = "2026년 상반기 서울 청년 중개보수·이사비 지원 조건";
-        } else if ("20260722005400213264".equals(number) && "0d98b50fc87fc4e319676be23e6a900304a4434215e997004ed3e1f47bb8dfea".equals(hash)) {
-            source = "https://youth.seoul.go.kr/bbs/view.do?key=2303300002&pstSn=2605040004";
-            location = "2026년 5월 미래 청년 일자리 참여 조건";
-        }
-        var assessment = new RecruitmentAssessment(new RecruitmentSchedule(number, Long.toString(revision), period,
-                source, location, Optional.empty()), now);
+        // 상태와 설명은 신청기간만으로 계산한다. 원문 참조는 일정 모델의 필수 값이라 기본 출처를 넘긴다.
+        var assessment = new RecruitmentAssessment(new RecruitmentSchedule(number, Long.toString(revision), period(number, hash, raw),
+                PolicyCatalogStore.sourceUrl(number), "온통청년 신청기간·추가 안내", Optional.empty()), now);
         return new PolicyRecruitment(assessment.status(), assessment.explanation(), now);
     }
     static ApplicationPeriod period(String number, String hash, JsonNode raw) {

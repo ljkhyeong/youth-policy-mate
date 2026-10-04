@@ -56,12 +56,11 @@ import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
-import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
-import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.concurrent.RejectedExecutionException;
 
+import static kr.youthpolicymate.ingestion.AiDatabaseTime.dbTime;
 import static org.assertj.core.api.Assertions.*;
 
 @Testcontainers
@@ -602,9 +601,6 @@ class PolicyAiRecoveryCoordinatorTest {
     }
 
     private static BigDecimal money(String amount) { return new BigDecimal(amount); }
-    private static OffsetDateTime dbTime(Instant instant) {
-        return instant.truncatedTo(ChronoUnit.MICROS).atOffset(ZoneOffset.UTC);
-    }
 
     private static final class ScriptedPort implements PolicyAiRecoveryPort {
         private final Outcome outcome;

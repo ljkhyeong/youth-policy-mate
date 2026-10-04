@@ -10,7 +10,9 @@ import org.springframework.transaction.annotation.Transactional;
 import tools.jackson.databind.ObjectMapper;
 
 import java.time.Instant;
+import java.time.LocalDate;
 import java.time.OffsetDateTime;
+import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.util.List;
 import java.util.UUID;
@@ -18,6 +20,7 @@ import java.util.UUID;
 @Repository
 @Profile("!preview")
 public class OntongCollectionStore {
+    private static final ZoneId SEOUL = ZoneId.of("Asia/Seoul");
     private final JdbcClient jdbc;
     private final NamedParameterJdbcTemplate batchJdbc;
     private final PolicyCatalogStore catalog;
@@ -41,11 +44,7 @@ public class OntongCollectionStore {
         var now = clock.instant();
         if (limits.configured()) {
             if (now.isBefore(next)) throw new OntongApiClient.Failure("LOCAL_REQUEST_INTERVAL");
-            var day = now.atZone(java.time.ZoneId.of("Asia/Seoul")).toLocalDate();
-            long count = jdbc.sql("SELECT count(*) FROM ontong_collection_pages WHERE started_at >= :start AND started_at < :end")
-                    .param("start", day.atStartOfDay(java.time.ZoneId.of("Asia/Seoul")).toOffsetDateTime())
-                    .param("end", day.plusDays(1).atStartOfDay(java.time.ZoneId.of("Asia/Seoul")).toOffsetDateTime()).query(Long.class).single();
-            if (count >= limits.dailyLimit()) throw new OntongApiClient.Failure("LOCAL_DAILY_LIMIT");
+            if (requestsOn(now.atZone(SEOUL).toLocalDate()) >= limits.dailyLimit()) throw new OntongApiClient.Failure("LOCAL_DAILY_LIMIT");
         }
         // 이 순번을 커밋한 뒤 호출한다. 같은 실행 ID로 외부 요청을 반복하지 않는다.
         int inserted = jdbc.sql("""
@@ -72,13 +71,17 @@ public class OntongCollectionStore {
     }
 
     public String requestStatus() {
-        var day = clock.instant().atZone(java.time.ZoneId.of("Asia/Seoul")).toLocalDate();
-        long count = jdbc.sql("SELECT count(*) FROM ontong_collection_pages WHERE started_at >= :start AND started_at < :end")
-                .param("start", day.atStartOfDay(java.time.ZoneId.of("Asia/Seoul")).toOffsetDateTime())
-                .param("end", day.plusDays(1).atStartOfDay(java.time.ZoneId.of("Asia/Seoul")).toOffsetDateTime()).query(Long.class).single();
+        var day = clock.instant().atZone(SEOUL).toLocalDate();
+        long count = requestsOn(day);
         var next = jdbc.sql("SELECT next_request_at FROM ontong_collection_request_gate WHERE id = 1").query(OffsetDateTime.class).single();
         return "서울 날짜 " + day + " | 요청 예약 " + count + " | 일일 한도 " + (limits.configured() ? limits.dailyLimit() : "미설정")
                 + " | 최소 간격(초) " + limits.intervalSeconds() + " | 다음 요청 허용 시각 " + (limits.configured() ? next : "미설정");
+    }
+
+    private long requestsOn(LocalDate day) {
+        return jdbc.sql("SELECT count(*) FROM ontong_collection_pages WHERE started_at >= :start AND started_at < :end")
+                .param("start", day.atStartOfDay(SEOUL).toOffsetDateTime())
+                .param("end", day.plusDays(1).atStartOfDay(SEOUL).toOffsetDateTime()).query(Long.class).single();
     }
 
     @Transactional

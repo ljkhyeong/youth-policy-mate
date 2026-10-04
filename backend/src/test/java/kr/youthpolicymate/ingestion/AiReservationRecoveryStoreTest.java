@@ -37,14 +37,12 @@ import org.testcontainers.postgresql.PostgreSQLContainer;
 
 import java.math.BigDecimal;
 import java.time.Instant;
-import java.time.OffsetDateTime;
-import java.time.ZoneOffset;
-import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
+import static kr.youthpolicymate.ingestion.AiDatabaseTime.dbTime;
 import static org.assertj.core.api.Assertions.*;
 
 @Testcontainers
@@ -570,7 +568,4 @@ class AiReservationRecoveryStoreTest {
     }
 
     private static BigDecimal money(String amount) { return new BigDecimal(amount); }
-    private static OffsetDateTime dbTime(Instant instant) {
-        return instant.truncatedTo(ChronoUnit.MICROS).atOffset(ZoneOffset.UTC);
-    }
 }

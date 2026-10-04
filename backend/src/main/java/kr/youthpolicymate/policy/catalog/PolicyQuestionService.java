@@ -16,35 +16,31 @@ public class PolicyQuestionService {
 
     @Transactional(readOnly = true, isolation = org.springframework.transaction.annotation.Isolation.REPEATABLE_READ)
     public PolicyQuestions.Questionnaire questions(String number) {
-        return questionsAt(number, clock.instant());
-    }
-    private PolicyQuestions.Questionnaire questionsAt(String number, Instant now) {
-        return questionsAt(number, store.questionVersion(number).orElseThrow(PolicyNotFoundException::new), now);
-    }
-    private PolicyQuestions.Questionnaire questionsAt(String number, PolicyCatalogStore.QuestionVersion policy, Instant now) {
-        if (policy.definition() != null) return policy.definition().questionnaire(policy.revision(), policy.contentHash(), now);
+        var policy = store.questionVersion(number).orElseThrow(PolicyNotFoundException::new);
+        if (policy.definition() != null) return policy.definition().questionnaire(policy.revision(), policy.contentHash(), clock.instant());
         return new PolicyQuestions.Questionnaire(number, policy.revision(), "", false, "신청 조건 확인",
                 "이 정책의 조건 확인 질문은 아직 제공하지 않아요. 공식 안내를 확인해주세요.", PolicyCatalogStore.sourceUrl(number), List.of());
     }
     @Transactional(readOnly = true, isolation = org.springframework.transaction.annotation.Isolation.REPEATABLE_READ)
     public PolicyQuestions.Evaluation evaluate(String number, PolicyQuestions.Request request) {
         var now = clock.instant();
-        var policy = store.questionVersion(number).orElseThrow(PolicyNotFoundException::new);
-        var questions = questionsAt(number, policy, now);
-        if (!questions.available() || request.revision() != questions.revision() || !request.ruleVersion().equals(questions.ruleVersion())) throw new PolicyChangedException();
-        if (policy.definition() != null) return policy.definition().evaluate(policy.revision(), request, now);
-        throw new PolicyChangedException();
+        var policy = current(number, request.revision(), request.ruleVersion(), now);
+        return policy.definition().evaluate(policy.revision(), request, now);
     }
     @Transactional(readOnly = true, isolation = org.springframework.transaction.annotation.Isolation.REPEATABLE_READ)
     public PolicyQuestions.Prefill prefill(String number, PolicyQuestions.PrefillRequest input) {
         var now = clock.instant();
         if (input.birthDate().getYear() < 1 || input.birthDate().isAfter(now.atZone(java.time.ZoneId.of("Asia/Seoul")).toLocalDate()))
             throw new IllegalArgumentException("생년월일을 확인해주세요.");
+        return new PolicyQuestions.Prefill(current(number, input.revision(), input.ruleVersion(), now).definition().prefill(input.birthDate(), now));
+    }
+    // 현재 원문·적용 기간에 질문을 제공하고 요청한 개정·규칙 버전이 같을 때만 규칙을 사용한다.
+    private PolicyCatalogStore.QuestionVersion current(String number, long revision, String ruleVersion, Instant now) {
         var policy = store.questionVersion(number).orElseThrow(PolicyNotFoundException::new);
-        var questions = questionsAt(number, policy, now);
-        if (!questions.available() || input.revision() != questions.revision() || !input.ruleVersion().equals(questions.ruleVersion()))
-            throw new PolicyChangedException();
-        return new PolicyQuestions.Prefill(policy.definition() == null ? List.of() : policy.definition().prefill(input.birthDate(), now));
+        if (policy.definition() == null) throw new PolicyChangedException();
+        var questions = policy.definition().questionnaire(policy.revision(), policy.contentHash(), now);
+        if (!questions.available() || revision != questions.revision() || !ruleVersion.equals(questions.ruleVersion())) throw new PolicyChangedException();
+        return policy;
     }
     public static class PolicyChangedException extends RuntimeException {}
 }

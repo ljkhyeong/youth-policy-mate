@@ -121,7 +121,6 @@ npm run test:ingestion
 npm run test:ai-candidates
 npm run test:ai-candidate-projection
 npm run test:ai-admission
-npm run test:ai-reservations
 npm run test:ai-reservation-db
 npm run test:ai-execution
 npm run test:ai-recovery
@@ -148,7 +147,7 @@ npm audit
 
 `test:reminders`는 마감 알림 후보 날짜 테스트 17건을 실행한다. 월·연도·윤일 경계, 오늘 후보 구분·지난 날짜 제외, 후보 없음 사유와 개정 변경 후 계산을 확인한다. 인증키·DB·Docker 없이 실행하며 실제 예약·발송 검증은 아니다. [후보 날짜 구현](deadline-reminder-candidates.md)을 참고한다.
 
-`test:ingestion`은 AI 후보·실행/복구 결과 연결·사전 판단·복구 재확인 정책을 실행한다. AI 버전·재사용·실행/복구 응답의 현재 개정 재검사, 사전 비용과 수동 검토 재개 후 간격·최대 횟수를 확인한다. 인증키·DB·Docker 없이 실행하며, 실제 수집은 `test:policy-collection`, 예약·정산은 `test:ai-reservations`의 DB 검사로 확인한다.
+`test:ingestion`은 AI 후보·실행/복구 결과 연결·사전 판단·복구 재확인 정책을 실행한다. AI 버전·재사용·실행/복구 응답의 현재 개정 재검사, 사전 비용과 수동 검토 재개 후 간격·최대 횟수를 확인한다. 인증키·DB·Docker 없이 실행하며, 실제 수집은 `test:policy-collection`, 예약·정산은 `test:ai-reservation-db`의 DB 검사로 확인한다.
 
 `test:ai-candidates`는 AI 후보 모델 12건만 실행한다. 현재 개정·원본·생성 방식·요청 순번 검사, 같은 내용 재사용·A→B→A, 늦은 응답·재전달·충돌과 실패·한도 보류의 기존 후보 유지를 확인한다. 인증키·AI·DB 없이 인공 참조 값으로 검사하며 실제 본문 정확성·비용 차단 검증은 아니다. [AI 후보 구현](policy-ai-candidates.md)을 따른다.
 
@@ -168,7 +167,7 @@ npm audit
 
 `test:ai-admission`은 사전 판단 14건만 실행한다. 후보 재사용, 신규·변경 개정·명시적 재시도, 예산 미설정·0원·기간, 예약액·소수 최대 비용·잔액 경계, 비용 미확인·만료·다른 요청의 비용을 확인한다. 실제 예약·정산·청구 차단은 없으며 [AI 사전 판단 구현](ai-request-admission.md)을 따른다.
 
-`test:ai-reservations`는 `test:ai-reservation-db`의 별칭이다. PostgreSQL 18.6에서 예약·잔액 동시 갱신, 재전달·충돌, 시간·한도 경계, 호출·결과 미확인·정산·취소·무과금 해제, 동시 요청과 DB 제약을 검사한다. Docker가 필요하며 외부 AI나 공급자 청구는 사용하지 않는다. [AI 예약·정산 구현](ai-budget-reservation-lifecycle.md)을 따른다.
+`test:ai-reservation-db`는 PostgreSQL 18.6에서 예약·잔액 동시 갱신, 재전달·충돌, 시간·한도 경계, 호출·결과 미확인·정산·취소·무과금 해제, 동시 요청과 DB 제약을 검사한다. Docker가 필요하며 외부 AI나 공급자 청구는 사용하지 않는다. [AI 예약·정산 구현](ai-budget-reservation-lifecycle.md)을 따른다.
 
 `check:backend`에 포함된 백엔드 통합 테스트는 Compose DB를 사용하지 않고 Testcontainers가 별도 PostgreSQL을 생성한다. 테스트가 끝나면 테스트용 컨테이너를 정리한다. Docker가 없으면 통합 테스트를 건너뛰지 않고 실패한다.
 

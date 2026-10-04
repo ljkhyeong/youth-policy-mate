@@ -40,12 +40,8 @@ class PolicyAiRunController {
     }
 
     @ExceptionHandler({HandlerMethodValidationException.class, MethodArgumentTypeMismatchException.class})
-    ResponseEntity<PolicyApiError> invalid() { return error(400, "INVALID_POLICY_AI_RUN_QUERY", "검색어·상태·페이지를 확인해주세요."); }
+    ResponseEntity<PolicyApiError> invalid() { return PolicyApiError.noStore(400, "INVALID_POLICY_AI_RUN_QUERY", "검색어·상태·페이지를 확인해주세요."); }
 
     @ExceptionHandler(DataAccessException.class)
-    ResponseEntity<PolicyApiError> unavailable() { return error(503, "POLICY_AI_RUN_UNAVAILABLE", "AI 추출 내역을 불러오지 못했습니다."); }
-
-    private static ResponseEntity<PolicyApiError> error(int status, String code, String message) {
-        return ResponseEntity.status(status).cacheControl(CacheControl.noStore()).body(new PolicyApiError(code, message));
-    }
+    ResponseEntity<PolicyApiError> unavailable() { return PolicyApiError.noStore(503, "POLICY_AI_RUN_UNAVAILABLE", "AI 추출 내역을 불러오지 못했습니다."); }
 }

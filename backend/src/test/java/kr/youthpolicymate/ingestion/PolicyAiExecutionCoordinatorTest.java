@@ -41,10 +41,8 @@ import org.testcontainers.postgresql.PostgreSQLContainer;
 
 import java.math.BigDecimal;
 import java.time.Instant;
-import java.time.OffsetDateTime;
-import java.time.ZoneOffset;
-import java.time.temporal.ChronoUnit;
 
+import static kr.youthpolicymate.ingestion.AiDatabaseTime.dbTime;
 import static org.assertj.core.api.Assertions.*;
 
 @Testcontainers
@@ -277,9 +275,6 @@ class PolicyAiExecutionCoordinatorTest {
     }
 
     private static BigDecimal money(String amount) { return new BigDecimal(amount); }
-    private static OffsetDateTime dbTime(Instant instant) {
-        return instant.truncatedTo(ChronoUnit.MICROS).atOffset(ZoneOffset.UTC);
-    }
 
     private static final class ScriptedPort implements PolicyAiExecutionPort {
         private final Outcome outcome;

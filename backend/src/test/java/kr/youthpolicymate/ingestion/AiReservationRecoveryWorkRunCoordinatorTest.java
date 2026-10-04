@@ -49,9 +49,7 @@ import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
-import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
-import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.CountDownLatch;
@@ -59,6 +57,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import static kr.youthpolicymate.ingestion.AiDatabaseTime.dbTime;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
@@ -526,10 +525,6 @@ class AiReservationRecoveryWorkRunCoordinatorTest {
 
     private static Instant at(long seconds) {
         return NOW.plusSeconds(seconds);
-    }
-
-    private static OffsetDateTime dbTime(Instant instant) {
-        return instant.truncatedTo(ChronoUnit.MICROS).atOffset(ZoneOffset.UTC);
     }
 
     private static final class RecordingPort implements PolicyAiRecoveryPort {

@@ -39,7 +39,6 @@
     "test:ai-candidates": "./backend/gradlew -p backend test --tests 'kr.youthpolicymate.ingestion.PolicyAiCandidateStateTest' --no-daemon",
     "test:ai-candidate-projection": "./backend/gradlew -p backend test --tests 'kr.youthpolicymate.ingestion.PolicyAiCandidateResultProjectorTest' --no-daemon",
     "test:ai-admission": "./backend/gradlew -p backend test --tests 'kr.youthpolicymate.ingestion.PolicyAiRequestAdmissionTest' --no-daemon",
-    "test:ai-reservations": "npm run test:ai-reservation-db",
     "test:ai-reservation-db": "./backend/gradlew -p backend test --tests 'kr.youthpolicymate.ingestion.AiBudgetReservationStoreTest' --no-daemon",
     "test:ai-execution": "./backend/gradlew -p backend test --tests 'kr.youthpolicymate.ingestion.PolicyAiExecutionCoordinatorTest' --no-daemon",
     "test:ai-recovery": "./backend/gradlew -p backend test --tests 'kr.youthpolicymate.ingestion.AiReservationRecoveryStoreTest' --no-daemon",

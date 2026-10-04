@@ -52,7 +52,7 @@ public class PolicyAiRuleAutoStore {
                 .query((rs, row) -> new Retry(rs.getObject("id", UUID.class), rs.getInt("attempt") + 1, rs.getBoolean("reserved"))).optional();
         if (retry.isEmpty() || !retry.get().reserved()) {
             var budget = jdbc.sql("SELECT limit_won, limit_won - confirmed_won - reserved_won AS remaining FROM ai_budgets WHERE budget_id = :id")
-                    .param("id", "policy-ai-" + YearMonth.from(now.atZone(SEOUL)))
+                    .param("id", PolicyAiRuleCallStore.monthlyBudgetId(now))
                     .query((rs, row) -> new Budget(rs.getBigDecimal("limit_won"), rs.getBigDecimal("remaining"))).optional();
             if (budget.isPresent()) {
                 if (budget.get().limit().compareTo(settings.monthlyLimit()) != 0) return new Claim("BUDGET_CONFIGURATION_REQUIRED", null);

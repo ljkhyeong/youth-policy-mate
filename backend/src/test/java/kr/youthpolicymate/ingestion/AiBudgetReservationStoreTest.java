@@ -33,14 +33,12 @@ import org.testcontainers.postgresql.PostgreSQLContainer;
 
 import java.math.BigDecimal;
 import java.time.Instant;
-import java.time.OffsetDateTime;
-import java.time.ZoneOffset;
-import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
+import static kr.youthpolicymate.ingestion.AiDatabaseTime.dbTime;
 import static kr.youthpolicymate.ingestion.AiBudgetReservationStore.Decision.*;
 import static org.assertj.core.api.Assertions.*;
 
@@ -222,8 +220,8 @@ class AiBudgetReservationStoreTest {
     }
 
     @Test
-    @DisplayName("외부 호출 식별자를 기록하고 재전달과 충돌을 구분해 미완료 목록에서 조회한다")
-    void recordsDispatchAndFindsUnresolvedReservation() {
+    @DisplayName("외부 호출 식별자를 기록하고 재전달과 충돌을 구분하며 첫 호출 식별자를 유지한다")
+    void recordsDispatchAndKeepsFirstDispatch() {
         reserve("budget-a", "reservation-a", 10, "10");
         var dispatch = new Dispatch("dispatch-a", NOW.plusSeconds(1).plusNanos(123_456_789));
 
@@ -235,8 +233,7 @@ class AiBudgetReservationStoreTest {
                 new Dispatch("dispatch-b", dispatch.dispatchedAt())).decision())
                 .isEqualTo(AiBudgetReservationLifecycleStore.Decision.DISPATCH_CONFLICT);
 
-        var unresolved = lifecycleStore.unresolved(10);
-        assertThat(unresolved).singleElement().satisfies(snapshot -> {
+        assertThat(lifecycleStore.find("reservation-a")).hasValueSatisfying(snapshot -> {
             assertThat(snapshot.phase()).isEqualTo(Phase.DISPATCHED);
             assertThat(snapshot.dispatch().orElseThrow().dispatchId()).isEqualTo("dispatch-a");
             assertThat(snapshot.actualWon()).isEmpty();
@@ -443,9 +440,6 @@ class AiBudgetReservationStoreTest {
     }
 
     private static BigDecimal money(String amount) { return new BigDecimal(amount); }
-    private static OffsetDateTime dbTime(Instant instant) {
-        return instant.truncatedTo(ChronoUnit.MICROS).atOffset(ZoneOffset.UTC);
-    }
 
     private record BudgetAmounts(BigDecimal confirmedWon, BigDecimal reservedWon) {
         private BudgetAmounts {

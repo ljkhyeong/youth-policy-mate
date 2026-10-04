@@ -22,7 +22,6 @@ import java.math.BigDecimal;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.Instant;
-import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 
@@ -238,19 +237,6 @@ public class AiBudgetReservationLifecycleStore {
     public Optional<Snapshot> find(String reservationId) {
         requireReservationId(reservationId);
         return findById(reservationId);
-    }
-
-    @Transactional(readOnly = true)
-    public List<Snapshot> unresolved(int limit) {
-        if (limit <= 0) throw new IllegalArgumentException("조회할 미완료 예약 수는 1 이상이어야 합니다.");
-        return jdbcClient.sql(reservationSelect() + """
-                where phase in ('HELD', 'DISPATCHED', 'OUTCOME_UNKNOWN')
-                order by updated_at, reservation_id
-                limit :limit
-                """)
-                .param("limit", limit)
-                .query(AiBudgetReservationLifecycleStore::snapshot)
-                .list();
     }
 
     private Optional<LockedRows> lock(String reservationId) {

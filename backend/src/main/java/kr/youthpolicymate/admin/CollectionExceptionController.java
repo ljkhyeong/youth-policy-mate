@@ -95,35 +95,31 @@ public class CollectionExceptionController {
     public ResponseEntity<?> detail(@PathVariable UUID runId, @PathVariable @Min(0) @Max(9) int itemIndex) {
         return store.detail(runId, itemIndex).<ResponseEntity<?>>map(value -> ResponseEntity.ok()
                 .cacheControl(CacheControl.noStore()).body(value))
-                .orElseGet(() -> error(404, "COLLECTION_EXCEPTION_NOT_FOUND", "수집 실패 항목을 찾을 수 없습니다."));
+                .orElseGet(() -> PolicyApiError.noStore(404, "COLLECTION_EXCEPTION_NOT_FOUND", "수집 실패 항목을 찾을 수 없습니다."));
     }
 
     @ExceptionHandler({HandlerMethodValidationException.class, MethodArgumentTypeMismatchException.class})
     ResponseEntity<PolicyApiError> invalid() {
-        return error(400, "INVALID_COLLECTION_QUERY", "수집 실행 ID·항목 위치·페이지를 확인해주세요.");
+        return PolicyApiError.noStore(400, "INVALID_COLLECTION_QUERY", "수집 실행 ID·항목 위치·페이지를 확인해주세요.");
     }
 
     @ExceptionHandler(DataAccessException.class)
     ResponseEntity<PolicyApiError> unavailable() {
-        return error(503, "COLLECTION_UNAVAILABLE", "수집 작업을 완료하지 못했습니다. 다시 확인해주세요.");
+        return PolicyApiError.noStore(503, "COLLECTION_UNAVAILABLE", "수집 작업을 완료하지 못했습니다. 다시 확인해주세요.");
     }
 
     @ExceptionHandler({MethodArgumentNotValidException.class, HttpMessageNotReadableException.class})
     ResponseEntity<PolicyApiError> invalidReplay() {
-        return error(400, "INVALID_COLLECTION_REPLAY", "재처리 사유와 요청 정보를 확인해주세요.");
+        return PolicyApiError.noStore(400, "INVALID_COLLECTION_REPLAY", "재처리 사유와 요청 정보를 확인해주세요.");
     }
 
     @ExceptionHandler({CollectionReplays.Changed.class, DuplicateKeyException.class})
     ResponseEntity<PolicyApiError> changed() {
-        return error(409, "COLLECTION_REPLAY_CHANGED", "처리 상태나 요청 정보가 바뀌었습니다. 최신 항목을 확인해주세요.");
+        return PolicyApiError.noStore(409, "COLLECTION_REPLAY_CHANGED", "처리 상태나 요청 정보가 바뀌었습니다. 최신 항목을 확인해주세요.");
     }
 
     @ExceptionHandler(OntongApiClient.Failure.class)
     ResponseEntity<PolicyApiError> replayUnavailable() {
-        return error(409, "COLLECTION_REPLAY_UNAVAILABLE", "저장된 원본으로 재처리할 수 없습니다. 원본과 실행 상태를 확인해주세요.");
-    }
-
-    private static ResponseEntity<PolicyApiError> error(int status, String code, String message) {
-        return ResponseEntity.status(status).cacheControl(CacheControl.noStore()).body(new PolicyApiError(code, message));
+        return PolicyApiError.noStore(409, "COLLECTION_REPLAY_UNAVAILABLE", "저장된 원본으로 재처리할 수 없습니다. 원본과 실행 상태를 확인해주세요.");
     }
 }

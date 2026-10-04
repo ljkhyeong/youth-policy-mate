@@ -31,3 +31,5 @@
 | 정책 수집·개정·AI 추출 | [수집](skills/youth-policy-ingestion/SKILL.md) |
 | 자격 조건·미확인 처리·추천 근거 | [자격 판정](skills/youth-policy-eligibility/SKILL.md) |
 | 관심 정책·마감·수신 동의·알림 | [일정·알림](skills/youth-policy-reminders/SKILL.md) |
+
+Claude Code는 `.claude/skills/`의 같은 이름 스킬을 사용한다. 각 스킬이 위 원본을 불러온 뒤 Claude 전용 보충을 더하며, 검증 선택·화면 확인·조건 데이터·변경 검토·작업 마무리 스킬을 추가로 둔다. 관리 방식은 [스킬 관리](docs/development/skill-reuse.md)를 따른다.

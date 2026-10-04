@@ -78,7 +78,7 @@ npm run verify -- test:ai-recovery-policy -- \
 
 질문 조회와 답변 평가는 각각 SELECT 2회에서 1회로 줄었고 호출 횟수를 통합 테스트에서 확인했다. 응답 시간이나 부하 개선율을 측정한 것은 아니다.
 
-`test:ingestion`에서 삭제한 메모리 모델 검사를 제외했다. `test:ai-reservations`는 `test:ai-reservation-db`를 실행하는 별칭이며 Docker가 필요하다. 두 명령을 연달아 실행할 필요는 없다. 짧은 검증 함수, 발송 직전 동의·개정 검사, DB 잠금·유일성 제약은 유지했다.
+`test:ingestion`에서 삭제한 메모리 모델 검사를 제외했다. `test:ai-reservations`는 `test:ai-reservation-db`를 실행하는 별칭이며 Docker가 필요하다. 두 명령을 연달아 실행할 필요는 없다. 별칭은 2026-10-05에 삭제했으며 같은 검사는 `test:ai-reservation-db`로 실행한다. 짧은 검증 함수, 발송 직전 동의·개정 검사, DB 잠금·유일성 제약은 유지했다.
 
 ### 검증 기록
 
@@ -172,3 +172,41 @@ JPA·ORM·Modulith 라이브러리가 실행 JAR에서 빠졌으며 JDBC·Spring
 Temurin 25.0.3에서 `npm run verify -- check:backend`로 서버 전체 테스트 436건과 빌드를 통과했다. 실패·오류·건너뜀은 없으며 DB 잠금·롤백·동시 수집·회원·알림·AI 예약/복구와 API 계약 검사를 포함한다. 로그는 `.local/verification/1788690272938-2917da10.log`다. 검증한 앱 코드는 `c8cfc33`이며 후속 변경은 문서뿐이다.
 
 프런트엔드는 의존성·CSS 클래스 사용처를 확인하고 `tsc -p frontend/tsconfig.json --noEmit --noUnusedLocals --noUnusedParameters --incremental false`로 미사용 식별자를 점검해 오류가 없었다. 실제 사용 중인 개발 예시 화면·타입 변환·개인 상태 보호 코드는 유지했다. 프런트엔드·개발 도구는 변경하지 않아 웹 빌드·브라우저·도구 테스트는 다시 실행하지 않았다. 실제 외부 API·로그인·메일 발송 검증은 이번 범위에 포함하지 않았다.
+
+## 미사용·중복 코드 정리 — 2026-10-05 적용
+
+2026-09-06 이후 추가된 관리자·규칙 데이터·AI·이메일 코드를 중심으로 서버·웹·빌드 설정을 다시 점검했다. 다른 작업이 수정 중인 조건 탐색 파일(`BasicConditions`·`PolicyCatalogStore`·`PolicyCheckService`·조건 입력 화면)은 범위에서 뺐다. 출력·HTTP 상태·헤더·마크업·검증 순서는 바꾸지 않았다.
+
+| 대상 | 변경 |
+|---|---|
+| 서버 | `PolicyRecruitment`에서 결과에 쓰이지 않는 공고별 출처·위치 덮어쓰기를 삭제했다. `PolicyQuestionService`의 중계 메서드와 실행되지 않던 분기를 확인 함수 하나로 합쳤다. 관리자 컨트롤러 6개의 no-store 오류 응답을 `PolicyApiError.noStore`로 모았다. 수집 저장소의 일일 요청 수 쿼리와 AI 월 예산 ID 형식을 한 곳에서 만든다. 테스트에서만 쓰던 `AiBudgetReservationLifecycleStore.unresolved`와 읽지 않는 `Call` 구성요소를 삭제했다. |
+| 서버 테스트 | 8개 클래스에 복사된 `dbTime`을 `AiDatabaseTime.dbTime`으로 바꿨다. |
+| 빌드·스크립트 | `build.gradle`의 운영 명령 6개와 계약 생성 2개를 표에서 등록한다. 작업 이름·설명·main 클래스는 같다. `test:ai-reservations` 별칭을 삭제했고 같은 검사는 `test:ai-reservation-db`로 실행한다. |
+| 웹 관리자 | 페이지 이동 7곳, 검색 폼·필터 해석 2곳, 목록 오류 화면 2곳을 `collection-exception-view.tsx`의 공통 컴포넌트로 합쳤다. |
+| 웹 개발 화면 | `/dev`의 운영 404 차단과 noindex를 `app/dev/layout.tsx` 하나로 모았다. 예시 선택 버튼 5곳과 개발 API 로더 2개를 합치고 모집 상태 라벨을 공유한다. |
+| 웹 기타 | 서울 날짜·시각 형식, 회원 API 중계의 쿼리 전달, 저장 버튼의 오류 상태 계산 중복을 정리했다. `RuleDraftForm`의 미사용 속성을 삭제했다. |
+
+추적 파일 기준으로 약 280줄이 줄었다.
+
+### 유지한 것
+
+- 조건 입력 화면의 진행 중인 변경으로 사용처가 없어진 `globals.css`의 진행 표시·확인 요약 스타일 약 120줄은 그 변경과 함께 정리한다.
+- 관리자 저장소의 null 허용 시각 변환(약 5줄)과 회원 행 잠금 중복(약 4줄)은 공통 헬퍼·생성자 의존성을 늘리는 비용이 더 커서 유지했다. 두 새로고침 버튼은 문구·스타일이 달라 합치지 않았다.
+- 컨트롤러별 `CacheControl.noStore()`, 목적이 다른 크기·잠금 검사, 보안 경로 목록, 의존성·환경변수 예시는 모두 사용 중이거나 동작이 달라져 유지했다.
+
+### 결정이 필요한 코드
+
+AI 예약 복구 작업과 후보 상태 모델(`AiReservationRecovery*`, `PolicyAiRecovery*`, `PolicyAiCandidateState`, `PolicyAiCandidateResultProjector`, `PolicyAiRequestAdmission`, `PolicyRevisionState`)은 main 19개 파일 3,452줄, 테스트 13개 3,971줄이다. 진입점인 `AiReservationRecoveryWorkRunCoordinator`·`PolicyAiCandidateResultProjector`를 참조하는 운영 코드가 없고, 하트비트 설정은 YAML에 없는 `app.ai-recovery.heartbeat.enabled`가 있어야 생성된다. 운영 코드는 `ReservationRequired`·`AppliedRevision`·복구 상태 타입만 사용한다. 운영 경로에 연결할지 일괄 제거할지 정한 뒤 처리한다. 제거하면 사용 중인 타입을 `AiRequestBudget`·`PolicyAiResult` 쪽으로 옮기고 V2–V9 테이블은 유지한다.
+
+### 검증
+
+| 명령 | 결과 | 로그 |
+|---|---|---|
+| `npm run verify -- test:web` | 통과 | `.local/verification/1791126119461-5002c8a3.log` |
+| `npm run verify -- check:web` | 린트·타입 검사 통과 | `.local/verification/1791126913469-36ec8a35.log` |
+| `npm run verify -- build:web` | 프로덕션 빌드 통과 | `.local/verification/1791126919558-b6141c54.log` |
+| `npm run verify -- check:backend` | 서버 전체 테스트·빌드 통과 | `.local/verification/1791126913363-0185d9ce.log` |
+
+- `exportPreviewOpenApi`·`exportPolicyOpenApi`를 실행해 두 계약 파일의 해시가 실행 전과 같음을 확인했다.
+- 3103 포트의 운영 모드 웹에서 `/dev` 화면 8개는 HTTP 404, `/conditions`와 관리자 AI 추출·조건 검토·이메일 발송 화면은 200이었다. 확인 후 서버를 종료했고 기존 3000 개발 서버는 변경하지 않았다.
+- 테스트 이후에는 이 문서만 추가했다.

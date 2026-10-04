@@ -1,6 +1,6 @@
 import { PageState } from "@/components/page-state";
 import { collectionPage, loadCollectionReplays } from "@/features/admin/load-collection-exceptions";
-import { CollectionFailure, CollectionNavigation, REPLAYS_PATH, collectionTime } from "@/features/admin/collection-exception-view";
+import { AdminPagination, CollectionFailure, CollectionNavigation, REPLAYS_PATH, collectionTime } from "@/features/admin/collection-exception-view";
 import { replayLabels } from "@/features/admin/collection-replay-labels";
 
 export default async function CollectionReplaysPage({ searchParams }: { searchParams: Promise<{ page?: string | string[] }> }) {
@@ -28,11 +28,7 @@ export default async function CollectionReplaysPage({ searchParams }: { searchPa
               </dl>
             </li>)}
           </ul>
-          <nav className="policy-pagination" aria-label="재처리 이력 페이지">
-            {page > 1 && <a className="button-secondary" href={`${REPLAYS_PATH}?page=${page - 1}`}>이전</a>}
-            <span aria-current="page">{page}페이지</span>
-            {result.data.hasNext && page < 1000 && <a className="button-secondary" href={`${REPLAYS_PATH}?page=${page + 1}`}>다음</a>}
-          </nav>
+          <AdminPagination label="재처리 이력 페이지" page={page} hasNext={result.data.hasNext} href={next => `${REPLAYS_PATH}?page=${next}`} />
         </>}
   </>;
 }

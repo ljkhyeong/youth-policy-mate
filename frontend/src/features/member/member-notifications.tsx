@@ -3,11 +3,8 @@
 import Link from "next/link";
 import { useEffect, useRef, useState, type RefObject } from "react";
 import { memberApi, MemberApiError, type NotificationFilter, type Notifications } from "./member-api";
+import { seoulDateTimeFormat as receivedAt } from "@/lib/seoul-date";
 import { readMemberLocation } from "./member-location";
-
-const receivedAt = new Intl.DateTimeFormat("ko-KR", {
-  timeZone: "Asia/Seoul", dateStyle: "medium", timeStyle: "short",
-});
 
 function isCurrentRequest(controller: AbortController, page: number, filter: NotificationFilter) {
   if (controller.signal.aborted || window.location.pathname !== "/my") return false;

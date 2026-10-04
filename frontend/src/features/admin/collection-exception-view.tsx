@@ -12,8 +12,7 @@ const outcomeLabels = { INVALID_ITEM: "항목 검증 실패", STORE_FAILED: "저
 const timestamp = new Intl.DateTimeFormat("ko-KR", {
   timeZone: "Asia/Seoul", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit",
 });
-const dateLabel = (value: string | null) => value ? timestamp.format(new Date(value)) : "기록 없음";
-export { dateLabel as collectionTime };
+export const collectionTime = (value: string | null) => value ? timestamp.format(new Date(value)) : "기록 없음";
 
 export function CollectionNavigation({ active }: { active: "items" | "pages" | "replays" | "corrections" | "rules" | "ai" | "email" }) {
   return <nav className="policy-filters mb-6" aria-label="운영 관리 메뉴">
@@ -44,6 +43,43 @@ export function CollectionFailure({ status, retryHref }: { status: LoadFailure; 
     actions={<a className="button-primary" href={retryHref}>다시 불러오기</a>} />;
 }
 
+export function AdminListFailure({ status, retryHref, invalidTitle, failureTitle }: {
+  status: LoadFailure; retryHref: string; invalidTitle: string; failureTitle: string;
+}) {
+  if (status === "unauthenticated" || status === "forbidden") return <CollectionFailure status={status} retryHref={retryHref} />;
+  return <PageState kind="error" title={status === "invalid" ? invalidTitle : failureTitle}
+    description="잠시 후 다시 조회해주세요." actions={<a className="button-primary" href={retryHref}>다시 불러오기</a>} />;
+}
+
+export type AdminSearch = { page?: string | string[]; filter?: string | string[]; query?: string | string[] };
+export function adminSearch<F extends string>(params: AdminSearch, filters: Record<F, string>, fallback: NoInfer<F>) {
+  const filter = typeof params.filter === "string" && Object.hasOwn(filters, params.filter) ? params.filter as F : fallback;
+  return { filter, query: typeof params.query === "string" ? params.query.trim() : "" };
+}
+
+export function AdminSearchForm({ id, action, filterLabel, filters, filter, query }: {
+  id: string; action: string; filterLabel: string; filters: Record<string, string>; filter: string; query: string;
+}) {
+  return <form action={action} className="member-panel rule-review-search">
+    <div className="rule-review-field"><label htmlFor={`${id}-query`}>정책명·정책번호</label>
+      <input id={`${id}-query`} name="query" type="search" maxLength={100} defaultValue={query} /></div>
+    <div className="rule-review-field"><label htmlFor={`${id}-filter`}>{filterLabel}</label>
+      <select id={`${id}-filter`} name="filter" defaultValue={filter}>
+        {Object.entries(filters).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+      </select></div>
+    <div className="form-actions"><button className="button-primary" type="submit">검색</button>
+      <a className="text-link" href={action}>검색 초기화</a></div>
+  </form>;
+}
+
+export function AdminPagination({ label, page, hasNext, href }: { label: string; page: number; hasNext: boolean; href: (page: number) => string }) {
+  return <nav className="policy-pagination" aria-label={label}>
+    {page > 1 && <a className="button-secondary" href={href(page - 1)}>이전</a>}
+    <span aria-current="page">{page}페이지</span>
+    {hasNext && page < 1000 && <a className="button-secondary" href={href(page + 1)}>다음</a>}
+  </nav>;
+}
+
 export function ExceptionList({ data }: { data: ExceptionPage }) {
   if (!data.items.length) return <PageState kind="empty" label="실패 항목 없음"
     title={data.page > 1 ? "이 페이지에 남은 실패 항목이 없습니다" : "확인할 실패 항목이 없습니다"}
@@ -58,14 +94,10 @@ export function ExceptionList({ data }: { data: ExceptionPage }) {
         <h2><a href={`${COLLECTION_PATH}/${item.runId}/${item.itemIndex}?page=${data.page}`}>
           {item.policyNumber ? `정책 ${item.policyNumber}` : "정책번호 확인 불가"}</a></h2>
         <p className="policy-period">수집 {item.pageNumber}페이지 · {item.itemIndex + 1}번째 항목</p>
-        <p className="policy-period">마지막 처리: {dateLabel(item.lastAttemptAt)} (서울)</p>
+        <p className="policy-period">마지막 처리: {collectionTime(item.lastAttemptAt)} (서울)</p>
       </li>)}
     </ul>
-    <nav className="policy-pagination" aria-label="실패 목록 페이지">
-      {data.page > 1 && <a className="button-secondary" href={`${COLLECTION_PATH}?page=${data.page - 1}`}>이전</a>}
-      <span aria-current="page">{data.page}페이지</span>
-      {data.hasNext && data.page < 1000 && <a className="button-secondary" href={`${COLLECTION_PATH}?page=${data.page + 1}`}>다음</a>}
-    </nav>
+    <AdminPagination label="실패 목록 페이지" page={data.page} hasNext={data.hasNext} href={page => `${COLLECTION_PATH}?page=${page}`} />
   </>;
 }
 
@@ -76,7 +108,7 @@ export function ExceptionContent({ data }: { data: ExceptionDetail }) {
       <h2 id="failure-heading">{outcomeLabels[item.outcome]}</h2>
       <dl className="exception-facts">
         <dt>정책번호</dt><dd>{item.policyNumber ?? "확인 불가"}</dd>
-        <dt>마지막 처리</dt><dd>{dateLabel(item.lastAttemptAt)} (서울)</dd>
+        <dt>마지막 처리</dt><dd>{collectionTime(item.lastAttemptAt)} (서울)</dd>
         <dt>처리 횟수</dt><dd>{item.attempts}회</dd>
         <dt>수집 위치</dt><dd>{item.pageNumber}페이지 · {item.itemIndex + 1}번째 항목</dd>
         <dt>수집 실행 ID</dt><dd>{item.runId}</dd>
@@ -89,7 +121,7 @@ export function ExceptionContent({ data }: { data: ExceptionDetail }) {
       {currentPolicy ? <>
         <h3>{currentPolicy.content.title}</h3>
         {currentPolicy.correctionId && <p>관리자 보정 적용</p>}
-        <p className="field-help">현재 버전 {currentPolicy.revision} · 수집 {dateLabel(currentPolicy.collectedAt)} (서울)</p>
+        <p className="field-help">현재 버전 {currentPolicy.revision} · 수집 {collectionTime(currentPolicy.collectedAt)} (서울)</p>
         <p className="field-help">현재 공개 내용이며 수집 실패 당시 내용과 다를 수 있습니다.</p>
         <p className="exception-text">{currentPolicy.content.description}</p>
         <dl className="exception-facts">
@@ -121,8 +153,8 @@ export function RevisionComparison({ policy, description = "현재 공개 내용
   return <section className="member-panel" aria-labelledby="revision-heading">
     <h2 id="revision-heading">이전 버전 비교</h2>
     <p className="field-help">{description}</p>
-    <p className="field-help">이전 버전 {previous.revision} · 원본 수집 {dateLabel(previous.sourceCapturedAt)} (서울)<br />
-      현재 버전 {policy.revision} · 원본 수집 {dateLabel(policy.sourceCapturedAt)} (서울)</p>
+    <p className="field-help">이전 버전 {previous.revision} · 원본 수집 {collectionTime(previous.sourceCapturedAt)} (서울)<br />
+      현재 버전 {policy.revision} · 원본 수집 {collectionTime(policy.sourceCapturedAt)} (서울)</p>
     <PolicyContentComparison previous={previous.content} current={policy.content}
       previousLabel={`이전 · 버전 ${previous.revision}`} currentLabel={`현재 · 버전 ${policy.revision}`} showUnchanged />
   </section>;

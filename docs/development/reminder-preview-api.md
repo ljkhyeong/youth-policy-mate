@@ -60,7 +60,7 @@ npm run test:preview-api
 - `frontend/src/features/reminders/reminder-api-view.ts`: 생성 응답 타입을 기존 표시 모델로 변환한다. 날짜·상태·근거는 보존하고 모집 상태 코드만 문구로 표시한다.
 - `frontend/src/app/dev/reminders/server/load-reminder-examples.ts`: 고정 루프백 GET, 캐시 미사용, 리다이렉트 거부, 조회 대기 최대 5초. 사용자 입력으로 URL을 바꾸지 않는다.
 - `server/page.tsx`: 성공 시 예시 표시, 실패 시 공통 오류와 다시 불러오기 버튼을 제공한다.
-- `server/layout.tsx`: 로딩 화면보다 먼저 운영 모드를 404 처리한다. 비동기 페이지 안에서만 차단하면 스트리밍 때문에 HTTP 200이 될 수 있어 상위에서 막는다.
+- `app/dev/layout.tsx`: `/dev` 전체에서 로딩 화면보다 먼저 운영 모드를 404 처리한다. 비동기 페이지 안에서만 차단하면 스트리밍 때문에 HTTP 200이 될 수 있어 상위에서 막는다.
 - `frontend/src/components/dev-preview/retry-preview.tsx`: 자격 화면과 공유하며 조회 중 버튼 중복 클릭을 막는다. 자동 반복 재시도는 없다.
 
 연결 실패·비정상 HTTP·JSON 해석 실패를 후보 없음이나 고정 예시로 바꾸지 않는다. 오류 본문·내부 예외도 표시하지 않는다. 예시 선택은 이미 받은 자료의 표시만 바꾸며 재계산 요청이나 사용자 답변 전송을 하지 않는다. 실제 수집 시각·최신 원문 확인을 뜻하는 표시도 없다.

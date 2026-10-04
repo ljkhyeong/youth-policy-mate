@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { PreviewChoices } from "@/components/dev-preview/preview-choices";
 
 // 개발 화면의 표시용 자료다. 서버 DTO나 실제 정책의 취업 정의가 아니다.
 const EXAMPLE_QUESTIONS = [
@@ -24,18 +25,10 @@ export function EmploymentQuestionPreview() {
 
   return (
     <div className="mt-9">
-      <div role="group" aria-label="질문 변경 점검" className="flex flex-wrap gap-x-3 border-b border-stone-300">
-        {EXAMPLE_QUESTIONS.map((example, index) => (
-          <button key={example.revision} type="button" className="preview-choice" aria-pressed={index === exampleIndex}
-            onClick={() => {
-              if (index === exampleIndex) return;
-              setExampleIndex(index);
-              setNotice("질문 개정과 기준일을 바꾸고 이전 답변을 지웠어요.");
-            }}>
-            {example.label}
-          </button>
-        ))}
-      </div>
+      <PreviewChoices label="질문 변경 점검" items={EXAMPLE_QUESTIONS} selected={exampleIndex} keyOf={example => example.revision} onSelect={index => {
+        setExampleIndex(index);
+        setNotice("질문 개정과 기준일을 바꾸고 이전 답변을 지웠어요.");
+      }} />
       <p className="mt-3 text-xs leading-6 text-stone-600">예시를 바꾸면 선택·확인한 답변이 초기화됩니다. 원래 예시로 돌아와도 복원하지 않습니다.</p>
       <p role="status" className="mt-3 min-h-7 text-sm leading-7 text-teal-900">{notice}</p>
       {/* 질문의 식별 정보·정의·기준일이 달라지면 입력과 확인 상태를 함께 새로 만든다. */}

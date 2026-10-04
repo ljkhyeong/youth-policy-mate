@@ -1,3 +1,5 @@
+export const seoulDateTimeFormat = new Intl.DateTimeFormat("ko-KR", { timeZone: "Asia/Seoul", dateStyle: "medium", timeStyle: "short" });
+
 export function getSeoulDate(instant: Date): string {
   const parts = Object.fromEntries(
     new Intl.DateTimeFormat("en-US", {

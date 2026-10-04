@@ -35,7 +35,7 @@
 
 답변은 React 상태에만 둔다. 폼 제출·서버 전송·브라우저 저장소·로그·분석 이벤트·AI 호출은 없다. `/conditions`의 값을 가져오거나 수정하지 않는다. 소득 확인이나 자격 인증으로 안내하지 않는다.
 
-`NODE_ENV`가 `development`가 아니면 서버 페이지에서 `notFound()`로 종료한다. `noindex, nofollow`도 설정했지만 접근 제한을 메타데이터에 맡기지 않는다. 주 메뉴에는 개발 경로를 추가하지 않았다.
+`NODE_ENV`가 `development`가 아니면 `/dev` 공통 레이아웃(`app/dev/layout.tsx`)에서 `notFound()`로 종료한다. 같은 레이아웃에서 `noindex, nofollow`도 설정했지만 접근 제한을 메타데이터에 맡기지 않는다. 주 메뉴에는 개발 경로를 추가하지 않았다.
 
 ## 검증 결과와 한계
 

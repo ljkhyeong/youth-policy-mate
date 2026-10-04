@@ -1,6 +1,6 @@
 import { PageState } from "@/components/page-state";
-import { CollectionFailure, collectionTime } from "./collection-exception-view";
-import type { AiRunPage, LoadFailure } from "./load-collection-exceptions";
+import { AdminPagination, adminSearch, collectionTime, type AdminSearch } from "./collection-exception-view";
+import type { AiRunPage } from "./load-collection-exceptions";
 import { RULE_REVIEWS_PATH } from "./policy-rule-review-view";
 
 export const AI_RUNS_PATH = "/admin/collection-exceptions/ai";
@@ -10,12 +10,7 @@ const states = {
 } satisfies Record<AiRunPage["items"][number]["state"], string>;
 export const aiRunFilters = { ALL: "전체", ...states };
 type AiRunFilter = keyof typeof aiRunFilters;
-export type AiRunSearch = { page?: string | string[]; filter?: string | string[]; query?: string | string[] };
-export function aiRunSearch(params: AiRunSearch) {
-  const filter: AiRunFilter = typeof params.filter === "string" && Object.hasOwn(aiRunFilters, params.filter)
-    ? params.filter as AiRunFilter : "ALL";
-  return { filter, query: typeof params.query === "string" ? params.query.trim() : "" };
-}
+export const aiRunSearch = (params: AdminSearch) => adminSearch(params, aiRunFilters, "ALL");
 export function aiRunHref(page: number, filter: string, query: string) {
   return `${AI_RUNS_PATH}?${new URLSearchParams({ page: String(page), filter, query })}`;
 }
@@ -29,12 +24,6 @@ const phases: Record<string, string> = {
   HELD: "예산 예약", DISPATCHED: "청구 확인 대기", OUTCOME_UNKNOWN: "결과 미확인 · 예산 예약 유지",
   SETTLED: "정산 완료", CANCELLED: "호출 전 취소", RELEASED_NO_CHARGE: "무과금 확인",
 };
-
-export function AiRunFailure({ status, retryHref }: { status: LoadFailure; retryHref: string }) {
-  if (status === "unauthenticated" || status === "forbidden") return <CollectionFailure status={status} retryHref={retryHref} />;
-  return <PageState kind="error" title={status === "invalid" ? "검색어·상태·페이지를 확인해주세요" : "AI 추출 내역을 불러오지 못했습니다"}
-    description="잠시 후 다시 조회해주세요." actions={<a className="button-primary" href={retryHref}>다시 불러오기</a>} />;
-}
 
 export function AiRunList({ data, filter, query }: { data: AiRunPage; filter: AiRunFilter; query: string }) {
   return <>
@@ -70,10 +59,7 @@ export function AiRunList({ data, filter, query }: { data: AiRunPage; filter: Ai
     </ul> : <PageState kind="empty" title={data.page > 1 ? "이 페이지에 추출 내역이 없습니다" : "조회 조건에 맞는 추출 내역이 없습니다"}
       description="자동 실행 전이거나 조회 조건에 맞는 기록이 없는 상태입니다."
       actions={<a className="button-secondary" href={data.page > 1 ? aiRunHref(1, filter, query) : AI_RUNS_PATH}>{data.page > 1 ? "첫 페이지 보기" : "전체 내역 보기"}</a>} />}
-    {(data.page > 1 || data.hasNext) && <nav className="policy-pagination" aria-label="AI 추출 목록 페이지">
-      {data.page > 1 && <a className="button-secondary" href={aiRunHref(data.page - 1, filter, query)}>이전</a>}
-      <span aria-current="page">{data.page}페이지</span>
-      {data.hasNext && data.page < 1000 && <a className="button-secondary" href={aiRunHref(data.page + 1, filter, query)}>다음</a>}
-    </nav>}
+    {(data.page > 1 || data.hasNext) && <AdminPagination label="AI 추출 목록 페이지" page={data.page} hasNext={data.hasNext}
+      href={page => aiRunHref(page, filter, query)} />}
   </>;
 }

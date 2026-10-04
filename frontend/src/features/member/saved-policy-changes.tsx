@@ -2,9 +2,9 @@
 
 import { useEffect, useId, useRef, useState } from "react";
 import { PolicyContentComparison } from "@/features/policies/policy-content-comparison";
+import { seoulDateTimeFormat } from "@/lib/seoul-date";
 import { memberApi, MemberApiError, type SavedPolicyChanges as Changes } from "./member-api";
 
-const timestamp = new Intl.DateTimeFormat("ko-KR", { timeZone: "Asia/Seoul", dateStyle: "medium", timeStyle: "short" });
 
 export function SavedPolicyChanges({ policyNumber }: { policyNumber: string }) {
   const id = useId();
@@ -47,8 +47,8 @@ export function SavedPolicyChanges({ policyNumber }: { policyNumber: string }) {
         onClick={() => { restoreFocus.current = window.location.pathname + window.location.search; setError(""); setReload(value => value + 1); }}>다시 불러오기</button></div>}
       {data && <>
         <p className="field-help">같은 정책번호의 저장 당시 내용과 현재 수집 내용을 비교합니다.</p>
-        <p className="field-help">저장일: <time dateTime={data.savedAt}>{timestamp.format(new Date(data.savedAt))}</time><br />
-          현재 원본 수집: <time dateTime={data.current.sourceCapturedAt}>{timestamp.format(new Date(data.current.sourceCapturedAt))}</time> (한국 시간)</p>
+        <p className="field-help">저장일: <time dateTime={data.savedAt}>{seoulDateTimeFormat.format(new Date(data.savedAt))}</time><br />
+          현재 원본 수집: <time dateTime={data.current.sourceCapturedAt}>{seoulDateTimeFormat.format(new Date(data.current.sourceCapturedAt))}</time> (한국 시간)</p>
         <PolicyContentComparison previous={data.saved.content} current={data.current.content} previousLabel="저장 당시" currentLabel="현재"
           fields={["title", "description", "category", "organization", "applicationPeriod", "sections", "links"]} />
       </>}

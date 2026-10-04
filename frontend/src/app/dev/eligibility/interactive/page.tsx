@@ -7,7 +7,7 @@ import { EligibilityTrial } from "./eligibility-trial";
 import { loadTrialQuestions } from "./trial-api";
 
 export const dynamic = "force-dynamic";
-export const metadata: Metadata = { title: "인공 답변 재판정 · 청년정책메이트", robots: { index: false, follow: false } };
+export const metadata: Metadata = { title: "인공 답변 재판정 · 청년정책메이트" };
 
 export default async function EligibilityTrialPage() {
   const questions = await loadTrialQuestions();

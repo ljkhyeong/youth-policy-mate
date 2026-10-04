@@ -1,5 +1,5 @@
 import { PageState } from "@/components/page-state";
-import { CollectionFailure, RevisionComparison, collectionTime } from "./collection-exception-view";
+import { AdminPagination, CollectionFailure, RevisionComparison, adminSearch, collectionTime, type AdminSearch } from "./collection-exception-view";
 import type { LoadFailure, RuleReviewDetail, RuleReviewPage } from "./load-collection-exceptions";
 import { RuleDraftForm, RuleVersionControls } from "./policy-rule-actions";
 
@@ -9,12 +9,7 @@ const statuses = {
 } satisfies Record<RuleReviewPage["items"][number]["status"], string>;
 export const reviewFilters = { REVIEW: "검토 필요", ALL: "전체", ...statuses };
 type ReviewFilter = keyof typeof reviewFilters;
-export type ReviewSearch = { page?: string | string[]; filter?: string | string[]; query?: string | string[] };
-export function reviewSearch(params: ReviewSearch) {
-  const filter: ReviewFilter = typeof params.filter === "string" && Object.hasOwn(reviewFilters, params.filter)
-    ? params.filter as ReviewFilter : "REVIEW";
-  return { filter, query: typeof params.query === "string" ? params.query.trim() : "" };
-}
+export const reviewSearch = (params: AdminSearch) => adminSearch(params, reviewFilters, "REVIEW");
 export function reviewHref(page: number, filter: string, query: string, number?: string) {
   return `${RULE_REVIEWS_PATH}${number ? `/${number}` : ""}?${new URLSearchParams({ page: String(page), filter, query })}`;
 }
@@ -43,11 +38,7 @@ export function RuleReviewList({ data, filter, query }: { data: RuleReviewPage; 
     </ul> : <PageState kind="empty" title={data.page > 1 ? "이 페이지에 정책이 없습니다" : "조회 조건에 맞는 정책이 없습니다"}
       description="검색어와 상태를 바꾸거나 첫 페이지를 확인해주세요."
       actions={<a className="button-secondary" href={reviewHref(1, filter, query)}>첫 페이지 보기</a>} />}
-    <nav className="policy-pagination" aria-label="조건 검토 페이지">
-      {data.page > 1 && <a className="button-secondary" href={reviewHref(data.page - 1, filter, query)}>이전</a>}
-      <span aria-current="page">{data.page}페이지</span>
-      {data.hasNext && data.page < 1000 && <a className="button-secondary" href={reviewHref(data.page + 1, filter, query)}>다음</a>}
-    </nav>
+    <AdminPagination label="조건 검토 페이지" page={data.page} hasNext={data.hasNext} href={page => reviewHref(page, filter, query)} />
   </>;
 }
 

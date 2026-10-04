@@ -1,5 +1,5 @@
 import { PageState } from "@/components/page-state";
-import { collectionTime, PAGE_FAILURES_PATH } from "./collection-exception-view";
+import { AdminPagination, collectionTime, PAGE_FAILURES_PATH } from "./collection-exception-view";
 import type { PageFailureList } from "./load-collection-exceptions";
 
 type PageFailure = PageFailureList["items"][number];
@@ -41,10 +41,6 @@ export function CollectionPageFailures({ data }: { data: PageFailureList }) {
           : "저장된 응답이 없습니다. 기존 요청의 종료 여부와 호출량을 확인한 뒤 다시 수집해주세요."}</p>
       </li>)}
     </ul>
-    <nav className="policy-pagination" aria-label="페이지 수집 실패 목록 페이지">
-      {data.page > 1 && <a className="button-secondary" href={`${PAGE_FAILURES_PATH}?page=${data.page - 1}`}>이전</a>}
-      <span aria-current="page">{data.page}페이지</span>
-      {data.hasNext && data.page < 1000 && <a className="button-secondary" href={`${PAGE_FAILURES_PATH}?page=${data.page + 1}`}>다음</a>}
-    </nav>
+    <AdminPagination label="페이지 수집 실패 목록 페이지" page={data.page} hasNext={data.hasNext} href={page => `${PAGE_FAILURES_PATH}?page=${page}`} />
   </>;
 }

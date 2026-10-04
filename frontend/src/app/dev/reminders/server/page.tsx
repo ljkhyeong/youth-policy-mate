@@ -7,10 +7,7 @@ import { loadReminderExamples } from "./load-reminder-examples";
 import { RetryPreview } from "@/components/dev-preview/retry-preview";
 
 export const dynamic = "force-dynamic";
-export const metadata: Metadata = {
-  title: "서버 계산 연결 · 청년정책메이트",
-  robots: { index: false, follow: false },
-};
+export const metadata: Metadata = { title: "서버 계산 연결 · 청년정책메이트" };
 
 export default async function ServerReminderPreviewPage() {
   const loaded = await loadReminderExamples();

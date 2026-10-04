@@ -1,18 +1,12 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { notFound } from "next/navigation";
 import { SiteShell } from "@/components/site-shell";
 import { ReminderPreview } from "./reminder-preview";
 import { REMINDER_EXAMPLES } from "./reminder-preview-data";
 
-export const metadata: Metadata = {
-  title: "마감 알림 후보 미리보기 · 청년정책메이트",
-  robots: { index: false, follow: false },
-};
+export const metadata: Metadata = { title: "마감 알림 후보 미리보기 · 청년정책메이트" };
 
 export default function ReminderPreviewPage() {
-  if (process.env.NODE_ENV !== "development") notFound();
-
   return (
     <SiteShell>
       <main id="main-content" className="flex-1 py-12 sm:py-16">

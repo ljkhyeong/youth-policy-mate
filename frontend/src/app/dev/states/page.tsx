@@ -1,16 +1,10 @@
 import type { Metadata } from "next";
-import { notFound } from "next/navigation";
 import { SiteShell } from "@/components/site-shell";
 import { StatePreview } from "./state-preview";
 
-export const metadata: Metadata = {
-  title: "상태 화면 미리보기 · 청년정책메이트",
-  robots: { index: false, follow: false },
-};
+export const metadata: Metadata = { title: "상태 화면 미리보기 · 청년정책메이트" };
 
 export default function StatePreviewPage() {
-  if (process.env.NODE_ENV !== "development") notFound();
-
   return (
     <SiteShell>
       <main id="main-content" className="flex-1 py-12 sm:py-16">

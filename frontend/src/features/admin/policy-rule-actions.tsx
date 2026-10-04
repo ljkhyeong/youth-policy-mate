@@ -10,9 +10,8 @@ import { RuleActionForm } from "./policy-rule-action-form";
 import { RuleEditor } from "./policy-rule-editor";
 
 type RuleFile = components["schemas"]["PolicyRuleFile"];
-type Props = { policyNumber: string; revision: number; versionId?: string; expectedRuleVersion?: string };
 
-export function RuleDraftForm({ policyNumber, revision }: Props) {
+export function RuleDraftForm({ policyNumber, revision }: { policyNumber: string; revision: number }) {
   return <section className="member-panel" aria-labelledby="rule-draft-heading">
     <h2 id="rule-draft-heading">새 초안 등록</h2>
     <p className="field-help">검토한 규칙 파일을 등록합니다. 초안을 저장해도 현재 질문은 바뀌지 않습니다. 기존 파일을 수정할 때는 새 버전명과 원문·연도·기간을 함께 확인하세요.</p>

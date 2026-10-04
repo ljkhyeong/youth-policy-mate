@@ -1,10 +1,10 @@
-import { CollectionNavigation } from "@/features/admin/collection-exception-view";
+import { CollectionNavigation, type AdminSearch } from "@/features/admin/collection-exception-view";
 import { collectionPage, loadRuleReview } from "@/features/admin/load-collection-exceptions";
-import { RuleReviewContent, RuleReviewFailure, reviewHref, reviewSearch, type ReviewSearch } from "@/features/admin/policy-rule-review-view";
+import { RuleReviewContent, RuleReviewFailure, reviewHref, reviewSearch } from "@/features/admin/policy-rule-review-view";
 
 export const metadata = { title: "공고 조건 검토 · 청년정책메이트" };
 export default async function RuleReviewPage({ params, searchParams }: {
-  params: Promise<{ policyNumber: string }>; searchParams: Promise<ReviewSearch>;
+  params: Promise<{ policyNumber: string }>; searchParams: Promise<AdminSearch>;
 }) {
   const { policyNumber } = await params;
   const search = await searchParams;

@@ -8,6 +8,11 @@ type SaveState = { phase: "loading" }
   | { phase: "unavailable"; message: string; loginRequired: boolean }
   | { phase: "ready" | "saving"; session: MemberSession; saved: boolean };
 
+function unavailable(failure: unknown, fallback: string): SaveState {
+  const loginRequired = failure instanceof MemberApiError && failure.status === 401;
+  return { phase: "unavailable", loginRequired, message: loginRequired ? failure.message : fallback };
+}
+
 export function SavePolicyButton({ policyNumber }: { policyNumber: string }) {
   const router = useRouter();
   const [state, setState] = useState<SaveState>({ phase: "loading" });
@@ -34,8 +39,7 @@ export function SavePolicyButton({ policyNumber }: { policyNumber: string }) {
         const policies = current.authenticated ? await memberApi<SavedPolicies>("policies", { signal: controller.signal }) : null;
         if (!controller.signal.aborted) setState({ phase: "ready", session: current, saved: policies?.items.some(item => item.policyNumber === policyNumber) ?? false });
       } catch (failure) {
-        if (!controller.signal.aborted) setState({ phase: "unavailable", loginRequired: failure instanceof MemberApiError && failure.status === 401,
-          message: failure instanceof MemberApiError && failure.status === 401 ? failure.message : "저장 상태를 불러오지 못했어요. 다시 불러와주세요." });
+        if (!controller.signal.aborted) setState(unavailable(failure, "저장 상태를 불러오지 못했어요. 다시 불러와주세요."));
       }
     })();
     return () => { controller.abort(); active.current?.abort(); };
@@ -61,8 +65,7 @@ export function SavePolicyButton({ policyNumber }: { policyNumber: string }) {
       setState({ ...state, saved: !state.saved });
       setMessage(state.saved ? "저장을 해제하고 대기 중인 알림을 취소했어요." : "정책을 저장했어요. 확인된 마감일은 ‘마감 일정’에 표시돼요.");
     } catch (failure) {
-      if (!controller.signal.aborted) setState({ phase: "unavailable", loginRequired: failure instanceof MemberApiError && failure.status === 401,
-        message: failure instanceof MemberApiError && failure.status === 401 ? failure.message : "처리 결과를 확인하지 못했어요. 저장 상태를 다시 불러와주세요." });
+      if (!controller.signal.aborted) setState(unavailable(failure, "처리 결과를 확인하지 못했어요. 저장 상태를 다시 불러와주세요."));
     } finally { submitting.current = false; }
   }
 

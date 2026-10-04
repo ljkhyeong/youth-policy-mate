@@ -1,6 +1,7 @@
 "use client";
 
 import { useReducer, useRef, useState } from "react";
+import { PreviewChoices } from "@/components/dev-preview/preview-choices";
 import { EligibilityResult, Evidence } from "@/features/eligibility/eligibility-result";
 import { evaluateTrialAction } from "./actions";
 import type { TrialQuestions } from "./trial-api";
@@ -11,14 +12,10 @@ export function EligibilityTrial({ questions }: { questions: TrialQuestions }) {
   const [notice, setNotice] = useState("");
   const question = questions.questionSets[index];
   return <div className="mt-8">
-    <div role="group" aria-label="재판정 질문 버전" className="flex flex-wrap gap-x-3 border-b border-stone-300">
-      {questions.questionSets.map((item, nextIndex) => <button type="button" key={item.id} className="preview-choice" aria-pressed={index === nextIndex}
-        onClick={() => {
-          if (index === nextIndex) return;
-          setIndex(nextIndex);
-          setNotice("질문 개정·정의·기준을 바꾸고 이전 답변과 결과를 지웠습니다. 돌아와도 복원하지 않습니다.");
-        }}>{item.label}</button>)}
-    </div>
+    <PreviewChoices label="재판정 질문 버전" items={questions.questionSets} selected={index} keyOf={item => item.id} onSelect={nextIndex => {
+      setIndex(nextIndex);
+      setNotice("질문 개정·정의·기준을 바꾸고 이전 답변과 결과를 지웠습니다. 돌아와도 복원하지 않습니다.");
+    }} />
     <p role="status" className="mt-3 min-h-7 text-sm leading-7 text-teal-900">{notice}</p>
     {/* 질문 내용이 바뀌면 진행 중인 요청을 포함한 이전 화면 상태를 재사용하지 않는다. */}
     <TrialForm key={JSON.stringify(question)} question={question} questions={questions} />

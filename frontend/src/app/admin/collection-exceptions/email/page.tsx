@@ -1,7 +1,7 @@
-import { CollectionNavigation } from "@/features/admin/collection-exception-view";
+import { AdminListFailure, CollectionNavigation } from "@/features/admin/collection-exception-view";
 import { collectionPage, loadEmailDeliveries } from "@/features/admin/load-collection-exceptions";
 import { EMAIL_DELIVERIES_PATH, deliveryKinds, deliveryPeriods, deliveryStates, emailDeliveryFilters, emailDeliveryHref,
-  EmailDeliveryFailure, EmailDeliveryList, type EmailDeliverySearch } from "@/features/admin/email-deliveries-view";
+  EmailDeliveryList, type EmailDeliverySearch } from "@/features/admin/email-deliveries-view";
 
 export const metadata = { title: "이메일 발송 · 청년정책메이트" };
 
@@ -30,6 +30,7 @@ export default async function EmailDeliveriesPage({ searchParams }: { searchPara
         <a className="text-link" href={EMAIL_DELIVERIES_PATH}>조회 조건 초기화</a></div>
     </form>
     {result.status === "available" ? <EmailDeliveryList data={result.data} filters={filters} />
-      : <EmailDeliveryFailure status={result.status} retryHref={emailDeliveryHref(page, filters)} />}
+      : <AdminListFailure status={result.status} retryHref={emailDeliveryHref(page, filters)}
+        invalidTitle="기간·상태·종류·페이지를 확인해주세요" failureTitle="이메일 발송 내역을 불러오지 못했습니다" />}
   </>;
 }

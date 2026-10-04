@@ -49,7 +49,7 @@ OpenAPI 3.1의 null 허용 enum은 타입과 enum 값 목록 양쪽에 실제 nu
 - `frontend/src/features/eligibility/eligibility-api-view.ts`는 생성 응답 타입을 사용한다. 인공 조건 ID의 제목과 모집 코드 문구만 붙이며 상태·근거·기준은 다시 계산하지 않는다.
 - `frontend/src/app/dev/eligibility/server/load-eligibility-examples.ts`는 고정 루프백 주소를 캐시 없이 조회한다. 리다이렉트는 거부하고 대기는 최대 5초다. `/conditions`나 질문 화면의 개인정보·답변을 읽지 않는다.
 - 조회 실패는 공통 오류 화면과 다시 불러오기 버튼으로 표시한다. 불충족·추가 확인 판정이나 오프라인 예시로 바꾸지 않고 내부 오류를 노출하지 않는다.
-- `server/layout.tsx`는 로딩 스트리밍 전에 운영 모드를 차단한다. 로딩 페이지 전송 후의 200 응답을 404로 표시하는 문제를 피한다.
+- `/dev` 전체를 감싸는 `app/dev/layout.tsx`가 로딩 스트리밍 전에 운영 모드를 차단한다. 로딩 페이지 전송 후의 200 응답을 404로 표시하는 문제를 피한다.
 - 기존 `EligibilityPreview`는 예시를 props로 받는다. 오프라인·서버 화면이 같은 표시 컴포넌트를 사용하고, 서버 화면에 오프라인 자료를 기본값으로 넣지 않는다.
 - 다시 불러오기 버튼은 `frontend/src/components/dev-preview/retry-preview.tsx`에서 마감·자격 화면이 함께 사용한다.
 

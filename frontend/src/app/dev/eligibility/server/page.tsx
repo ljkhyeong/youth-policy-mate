@@ -7,10 +7,7 @@ import { EligibilityPreview } from "../eligibility-preview";
 import { loadEligibilityExamples } from "./load-eligibility-examples";
 
 export const dynamic = "force-dynamic";
-export const metadata: Metadata = {
-  title: "자격 판정 서버 연결 · 청년정책메이트",
-  robots: { index: false, follow: false },
-};
+export const metadata: Metadata = { title: "자격 판정 서버 연결 · 청년정책메이트" };
 
 export default async function ServerEligibilityPreviewPage() {
   const loaded = await loadEligibilityExamples();

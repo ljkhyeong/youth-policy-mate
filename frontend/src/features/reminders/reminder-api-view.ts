@@ -1,18 +1,9 @@
 import type { components, operations } from "@/generated/preview-api";
 import type { ApplicationPeriodView, DeadlineReminderView, ReminderExampleView } from "./deadline-reminder-view";
+import { RECRUITMENT_LABELS } from "@/features/eligibility/eligibility-api-view";
 
 export type ReminderExamplesResponse = operations["listDevelopmentReminderExamples"]["responses"][200]["content"]["application/json"];
 type PeriodResponse = components["schemas"]["ApplicationPeriodResponse"];
-type RecruitmentStatus = components["schemas"]["ReminderRecruitment"]["status"];
-
-const RECRUITMENT_LABELS: Record<RecruitmentStatus, string> = {
-  BEFORE_OPENING: "모집 전",
-  OPEN: "접수 기간",
-  CLOSED: "모집 마감",
-  ROLLING: "상시 모집",
-  UNTIL_EXHAUSTED: "예산·인원 소진 시 종료",
-  UNKNOWN: "신청기간 확인 필요",
-};
 
 function requiredValue(value: string | null): string {
   if (typeof value !== "string" || value.length === 0) throw new Error("표시에 필요한 기간 정보가 없습니다.");

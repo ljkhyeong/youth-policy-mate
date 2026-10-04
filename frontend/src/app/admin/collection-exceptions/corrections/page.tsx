@@ -1,5 +1,5 @@
 import { collectionPage, loadPolicyCorrections, loadCorrectionPolicy, type CorrectionItem } from "@/features/admin/load-collection-exceptions";
-import { CollectionFailure, CollectionNavigation, CORRECTIONS_PATH, collectionTime } from "@/features/admin/collection-exception-view";
+import { AdminPagination, CollectionFailure, CollectionNavigation, CORRECTIONS_PATH, collectionTime } from "@/features/admin/collection-exception-view";
 import { PolicyCorrectionForm } from "@/features/admin/policy-correction-form";
 
 const fieldLabels = { TITLE: "정책명", ORGANIZATION: "운영 기관" } as const;
@@ -34,11 +34,7 @@ export default async function PolicyCorrectionsPage({ searchParams }: { searchPa
         {!result.data.items.length ? <p>이 페이지에 보정 이력이 없습니다.</p> : <ul className="policy-list" aria-label="정책 보정 이력">
           {result.data.items.map(item => <CorrectionCard key={item.id} item={item} />)}
         </ul>}
-        <nav className="policy-pagination" aria-label="보정 이력 페이지">
-          {page > 1 && <a className="button-secondary" href={`${CORRECTIONS_PATH}?page=${page - 1}`}>이전</a>}
-          <span aria-current="page">{page}페이지</span>
-          {result.data.hasNext && page < 1000 && <a className="button-secondary" href={`${CORRECTIONS_PATH}?page=${page + 1}`}>다음</a>}
-        </nav>
+        <AdminPagination label="보정 이력 페이지" page={page} hasNext={result.data.hasNext} href={next => `${CORRECTIONS_PATH}?page=${next}`} />
       </section>
     </>}
   </>;

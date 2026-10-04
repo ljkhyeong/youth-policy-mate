@@ -1,6 +1,6 @@
 import { PageState } from "@/components/page-state";
-import { CollectionFailure, collectionTime } from "./collection-exception-view";
-import type { EmailDeliveryPage, LoadFailure } from "./load-collection-exceptions";
+import { AdminPagination, collectionTime } from "./collection-exception-view";
+import type { EmailDeliveryPage } from "./load-collection-exceptions";
 import { EmailProviderStatus } from "./email-provider-status";
 
 export const EMAIL_DELIVERIES_PATH = "/admin/collection-exceptions/email";
@@ -22,12 +22,6 @@ export function emailDeliveryFilters(params: EmailDeliverySearch) {
 type Filters = ReturnType<typeof emailDeliveryFilters>;
 export function emailDeliveryHref(page: number, filters: Filters) {
   return `${EMAIL_DELIVERIES_PATH}?${new URLSearchParams({ page: String(page), days: String(filters.days), state: filters.state, kind: filters.kind })}`;
-}
-
-export function EmailDeliveryFailure({ status, retryHref }: { status: LoadFailure; retryHref: string }) {
-  if (status === "unauthenticated" || status === "forbidden") return <CollectionFailure status={status} retryHref={retryHref} />;
-  return <PageState kind="error" title={status === "invalid" ? "기간·상태·종류·페이지를 확인해주세요" : "이메일 발송 내역을 불러오지 못했습니다"}
-    description="잠시 후 다시 조회해주세요." actions={<a className="button-primary" href={retryHref}>다시 불러오기</a>} />;
 }
 
 export function EmailDeliveryList({ data, filters }: { data: EmailDeliveryPage; filters: Filters }) {
@@ -69,10 +63,7 @@ export function EmailDeliveryList({ data, filters }: { data: EmailDeliveryPage; 
     </ul> : <PageState kind="empty" title={data.page > 1 ? "이 페이지에 발송 내역이 없습니다" : "조회 조건에 맞는 발송 내역이 없습니다"}
       description="기간·상태·종류를 바꿔 조회할 수 있습니다."
       actions={<a className="button-secondary" href={data.page > 1 ? emailDeliveryHref(1, filters) : EMAIL_DELIVERIES_PATH}>{data.page > 1 ? "첫 페이지 보기" : "조회 조건 초기화"}</a>} />}
-    {(data.page > 1 || data.hasNext) && <nav className="policy-pagination" aria-label="이메일 발송 목록 페이지">
-      {data.page > 1 && <a className="button-secondary" href={emailDeliveryHref(data.page - 1, filters)}>이전</a>}
-      <span aria-current="page">{data.page}페이지</span>
-      {data.hasNext && data.page < 1000 && <a className="button-secondary" href={emailDeliveryHref(data.page + 1, filters)}>다음</a>}
-    </nav>}
+    {(data.page > 1 || data.hasNext) && <AdminPagination label="이메일 발송 목록 페이지" page={data.page} hasNext={data.hasNext}
+      href={page => emailDeliveryHref(page, filters)} />}
   </>;
 }

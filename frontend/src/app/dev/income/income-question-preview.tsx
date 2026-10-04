@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { PreviewChoices } from "@/components/dev-preview/preview-choices";
 import { INCOME_EXAMPLES, incomeAnswerLabel, type IncomePreviewAnswer, type IncomePreviewQuestion } from "./income-preview-data";
 
 export function IncomeQuestionPreview() {
@@ -10,18 +11,10 @@ export function IncomeQuestionPreview() {
 
   return (
     <div className="mt-9">
-      <div role="group" aria-label="소득 질문 변경 점검" className="flex flex-wrap gap-x-3 border-b border-stone-300">
-        {INCOME_EXAMPLES.map((example, index) => (
-          <button key={example.label} type="button" className="preview-choice" aria-pressed={index === exampleIndex}
-            onClick={() => {
-              if (index === exampleIndex) return;
-              setExampleIndex(index);
-              setNotice("질문 예시를 바꾸고 이전 답변을 지웠어요. 새 대상 기간과 질문을 확인해주세요.");
-            }}>
-            {example.label}
-          </button>
-        ))}
-      </div>
+      <PreviewChoices label="소득 질문 변경 점검" items={INCOME_EXAMPLES} selected={exampleIndex} keyOf={example => example.label} onSelect={index => {
+        setExampleIndex(index);
+        setNotice("질문 예시를 바꾸고 이전 답변을 지웠어요. 새 대상 기간과 질문을 확인해주세요.");
+      }} />
       <p className="mt-3 text-xs leading-6 text-stone-600">예시를 바꾸면 선택·확인한 답변이 초기화됩니다. 원래 예시로 돌아와도 복원하지 않습니다.</p>
       <p role="status" className="mt-3 min-h-7 text-sm leading-7 text-teal-900">{notice}</p>
       {/* 정의·대상·기간·선택 구간이 달라지면 이전 답변을 새 질문에 붙이지 않는다. */}

@@ -5,7 +5,7 @@ export type EligibilityExamplesResponse = operations["listDevelopmentEligibility
 type ConditionResponse = components["schemas"]["EligibilityCondition"];
 type RecruitmentStatus = components["schemas"]["EligibilityRecruitment"]["status"];
 
-const RECRUITMENT_LABELS: Record<RecruitmentStatus, string> = {
+export const RECRUITMENT_LABELS: Record<RecruitmentStatus, string> = {
   BEFORE_OPENING: "모집 전", OPEN: "접수 기간", CLOSED: "모집 마감",
   ROLLING: "상시 모집", UNTIL_EXHAUSTED: "예산·인원 소진 시 종료", UNKNOWN: "신청기간 확인 필요",
 };

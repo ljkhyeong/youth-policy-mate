@@ -197,6 +197,15 @@ public class PolicyCatalogStore {
         return new PolicyListResponse(items, page, pageSize, total, (long) page * pageSize < total);
     }
 
+    // 목록의 분야 필터와 같은 표기 비교를 써서 타일의 수와 이동한 목록의 전체 건수를 맞춘다.
+    public PolicyCategoryCounts categoryCounts() {
+        var byLabel = jdbc.sql("SELECT coalesce(p.content->>'category', '') AS category, count(*) AS count FROM policies p WHERE p.current_revision > 0 GROUP BY 1")
+                .query((rs, row) -> Map.entry(rs.getString("category"), rs.getLong("count"))).list();
+        var items = java.util.Arrays.stream(PolicyCategory.values()).map(category -> new PolicyCategoryCounts.Item(category,
+                byLabel.stream().filter(entry -> category.labels().contains(entry.getKey())).mapToLong(Map.Entry::getValue).sum())).toList();
+        return new PolicyCategoryCounts(items, byLabel.stream().mapToLong(Map.Entry::getValue).sum());
+    }
+
     // 공개 목록은 접수 중인 정책을 마감 임박순으로 먼저 보여준다. 검색용 모집 기간과 같은 기준이다.
     private static final String AVAILABILITY_ORDER = """
             CASE WHEN p.recruitment_kind = 'PERIOD' AND p.recruitment_opens_at <= :orderNow AND p.recruitment_closes_at > :orderNow THEN 0

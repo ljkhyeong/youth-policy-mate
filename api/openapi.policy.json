@@ -2555,6 +2555,35 @@
         "tags" : [ "policy-catalog-controller" ]
       }
     },
+    "/api/v1/policies/category-counts" : {
+      "get" : {
+        "operationId" : "countPoliciesByCategory",
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PolicyCategoryCounts"
+                }
+              }
+            },
+            "description" : "OK"
+          },
+          "503" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PolicyApiError"
+                }
+              }
+            },
+            "description" : "정책 저장소 조회 실패"
+          }
+        },
+        "summary" : "분야별 공개 정책 수. 목록의 분야 필터와 같은 기준",
+        "tags" : [ "policy-catalog-controller" ]
+      }
+    },
     "/api/v1/policies/checks" : {
       "post" : {
         "operationId" : "checkPolicyConditions",
@@ -3665,6 +3694,38 @@
           }
         },
         "required" : [ "code", "message" ]
+      },
+      "PolicyCategoryCount" : {
+        "type" : "object",
+        "properties" : {
+          "category" : {
+            "type" : "string",
+            "enum" : [ "JOB", "HOUSING", "EDUCATION", "FINANCE", "PARTICIPATION" ]
+          },
+          "count" : {
+            "type" : "integer",
+            "format" : "int64"
+          }
+        },
+        "required" : [ "category", "count" ]
+      },
+      "PolicyCategoryCounts" : {
+        "type" : "object",
+        "properties" : {
+          "items" : {
+            "type" : "array",
+            "description" : "다섯 분야를 항상 같은 순서로 제공. 정책이 없으면 0",
+            "items" : {
+              "$ref" : "#/components/schemas/PolicyCategoryCount"
+            }
+          },
+          "total" : {
+            "type" : "integer",
+            "format" : "int64",
+            "description" : "전체 공개 정책 수. 다섯 분야에 맞지 않는 정책도 포함"
+          }
+        },
+        "required" : [ "items", "total" ]
       },
       "PolicyCheckItem" : {
         "type" : "object",

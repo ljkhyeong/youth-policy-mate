@@ -575,6 +575,23 @@ export interface paths {
         readonly patch?: never;
         readonly trace?: never;
     };
+    readonly "/api/v1/policies/category-counts": {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header?: never;
+            readonly path?: never;
+            readonly cookie?: never;
+        };
+        /** 분야별 공개 정책 수. 목록의 분야 필터와 같은 기준 */
+        readonly get: operations["countPoliciesByCategory"];
+        readonly put?: never;
+        readonly post?: never;
+        readonly delete?: never;
+        readonly options?: never;
+        readonly head?: never;
+        readonly patch?: never;
+        readonly trace?: never;
+    };
     readonly "/api/v1/policies/checks": {
         readonly parameters: {
             readonly query?: never;
@@ -991,6 +1008,21 @@ export interface components {
         readonly PolicyApiError: {
             readonly code: string;
             readonly message: string;
+        };
+        readonly PolicyCategoryCount: {
+            /** @enum {string} */
+            readonly category: "JOB" | "HOUSING" | "EDUCATION" | "FINANCE" | "PARTICIPATION";
+            /** Format: int64 */
+            readonly count: number;
+        };
+        readonly PolicyCategoryCounts: {
+            /** @description 다섯 분야를 항상 같은 순서로 제공. 정책이 없으면 0 */
+            readonly items: readonly components["schemas"]["PolicyCategoryCount"][];
+            /**
+             * Format: int64
+             * @description 전체 공개 정책 수. 다섯 분야에 맞지 않는 정책도 포함
+             */
+            readonly total: number;
         };
         readonly PolicyCheckItem: {
             readonly applicationPeriod: string;
@@ -3500,6 +3532,35 @@ export interface operations {
                 };
                 content: {
                     readonly "*/*": components["schemas"]["PolicyApiError"];
+                };
+            };
+            /** @description 정책 저장소 조회 실패 */
+            readonly 503: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "*/*": components["schemas"]["PolicyApiError"];
+                };
+            };
+        };
+    };
+    readonly countPoliciesByCategory: {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header?: never;
+            readonly path?: never;
+            readonly cookie?: never;
+        };
+        readonly requestBody?: never;
+        readonly responses: {
+            /** @description OK */
+            readonly 200: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "*/*": components["schemas"]["PolicyCategoryCounts"];
                 };
             };
             /** @description 정책 저장소 조회 실패 */

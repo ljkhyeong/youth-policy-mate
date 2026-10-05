@@ -993,6 +993,21 @@ class PolicyCatalogTest {
         mvc.perform(get("/api/v1/policies").param("category", "INVALID")).andExpect(status().isBadRequest());
     }
 
+    @Test @DisplayName("분야별 정책 수는 목록 분야 필터와 같은 기준으로 세고 맞지 않는 분류는 전체 수에만 넣는다")
+    void countsPoliciesByCategory() throws Exception {
+        item.put("plcyNo", "991").put("lclsfNm", "일자리"); save("job", AT.plusSeconds(1));
+        item.put("plcyNo", "992"); save("job-2", AT.plusSeconds(2));
+        item.put("plcyNo", "993").put("lclsfNm", "금융･복지･문화"); save("finance", AT.plusSeconds(3));
+        item.put("plcyNo", "994").put("lclsfNm", "금융·복지·문화"); save("finance-dot", AT.plusSeconds(4));
+        item.put("plcyNo", "995").put("lclsfNm", "일자리,주거"); save("multi", AT.plusSeconds(5));
+
+        mvc.perform(get("/api/v1/policies/category-counts")).andExpect(status().isOk())
+                .andExpect(jsonPath("$.total").value(5))
+                .andExpect(jsonPath("$.items[*].category").value(org.hamcrest.Matchers.contains("JOB", "HOUSING", "EDUCATION", "FINANCE", "PARTICIPATION")))
+                .andExpect(jsonPath("$.items[*].count").value(org.hamcrest.Matchers.contains(2, 0, 0, 2, 0)));
+        assertThat(store.list("", 1, 20, false, null, PolicyCategory.FINANCE, AT).total()).isEqualTo(2);
+    }
+
     @Test @DisplayName("기존 정책을 삭제하거나 개정을 늘리지 않고 접수 검색 기간을 이전한다")
     void backfillsRecruitmentForExistingPolicies() throws Exception {
         var config = org.flywaydb.core.Flyway.configure().dataSource(postgres.getJdbcUrl(), postgres.getUsername(), postgres.getPassword())

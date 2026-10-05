@@ -1,10 +1,11 @@
 import { renderToStaticMarkup } from "react-dom/server";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { components } from "@/generated/policy-api";
 import HomePage from "./page";
-import { loadPolicies } from "./policies/load-policies";
+import { loadCategoryCounts, loadPolicies } from "./policies/load-policies";
 
-vi.mock("./policies/load-policies", () => ({ loadPolicies: vi.fn() }));
+vi.mock("./policies/load-policies", () => ({ loadPolicies: vi.fn(), loadCategoryCounts: vi.fn() }));
+beforeEach(() => { vi.mocked(loadCategoryCounts).mockResolvedValue({ status: "unavailable" }); });
 afterEach(() => { vi.resetAllMocks(); });
 
 const policy: components["schemas"]["PolicySummary"] = {
@@ -43,5 +44,22 @@ describe("홈의 접수 중인 정책", () => {
     expect(html).not.toContain("지금 접수 중인 정책");
     expect(html).not.toContain("정책이 없어요");
     expect(html).toContain('href="/conditions"');
+  });
+
+  it("분야 타일에 분야별 정책 수를 표시하고, 수를 불러오지 못하면 분야 이름만 표시한다", async () => {
+    vi.mocked(loadPolicies).mockResolvedValue({ status: "unavailable" });
+    vi.mocked(loadCategoryCounts).mockResolvedValue({ status: "available", data: { total: 40, items: [
+      { category: "JOB", count: 18 }, { category: "HOUSING", count: 0 }, { category: "EDUCATION", count: 7 },
+      { category: "FINANCE", count: 9 }, { category: "PARTICIPATION", count: 4 },
+    ] } });
+    const html = renderToStaticMarkup(await HomePage());
+    expect(html).toContain("일자리<span class=\"category-tile-count\"> 18건</span>");
+    expect(html).toContain("주거<span class=\"category-tile-count\"> 0건</span>");
+    expect(html).toContain("전체 정책<span class=\"category-tile-count\"> 40건</span>");
+
+    vi.mocked(loadCategoryCounts).mockResolvedValue({ status: "unavailable" });
+    const fallback = renderToStaticMarkup(await HomePage());
+    expect(fallback).toContain('href="/policies?category=JOB"');
+    expect(fallback).not.toContain("category-tile-count");
   });
 });

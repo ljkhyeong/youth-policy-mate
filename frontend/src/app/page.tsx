@@ -1,10 +1,10 @@
 import Link from "next/link";
 import { SiteShell } from "@/components/site-shell";
 import { publicMetadata, siteName, siteDescription } from "@/lib/public-metadata";
-import { CategoryIcon, categoryKey, categoryLabel, policyCategories } from "@/features/policies/policy-category";
+import { CategoryIcon, categoryKey, categoryLabel, policyCategories, type PolicyCategoryKey } from "@/features/policies/policy-category";
 import { formatPolicyPeriod } from "@/features/policies/policy-period";
 import { RecruitmentBadge } from "@/features/policies/policy-recruitment";
-import { loadPolicies } from "./policies/load-policies";
+import { loadCategoryCounts, loadPolicies } from "./policies/load-policies";
 
 export const dynamic = "force-dynamic";
 export function generateMetadata() { return publicMetadata("/", siteName, siteDescription); }
@@ -12,7 +12,13 @@ export function generateMetadata() { return publicMetadata("/", siteName, siteDe
 const searchTopics = ["창업", "취업", "장학금", "대출"];
 
 export default async function HomePage() {
-  const open = await loadPolicies("", 1, false, "OPEN", 4);
+  const [open, counts] = await Promise.all([loadPolicies("", 1, false, "OPEN", 4), loadCategoryCounts()]);
+  // 수를 불러오지 못하면 분야 이름만 표시한다. 앞의 공백은 링크 이름을 "일자리 18건"으로 읽히게 한다.
+  const countOf = (key: PolicyCategoryKey | "ALL") => {
+    if (counts.status !== "available") return null;
+    const count = key === "ALL" ? counts.data.total : counts.data.items.find(item => item.category === key)?.count;
+    return typeof count === "number" ? <span className="category-tile-count"> {count}건</span> : null;
+  };
   return (
     <SiteShell active="home">
       <main id="main-content" className="home-main">
@@ -34,9 +40,9 @@ export default async function HomePage() {
 
           <nav className="category-tiles" aria-label="분야로 찾기">
             {policyCategories.map(category => <Link key={category.key} href={`/policies?category=${category.key}`} className="category-tile" data-category={category.key}>
-              <CategoryIcon category={category.key} />{category.label}
+              <CategoryIcon category={category.key} />{category.label}{countOf(category.key)}
             </Link>)}
-            <Link href="/policies" className="category-tile" data-category="ALL"><CategoryIcon category="ALL" />전체 정책</Link>
+            <Link href="/policies" className="category-tile" data-category="ALL"><CategoryIcon category="ALL" />전체 정책{countOf("ALL")}</Link>
           </nav>
         </div>
 

@@ -53,6 +53,13 @@ public class PolicyCatalogController {
         return store.list(q.strip(), page, pageSize, questionsOnly, recruitmentStatus, category, clock.instant());
     }
 
+    @GetMapping("/category-counts")
+    @Operation(operationId = "countPoliciesByCategory", summary = "분야별 공개 정책 수. 목록의 분야 필터와 같은 기준")
+    @ApiResponse(responseCode = "200", content = @Content(schema = @Schema(implementation = PolicyCategoryCounts.class)))
+    public PolicyCategoryCounts categoryCounts() {
+        return store.categoryCounts();
+    }
+
     @GetMapping("/{policyNumber}")
     @Operation(operationId = "getPolicy", summary = "정책 상세와 원문 출처 조회")
     @ApiResponse(responseCode = "200", content = @Content(schema = @Schema(implementation = PolicyDetailResponse.class)))

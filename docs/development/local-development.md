@@ -100,7 +100,7 @@ PostgreSQL은 기존 볼륨이 있으면 초기 계정·DB를 다시 만들지 �
 
 ### 데이터와 종료
 
-DB 볼륨은 `youth-policy-mate_postgres_data`이다. PostgreSQL 18의 데이터 경로에 맞춰 컨테이너의 `/var/lib/postgresql`에 마운트했다. Flyway V1·V2는 AI 예산·요청 예약과 호출 이후 상태를, V3은 복구 시도를, V4·V5는 작업 실행과 운영 중단 정보를, V6는 작업 실행과 복구 시도 연결을, V7은 수동 검토 재개 감사를, V8은 활성 임대 갱신 감사를 만들고 V9는 작업 실행의 heartbeat 중단 집계를 추가한다. V10은 정책 원본·현재 내용·개정을 저장한다. 회원·알림 테이블은 아직 없다. Hibernate는 스키마를 자동 생성·수정하지 않는다.
+DB 볼륨은 `youth-policy-mate_postgres_data`이다. PostgreSQL 18의 데이터 경로에 맞춰 컨테이너의 `/var/lib/postgresql`에 마운트했다. Flyway V1·V2는 AI 예산·요청 예약과 호출 이후 상태를, V3은 복구 시도를, V4·V5는 작업 실행과 운영 중단 정보를, V6는 작업 실행과 복구 시도 연결을, V7은 수동 검토 재개 감사를, V8은 활성 임대 갱신 감사를 만들고 V9는 작업 실행의 heartbeat 중단 집계를 추가한다. V3–V9를 쓰던 예약 복구 코드는 운영 경로에 연결되지 않아 제거했고 테이블은 유지한다([결정 기록](backend-api-review.md#ai-예약-복구-코드-제거--2026-10-05-적용)). V10은 정책 원본·현재 내용·개정을 저장한다. 회원·알림 테이블은 아직 없다. Hibernate는 스키마를 자동 생성·수정하지 않는다.
 
 웹과 서버는 실행 터미널에서 `Ctrl+C`로 종료한다. DB 컨테이너는 아래 명령으로 종료·제거하되 볼륨은 보존한다.
 
@@ -116,19 +116,8 @@ npm run db:down
 npm run test:web
 npm run test:eligibility
 npm run test:recruitment
-npm run test:policy-revisions
-npm run test:ingestion
-npm run test:ai-candidates
-npm run test:ai-candidate-projection
-npm run test:ai-admission
 npm run test:ai-reservation-db
 npm run test:ai-execution
-npm run test:ai-recovery
-npm run test:ai-recovery-heartbeat
-npm run test:ai-recovery-execution
-npm run test:ai-recovery-policy
-npm run test:ai-recovery-operations
-npm run test:ai-recovery-work
 npm run test:reminders
 npm run test:preview-api
 npm run check:api-types
@@ -143,29 +132,7 @@ npm audit
 
 `test:recruitment`는 순수 Java 모집 상태 23건과 마감 날짜 제공 8건, 총 31건을 실행한다. 서울 날짜 경계·명시적 접수 종료 시각·상시·소진 시 종료·미확인 이유·근거 보존을 검사하며 API 인증키·DB·Docker가 필요하지 않다. [모집 기간 구현](recruitment-period.md)에 입력 범위와 실제 원문 해석이 아닌 점을 정리했다.
 
-`test:policy-revisions`는 순수 Java 개정 적용 판단 11건을 실행한다. 원본/비교 내용 분리, 같은 결과 재처리, 낮은 순번·순번 충돌, A→B→A, 수집 실패·비교 방식 불일치를 확인한다. 인증키·DB·Docker가 필요하지 않으며 실제 저장·동시성 제어를 검증한 것은 아니다. [개정 적용 판단](policy-revision-application.md)에 구현·미구현 범위를 구분했다. 같은 정책 패키지의 새 테스트가 모집 검사에 섞이지 않도록 `test:recruitment`는 `Recruitment*`만 선택한다.
-
 `test:reminders`는 마감 알림 후보 날짜 테스트 17건을 실행한다. 월·연도·윤일 경계, 오늘 후보 구분·지난 날짜 제외, 후보 없음 사유와 개정 변경 후 계산을 확인한다. 인증키·DB·Docker 없이 실행하며 실제 예약·발송 검증은 아니다. [후보 날짜 구현](deadline-reminder-candidates.md)을 참고한다.
-
-`test:ingestion`은 AI 후보·실행/복구 결과 연결·사전 판단·복구 재확인 정책을 실행한다. AI 버전·재사용·실행/복구 응답의 현재 개정 재검사, 사전 비용과 수동 검토 재개 후 간격·최대 횟수를 확인한다. 인증키·DB·Docker 없이 실행하며, 실제 수집은 `test:policy-collection`, 예약·정산은 `test:ai-reservation-db`의 DB 검사로 확인한다.
-
-`test:ai-candidates`는 AI 후보 모델 12건만 실행한다. 현재 개정·원본·생성 방식·요청 순번 검사, 같은 내용 재사용·A→B→A, 늦은 응답·재전달·충돌과 실패·한도 보류의 기존 후보 유지를 확인한다. 인증키·AI·DB 없이 인공 참조 값으로 검사하며 실제 본문 정확성·비용 차단 검증은 아니다. [AI 후보 구현](policy-ai-candidates.md)을 따른다.
-
-`test:ai-candidate-projection`은 실행·복구 결과 연결 8건만 실행한다. 확인한 응답만 현재 정책·최신 요청과 다시 비교하고 결과 미확인·미실행·청구 전용 복구·미적용 복구를 생략하는지 확인한다. 인증키·AI·DB 없이 실행하며 실제 후보 저장·자동 공개 검증은 아니다. [AI 결과 후보 연결](policy-ai-candidate-projection.md)을 따른다.
-
-`test:ai-recovery-policy`는 복구 재확인 순수 정책 11건만 실행한다. 첫 시도, 활성 임대와 재확인 간격, 확인 완료·실패, 수동 검토와 명시적 재개, 완료·만료를 포함한 최대 횟수와 종료 예약을 확인한다. 고정 운영값·자동 작업자·DB 대상 선택 검증은 아니며 [AI 복구 재확인 정책](ai-reservation-recovery-retry-policy.md)을 따른다.
-
-`test:ai-recovery-operations`는 실제 PostgreSQL 18.6에서 내부 운영 조회 5건, 작업 배정 5건과 수동 검토 재개 연결 1건, 총 11건을 실행한다. 오래된 미완료 예약 컷오프·정렬·최대 조회 수, 전체 이력 기반 판단, 조회 뒤 수동 검토 재확인, 재개 이력과 다음 배정, 보류 후보 미배정, 동시 배정 한 건, 동일 요청 재전달을 확인한다. Docker가 필요하며 관리자 API·화면·권한과 실제 공급자 확인 검증은 아니다. [AI 복구 내부 운영 조회](ai-reservation-recovery-operations-query.md), [수동 검토 재개](ai-reservation-recovery-review-resume.md)와 [작업 배정](ai-reservation-recovery-work-assignment.md)을 따른다.
-
-`test:ai-recovery-work`는 실제 PostgreSQL 18.6과 인공 복구 포트로 제한 목록 4건, 작업 실행 기록·시도 연결·heartbeat 집계 12건, 오래된 실행 조회·운영 중단 5건, 총 21건을 실행한다. 보류·중단 후보 뒤의 준비된 후보, 조회 뒤 판단 변경, 조회 개수 제한, 후보 단위 외부 확인 실패 뒤 계속 실행, 실행 ID 재전달·충돌·동시 기동, 완료 집계·전체 실패, 운영 중단 감사 정보, 실행-시도 연결의 상태·작업자·유일성·외래 키 제약, heartbeat 중단 별도 집계·재전달·잘못된 집계 차단과 V8 기록의 V9 마이그레이션을 확인한다. Docker가 필요하며 실제 공급자·주기 스케줄러·운영 재확인 값 검증은 아니다. [AI 복구 제한 목록 실행](ai-reservation-recovery-work-runner.md)과 [작업 실행 기록](ai-reservation-recovery-work-runs.md)을 따른다.
-
-`test:ai-recovery`는 실제 PostgreSQL 18.6에서 복구 소유권·수동 검토 재개·활성 임대 갱신 16건을 실행한다. 획득·완료·만료, 재전달·충돌, 동시 작업자, 재개와 갱신 감사, 소유자·시도 순번·예약·시각 펜싱과 DB 제약을 확인한다. Docker가 필요하며 자동 heartbeat와 실제 공급자 확인 검증은 아니다. [AI 복구 저장소](ai-reservation-recovery.md), [수동 검토 재개](ai-reservation-recovery-review-resume.md), [활성 임대 갱신](ai-reservation-recovery-lease-renewal.md)을 따른다.
-
-`test:ai-recovery-heartbeat`는 DB 없이 관리형 실행기와 Spring 설정 6건을 실행한다. 종료 중 기존 갱신 유지·새 등록 차단, 기한 이후 응답 거절, 인터럽트 복원, 기본·preview 차단과 저장소보다 먼저 정리되는 순서를 확인한다. 실행기는 기본 비활성화이며 명시적 설정과 남은 연결 범위는 [자동 heartbeat](ai-reservation-recovery-heartbeat.md)의 활성화 설정을 따른다.
-
-`test:ai-recovery-execution`은 실제 PostgreSQL 18.6과 인공 복구 포트로 조정자 18건을 실행한다. 기존 다음 예약 획득과 배정된 시도 실행, 트랜잭션 밖 확인, 정산·무과금·취소·청구 대기, 완료·교체·만료 임대와 변경·종료 예약의 펜싱, 외부 확인 중 자동 heartbeat 갱신·갱신 거절 뒤 결과 폐기와 종료 대기 안/밖 청구의 반영 여부를 확인한다. Docker가 필요하며 실제 공급자·운영 작업 스케줄러 검증은 아니다. [인공 복구 조정자](policy-ai-recovery-execution.md)와 [자동 heartbeat](ai-reservation-recovery-heartbeat.md)를 따른다.
-
-`test:ai-admission`은 사전 판단 14건만 실행한다. 후보 재사용, 신규·변경 개정·명시적 재시도, 예산 미설정·0원·기간, 예약액·소수 최대 비용·잔액 경계, 비용 미확인·만료·다른 요청의 비용을 확인한다. 실제 예약·정산·청구 차단은 없으며 [AI 사전 판단 구현](ai-request-admission.md)을 따른다.
 
 `test:ai-reservation-db`는 PostgreSQL 18.6에서 예약·잔액 동시 갱신, 재전달·충돌, 시간·한도 경계, 호출·결과 미확인·정산·취소·무과금 해제, 동시 요청과 DB 제약을 검사한다. Docker가 필요하며 외부 AI나 공급자 청구는 사용하지 않는다. [AI 예약·정산 구현](ai-budget-reservation-lifecycle.md)을 따른다.
 
@@ -177,7 +144,7 @@ npm audit
 
 `test:preview-api`는 마감 API 4건·자격 API 3건·인공 답변 재판정 5건·공통 계약 1건, 총 13건을 실행하며 DB·Docker가 필요하지 않다. `npm run generate:api`는 실제 생성 OpenAPI와 TypeScript를 갱신하고 `check:api-types`는 타입의 최신 여부만 확인한다. 재생성 절차는 [개발 API 안내](reminder-preview-api.md#계약-생성과-검사)를 따른다.
 
-기본 상태·접근 차단 통합 테스트는 다음 2개이며, AI 예약·실행·복구 저장소 검사는 별도 PostgreSQL Testcontainers 테스트로 실행한다.
+기본 상태·접근 차단 통합 테스트는 다음 2개이며, AI 예약·실행 저장소 검사는 별도 PostgreSQL Testcontainers 테스트로 실행한다.
 
 1. 실제 PostgreSQL 조회와 상태 응답 `UP`, 상세 정보 비노출.
 2. 상태 확인 외 경로와 개발 API의 접근 차단, 기본 모드에서 개발 컨트롤러 미등록.
@@ -226,12 +193,6 @@ CI 구성 후에는 macOS arm64의 별도 임시 복사본에서 Node.js 24.20.0
 자격 API 연결 후에는 서버 175건(도메인 165·API/계약 8·실제 DB/기본 차단 2)과 전체 빌드, 웹 45건·생성 타입 검사·린트·타입 검사·빌드를 통과했다. null 허용 enum의 실제 명세도 검사하며 서버 중지 후 복구·개발 200·운영 404를 확인했다. [자격 서버 연결 기록](eligibility-preview-api.md)에 미확인 키보드 흐름과 실제 정책 연결 범위를 정리했다.
 
 인공 답변 재판정 연결 후에는 서버 180건(도메인 165·API/계약 13·실제 DB/기본 차단 2)과 전체 빌드, 웹 53건·생성 계약·린트·타입 검사·빌드를 통과했다. 인공 코드만 전송하고 이전 질문 답변은 재사용하지 않는다. 답변 변경·실패·재시도·운영 404와 미확인 범위는 [재판정 검증 기록](eligibility-answer-trial.md#검증)을 따른다.
-
-정책 개정 적용 모델 추가 후에는 전용 개정 11건·모집 31건 검사와 전체 서버 191건(도메인 176·API/계약 13·실제 DB/기본 차단 2) 및 빌드가 통과했다. 화면·API 계약·스키마는 변경하지 않아 웹 검사·브라우저는 다시 실행하지 않았다. 원본 저장·DB 중복 방지·원천 계약은 미구현이며 [개정 적용 검증](policy-revision-application.md#검증-범위)을 따른다.
-
-AI 후보 개정·버전 검사 추가 후에는 전용 12건과 전체 서버 215건(도메인 200·API/계약 13·실제 DB/기본 차단 2), 빌드가 실패·건너뛰기 없이 통과했다. 이번 DB 검사는 첫 실행에 통과했다. 웹·브라우저·실제 AI는 검사하지 않았고 본문 품질·비용 차단 검증도 아니다. [AI 후보 검증 기록](policy-ai-candidates.md#검증)을 따른다.
-
-AI 요청 전 판단 추가 후에는 전용 14건과 전체 서버 229건(도메인 214·API/계약 13·실제 DB/기본 차단 2), 빌드가 실패·건너뛰기 없이 통과했다. 웹·브라우저·실제 AI·가격 계산·예산 예약은 검사하지 않았다. [사전 판단 검증 기록](ai-request-admission.md#검사)에 확인 범위와 실제 과금 차단이 아닌 점을 구분했다.
 
 AI 예약 상태 추가 후에는 전용 13건과 전체 서버 242건(도메인 227·API/계약 13·실제 DB/기본 차단 2), 빌드가 실패·건너뛰기 없이 통과했다. 웹·브라우저·실제 AI·DB 예약·공급자 청구는 검사하지 않았다. [예약 상태 검증 기록](ai-budget-reservation-lifecycle.md#검사)을 따른다.
 

@@ -15,8 +15,9 @@ import kr.youthpolicymate.ingestion.PolicyAiExecutionPort.Outcome;
 import kr.youthpolicymate.ingestion.PolicyAiExecutionPort.PendingCharge;
 import kr.youthpolicymate.ingestion.PolicyAiExecutionPort.ResponseReceived;
 import kr.youthpolicymate.ingestion.PolicyAiExecutionPort.Uncertain;
-import kr.youthpolicymate.ingestion.PolicyAiRequestAdmission.ReservationRequired;
+import kr.youthpolicymate.ingestion.AiRequestBudget.ReservationRequired;
 import kr.youthpolicymate.ingestion.PolicyAiResult.Generated;
+import kr.youthpolicymate.ingestion.PolicyAiResult.AppliedRevision;
 import kr.youthpolicymate.ingestion.PolicyAiResult.Kind;
 import kr.youthpolicymate.ingestion.PolicyAiResult.Request;
 import kr.youthpolicymate.ingestion.PolicyAiResult.Unavailable;
@@ -25,7 +26,6 @@ import kr.youthpolicymate.policy.PolicyObservation;
 import kr.youthpolicymate.policy.PolicyObservation.ContentFingerprint;
 import kr.youthpolicymate.policy.PolicyObservation.Readable;
 import kr.youthpolicymate.policy.PolicyObservation.SnapshotReference;
-import kr.youthpolicymate.policy.PolicyRevisionState;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -255,8 +255,7 @@ class PolicyAiExecutionCoordinatorTest {
         var observation = new PolicyObservation("synthetic-policy", 1, NOW.minusSeconds(120), new Readable(
                 new SnapshotReference("synthetic-source", "raw-1", "a".repeat(64)),
                 new ContentFingerprint("comparison-a", "b".repeat(64))));
-        var revision = PolicyRevisionState.empty("synthetic-policy").consider(observation)
-                .state().currentRevision().orElseThrow();
+        var revision = new AppliedRevision(1, observation);
         return new Request(revision, Kind.SUMMARY, "generation-a", sequence, NOW.minusSeconds(30));
     }
 

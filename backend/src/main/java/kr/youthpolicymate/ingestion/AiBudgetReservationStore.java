@@ -6,7 +6,7 @@ import static kr.youthpolicymate.ingestion.AiDatabaseTime.sameDatabaseInstant;
 
 import kr.youthpolicymate.ingestion.AiRequestBudget.Balance;
 import kr.youthpolicymate.ingestion.AiRequestBudget.CostCeiling;
-import kr.youthpolicymate.ingestion.PolicyAiRequestAdmission.ReservationRequired;
+import kr.youthpolicymate.ingestion.AiRequestBudget.ReservationRequired;
 import kr.youthpolicymate.ingestion.PolicyAiResult.Request;
 import kr.youthpolicymate.policy.PolicyObservation.Readable;
 import org.springframework.context.annotation.Profile;

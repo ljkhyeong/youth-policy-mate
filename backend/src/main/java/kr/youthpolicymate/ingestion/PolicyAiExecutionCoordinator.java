@@ -9,7 +9,7 @@ import kr.youthpolicymate.ingestion.PolicyAiExecutionPort.Invocation;
 import kr.youthpolicymate.ingestion.PolicyAiExecutionPort.PendingCharge;
 import kr.youthpolicymate.ingestion.PolicyAiExecutionPort.ResponseReceived;
 import kr.youthpolicymate.ingestion.PolicyAiExecutionPort.Uncertain;
-import kr.youthpolicymate.ingestion.PolicyAiRequestAdmission.ReservationRequired;
+import kr.youthpolicymate.ingestion.AiRequestBudget.ReservationRequired;
 
 import java.time.Instant;
 import java.util.Objects;

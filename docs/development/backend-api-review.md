@@ -9,8 +9,8 @@
 | [SMTP](../../backend/src/main/java/kr/youthpolicymate/member/SmtpMemberEmailSender.java) | Boot가 만든 메일 빈을 주입한다. 호스트·포트·인코딩·TLS·타임아웃을 `spring.mail.*` 설정으로 옮겼다. 사용자명에 따라 인증 사용 여부를 정하는 기존 조건만 코드에 남겼다. |
 | [이메일 주소](../../backend/src/main/java/kr/youthpolicymate/member/MemberEmailAddress.java) | 자체 정규식을 제거하고 `@Email`·`@NotBlank`·`@Size(max = 254)`를 선언했다. HTTP 입력은 `@Valid`, 서비스 직접 호출과 발신 주소 설정은 `Validator.validateValue`로 같은 제약을 확인한다. |
 | [OAuth 제공자 저장소](../../backend/src/main/java/kr/youthpolicymate/member/MemberConfiguration.java) | 내부 `Registrations` 클래스를 `InMemoryClientRegistrationRepository`로 교체했다. 변경 불가능한 LinkedHashMap으로 카카오·네이버 순서와 제공자가 없는 상태를 유지한다. |
-| [재시도 정책](../../backend/src/main/java/kr/youthpolicymate/ingestion/AiReservationRecoveryRetryPolicy.java) | `List.copyOf` 이후의 null 원소 검사 3곳을 제거했다. 예약 ID·순번·완료 상태·재시도 간격 검사는 유지한다. |
-| [임대 갱신 스케줄러](../../backend/src/main/java/kr/youthpolicymate/ingestion/PolicyAiRecoveryHeartbeat.java) | 호출되지 않는 `HeartbeatScheduler.scheduled`와 전용 import를 제거했다. 인터페이스와 관리형 스케줄러는 유지한다. |
+| 재시도 정책(`AiReservationRecoveryRetryPolicy`, 2026-10-05 제거) | `List.copyOf` 이후의 null 원소 검사 3곳을 제거했다. 예약 ID·순번·완료 상태·재시도 간격 검사는 유지한다. |
+| 임대 갱신 스케줄러(`PolicyAiRecoveryHeartbeat`, 2026-10-05 제거) | 호출되지 않는 `HeartbeatScheduler.scheduled`와 전용 import를 제거했다. 인터페이스와 관리형 스케줄러는 유지한다. |
 | [정책 답변 검증](../../backend/src/main/java/kr/youthpolicymate/policy/catalog/PolicyQuestions.java) | `validatedAnswers`에 질문·선택지·중복 답변 검증을 모았다. 국가근로장학금·응시료 지원·K-패스·청년주택드림청약통장·서울청년정책네트워크 5개 규칙이 같은 함수를 사용한다. |
 
 ## 설정과 입력 형식
@@ -116,7 +116,7 @@ Temurin 25.0.3을 사용해 `npm run verify -- test:policy-collection`을 실행
 
 `1b1a207`에서 검토한 초기 메모리 수집 모델을 `211307b`에서 제거했다. `CollectionRun`·`CollectionAttempt`·`CollectionPosition` 세 파일과 전용 `CollectionRunTest`를 삭제했다. 다른 실행 코드에서는 참조하지 않았으며 실제 Spring Batch·DB 수집 코드는 변경하지 않았다.
 
-초기 모델의 설계·개발 문서도 삭제하고 연결을 [한 페이지 수집](limited-policy-collection.md)과 [범위 수집](policy-range-collection.md)으로 정리했다. `test:ingestion`은 이제 AI 후보·결과 연결·사전 판단·복구 재확인 정책만 검사한다. 실제 수집 검사는 `test:policy-collection`을 사용한다.
+초기 모델의 설계·개발 문서도 삭제하고 연결을 [한 페이지 수집](limited-policy-collection.md)과 [범위 수집](policy-range-collection.md)으로 정리했다. `test:ingestion`은 당시 AI 후보·결과 연결·사전 판단·복구 재확인 정책만 검사했다(2026-10-05 대상 코드와 함께 삭제). 실제 수집 검사는 `test:policy-collection`을 사용한다.
 
 초기 모델의 검증은 다음 기준으로 정리했다.
 
@@ -196,7 +196,7 @@ Temurin 25.0.3에서 `npm run verify -- check:backend`로 서버 전체 테스�
 
 ### 결정이 필요한 코드
 
-AI 예약 복구 작업과 후보 상태 모델(`AiReservationRecovery*`, `PolicyAiRecovery*`, `PolicyAiCandidateState`, `PolicyAiCandidateResultProjector`, `PolicyAiRequestAdmission`, `PolicyRevisionState`)은 main 19개 파일 3,452줄, 테스트 13개 3,971줄이다. 진입점인 `AiReservationRecoveryWorkRunCoordinator`·`PolicyAiCandidateResultProjector`를 참조하는 운영 코드가 없고, 하트비트 설정은 YAML에 없는 `app.ai-recovery.heartbeat.enabled`가 있어야 생성된다. 운영 코드는 `ReservationRequired`·`AppliedRevision`·복구 상태 타입만 사용한다. 운영 경로에 연결할지 일괄 제거할지 정한 뒤 처리한다. 제거하면 사용 중인 타입을 `AiRequestBudget`·`PolicyAiResult` 쪽으로 옮기고 V2–V9 테이블은 유지한다.
+AI 예약 복구 작업과 후보 상태 모델(`AiReservationRecovery*`, `PolicyAiRecovery*`, `PolicyAiCandidateState`, `PolicyAiCandidateResultProjector`, `PolicyAiRequestAdmission`, `PolicyRevisionState`)은 main 19개 파일 3,452줄, 테스트 13개 3,971줄이다. 진입점인 `AiReservationRecoveryWorkRunCoordinator`·`PolicyAiCandidateResultProjector`를 참조하는 운영 코드가 없고, 하트비트 설정은 YAML에 없는 `app.ai-recovery.heartbeat.enabled`가 있어야 생성된다. 운영 코드는 `ReservationRequired`·`AppliedRevision`·복구 상태 타입만 사용한다. 제거로 결정해 [AI 예약 복구 코드 제거](#ai-예약-복구-코드-제거--2026-10-05-적용)에서 처리했다.
 
 ### 검증
 
@@ -210,3 +210,32 @@ AI 예약 복구 작업과 후보 상태 모델(`AiReservationRecovery*`, `Polic
 - `exportPreviewOpenApi`·`exportPolicyOpenApi`를 실행해 두 계약 파일의 해시가 실행 전과 같음을 확인했다.
 - 3103 포트의 운영 모드 웹에서 `/dev` 화면 8개는 HTTP 404, `/conditions`와 관리자 AI 추출·조건 검토·이메일 발송 화면은 200이었다. 확인 후 서버를 종료했고 기존 3000 개발 서버는 변경하지 않았다.
 - 테스트 이후에는 이 문서만 추가했다.
+
+## AI 예약 복구 코드 제거 — 2026-10-05 적용
+
+[결정이 필요한 코드](#결정이-필요한-코드)를 운영 경로에 연결하지 않고 제거하기로 정했다.
+
+- 진입점(`AiReservationRecoveryWorkRunCoordinator`·`PolicyAiCandidateResultProjector`)을 호출하는 운영 코드가 없었고, 하트비트는 설정 파일에 없는 속성을 켜야 생성됐다. 실제로 실행된 적이 없는 코드다.
+- 운영 AI 요청은 결과가 미확인이면 예약을 유지하고 재호출하지 않는다. 운영자가 청구·무과금을 확인한 뒤 `ai:policy-rules`의 `settle`·`no-charge`로 정산·해제한다([규칙 추출](ai-rule-drafts.md)). 단일 홈서버·AI 비활성 상태에서 임대·하트비트·다중 작업자 조정은 쓰이지 않는다.
+- 자동 재확인이 필요해지면 제거 직전 커밋 `31451b3`의 코드·문서를 참고해 다시 설계한다.
+
+| 대상 | 변경 |
+|---|---|
+| 서버 | 예약 복구(`AiReservationRecovery*`·`PolicyAiRecovery*`), 후보 상태(`PolicyAiCandidateState`·`PolicyAiCandidateResultProjector`), 요청 전 판단(`PolicyAiRequestAdmission`), 개정 적용(`PolicyRevisionState`)의 main 19개와 테스트 13개를 삭제했다. |
+| 옮긴 타입 | 운영 코드가 쓰던 `ReservationRequired`는 `AiRequestBudget`, `AppliedRevision`은 `PolicyAiResult`로 옮겼다. 필드·검증은 같다. `AiRequestBudget`은 중첩 타입만 담는 클래스가 됐다. |
+| 예약 수명주기 | `AiBudgetReservationLifecycleStore`의 `*UnderRecovery` 메서드·복구 시도 펜스·`RECOVERY_*` 결과를 삭제했다. 운영 메서드의 시그니처·트랜잭션·동작은 같다. 삭제한 모델만 쓰던 `PolicyObservation.Failed`도 삭제했다. |
+| DB | V3–V9 테이블은 유지한다. 적용한 마이그레이션을 고치지 않았고 테이블 삭제 마이그레이션도 추가하지 않았다. |
+| 스크립트 | `test:ingestion`·`test:policy-revisions`·`test:ai-candidates`·`test:ai-candidate-projection`·`test:ai-admission`과 `test:ai-recovery*` 6개를 삭제했다. 이 문서 앞부분의 과거 기록에 있는 해당 명령은 더 실행할 수 없다. |
+| 문서·스킬 | 삭제한 코드의 구현 기록 14개와 복구 설계 문서를 삭제했다. 요청 판단·AI 후보·개정 적용 설계 문서는 AI 처리를 켤 때의 설계 근거로 남기고 상태만 고쳤다. README·로컬 개발·실행·예약 문서와 수집·검증 스킬의 참조를 정리했다. |
+
+추적 파일 기준 약 8,700줄이 줄었다.
+
+### 검증
+
+| 명령 | 결과 | 로그 |
+|---|---|---|
+| `npm run verify -- compile:backend` | 통과 | `.local/verification/1791169237913-ff86b905.log` |
+| `npm run verify -- check:backend` | 서버 전체 테스트·빌드 통과(실패·건너뜀 없음). 삭제한 테스트만큼 건수가 줄고 실행 시간은 약 250초에서 90초로 줄었다 | `.local/verification/1791169605696-d336b067.log` |
+
+- 변경 검토에서 검증 스킬의 함께 볼 검사, 설계 문서의 현재형 서술, 과거 기록의 삭제된 명령 안내를 찾아 고쳤다.
+- 배포된 DB의 V3–V9 테이블에 행이 남았는지는 확인하지 않았다. 코드가 운영 경로에 연결된 적이 없어 비어 있을 것으로 본다.

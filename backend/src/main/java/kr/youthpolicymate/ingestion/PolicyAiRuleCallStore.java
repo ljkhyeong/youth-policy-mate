@@ -1,7 +1,7 @@
 package kr.youthpolicymate.ingestion;
 
 import kr.youthpolicymate.policy.PolicyObservation;
-import kr.youthpolicymate.policy.PolicyRevisionState.AppliedRevision;
+import kr.youthpolicymate.ingestion.PolicyAiResult.AppliedRevision;
 import org.springframework.context.annotation.Profile;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
@@ -58,7 +58,7 @@ public class PolicyAiRuleCallStore {
         var until = settings.validUntil().isBefore(end) ? settings.validUntil() : end;
         var cost = new AiRequestBudget.CostCeiling(request(source), OpenAiRuleClient.PROMPT_VERSION + "/" + settings.pricingVersion(),
                 until, settings.maximumWon(inputTokens));
-        var attempt = reservations.reserve(source.id().toString(), new PolicyAiRequestAdmission.ReservationRequired(balance, cost), at);
+        var attempt = reservations.reserve(source.id().toString(), new AiRequestBudget.ReservationRequired(balance, cost), at);
         if (attempt.decision() != AiBudgetReservationStore.Decision.RESERVED)
             throw new IllegalStateException("AI 예산 예약 보류: " + attempt.decision());
         jdbc.sql("""

@@ -10,14 +10,14 @@ import kr.youthpolicymate.ingestion.AiBudgetReservationState.UncertainOutcome;
 import kr.youthpolicymate.ingestion.AiBudgetReservationState.UncertainReason;
 import kr.youthpolicymate.ingestion.AiRequestBudget.Balance;
 import kr.youthpolicymate.ingestion.AiRequestBudget.CostCeiling;
-import kr.youthpolicymate.ingestion.PolicyAiRequestAdmission.ReservationRequired;
+import kr.youthpolicymate.ingestion.AiRequestBudget.ReservationRequired;
+import kr.youthpolicymate.ingestion.PolicyAiResult.AppliedRevision;
 import kr.youthpolicymate.ingestion.PolicyAiResult.Kind;
 import kr.youthpolicymate.ingestion.PolicyAiResult.Request;
 import kr.youthpolicymate.policy.PolicyObservation;
 import kr.youthpolicymate.policy.PolicyObservation.ContentFingerprint;
 import kr.youthpolicymate.policy.PolicyObservation.Readable;
 import kr.youthpolicymate.policy.PolicyObservation.SnapshotReference;
-import kr.youthpolicymate.policy.PolicyRevisionState;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -433,8 +433,7 @@ class AiBudgetReservationStoreTest {
                 NOW.minusSeconds(120).plusNanos(123_456_789), new Readable(
                 new SnapshotReference("synthetic-source", "raw-1", "a".repeat(64)),
                 new ContentFingerprint("comparison-a", "b".repeat(64))));
-        var revision = PolicyRevisionState.empty("synthetic-policy").consider(observation)
-                .state().currentRevision().orElseThrow();
+        var revision = new AppliedRevision(1, observation);
         return new Request(revision, Kind.SUMMARY, "generation-a", sequence,
                 NOW.minusSeconds(30).plusNanos(987_654_321));
     }

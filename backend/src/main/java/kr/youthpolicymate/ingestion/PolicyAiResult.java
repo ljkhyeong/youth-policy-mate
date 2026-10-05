@@ -1,6 +1,6 @@
 package kr.youthpolicymate.ingestion;
 
-import kr.youthpolicymate.policy.PolicyRevisionState.AppliedRevision;
+import kr.youthpolicymate.policy.PolicyObservation;
 
 import java.time.Instant;
 import java.util.Objects;
@@ -27,6 +27,15 @@ public record PolicyAiResult(Request request, Instant recordedAt, Outcome outcom
         }
 
         public String policyId() { return sourceRevision.observation().policyId(); }
+    }
+
+    // observation에는 이 개정을 만든 원본 근거·비교 내용·수집 순번·확인 시각이 함께 남는다.
+    public record AppliedRevision(long number, PolicyObservation observation) {
+        public AppliedRevision {
+            if (number < 1 || observation == null || !(observation.outcome() instanceof PolicyObservation.Readable)) {
+                throw new IllegalArgumentException("적용 개정에는 양수 번호와 표시 가능한 수집 결과가 필요합니다.");
+            }
+        }
     }
 
     public enum Kind { SUMMARY, CONDITION_EXTRACTION }

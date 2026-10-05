@@ -1,6 +1,6 @@
 # 정책 수집·판정 데이터 구조 초안
 
-- 상태: 원천 데이터·저장 구조 설계 초안. 2026-09-05에 목록·상세 성공 응답을 확인하고 V10의 소량 정책 저장·조회 테이블을 추가했다. 현재 구현은 [정책 조회 안내](../development/policy-catalog.md)를 따른다. 아래 내용은 자동 수집·판정까지 포함한 설계 초안이다. AI 예산·요청 예약 테이블은 이 초안과 별도로 구현했다. 독립적인 [판정 결과 집계](../development/eligibility-decision.md), [연령](../development/age-condition.md)·[거주](../development/residence-condition.md)·[단일 취업](../development/employment-condition.md)·[소득 구간](../development/income-condition.md) 비교기와 [개정 적용 판단](../development/policy-revision-application.md)은 순수 모델로 구현
+- 상태: 원천 데이터·저장 구조 설계 초안. 2026-09-05에 목록·상세 성공 응답을 확인하고 V10의 소량 정책 저장·조회 테이블을 추가했다. 현재 구현은 [정책 조회 안내](../development/policy-catalog.md)를 따른다. 아래 내용은 자동 수집·판정까지 포함한 설계 초안이다. AI 예산·요청 예약 테이블은 이 초안과 별도로 구현했다. 독립적인 [판정 결과 집계](../development/eligibility-decision.md), [연령](../development/age-condition.md)·[거주](../development/residence-condition.md)·[단일 취업](../development/employment-condition.md)·[소득 구간](../development/income-condition.md) 비교기는 순수 모델로 구현
 - 제품 기준: [PRD-0001](../PRD/0001_product-baseline/spec.md)
 - 기술 기준: [ADR-0001](../ADR/0001_기술스택과_책임_분리.md)
 - 조사 근거: [온통청년 API 계약 조사](../research/ontong-api-contract.md)
@@ -22,7 +22,7 @@
 
 페이지·항목의 시도, 부분 실패와 재처리 위치는 [한 페이지 수집](../development/limited-policy-collection.md)과 [범위 수집](../development/policy-range-collection.md)을 따른다. 실제 API·DB 원본·항목 이력·Spring Batch를 연결했으며, 저장 원본 재처리·지정 범위 순회·설정 기반 정기 실행을 제공한다.
 
-AI 파생 결과의 개정·원본·생성 방식·요청 순번은 [AI 후보 설계](policy-ai-candidates.md)와 [내부 모델 구현](../development/policy-ai-candidates.md)을 따른다. 후보 참조의 수용·재사용만 확인하며 실제 AI 호출·본문 검증·자격 규칙 승격·저장은 아직 없다.
+AI 파생 결과의 개정·원본·생성 방식·요청 순번은 [AI 후보 설계](policy-ai-candidates.md)를 따른다. 이를 담았던 순수 모델은 운영 경로에 연결되지 않아 제거했다. 현재 AI 규칙 초안 생성과 검토는 [규칙 추출](../development/ai-rule-drafts.md)을 따른다.
 
 ## 2. 정규화한 정책의 묶음
 

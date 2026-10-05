@@ -2,7 +2,6 @@ package kr.youthpolicymate.policy;
 
 import java.time.Instant;
 import java.util.Objects;
-import java.util.Optional;
 
 // 원천 DTO가 아니다. 수집 경계에서 식별·확인한 한 정책의 결과를 받는다.
 public record PolicyObservation(
@@ -18,7 +17,7 @@ public record PolicyObservation(
         outcome = Objects.requireNonNull(outcome, "수집 결과가 필요합니다.");
     }
 
-    public sealed interface Outcome permits Readable, Failed {}
+    public sealed interface Outcome permits Readable {}
 
     // 표시 가능 여부이며, 자격 조건이 모두 해석되었다는 뜻은 아니다.
     public record Readable(SnapshotReference snapshot, ContentFingerprint content) implements Outcome {
@@ -27,15 +26,6 @@ public record PolicyObservation(
             content = Objects.requireNonNull(content, "비교 내용 식별값이 필요합니다.");
         }
     }
-
-    public record Failed(FailureReason reason, Optional<SnapshotReference> snapshot) implements Outcome {
-        public Failed {
-            reason = Objects.requireNonNull(reason, "수집 실패 분류가 필요합니다.");
-            snapshot = Objects.requireNonNull(snapshot, "확보한 원본 참조의 존재 여부가 필요합니다.");
-        }
-    }
-
-    public enum FailureReason { FETCH_FAILED, UNREADABLE_CONTENT }
 
     // 원문 자체나 키가 포함된 요청 URL을 담지 않는다. 저장 구현은 별도다.
     public record SnapshotReference(String sourceName, String snapshotId, String bodySha256) {

@@ -60,7 +60,7 @@ public class PolicyAiRuleGenerationService {
             return new PolicyAiExecutionPort.ResponseReceived(new PolicyAiResult(invocation.request(), clock.instant(), outcome),
                     PolicyAiExecutionPort.PendingCharge.INSTANCE);
         });
-        coordinator.execute(id.toString(), new PolicyAiRequestAdmission.ReservationRequired(calls.balance(call.budgetId()), call.cost(source)),
+        coordinator.execute(id.toString(), new AiRequestBudget.ReservationRequired(calls.balance(call.budgetId()), call.cost(source)),
                 call.reservedAt(), dispatch, () -> calls.dispatch(source, call, dispatch));
         return status(id);
     }

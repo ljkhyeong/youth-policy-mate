@@ -5,14 +5,13 @@ import kr.youthpolicymate.ingestion.PolicyAiResult.Request;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.Objects;
-import java.util.Optional;
 
 // 한도·비용 미확인을 0원으로 대체하지 않는다. 실제 가격 계산·예약·정산은 별도다.
-public record AiRequestBudget(Optional<Balance> balance, Optional<CostCeiling> costCeiling) {
-    public AiRequestBudget {
-        Objects.requireNonNull(balance, "AI 예산 설정 여부가 필요합니다.");
-        Objects.requireNonNull(costCeiling, "요청 최대 비용 확인 여부가 필요합니다.");
-    }
+public final class AiRequestBudget {
+    private AiRequestBudget() {}
+
+    // 이 값만으로 호출하지 않는다. 최신 상태 확인과 요청별 DB 예약 저장이 먼저다.
+    public record ReservationRequired(Balance balance, CostCeiling cost) {}
 
     public record Balance(String budgetId, Instant startsAt, Instant endsAt, BigDecimal limitWon,
                           BigDecimal confirmedWon, BigDecimal reservedWon) {

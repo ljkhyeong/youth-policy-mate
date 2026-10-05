@@ -26,8 +26,6 @@ describe("홈의 접수 중인 정책", () => {
     expect(html).toContain('href="/policies?recruitmentStatus=OPEN"');
     expect(html).toContain("5건 모두 보기");
     expect(html).toContain("D-43");
-    expect(html).toContain('href="/policies?category=JOB"');
-    expect(html).toContain('href="/policies?category=PARTICIPATION"');
   });
 
   it("접수 기간인 정책이 없으면 그 사실과 상시 모집 목록을 안내한다", async () => {
@@ -46,20 +44,25 @@ describe("홈의 접수 중인 정책", () => {
     expect(html).toContain('href="/conditions"');
   });
 
-  it("분야 타일에 분야별 정책 수를 표시하고, 수를 불러오지 못하면 분야 이름만 표시한다", async () => {
+  it("상황을 여러 개 골라 해당 분야를 모두 담은 정책 목록으로 이동하고 분야와 정책 수를 함께 보여준다", async () => {
     vi.mocked(loadPolicies).mockResolvedValue({ status: "unavailable" });
     vi.mocked(loadCategoryCounts).mockResolvedValue({ status: "available", data: { total: 40, items: [
       { category: "JOB", count: 18 }, { category: "HOUSING", count: 0 }, { category: "EDUCATION", count: 7 },
       { category: "FINANCE", count: 9 }, { category: "PARTICIPATION", count: 4 },
     ] } });
     const html = renderToStaticMarkup(await HomePage());
-    expect(html).toContain("일자리<span class=\"category-tile-count\"> 18건</span>");
-    expect(html).toContain("주거<span class=\"category-tile-count\"> 0건</span>");
-    expect(html).toContain("전체 정책<span class=\"category-tile-count\"> 40건</span>");
+    expect(html).toContain('<form class="situation-form" action="/policies">');
+    expect(html.match(/type="checkbox" name="category"/g)).toHaveLength(5);
+    expect(html).toContain('value="JOB"');
+    expect(html).toContain("일을 구하고 있어요");
+    expect(html).toContain("일자리 · 18건");
+    expect(html).toContain("주거 · 0건");
+    expect(html).toContain("고르지 않고 전체 40건 보기");
 
     vi.mocked(loadCategoryCounts).mockResolvedValue({ status: "unavailable" });
     const fallback = renderToStaticMarkup(await HomePage());
-    expect(fallback).toContain('href="/policies?category=JOB"');
-    expect(fallback).not.toContain("category-tile-count");
+    expect(fallback).toContain('value="PARTICIPATION"');
+    expect(fallback).toContain("<span>일자리</span>");
+    expect(fallback).not.toContain("건 보기");
   });
 });

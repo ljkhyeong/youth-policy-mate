@@ -24,9 +24,9 @@ async function load<T>(path: string): Promise<Loaded<T>> {
 }
 
 export function loadPolicies(query: string, page: number, questionsOnly = false, recruitmentStatus: RecruitmentFilter = "", pageSize = 20,
-  category?: PolicyCategoryKey) {
+  categories: readonly PolicyCategoryKey[] = []) {
   const search = new URLSearchParams({ q: query, page: String(page), pageSize: String(pageSize) });
-  if (category) search.set("category", category);
+  for (const category of categories) search.append("category", category);
   if (questionsOnly) search.set("questionsOnly", "true");
   if (recruitmentStatus) search.set("recruitmentStatus", recruitmentStatus);
   return load<PolicyList>(`/api/v1/policies?${search}`);

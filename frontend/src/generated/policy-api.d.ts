@@ -565,7 +565,7 @@ export interface paths {
             readonly path?: never;
             readonly cookie?: never;
         };
-        /** 정책 검색·분야·질문 제공 여부·접수 상태 필터. 접수 중인 정책을 먼저, 마감 임박순으로 정렬 */
+        /** 정책 검색·분야(여러 개는 하나라도 해당)·질문 제공 여부·접수 상태 필터. 접수 중인 정책을 먼저, 마감 임박순으로 정렬 */
         readonly get: operations["listPolicies"];
         readonly put?: never;
         readonly post?: never;
@@ -3516,7 +3516,7 @@ export interface operations {
                 readonly pageSize?: number;
                 readonly questionsOnly?: boolean;
                 readonly recruitmentStatus?: "BEFORE_OPENING" | "OPEN" | "CLOSED" | "ROLLING" | "UNTIL_EXHAUSTED" | "UNKNOWN";
-                readonly category?: "JOB" | "HOUSING" | "EDUCATION" | "FINANCE" | "PARTICIPATION";
+                readonly category?: readonly ("JOB" | "HOUSING" | "EDUCATION" | "FINANCE" | "PARTICIPATION")[];
             };
             readonly header?: never;
             readonly path?: never;

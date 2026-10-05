@@ -153,12 +153,12 @@ public class PolicyCatalogStore {
 
     @Transactional(readOnly = true, isolation = org.springframework.transaction.annotation.Isolation.REPEATABLE_READ)
     public PolicyListResponse list(String query, int page, int pageSize, boolean questionsOnly, RecruitmentStatus recruitmentStatus, Instant now) {
-        return list(query, page, pageSize, questionsOnly, recruitmentStatus, null, now);
+        return list(query, page, pageSize, questionsOnly, recruitmentStatus, java.util.Set.of(), now);
     }
 
     @Transactional(readOnly = true, isolation = org.springframework.transaction.annotation.Isolation.REPEATABLE_READ)
     public PolicyListResponse list(String query, int page, int pageSize, boolean questionsOnly, RecruitmentStatus recruitmentStatus,
-                                   PolicyCategory category, Instant now) {
+                                   java.util.Set<PolicyCategory> categories, Instant now) {
         var reviewed = reviewedHashes(rules.published(), now);
         var parameters = new HashMap<String, Object>();
         parameters.put("query", query);
@@ -176,9 +176,10 @@ public class PolicyCatalogStore {
             where += " AND " + alternatives;
         }
         where += recruitmentFilter(recruitmentStatus, now, parameters);
-        if (category != null) {
+        // 여러 분야를 고르면 하나라도 해당하는 정책을 보여준다. 한 정책은 EXISTS로 한 번만 센다.
+        if (!categories.isEmpty()) {
             where += " AND " + categoryMatch("categories");
-            parameters.put("categories", category.labels());
+            parameters.put("categories", categories.stream().flatMap(category -> category.labels().stream()).toList());
         }
         var total = jdbc.sql("SELECT count(*) FROM policies p" + where).params(parameters).query(Long.class).single();
         parameters.put("orderNow", now.atOffset(ZoneOffset.UTC));

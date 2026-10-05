@@ -1021,10 +1021,10 @@ class PolicyCatalogTest {
         item.put("plcyNo", "988").put("lclsfNm", "일자리").put("aplyYmd", "20261001 ~ 20261031"); save("before-later", AT.plusSeconds(8));
 
         // 마감 임박순은 접수 중에만 적용하고 접수 전은 최근 수집순이다.
-        var numbers = store.list("", 1, 20, false, null, null, AT).items().stream().map(PolicySummary::policyNumber).toList();
+        var numbers = store.list("", 1, 20, false, null, java.util.Set.of(), AT).items().stream().map(PolicySummary::policyNumber).toList();
         assertThat(numbers).containsSubsequence("986", "984", "982", "988", "985", "983", "981");
-        assertThat(store.list("", 1, 20, false, null, PolicyCategory.JOB, AT).total()).isEqualTo(6);
-        assertThat(store.list("", 1, 20, false, kr.youthpolicymate.policy.RecruitmentStatus.OPEN, PolicyCategory.JOB, AT).items())
+        assertThat(store.list("", 1, 20, false, null, java.util.Set.of(PolicyCategory.JOB), AT).total()).isEqualTo(6);
+        assertThat(store.list("", 1, 20, false, kr.youthpolicymate.policy.RecruitmentStatus.OPEN, java.util.Set.of(PolicyCategory.JOB), AT).items())
                 .extracting(PolicySummary::policyNumber).containsExactly("984", "982");
         mvc.perform(get("/api/v1/policies").param("category", "FINANCE")).andExpect(status().isOk())
                 .andExpect(jsonPath("$.total").value(2)).andExpect(jsonPath("$.items[0].policyNumber").value("986"))
@@ -1053,13 +1053,17 @@ class PolicyCatalogTest {
                 .andExpect(jsonPath("$.total").value(9))
                 .andExpect(jsonPath("$.items[*].category").value(org.hamcrest.Matchers.contains("JOB", "HOUSING", "EDUCATION", "FINANCE", "PARTICIPATION")))
                 .andExpect(jsonPath("$.items[*].count").value(org.hamcrest.Matchers.contains(3, 2, 1, 3, 1)));
-        // 타일의 수와 이동한 목록의 전체 건수가 같아야 한다.
+        // 홈 상황 항목의 수와 그 분야 하나만 고른 목록의 전체 건수가 같아야 한다.
         for (var count : store.categoryCounts().items()) {
-            assertThat(store.list("", 1, 20, false, null, count.category(), AT).total()).as(count.category().name()).isEqualTo(count.count());
+            assertThat(store.list("", 1, 20, false, null, java.util.Set.of(count.category()), AT).total()).as(count.category().name()).isEqualTo(count.count());
         }
         mvc.perform(get("/api/v1/policies").param("category", "HOUSING")).andExpect(status().isOk())
                 .andExpect(jsonPath("$.items[*].policyNumber").value(org.hamcrest.Matchers.contains("999", "995")))
                 .andExpect(jsonPath("$.items[1].category").value("일자리,주거"));
+        // 여러 분야는 하나라도 해당하면 포함하고, 두 분야에 모두 속한 995는 한 번만 센다.
+        mvc.perform(get("/api/v1/policies").param("category", "JOB", "HOUSING")).andExpect(status().isOk())
+                .andExpect(jsonPath("$.total").value(4))
+                .andExpect(jsonPath("$.items[*].policyNumber").value(org.hamcrest.Matchers.containsInAnyOrder("991", "992", "995", "999")));
     }
 
     @Test @DisplayName("기존 정책을 삭제하거나 개정을 늘리지 않고 접수 검색 기간을 이전한다")

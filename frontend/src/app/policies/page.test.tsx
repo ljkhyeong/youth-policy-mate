@@ -40,7 +40,7 @@ describe("정책 목록의 공통요건 질문 탐색", () => {
   it("검색·페이지 이동에 필터를 유지하고 필터 전환은 첫 페이지로 돌아간다", async () => {
     vi.mocked(loadPolicies).mockResolvedValue({ status: "available", data: { items: [policy], page: 2, pageSize: 20, total: 41, hasNext: true } });
     const html = renderToStaticMarkup(await PoliciesPage({ searchParams: Promise.resolve({ q: "시험&지원", page: "2", questionsOnly: "true", recruitmentStatus: "OPEN" }) }));
-    expect(loadPolicies).toHaveBeenCalledWith("시험&지원", 2, true, "OPEN", 20, undefined);
+    expect(loadPolicies).toHaveBeenCalledWith("시험&지원", 2, true, "OPEN", 20, []);
     expect(html).toContain('type="hidden" name="questionsOnly" value="true"');
     const query = encodeURIComponent("시험&지원");
     expect(html).toContain(`href="/policies?q=${query}&amp;page=3&amp;questionsOnly=true&amp;recruitmentStatus=OPEN"`);
@@ -55,7 +55,7 @@ describe("정책 목록의 공통요건 질문 탐색", () => {
   it("질문이 없는 정책에는 질문 이동을 표시하지 않고 전체 조회를 유지한다", async () => {
     vi.mocked(loadPolicies).mockResolvedValue({ status: "available", data: { items: [{ ...policy, questionnaireAvailable: false }], page: 1, pageSize: 20, total: 1, hasNext: false } });
     const html = renderToStaticMarkup(await PoliciesPage({ searchParams: Promise.resolve({}) }));
-    expect(loadPolicies).toHaveBeenCalledWith("", 1, false, "", 20, undefined);
+    expect(loadPolicies).toHaveBeenCalledWith("", 1, false, "", 20, []);
     expect(html).toContain('href="/policies/123"');
     expect(html).not.toContain('href="/policies/123#policy-questions"');
     expect(html).not.toContain('type="hidden" name="questionsOnly"');
@@ -77,21 +77,28 @@ describe("정책 목록의 공통요건 질문 탐색", () => {
     expect(html).not.toContain("질문이 있는 정책 중 검색 결과가 없어요");
   });
 
-  it("분야 필터는 검색어·접수 상태·질문 필터를 유지하고 잘못된 분야는 무시한다", async () => {
+  it("분야 필터는 여러 개를 더하고 빼며 검색어·접수 상태·질문 필터를 유지하고 잘못된 분야는 무시한다", async () => {
     vi.mocked(loadPolicies).mockResolvedValue({ status: "available", data: { items: [policy], page: 1, pageSize: 20, total: 21, hasNext: true } });
-    const html = renderToStaticMarkup(await PoliciesPage({ searchParams: Promise.resolve({ q: "지원", questionsOnly: "true", recruitmentStatus: "OPEN", category: "HOUSING" }) }));
-    expect(html).toContain('href="/policies?q=%EC%A7%80%EC%9B%90&amp;page=2&amp;questionsOnly=true&amp;recruitmentStatus=OPEN&amp;category=HOUSING"');
-    expect(html).toContain(">마감 임박순<");
-    expect(loadPolicies).toHaveBeenCalledWith("지원", 1, true, "OPEN", 20, "HOUSING");
+    const html = renderToStaticMarkup(await PoliciesPage({ searchParams: Promise.resolve({ q: "지원", questionsOnly: "true", recruitmentStatus: "OPEN", category: ["HOUSING", "JOB", "UNKNOWN_CATEGORY"] }) }));
+    const base = "/policies?q=%EC%A7%80%EC%9B%90&amp;page=1&amp;questionsOnly=true&amp;recruitmentStatus=OPEN";
+    // 화면 순서(일자리, 주거…)로 정리해 다음 페이지에도 유지한다.
+    expect(loadPolicies).toHaveBeenCalledWith("지원", 1, true, "OPEN", 20, ["JOB", "HOUSING"]);
+    expect(html).toContain('href="/policies?q=%EC%A7%80%EC%9B%90&amp;page=2&amp;questionsOnly=true&amp;recruitmentStatus=OPEN&amp;category=JOB&amp;category=HOUSING"');
+    expect(html).toContain('type="hidden" name="category" value="JOB"');
     expect(html).toContain('type="hidden" name="category" value="HOUSING"');
-    expect(html).toContain('href="/policies?q=%EC%A7%80%EC%9B%90&amp;page=1&amp;questionsOnly=true&amp;recruitmentStatus=OPEN&amp;category=JOB"');
-    expect(html).toContain('href="/policies?q=%EC%A7%80%EC%9B%90&amp;page=1&amp;questionsOnly=true&amp;recruitmentStatus=OPEN"');
-    expect(html).toMatch(/aria-current="page"[^>]*>주거<|data-category="HOUSING" aria-current="page">주거</);
-    expect(html).toContain("‘지원’ 검색 결과 · 주거 · 접수 기간");
+    // 고른 분야를 누르면 빼고, 고르지 않은 분야를 누르면 더한다.
+    expect(html).toContain(`data-category="HOUSING" data-selected="true" href="${base}&amp;category=JOB">주거<span class="sr-only"> 선택됨, 누르면 해제</span>`);
+    expect(html).toContain(`data-category="FINANCE" href="${base}&amp;category=JOB&amp;category=HOUSING&amp;category=FINANCE">금융·복지·문화</a>`);
+    expect(html).toContain(`href="${base}">전체 분야</a>`);
+    expect(html).toContain("‘지원’ 검색 결과 · 일자리, 주거 · 접수 기간");
+    expect(html).toContain(">마감 임박순<");
     vi.mocked(loadPolicies).mockClear();
     const unfiltered = renderToStaticMarkup(await PoliciesPage({ searchParams: Promise.resolve({ category: "UNKNOWN_CATEGORY" }) }));
-    expect(loadPolicies).toHaveBeenCalledWith("", 1, false, "", 20, undefined);
+    expect(loadPolicies).toHaveBeenCalledWith("", 1, false, "", 20, []);
+    expect(unfiltered).toContain('data-selected="true" href="/policies?q=&amp;page=1">전체 분야<span class="sr-only"> 선택됨</span>');
     expect(unfiltered).toContain("접수 중인 정책부터 마감 임박순");
+    const categoryOnly = renderToStaticMarkup(await PoliciesPage({ searchParams: Promise.resolve({ category: ["EDUCATION", "JOB"] }) }));
+    expect(categoryOnly).toContain('<p role="status">일자리, 교육·직업훈련 <strong>');
     const closed = renderToStaticMarkup(await PoliciesPage({ searchParams: Promise.resolve({ recruitmentStatus: "CLOSED" }) }));
     expect(closed).not.toContain("policy-order-note");
   });

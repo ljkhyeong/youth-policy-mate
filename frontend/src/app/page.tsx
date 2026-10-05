@@ -2,6 +2,7 @@ import Link from "next/link";
 import { SiteShell } from "@/components/site-shell";
 import { publicMetadata, siteName, siteDescription } from "@/lib/public-metadata";
 import { CategoryChips, CategoryIcon, policyCategories, type PolicyCategoryKey } from "@/features/policies/policy-category";
+import { policySituations } from "@/features/policies/policy-situations";
 import { formatPolicyPeriod } from "@/features/policies/policy-period";
 import { RecruitmentBadge } from "@/features/policies/policy-recruitment";
 import { loadCategoryCounts, loadPolicies } from "./policies/load-policies";
@@ -13,22 +14,45 @@ const searchTopics = ["창업", "취업", "장학금", "대출"];
 
 export default async function HomePage() {
   const [open, counts] = await Promise.all([loadPolicies("", 1, false, "OPEN", 4), loadCategoryCounts()]);
-  // 수를 불러오지 못하면 분야 이름만 표시한다. 앞의 공백은 링크 이름을 "일자리 18건"으로 읽히게 한다.
-  const countOf = (key: PolicyCategoryKey | "ALL") => {
-    if (counts.status !== "available") return null;
-    const count = key === "ALL" ? counts.data.total : counts.data.items.find(item => item.category === key)?.count;
-    return typeof count === "number" ? <span className="category-tile-count"> {count}건</span> : null;
-  };
+  // 수를 불러오지 못하면 상황과 분야 이름만 표시한다.
+  const countOf = (key: PolicyCategoryKey) => counts.status === "available" ? counts.data.items.find(item => item.category === key)?.count : undefined;
+  const categoryName = (key: PolicyCategoryKey) => policyCategories.find(item => item.key === key)?.label ?? "";
   return (
     <SiteShell active="home">
       <main id="main-content" className="home-main">
         <div className="home-start">
           <section aria-labelledby="intro-title" className="home-intro">
             <p className="location-label">서울 청년 정책</p>
-            <h1 id="intro-title">어떤 지원이<br />필요하세요?</h1>
-            <p>분야를 고르거나 검색해서 공식 정책 안내를 확인하세요.</p>
+            <h1 id="intro-title">요즘 어떤<br />상황이세요?</h1>
+            <p>해당하는 상황을 고르면 맞는 분야의 정책을 모아 보여드려요. 여러 개 골라도 돼요.</p>
+          </section>
+
+          {/* 상황은 분야 필터다. 고른 분야를 모두 담아 정책 목록으로 이동하고, 고르지 않으면 전체 목록을 보여준다. */}
+          <form className="situation-form" action="/policies">
+            <fieldset>
+              <legend className="sr-only">상황 선택, 여러 개 선택 가능</legend>
+              {policySituations.map(situation => {
+                const count = countOf(situation.category);
+                return <label key={situation.category} className="situation-option" data-category={situation.category}>
+                  <input type="checkbox" name="category" value={situation.category} />
+                  <span className="situation-icon"><CategoryIcon category={situation.category} /></span>
+                  <span className="situation-text">
+                    <strong>{situation.label}</strong>
+                    <span>{typeof count === "number" ? `${categoryName(situation.category)} · ${count}건` : categoryName(situation.category)}</span>
+                  </span>
+                  <span className="situation-check" aria-hidden="true" />
+                </label>;
+              })}
+            </fieldset>
+            <div className="situation-actions">
+              <button type="submit" className="button-primary button-block">고른 상황의 정책 보기</button>
+              <Link href="/policies" className="text-link">{counts.status === "available" ? `고르지 않고 전체 ${counts.data.total}건 보기` : "고르지 않고 전체 정책 보기"}</Link>
+            </div>
+          </form>
+
+          <section className="home-search" aria-label="정책 검색">
+            <label htmlFor="home-query" className="home-search-label">이름이나 키워드로 찾기</label>
             <form className="policy-search" action="/policies" role="search">
-              <label htmlFor="home-query" className="sr-only">정책 검색</label>
               <input id="home-query" type="search" name="q" maxLength={80} placeholder="장학금, 취업, 대출…" />
               <button type="submit" className="button-primary">검색</button>
             </form>
@@ -37,13 +61,6 @@ export default async function HomePage() {
               {searchTopics.map(topic => <Link key={topic} href={`/policies?q=${encodeURIComponent(topic)}`}>{topic}</Link>)}
             </nav>
           </section>
-
-          <nav className="category-tiles" aria-label="분야로 찾기">
-            {policyCategories.map(category => <Link key={category.key} href={`/policies?category=${category.key}`} className="category-tile" data-category={category.key}>
-              <CategoryIcon category={category.key} />{category.label}{countOf(category.key)}
-            </Link>)}
-            <Link href="/policies" className="category-tile" data-category="ALL"><CategoryIcon category="ALL" />전체 정책{countOf("ALL")}</Link>
-          </nav>
         </div>
 
         {/* 조회에 실패하면 빈 결과로 오해하지 않도록 영역을 표시하지 않는다. */}

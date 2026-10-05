@@ -1,14 +1,14 @@
 # 작업 인계
 
-2026-10-05 기준. 개발 이력은 Git과 [개발 문서](docs/development/)에서 확인한다.
+2026-10-06 기준. 개발 이력은 Git과 [개발 문서](docs/development/)에서 확인한다.
 
 ## 현재 작업
 
-- 원격 `main`은 `e9eb93a`에서 [웹·전체 서버 CI](https://github.com/ljkhyeong/youth-policy-mate/actions/runs/34701273583)를 통과했다. 이후 작업은 `codex/progressive-policy-discovery`에 있으며 원격에는 반영하지 않았다.
-- 이 브랜치는 저장 정책 재조회 초점 수정, Claude Code 스킬, 미사용 코드 정리, 화면 개편(분야 탐색·마감 임박순·D-day), 입력 없이 둘러보는 조건 흐름, 홈 분야 타일의 정책 수, 복수 대분류 정책의 분야별 포함, 홈의 상황 선택과 분야 여러 개 필터([D안](docs/development/interface-design-review.md#2026-10-05-상황으로-시작하는-홈)), 운영 경로에 연결되지 않은 AI 예약 복구 모델 제거([결정 기록](docs/development/backend-api-review.md#ai-예약-복구-코드-제거--2026-10-05-적용)), [지역 필터 조사](docs/research/public-region-filter.md)를 담고 있다.
+- `codex/progressive-policy-discovery`의 작업을 원격 `main`에 반영했다(`e9eb93a`→`12622bc`, 빨리 감기). `12622bc`에서 [웹·전체 서버 CI](https://github.com/ljkhyeong/youth-policy-mate/actions/runs/37329708258)를 통과했다.
+- 반영한 작업은 저장 정책 재조회 초점 수정, Claude Code 스킬, 미사용 코드 정리, 화면 개편(분야 탐색·마감 임박순·D-day), 입력 없이 둘러보는 조건 흐름, 홈 분야 타일의 정책 수, 복수 대분류 정책의 분야별 포함, 홈의 상황 선택과 분야 여러 개 필터([D안](docs/development/interface-design-review.md#2026-10-05-상황으로-시작하는-홈)), 운영 경로에 연결되지 않은 AI 예약 복구 모델 제거([결정 기록](docs/development/backend-api-review.md#ai-예약-복구-코드-제거--2026-10-05-적용)), [지역 필터 조사](docs/research/public-region-filter.md)다.
 - 앞서 접수 중인 K-뉴딜 아카데미에 질문 6개와 기본 연령 비교를 V33 규칙으로 추가했다. [K-뉴딜 아카데미 질문](docs/development/k-newdeal-academy-questions.md)
 - 질문 규칙을 정책마다 검토하기 전에도 모든 정책에서 온통청년 API의 표기 조건(연령 범위·연소득 상한·취업 상태·학력)을 상세와 내 조건 결과에 참고로 보여준다. 판정·정렬에는 쓰지 않고 무관·제한없음은 숨긴다. 로컬 40건 중 16건이 표기 연령을 새로 보여준다. 전체 서버 검사·웹 검사와 로컬 DB 헤드리스 확인을 통과했다. [표기 조건 표시](docs/development/source-condition-display.md)
-- 로컬 DB에는 V33까지 적용돼 있다. 새 브랜치의 원격 CI는 미검증이다. 정기 수집·AI 자동 처리·이메일·알림은 비활성화다. 실제 OAuth·Resend 연동, 이미지 빌드·공유기·TLS·k3s·백업 운영 설정은 사용자가 진행한다. 백업·외부 공급자 데이터의 보관/삭제와 관리자 기록 보관 기준은 남아 있다.
+- 로컬 DB에는 V33까지 적용돼 있다. 정기 수집·AI 자동 처리·이메일·알림은 비활성화다. 실제 OAuth·Resend 연동, 이미지 빌드·공유기·TLS·k3s·백업 운영 설정은 사용자가 진행한다. 백업·외부 공급자 데이터의 보관/삭제와 관리자 기록 보관 기준은 남아 있다.
 
 ## 구현·검증 범위
 
@@ -22,7 +22,7 @@
 - 이메일: 주소 확인·동의·암호화 저장·Outbox·SMTP/Resend 어댑터와 서명 웹훅, [관리자 발송 현황](docs/development/admin-email-deliveries.md)·[공급자 상태 조회](docs/development/email-provider-status.md), [로그인 없는 수신 해제](docs/development/email-unsubscribe.md), [설정 오류 복구](docs/development/email-settings-recovery.md)·[키 점검과 교체 명령](docs/development/email-key-rotation.md)을 구현했다. 실제 공급자 계정·발신 도메인·외부 수신 확인과 운영 키 관리는 남아 있다. [이메일 구현과 설정](docs/development/member-email-reminders.md)
 - AI: 공고 원문·OpenAI 호출·예산 예약·원 응답·규칙 초안을 연결했다. 응답 유실에는 예약을 유지하고 재호출하지 않으며, 미확인 예약은 관리 명령으로 정산·해제한다. 신규/변경 공고의 자동 추출·수동 정산·[프로젝트 월 비용 조회](docs/development/openai-costs.md)를 제공한다. 요청별 청구 자동 대사·정산과 실제 생성 품질 검증은 남아 있다. 모델·요금·월 한도는 설정값으로 받고 미설정 상태에는 호출하지 않는다. [규칙 추출과 설정](docs/development/ai-rule-drafts.md)·[자동 추출](docs/development/ai-rule-automation.md)
 - 백업: [수동 백업·임시 DB 복구 검증](docs/development/database-backup.md)을 제공한다. PostgreSQL 기본 도구를 사용하며 원본 DB를 덮어쓰지 않는다. 정기 백업의 주기·보관 기간·외부 보관과 운영 DB 전환은 미정이다.
-- 검증 기준: 원격 `main`의 `e9eb93a`에서 웹·전체 서버 CI를 통과했다. 이후 브랜치 변경은 로컬 검증만 마쳤으며 최신 명령·로그는 `npm run verify -- status`와 각 문서의 검증 절에 있다. 실제 비용 조회·운영 키 교체·bfcache 저장/복원 전체 과정·공급자 송수신/상태 조회·홈서버 이미지 실행·실제 검색 색인과 새 작업 브랜치의 원격 CI는 미검증이다.
+- 검증 기준: 원격 `main`의 `12622bc`에서 웹·전체 서버 CI를 통과했다. 최신 로컬 명령·로그는 `npm run verify -- status`와 각 문서의 검증 절에 있다. 실제 비용 조회·운영 키 교체·bfcache 저장/복원 전체 과정·공급자 송수신/상태 조회·홈서버 이미지 실행·실제 검색 색인은 미검증이다.
 - 검증 도구의 성공·실패·실행 중 변경 시나리오와 기존 도구 검사를 통과했다. 컴파일·패키징 명령의 Gradle 실행 계획에 테스트 실행이 없음을 확인했다. `npm run verify -- status`에서 실행 기록을 확인한다. 검증 도구를 정리할 당시에는 앱 기능을 변경하지 않아 전체 앱 테스트를 재실행하지 않았다.
 
 ## 남은 작업

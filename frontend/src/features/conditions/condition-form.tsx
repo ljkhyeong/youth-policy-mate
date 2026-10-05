@@ -70,11 +70,10 @@ export function ConditionForm({ today }: { today: string }) {
 
   const reflected = (input.birthDate ?? "") === draft.birthDate && (input.district ?? "") === draft.district
     && (input.employmentStatus ?? "") === draft.employmentStatus;
-  return <section className="condition-panel" aria-label="내 조건 입력과 확인">
-    <details>
-      <summary>생년월일로 연령 비교하기 (선택)</summary>
+  return <section className="condition-panel condition-workspace" aria-label="내 조건 입력과 확인">
+    <details className="condition-disclosure">
+      <summary>생년월일로 연령 비교하기 <span className="condition-optional">선택</span></summary>
     <form ref={formRef} onSubmit={submit} noValidate method="post" autoComplete="off">
-      <div className="form-heading"><h2>생년월일로 더 찾아보기</h2></div>
       <p className="field-help">입력은 선택이에요. 아래 정책부터 둘러봐도 좋아요.</p>
       {Object.values(errors).some(Boolean) && <p role="alert" className="form-error-summary">표시된 입력 항목을 확인해주세요.</p>}
       <div className="form-field">
@@ -85,8 +84,9 @@ export function ConditionForm({ today }: { today: string }) {
         <p id="birthDate-help" className="field-help">생년월일은 확인된 정책의 연령 비교와 상세 질문에 재사용해요. 음력 생일은 양력으로 입력해주세요.</p>
         {errors.birthDate && <p id="birthDate-error" className="field-error">{errors.birthDate}</p>}
       </div>
-      <details>
-        <summary>거주·취업 정보 추가 (선택)</summary>
+      <details className="condition-disclosure is-nested">
+        <summary>거주·취업 정보 추가 <span className="condition-optional">선택</span></summary>
+        <div className="condition-disclosure-body">
         <p className="field-help">이 정보는 저장할 수 있어요. 현재 목록의 자동 비교·정렬에는 사용하지 않으며, 정책별 질문에서 추가 확인해요.</p>
         <div className="form-field">
           <label htmlFor="district">서울 거주 자치구</label>
@@ -103,17 +103,20 @@ export function ConditionForm({ today }: { today: string }) {
           </select>
           {errors.employmentStatus && <p className="field-error">{errors.employmentStatus}</p>}
         </div>
+        </div>
       </details>
       <div className="form-actions">
         <button type="submit" className="button-primary">조건 반영</button>
         <button type="button" className="text-button" onClick={reset}>입력 조건 지우기</button>
       </div>
+      <p className="data-retention-note">조건 반영 시 입력 내용을 전송해 비교에 사용해요. 계정 저장은 별도이며, 저장하지 않은 입력은 새로고침하면 지워져요.</p>
     </form>
     </details>
     <p role="status" className="form-notice">{notice}</p>
-    <p className="data-retention-note">조건 반영 시 입력 내용을 전송해 비교에 사용해요. 계정 저장은 별도이며, 저장하지 않은 입력은 새로고침하면 지워져요.</p>
-    <details><summary>조건 저장·불러오기</summary>
-      <ConditionMemberControls input={reflected && Object.keys(input).length ? input : undefined} prepareLoad={prepareLoad} onSuggestBirthDate={suggestBirthDate} />
+    <details className="condition-disclosure"><summary>조건 저장·불러오기</summary>
+      <div className="condition-disclosure-body">
+        <ConditionMemberControls input={reflected && Object.keys(input).length ? input : undefined} prepareLoad={prepareLoad} onSuggestBirthDate={suggestBirthDate} />
+      </div>
     </details>
     <PolicyCheckResults input={input} />
   </section>;

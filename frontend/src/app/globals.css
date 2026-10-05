@@ -825,7 +825,7 @@ select {
   .policy-card-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 20px; margin-top: 7px; }
   .policy-card-actions .text-link { margin-top: 0; }
   .policy-card-actions .text-button { padding: 0; font-size: 13px; }
-  .policy-question-next { margin: 16px 0; padding: 0 16px 12px; border-left: 3px solid var(--app-blue-dark); background: #f6f5fb; }
+  .policy-question-next { margin: 14px 0 0; padding: 4px 16px 10px; border-radius: 14px; background: #f6f5fb; }
   .policy-coverage { margin: 14px 0 22px; color: var(--app-muted); font-size: 13px; line-height: 1.75; }
   .policy-coverage a { color: var(--app-blue-dark); text-decoration: underline; text-underline-offset: 3px; }
   .policy-results-heading { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: space-between; margin-bottom: 14px; font-size: 14px; }
@@ -951,7 +951,25 @@ select {
 .policy-check-results { margin-top: 36px; padding-top: 28px; border-top: 1px solid var(--app-line); text-align: left; }
 .policy-check-results > h2 { font-size: 24px; font-weight: 750; }
 .policy-check-results > p { margin: 12px 0; line-height: 1.7; }
-.policy-check-results summary { cursor: pointer; padding: 14px 0; font-weight: 650; }
+.condition-panel.condition-workspace { margin-top: 24px; border: 0; background: transparent; padding: 0; }
+.condition-disclosure { border: 1px solid var(--app-line); border-radius: 16px; background: white; }
+.condition-disclosure + .condition-disclosure, .form-notice + .condition-disclosure { margin-top: 10px; }
+.condition-disclosure > summary { display: flex; align-items: center; gap: 8px; min-height: 56px; padding: 0 18px; cursor: pointer; list-style: none; font-size: 15px; font-weight: 750; }
+.condition-disclosure > summary::-webkit-details-marker { display: none; }
+.condition-disclosure > summary::after { content: ""; flex-shrink: 0; width: 8px; height: 8px; margin-left: auto; border-right: 2px solid currentColor; border-bottom: 2px solid currentColor; transform: translateY(-2px) rotate(45deg); }
+.condition-disclosure[open] > summary::after { transform: translateY(2px) rotate(-135deg); }
+.condition-disclosure > form, .condition-disclosure > .condition-disclosure-body { padding: 0 18px 18px; }
+.condition-disclosure.is-nested { margin-top: 18px; border: 0; background: #f6f5fb; }
+.condition-optional { padding: 2px 8px; border-radius: 999px; background: #f3f2f9; color: #3f4166; font-size: 11px; font-weight: 700; }
+.condition-workspace > .form-notice { margin: 12px 4px 0; }
+.check-card { margin-top: 12px; }
+.check-card h3 { margin: 12px 0 0; font-size: 18px; font-weight: 750; letter-spacing: -.03em; line-height: 1.5; }
+.check-card h3 a { color: var(--app-text); text-decoration: none; }
+.check-card h3 a:hover { color: var(--app-blue-dark); text-decoration: underline; text-underline-offset: 4px; }
+.check-explanation { margin: 8px 0 0; font-size: 14px; line-height: 1.7; }
+.check-card .check-details > summary { cursor: pointer; padding: 10px 0 4px; color: var(--app-muted); font-size: 13px; font-weight: 650; }
+.comparison-chip { display: inline-flex; align-items: center; min-height: 24px; padding: 0 9px; border-radius: 999px; background: #f3f2f9; color: #3f4166; font-size: 12px; font-weight: 700; }
+.comparison-chip[data-compared] { background: #f0effc; color: var(--app-blue-dark); }
 .policy-check-details section { margin: 20px 0; }
 .policy-check-details h4 { font-weight: 750; margin: 8px 0; }
 .policy-check-details p { margin: 8px 0; }

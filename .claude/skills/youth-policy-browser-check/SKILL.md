@@ -31,6 +31,7 @@ lsof -nP -iTCP:3000 -iTCP:3103 -iTCP:8080 -iTCP:8081 -iTCP:55432 -sTCP:LISTEN
 - 서버·웹은 Bash `run_in_background`로 실행하고, 준비 여부는 `curl --retry 60 --retry-delay 1 --retry-connrefused -sf -o /dev/null <주소>`로 기다린다. `sleep` 반복은 쓰지 않는다.
 - 웹: 배포 빌드를 이미 검증했다면 `npm run start --workspace frontend -- --port 3103`, 아니면 `npm run dev --workspace frontend -- --port 3103`. 같은 폴더의 다른 `next dev` 때문에 시작하지 못하면 `build:web` 후 `start`를 쓴다.
 - 웹이 다른 API 주소를 써야 하면 웹 프로세스에 `POLICY_API_BASE_URL=http://127.0.0.1:<포트>`를 지정한다. `frontend/.env.local`은 만들거나 바꾸지 않는다.
+- 회원 API 프록시는 GET 외 요청의 `Origin`을 `PUBLIC_APP_URL`·`APP_FRONTEND_URL`(기본 3000)과 비교한다. 3103 등 다른 포트에서 조건 비교·저장을 확인하려면 웹 프로세스에 `APP_FRONTEND_URL=http://127.0.0.1:<웹 포트>`를 함께 지정한다. 지정하지 않으면 403이다.
 - 서버 상태는 `curl -sf http://127.0.0.1:8080/actuator/health`로 확인한다. 실제 OAuth 제공자 로그인·실제 회원 데이터·실제 이메일 발송은 사용하지 않는다. 회원 화면은 `/api/member/**` 응답을 모의한다.
 
 ## 3. Playwright CLI 헤드리스 확인
@@ -50,7 +51,7 @@ mkdir -p "$WORK" && cd "$WORK" && npx --yes --package @playwright/cli playwright
 | 데스크톱·모바일 | `resize 1280 800`, `resize 390 844` |
 | 키보드 초점 | `eval "() => document.activeElement?.outerHTML.slice(0, 160)"` |
 | 콘솔 오류·요청 중복 | `console error`, `requests` |
-| API 모의·지연 응답 | `route "**/api/member/session" --status 200 --body '{"authenticated":false}'`, 늦은 응답은 `run-code`에서 `page.route`로 지연 |
+| API 모의·지연 응답 | `route "**/api/member/session" --status 200 --body '{"authenticated":false}'`, 늦은 응답은 `run-code`에서 `page.route`로 지연한다. 모의는 같은 세션의 다음 `run-code`에도 남으므로 실제 서버로 확인할 때는 `unroute`하거나 새 세션(`-s`)을 연다. |
 | 반복 가능한 시나리오 | `run-code --filename=<작업 폴더>/<시나리오>.js` (`async page => { ... }`) |
 
 확인 기준:

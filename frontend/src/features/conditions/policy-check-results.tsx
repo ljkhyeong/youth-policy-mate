@@ -1,12 +1,11 @@
 "use client";
-import Link from "next/link";
-import { PolicyRecruitment, RecruitmentOptions, recruitmentLabels, type RecruitmentFilter } from "@/features/policies/policy-recruitment";
+import { RecruitmentOptions, recruitmentLabels, type RecruitmentFilter } from "@/features/policies/policy-recruitment";
+import { PolicyCheckCard } from "./policy-check-card";
 import { useEffect, useRef, useState } from "react";
 import { memberApi, type BasicConditions, type PolicyChecks } from "@/features/member/member-api";
 import type { operations } from "@/generated/policy-api";
 
 type CheckSort = NonNullable<operations["checkPolicyConditions"]["parameters"]["query"]>["sort"];
-const outcomeLabels = { MET: "충족", NOT_MET: "불충족", UNKNOWN: "추가 확인 필요" };
 
 export function PolicyCheckResults({ input }: { input: BasicConditions }) {
   const headingRef = useRef<HTMLHeadingElement>(null);
@@ -67,21 +66,7 @@ export function PolicyCheckResults({ input }: { input: BasicConditions }) {
     {!response && !error && <p role="status">신청 조건을 불러오고 있어요.</p>}
     {response?.items.length === 0 && <p role="status">{query || recruitmentStatus ? "검색 조건에 맞는 정책이 없어요. 검색어를 바꾸거나 필터를 해제해주세요." : "현재 확인할 정책이 없어요. 내 조건이 불충족이라는 뜻은 아니에요."}</p>}
     {response && <p className="field-help" role="status">{query && `‘${query}’ 검색 결과 · `}{recruitmentStatus && `${recruitmentLabels[recruitmentStatus]} · `}정책 {response.total}건 · {response.page}페이지</p>}
-    {response?.items.map(policy => <article className="member-panel" key={`${policy.policyNumber}-${policy.revision}`}>
-      <span className="review-label">{policy.checks.filter(check => check.outcome !== "UNKNOWN").length ? "연령 비교됨 · 다른 조건 확인 필요" : "조건 확인 전"}</span><h3><Link href={`/policies/${policy.policyNumber}`}>{policy.title}</Link></h3>
-      <p>{policy.explanation}</p><p className="policy-period">신청기간: {policy.applicationPeriod}</p>
-      <PolicyRecruitment recruitment={policy.recruitment} />
-      {policy.questionnaireAvailable && <div className="policy-question-next">
-        <span className="policy-question-badge">신청 조건 질문</span>
-        <p>질문으로 다른 신청 조건도 비교해보세요.</p>
-        <Link href={`/policies/${policy.policyNumber}#policy-questions`} className="text-link" aria-label={`${policy.title} 질문에 답하기`}>질문에 답하기 →</Link>
-      </div>}
-      <details><summary>조건별 결과와 근거 보기</summary><div className="policy-check-details">
-        {policy.checks.map(check => <section key={check.label}><h4>{check.label} · {outcomeLabels[check.outcome]}</h4><p className="field-help">입력: {check.providedValue}</p><p>{check.explanation}</p><blockquote>{check.evidence}</blockquote></section>)}
-        <a href={policy.sourceUrl} target="_blank" rel="noopener noreferrer">공식 안내 보기 (새 창)</a>
-      </div></details>
-      <Link href={`/policies/${policy.policyNumber}`} className="text-link">지원 내용 보기</Link>
-    </article>)}
+    {response?.items.map(policy => <PolicyCheckCard key={`${policy.policyNumber}-${policy.revision}`} policy={policy} showExplanation={Boolean(input.birthDate)} />)}
     {response && response.total > 0 && <nav className="member-toolbar" aria-label="정책 확인 페이지">
       <button className="button-secondary" type="button" disabled={page === 1} onClick={() => loadPage(page - 1)}>이전</button>
       <span>{page}페이지</span><button className="button-secondary" type="button" disabled={!response.hasNext || page >= 1000} onClick={() => loadPage(page + 1)}>다음</button>

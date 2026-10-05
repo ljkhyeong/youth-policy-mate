@@ -60,6 +60,13 @@ export function PolicyArticle({ policy }: { policy: Detail }) {
       <p>온통청년에서 수집한 내용이에요. 최신 신청 조건과 예외는 공식 모집 공고를 확인해주세요.</p>
     </aside>
     <div id="policy-support" tabIndex={-1} className="policy-sections">
+      {policy.sourceConditions.length > 0 && <section aria-labelledby="policy-stated-conditions">
+        <h2 id="policy-stated-conditions">온통청년 표기 조건</h2>
+        <dl className="policy-stated-conditions">
+          {policy.sourceConditions.map((condition) => <div key={condition.label}><dt>{condition.label}</dt><dd>{condition.value}</dd></div>)}
+        </dl>
+        <p className="field-help">온통청년에 등록된 값이라 공고 원문과 다를 수 있고, 여기에 없는 조건이 있을 수 있어요. 기준일과 예외는 공식 안내에서 확인해주세요.</p>
+      </section>}
       {content.sections.map((section, index) => <section key={index}>
         <h2>{section.title}</h2><p>{section.text}</p>
       </section>)}

@@ -1153,6 +1153,8 @@ export interface components {
              * @description 서비스 내부 적용 개정 번호
              */
             readonly revision: number;
+            /** @description 온통청년에 등록된 조건 표기. 자격 판정이 아니며 제한을 표기한 값만 담는다. 빈 배열은 조건이 없다는 뜻이 아니다. */
+            readonly sourceConditions: readonly components["schemas"]["PolicySourceCondition"][];
             /** @description 현재 수집 내용에서 확인한 조건 충돌 안내. 빈 배열은 검토 완료를 뜻하지 않는다. */
             readonly sourceNotices: readonly components["schemas"]["PolicySourceNotice"][];
             readonly sourceUrl: string;
@@ -1427,6 +1429,12 @@ export interface components {
             readonly validFrom: string;
             /** Format: date-time */
             readonly validUntil: string;
+        };
+        readonly PolicySourceCondition: {
+            /** @description 조건 이름. 연령·소득·취업 상태·학력 */
+            readonly label: string;
+            /** @description 온통청년에 표기된 값 */
+            readonly value: string;
         };
         readonly PolicySourceNotice: {
             readonly description: string;

@@ -17,7 +17,20 @@ const policy: components["schemas"]["PolicyDetailResponse"] = {
   },
   recruitment: { status: "CLOSED", explanation: "접수가 마감됐어요.", evaluatedAt: "2026-09-08T00:00:00Z", deadlineOnSeoul: null, daysUntilDeadline: null },
   sourceNotices: [],
+  sourceConditions: [],
 };
+
+describe("정책 상세의 온통청년 표기 조건", () => {
+  it("표기 조건을 출처와 원문 차이 안내와 함께 본문 앞에 보여주고 없으면 영역을 숨긴다", () => {
+    const html = renderToStaticMarkup(<PolicyArticle policy={{ ...policy, sourceConditions: [
+      { label: "연령", value: "만 19~34세" }, { label: "소득", value: "연소득 3,500만 원 이하" }] }} />);
+    expect(html).toContain("온통청년 표기 조건");
+    expect(html).toContain("<dt>연령</dt><dd>만 19~34세</dd>");
+    expect(html).toContain("여기에 없는 조건이 있을 수 있어요");
+    expect(html.indexOf("온통청년 표기 조건")).toBeLessThan(html.indexOf(policy.content.sections[0].text));
+    expect(renderToStaticMarkup(<PolicyArticle policy={policy} />)).not.toContain("온통청년 표기 조건");
+  });
+});
 
 describe("정책 상세의 원문 충돌 안내", () => {
   it("서버의 안내와 근거 링크를 질문보다 먼저 표시하고 수집 본문을 유지한다", () => {

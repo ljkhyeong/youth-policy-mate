@@ -565,6 +565,48 @@ class PolicyCatalogTest {
         }
     }
 
+    @Test @DisplayName("온통청년 표기 조건은 상세에 참고로만 보여주고 검토 기준이 없는 연령은 표기 범위와 만 나이만 함께 보여준다")
+    void showsStatedSourceConditionsWithoutJudging() throws Exception {
+        item.put("plcyNo", "971").put("sprtTrgtAgeLmtYn", "N").put("sprtTrgtMinAge", "19").put("sprtTrgtMaxAge", "34")
+                .put("earnCndSeCd", "0043002").put("earnMaxAmt", "3500").put("jobCd", "0013003").put("schoolCd", "0049010");
+        save("stated", AT);
+        mvc.perform(get("/api/v1/policies/971")).andExpect(status().isOk())
+                .andExpect(jsonPath("$.sourceConditions[*].label").value(org.hamcrest.Matchers.contains("연령", "소득", "취업 상태")))
+                .andExpect(jsonPath("$.sourceConditions[*].value").value(org.hamcrest.Matchers.contains("만 19~34세", "연소득 3,500만 원 이하", "미취업자")));
+        var body = mapper.writeValueAsString(new BasicConditions(java.time.LocalDate.of(1995, 3, 1), null, null));
+        mvc.perform(post("/api/v1/policies/checks").contentType("application/json").content(body)).andExpect(status().isOk())
+                .andExpect(jsonPath("$.items[0].explanation").value(org.hamcrest.Matchers.allOf(
+                        org.hamcrest.Matchers.containsString("검토한 연령 기준은 아직 없어요"), org.hamcrest.Matchers.containsString("만 19~34세"),
+                        org.hamcrest.Matchers.containsString("만 31세"))))
+                .andExpect(jsonPath("$.items[0].status").value("NEEDS_REVIEW"))
+                .andExpect(jsonPath("$.items[0].checks[0].providedValue").value("만 31세 (2026-09-05 · 서울)"))
+                .andExpect(jsonPath("$.items[0].checks[0].explanation").value(org.hamcrest.Matchers.containsString("만 19~34세")))
+                .andExpect(jsonPath("$.items[0].checks[0].outcome").value("UNKNOWN"))
+                .andExpect(jsonPath("$.items[0].checks[2].explanation").value(org.hamcrest.Matchers.containsString("소득 연소득 3,500만 원 이하")));
+        // 만 나이는 서울 날짜로 계산하고, 생년월일이 없어도 표기 범위와 기준일·예외 확인을 함께 안내한다.
+        org.mockito.Mockito.when(clock.instant()).thenReturn(Instant.parse("2026-02-28T14:59:59Z"), Instant.parse("2026-02-28T15:00:00Z"));
+        mvc.perform(post("/api/v1/policies/checks").contentType("application/json").content(body))
+                .andExpect(jsonPath("$.items[0].checks[0].providedValue").value("만 30세 (2026-02-28 · 서울)"));
+        mvc.perform(post("/api/v1/policies/checks").contentType("application/json").content(body))
+                .andExpect(jsonPath("$.items[0].checks[0].providedValue").value("만 31세 (2026-03-01 · 서울)"));
+        org.mockito.Mockito.when(clock.instant()).thenReturn(AT);
+        mvc.perform(post("/api/v1/policies/checks").contentType("application/json").content("{}"))
+                .andExpect(jsonPath("$.items[0].checks[0].providedValue").value("미입력"))
+                .andExpect(jsonPath("$.items[0].checks[0].explanation").value(org.hamcrest.Matchers.allOf(
+                        org.hamcrest.Matchers.containsString("만 19~34세"), org.hamcrest.Matchers.containsString("기준일과 예외"))))
+                .andExpect(jsonPath("$.items[0].checks[0].outcome").value("UNKNOWN"));
+        // 검토한 연령 비교가 있으면 표기 범위 대신 그 결과를 사용한다.
+        saveReviewed(ExamFeeRules.NUMBER, "응시료 지원", ExamFeeRules.CONTENT_HASH);
+        mvc.perform(post("/api/v1/policies/checks").contentType("application/json").content(body).param("q", "응시료"))
+                .andExpect(jsonPath("$.items[0].ruleVersion").value(org.hamcrest.Matchers.not("")))
+                .andExpect(jsonPath("$.items[0].checks[0].explanation").value(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("온통청년 표기"))));
+        // 제한 없음·무관 표기는 조건이 없다는 근거로 보여주지 않는다.
+        item.put("plcyNo", "972").put("sprtTrgtAgeLmtYn", "Y").put("sprtTrgtMinAge", "19").put("sprtTrgtMaxAge", "39")
+                .put("earnCndSeCd", "0043001").put("jobCd", "0013010").put("schoolCd", "0049010");
+        save("unrestricted", AT.plusSeconds(1));
+        mvc.perform(get("/api/v1/policies/972")).andExpect(status().isOk()).andExpect(jsonPath("$.sourceConditions").isEmpty());
+    }
+
     @Test
     @DisplayName("기본 조건 결과의 질문 제공 여부는 자격 상태와 분리하고 같은 비교 시각을 사용한다")
     void exposesQuestionsInConditionChecks() throws Exception {

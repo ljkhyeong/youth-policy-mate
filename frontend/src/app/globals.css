@@ -876,6 +876,11 @@ select {
   .policy-sections > section { border-top: 1px solid var(--app-line); padding: 26px 0; }
   .policy-sections h2 { margin: 0 0 14px; font-size: 19px; font-weight: 750; letter-spacing: -.025em; }
   .policy-sections section > p { margin: 0; white-space: pre-wrap; font-size: 14px; line-height: 1.9; color: #475467; }
+  .policy-stated-conditions { display: grid; gap: 8px; margin: 0 0 12px; font-size: 14px; line-height: 1.7; }
+  .policy-stated-conditions div { display: flex; gap: 12px; }
+  .policy-stated-conditions dt { flex: 0 0 64px; font-weight: 700; color: var(--app-text); }
+  .policy-stated-conditions dd { margin: 0; color: #475467; }
+  .policy-sections section > p.field-help { font-size: 12px; line-height: 1.6; color: var(--app-muted); }
   .policy-official-links { display: flex; flex-wrap: wrap; gap: 10px; }
   .policy-source { margin-top: 28px; border-top: 1px solid var(--app-line); padding-top: 20px; color: var(--app-muted); font-size: 12px; line-height: 1.8; }
   .policy-source p { margin: 4px 0; }

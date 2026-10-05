@@ -36,13 +36,18 @@ public class PolicyCatalogStore {
             LEFT JOIN policy_revisions r ON r.policy_number = p.policy_number AND r.revision = p.current_revision
             LEFT JOIN policy_source_snapshots s ON s.id = r.source_snapshot_id
             """;
-    // 목록에는 모집기간 해석에 쓰는 필드만 가져온다.
-    private static final String PERIOD_SOURCE = """
-            jsonb_build_object('aplyPrdSeCd', s.raw_policy->'aplyPrdSeCd', 'aplyYmd', s.raw_policy->'aplyYmd',
+    // 목록에는 모집기간 해석에 쓰는 필드만, 상세에는 온통청년 표기 조건 필드를 더해 가져온다.
+    private static final String PERIOD_FIELDS = """
+            'aplyPrdSeCd', s.raw_policy->'aplyPrdSeCd', 'aplyYmd', s.raw_policy->'aplyYmd',
                 'plcySprtCn', s.raw_policy->'plcySprtCn', 'plcyAplyMthdCn', s.raw_policy->'plcyAplyMthdCn',
                 'etcMttrCn', s.raw_policy->'etcMttrCn', 'addAplyQlfcCndCn', s.raw_policy->'addAplyQlfcCndCn',
-                'srngMthdCn', s.raw_policy->'srngMthdCn', 'plcyExplnCn', s.raw_policy->'plcyExplnCn') AS raw_policy
-            """;
+                'srngMthdCn', s.raw_policy->'srngMthdCn', 'plcyExplnCn', s.raw_policy->'plcyExplnCn'""";
+    private static final String CONDITION_FIELDS = """
+            'sprtTrgtAgeLmtYn', s.raw_policy->'sprtTrgtAgeLmtYn', 'sprtTrgtMinAge', s.raw_policy->'sprtTrgtMinAge',
+                'sprtTrgtMaxAge', s.raw_policy->'sprtTrgtMaxAge', 'earnCndSeCd', s.raw_policy->'earnCndSeCd',
+                'earnMaxAmt', s.raw_policy->'earnMaxAmt', 'jobCd', s.raw_policy->'jobCd', 'schoolCd', s.raw_policy->'schoolCd'""";
+    private static final String PERIOD_SOURCE = "jsonb_build_object(" + PERIOD_FIELDS + ") AS raw_policy\n";
+    private static final String DETAIL_SOURCE = "jsonb_build_object(" + PERIOD_FIELDS + ", " + CONDITION_FIELDS + ") AS raw_policy\n";
 
     public PolicyCatalogStore(JdbcClient jdbc, ObjectMapper mapper, java.time.Clock clock, PolicyCorrectionStore corrections, PolicyRuleStore rules) {
         this.jdbc = jdbc; this.mapper = mapper; this.clock = clock; this.corrections = corrections; this.rules = rules;
@@ -258,7 +263,7 @@ public class PolicyCatalogStore {
     public Optional<PolicyDetailResponse> find(String number) {
         var now = clock.instant();
         return jdbc.sql("SELECT p.policy_number, p.current_revision, p.content_hash, p.content, p.last_collected_at, "
-                        + PERIOD_SOURCE + " FROM policies p " + SOURCE_JOIN + " WHERE p.policy_number = :number AND p.current_revision > 0")
+                        + DETAIL_SOURCE + " FROM policies p " + SOURCE_JOIN + " WHERE p.policy_number = :number AND p.current_revision > 0")
                 .param("number", number).query((rs, row) -> detail(rs, mapper.readTree(rs.getString("raw_policy")), now)).optional();
     }
 
@@ -322,7 +327,8 @@ public class PolicyCatalogStore {
                 sourceUrl(number),
                 rs.getObject("last_collected_at", OffsetDateTime.class).toInstant(),
                 PolicyRecruitment.from(number, rs.getLong("current_revision"), rs.getString("content_hash"), raw, now),
-                PolicySourceNotice.forContent(number, rs.getString("content_hash")));
+                PolicySourceNotice.forContent(number, rs.getString("content_hash")),
+                PolicySourceConditions.from(raw).items());
     }
 
     static String sourceUrl(String number) {

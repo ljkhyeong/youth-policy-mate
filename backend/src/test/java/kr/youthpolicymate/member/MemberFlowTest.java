@@ -361,6 +361,22 @@ class MemberFlowTest {
     }
 
     @Test
+    @DisplayName("일부 조건만 저장하고 다시 불러올 수 있다")
+    void savesPartialConditions() throws Exception {
+        mvc.perform(put("/api/v1/me/conditions").with(oauth2Login().oauth2User(user(first))).with(csrf())
+                .contentType("application/json").content("{\"birthDate\":\"2000-01-01\"}"))
+                .andExpect(status().isNoContent());
+        mvc.perform(get("/api/v1/me/conditions").with(oauth2Login().oauth2User(user(first))))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.conditions.birthDate").value("2000-01-01"))
+                .andExpect(jsonPath("$.conditions.district").doesNotExist())
+                .andExpect(jsonPath("$.conditions.employmentStatus").doesNotExist());
+        mvc.perform(put("/api/v1/me/conditions").with(oauth2Login().oauth2User(user(first))).with(csrf())
+                .contentType("application/json").content("{}"))
+                .andExpect(status().isNoContent());
+        assertThat(members.conditions(first).conditions().birthDate()).isNull();
+    }
+
+    @Test
     @DisplayName("회원 API는 로그인과 CSRF를 요구하고 다른 회원의 조건과 저장을 노출하거나 삭제하지 않는다")
     void protectsOwnership() throws Exception {
         mvc.perform(get("/api/v1/me/policies")).andExpect(status().isUnauthorized());

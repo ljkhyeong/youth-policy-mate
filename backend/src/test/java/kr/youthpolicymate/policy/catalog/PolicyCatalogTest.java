@@ -761,6 +761,28 @@ class PolicyCatalogTest {
                 .andExpect(status().isOk()).andExpect(jsonPath("$.total").value(0));
     }
 
+    @Test
+    @DisplayName("조건 없이 탐색하고 생년월일만 추가해 연령을 비교한다")
+    void progressivelyComparesOptionalConditions() throws Exception {
+        saveReviewed(ExamFeeRules.NUMBER, "응시료 지원", ExamFeeRules.CONTENT_HASH);
+        saveReviewed(KPassRules.NUMBER, "K-패스", KPassRules.CONTENT_HASH);
+        for (String body : List.of("{}", "{\"birthDate\":null,\"district\":null,\"employmentStatus\":null}")) {
+            mvc.perform(post("/api/v1/policies/checks").contentType("application/json").content(body))
+                    .andExpect(status().isOk()).andExpect(header().string("Cache-Control", "no-store"))
+                    .andExpect(jsonPath("$.total").value(2))
+                    .andExpect(jsonPath("$.items[*].checks[*].outcome").value(org.hamcrest.Matchers.everyItem(org.hamcrest.Matchers.is("UNKNOWN"))))
+                    .andExpect(jsonPath("$.items[0].checks[0].providedValue").value("미입력"));
+        }
+        mvc.perform(post("/api/v1/policies/checks").contentType("application/json").content("{\"birthDate\":\"1990-12-31\"}"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.total").value(2))
+                .andExpect(jsonPath("$.items[0].policyNumber").value(KPassRules.NUMBER))
+                .andExpect(jsonPath("$.items[0].checks[0].outcome").value("MET"))
+                .andExpect(jsonPath("$.items[1].checks[0].outcome").value("NOT_MET"));
+        for (String body : List.of("{\"birthDate\":\"9999-01-01\"}", "{\"district\":\"부산\"}", "{\"employmentStatus\":\"UNKNOWN\"}")) {
+            mvc.perform(post("/api/v1/policies/checks").contentType("application/json").content(body)).andExpect(status().isBadRequest());
+        }
+    }
+
     @Test @DisplayName("전체 정책을 연령 충족·미확인·불충족 순으로 정렬한 뒤 검색과 페이지를 적용한다")
     void ranksConditionResultsBeforePagination() throws Exception {
         saveReviewed(ExamFeeRules.NUMBER, "응시료 지원", ExamFeeRules.CONTENT_HASH);

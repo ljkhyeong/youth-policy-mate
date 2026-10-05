@@ -3036,20 +3036,19 @@
         "type" : "object",
         "properties" : {
           "birthDate" : {
-            "type" : "string",
+            "type" : [ "string", "null" ],
             "format" : "date"
           },
           "district" : {
-            "type" : "string",
+            "type" : [ "string", "null" ],
             "maxLength" : 10,
             "minLength" : 0
           },
           "employmentStatus" : {
-            "type" : "string",
+            "type" : [ "string", "null" ],
             "enum" : [ "EMPLOYED", "SELF_EMPLOYED", "NOT_EMPLOYED", "FREELANCER", "DAY_WORKER", "ENTREPRENEUR", "SHORT_TERM_WORKER", "FARMER", "OTHER" ]
           }
-        },
-        "required" : [ "birthDate", "district", "employmentStatus" ]
+        }
       },
       "CollectionExceptionCurrentPolicy" : {
         "type" : "object",

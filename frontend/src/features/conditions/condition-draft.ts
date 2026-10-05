@@ -1,3 +1,5 @@
+import type { BasicConditions } from "@/features/member/member-api";
+
 export const SEOUL_DISTRICTS = [
   "강남구", "강동구", "강북구", "강서구", "관악구", "광진구", "구로구", "금천구", "노원구",
   "도봉구", "동대문구", "동작구", "마포구", "서대문구", "서초구", "성동구", "성북구", "송파구",
@@ -24,9 +26,7 @@ export const EMPTY_CONDITION_DRAFT: ConditionDraft = { birthDate: "", district: 
 
 export function validateConditionDraft(draft: ConditionDraft, today: string): ConditionDraftErrors {
   const errors: ConditionDraftErrors = {};
-  if (!draft.birthDate) {
-    errors.birthDate = "생년월일을 입력해주세요.";
-  } else {
+  if (draft.birthDate) {
     const parsed = new Date(`${draft.birthDate}T00:00:00Z`);
     const validDate = /^\d{4}-\d{2}-\d{2}$/.test(draft.birthDate)
       && draft.birthDate.slice(0, 4) !== "0000"
@@ -35,11 +35,20 @@ export function validateConditionDraft(draft: ConditionDraft, today: string): Co
     if (!validDate) errors.birthDate = "실제로 존재하는 날짜를 입력해주세요.";
     else if (draft.birthDate > today) errors.birthDate = "생년월일은 오늘보다 늦을 수 없어요.";
   }
-  if (!SEOUL_DISTRICTS.some((district) => district === draft.district)) {
+  if (draft.district && !SEOUL_DISTRICTS.some((district) => district === draft.district)) {
     errors.district = "주민등록상 거주하는 서울 자치구를 선택해주세요.";
   }
-  if (!EMPLOYMENT_OPTIONS.some(({ value }) => value === draft.employmentStatus)) {
+  if (draft.employmentStatus && !EMPLOYMENT_OPTIONS.some(({ value }) => value === draft.employmentStatus)) {
     errors.employmentStatus = "현재 주된 취업상태를 선택해주세요.";
   }
   return errors;
+}
+
+export function conditionInput(draft: ConditionDraft): BasicConditions {
+  const employment = EMPLOYMENT_OPTIONS.find(option => option.value === draft.employmentStatus);
+  return {
+    ...(draft.birthDate ? { birthDate: draft.birthDate } : {}),
+    ...(draft.district ? { district: draft.district } : {}),
+    ...(employment ? { employmentStatus: employment.value } : {}),
+  };
 }

@@ -244,7 +244,7 @@ public class PolicyCatalogStore {
         var comparisons = new HashMap<String, PolicyAgeComparison>();
         for (var definition : definitions) {
             comparisons.remove(definition.policyNumber());
-            if (definition.appliesAt(now)) {
+            if (input.birthDate() != null && definition.appliesAt(now)) {
                 var comparison = definition.compareBirth(input.birthDate(), now);
                 if (comparison != null) comparisons.put(definition.policyNumber(), comparison);
             }

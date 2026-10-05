@@ -735,10 +735,10 @@ export interface components {
         };
         readonly BasicConditions: {
             /** Format: date */
-            readonly birthDate: string;
-            readonly district: string;
-            /** @enum {string} */
-            readonly employmentStatus: "EMPLOYED" | "SELF_EMPLOYED" | "NOT_EMPLOYED" | "FREELANCER" | "DAY_WORKER" | "ENTREPRENEUR" | "SHORT_TERM_WORKER" | "FARMER" | "OTHER";
+            readonly birthDate?: string | null;
+            readonly district?: string | null;
+            /** @enum {string|null} */
+            readonly employmentStatus?: "EMPLOYED" | "SELF_EMPLOYED" | "NOT_EMPLOYED" | "FREELANCER" | "DAY_WORKER" | "ENTREPRENEUR" | "SHORT_TERM_WORKER" | "FARMER" | "OTHER" | null;
         };
         readonly CollectionExceptionCurrentPolicy: {
             /** Format: date-time */

@@ -10,11 +10,11 @@ const outcomeLabels = { MET: "충족", NOT_MET: "불충족", UNKNOWN: "추가 �
 
 export function PolicyCheckResults({ input }: { input: BasicConditions }) {
   const headingRef = useRef<HTMLHeadingElement>(null);
-  useEffect(() => { headingRef.current?.focus(); }, []);
+  useEffect(() => { if (Object.keys(input).length) headingRef.current?.focus(); }, [input]);
   const [page, setPage] = useState(1);
   const [draftQuery, setDraftQuery] = useState("");
   const [query, setQuery] = useState("");
-  const [sort, setSort] = useState<CheckSort>("AGE_MATCH");
+  const [sort, setSort] = useState<CheckSort>(input.birthDate ? "AGE_MATCH" : "RECENT");
   const [recruitmentStatus, setRecruitmentStatus] = useState<RecruitmentFilter>("");
   const [response, setResponse] = useState<PolicyChecks | null>(null);
   const [error, setError] = useState("");
@@ -28,12 +28,17 @@ export function PolicyCheckResults({ input }: { input: BasicConditions }) {
       .catch(() => { if (!controller.signal.aborted) setError("정책 조건을 확인하지 못했어요. 입력 내용은 유지되니 다시 시도해주세요."); });
     return () => controller.abort();
   }, [input, page, query, sort, recruitmentStatus, retry]);
+  const [previousInput, setPreviousInput] = useState(input);
+  if (previousInput !== input) {
+    setPreviousInput(input); setResponse(null); setError(""); setPage(1);
+    setSort(input.birthDate ? "AGE_MATCH" : "RECENT");
+  }
   function loadPage(next: number) {
     setResponse(null); setError(""); setPage(next); setRetry(value => value + 1);
   }
   return <section className="policy-check-results" aria-label="정책 조건 확인 결과">
-    <h2 ref={headingRef} tabIndex={-1}>연령 조건 비교 결과</h2>
-    <p>일부 정책의 연령 조건을 비교했어요. 거주·취업·소득과 접수 여부는 별도로 확인해주세요.</p>
+    <h2 ref={headingRef} tabIndex={-1}>{input.birthDate ? "내 조건으로 찾은 정책" : "정책 둘러보기"}</h2>
+    <p>{input.birthDate ? "생년월일로 확인된 연령 조건을 비교했어요. 관심 있는 정책의 질문에 답하면 다른 조건도 확인할 수 있어요." : "검색어와 접수 상태로 관심 있는 정책을 찾아보세요. 입력하지 않은 조건으로 정책을 제외하지 않아요."}</p>
     <form className="policy-search" role="search" aria-label="조건 결과에서 정책 검색" onSubmit={event => {
       event.preventDefault(); setQuery(draftQuery.trim()); loadPage(1);
     }}>
@@ -51,19 +56,19 @@ export function PolicyCheckResults({ input }: { input: BasicConditions }) {
       <select id="condition-policy-sort" className="condition-policy-sort" value={sort} onChange={event => {
         setSort(event.target.value as CheckSort); loadPage(1);
       }}>
-        <option value="AGE_MATCH">연령 조건 충족 우선</option><option value="RECENT">최근 수집순</option>
+        <option value="AGE_MATCH" disabled={!input.birthDate}>연령 조건 충족 우선</option><option value="RECENT">최근 수집순</option>
       </select></label>
       {(query || recruitmentStatus) && <button type="button" className="button-secondary" onClick={() => {
         setDraftQuery(""); setQuery(""); setRecruitmentStatus(""); loadPage(1);
       }}>검색·필터 초기화</button>}
     </div>
-    <p className="field-help">‘연령 조건 충족 우선’은 충족 → 미확인 → 불충족 순으로 모든 결과를 표시해요.</p>
+    <p className="field-help">{input.birthDate ? "연령 조건 충족 우선은 충족 → 미확인 → 불충족 순이며, 모든 정책을 표시해요." : "생년월일을 추가하면 연령 조건이 맞는 정책부터 볼 수 있어요."}</p>
     {error && <div role="alert"><p>{error}</p><button type="button" className="button-secondary" onClick={() => loadPage(page)}>다시 확인하기</button></div>}
     {!response && !error && <p role="status">신청 조건을 불러오고 있어요.</p>}
     {response?.items.length === 0 && <p role="status">{query || recruitmentStatus ? "검색 조건에 맞는 정책이 없어요. 검색어를 바꾸거나 필터를 해제해주세요." : "현재 확인할 정책이 없어요. 내 조건이 불충족이라는 뜻은 아니에요."}</p>}
     {response && <p className="field-help" role="status">{query && `‘${query}’ 검색 결과 · `}{recruitmentStatus && `${recruitmentLabels[recruitmentStatus]} · `}정책 {response.total}건 · {response.page}페이지</p>}
     {response?.items.map(policy => <article className="member-panel" key={`${policy.policyNumber}-${policy.revision}`}>
-      <span className="review-label">최종 신청 자격: 추가 확인 필요</span><h3><Link href={`/policies/${policy.policyNumber}`}>{policy.title}</Link></h3>
+      <span className="review-label">{policy.checks.filter(check => check.outcome !== "UNKNOWN").length ? "연령 비교됨 · 다른 조건 확인 필요" : "조건 확인 전"}</span><h3><Link href={`/policies/${policy.policyNumber}`}>{policy.title}</Link></h3>
       <p>{policy.explanation}</p><p className="policy-period">신청기간: {policy.applicationPeriod}</p>
       <PolicyRecruitment recruitment={policy.recruitment} />
       {policy.questionnaireAvailable && <div className="policy-question-next">

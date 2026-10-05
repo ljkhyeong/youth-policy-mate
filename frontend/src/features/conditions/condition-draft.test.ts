@@ -1,14 +1,17 @@
 import { describe, expect, it } from "vitest";
-import { EMPTY_CONDITION_DRAFT, validateConditionDraft } from "./condition-draft";
+import { EMPTY_CONDITION_DRAFT, validateConditionDraft, conditionInput } from "./condition-draft";
 import { getSeoulDate } from "../../lib/seoul-date";
 
 const draft = { birthDate: "2000-02-29", district: "마포구", employmentStatus: "NOT_EMPLOYED" };
 const today = "2026-08-30";
 
 describe("비회원 기본 조건 입력", () => {
-  it("입력하지 않은 기본 항목을 각각 안내한다", () => {
-    expect(Object.keys(validateConditionDraft(EMPTY_CONDITION_DRAFT, today)))
-      .toEqual(["birthDate", "district", "employmentStatus"]);
+  it("입력 없이 탐색하고 생년월일만 추가할 수 있다", () => {
+    expect(validateConditionDraft(EMPTY_CONDITION_DRAFT, today)).toEqual({});
+    expect(conditionInput(EMPTY_CONDITION_DRAFT)).toEqual({});
+    const partial = { ...EMPTY_CONDITION_DRAFT, birthDate: "2000-02-29" };
+    expect(validateConditionDraft(partial, today)).toEqual({});
+    expect(conditionInput(partial)).toEqual({ birthDate: "2000-02-29" });
   });
 
   it("유효한 윤일은 허용하고 존재하지 않는 날짜와 미래 날짜는 거절한다", () => {

@@ -35,21 +35,21 @@ public class PolicyCheckService {
             var comparison = source.comparison();
             var age = comparison == null ? null : comparison.age();
             var checks = List.of(
-                    age == null ? new PolicyCheckResponse.Check("연령", "생년월일 입력됨",
-                            "연령 기준일과 제한·예외를 아직 확인하지 못했어요.",
+                    age == null ? new PolicyCheckResponse.Check("연령", input.birthDate() == null ? "미입력" : "생년월일 입력됨",
+                            input.birthDate() == null ? "생년월일을 추가하면 확인된 연령 조건을 비교할 수 있어요." : "연령 기준일과 제한·예외를 아직 확인하지 못했어요.",
                             text(raw, "addAplyQlfcCndCn", "plcySprtCn"), UNKNOWN)
                             : new PolicyCheckResponse.Check("연령", age.providedValue(), age.explanation(), age.evidence(), age.outcome()),
-                    new PolicyCheckResponse.Check("거주", "서울특별시 " + input.district(),
+                    new PolicyCheckResponse.Check("거주", input.district() == null ? "미입력" : "서울특별시 " + input.district(),
                             "신청 가능한 거주지와 거주 기간·전입 조건은 공식 안내를 확인해주세요.",
                             text(raw, "addAplyQlfcCndCn", "plcyExplnCn"), UNKNOWN),
-                    new PolicyCheckResponse.Check("취업·학력·소득", "기본 취업상태 입력됨",
+                    new PolicyCheckResponse.Check("취업·학력·소득", input.employmentStatus() == null ? "미입력" : "기본 취업상태 입력됨",
                             "주된 취업상태 하나만으로 고용보험·재학·사업자등록·소득 요건을 확인할 수 없어요.",
                             text(raw, "earnEtcCn", "addAplyQlfcCndCn", "plcySprtCn"), UNKNOWN),
                     new PolicyCheckResponse.Check("추가 조건과 참여 제한", "추가 확인 필요",
                             "공식 공고에서 필수 조건과 예외를 확인해주세요. 이 화면에 없는 제한이 있을 수 있어요.",
                             text(raw, "ptcpPrpTrgtCn", "addAplyQlfcCndCn", "plcySprtCn"), UNKNOWN));
             items.add(new PolicyCheckResponse.Item(policy.policyNumber(), policy.revision(), policy.content().title(), EligibilityStatus.NEEDS_REVIEW,
-                    explanation(comparison), policy.content().applicationPeriod(), comparison == null ? policy.sourceUrl() : comparison.sourceUrl(),
+                    (input.birthDate() == null ? "지원 내용을 살펴보고 필요한 조건을 추가해보세요." : explanation(comparison)), policy.content().applicationPeriod(), comparison == null ? policy.sourceUrl() : comparison.sourceUrl(),
                     policy.collectedAt(), checks, source.questionnaireAvailable(), comparison == null ? "" : comparison.ruleVersion(), policy.recruitment()));
         }
         return new PolicyCheckResponse(items, page, policies.getTotalElements(), policies.hasNext(), now);

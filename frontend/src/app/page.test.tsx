@@ -11,7 +11,7 @@ const policy: components["schemas"]["PolicySummary"] = {
   policyNumber: "123", title: "청년 주거 지원", description: "지원 안내", category: "주거",
   organization: "시험 기관", applicationPeriod: "20260707 ~ 20261231", collectedAt: "2026-09-05T01:00:00Z",
   questionnaireAvailable: false,
-  recruitment: { status: "OPEN", explanation: "접수 기간이에요.", evaluatedAt: "2026-10-05T00:00:00Z" },
+  recruitment: { status: "OPEN", explanation: "접수 기간이에요.", evaluatedAt: "2026-10-05T00:00:00Z", deadlineOnSeoul: "2026-11-17", daysUntilDeadline: 43 },
 };
 
 describe("홈의 접수 중인 정책", () => {
@@ -24,6 +24,9 @@ describe("홈의 접수 중인 정책", () => {
     expect(html).toContain("2026.07.07 ~ 2026.12.31");
     expect(html).toContain('href="/policies?recruitmentStatus=OPEN"');
     expect(html).toContain("5건 모두 보기");
+    expect(html).toContain("D-43");
+    expect(html).toContain('href="/policies?category=JOB"');
+    expect(html).toContain('href="/policies?category=PARTICIPATION"');
   });
 
   it("접수 기간인 정책이 없으면 그 사실과 상시 모집 목록을 안내한다", async () => {

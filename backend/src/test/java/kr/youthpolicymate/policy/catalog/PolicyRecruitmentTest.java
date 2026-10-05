@@ -62,5 +62,21 @@ class PolicyRecruitmentTest {
         assertThat(PolicyRecruitment.from(SeoulYouthNetworkRules.NUMBER, 1, SeoulYouthNetworkRules.CONTENT_HASH, raw, Instant.parse("2026-05-29T07:59:59Z")).status()).isEqualTo(OPEN);
         assertThat(PolicyRecruitment.from(SeoulYouthNetworkRules.NUMBER, 1, SeoulYouthNetworkRules.CONTENT_HASH, raw, Instant.parse("2026-05-29T08:00:00Z")).status()).isEqualTo(CLOSED);
     }
+    @Test @DisplayName("마감 알림과 같은 마감일과 서울 날짜 기준 남은 일수를 제공하고 마감일이 없으면 비운다")
+    void providesDeadlineAndDaysLeft() {
+        raw.put("aplyPrdSeCd", "0057001").put("aplyYmd", "20260906 ~ 20260907");
+        assertThat(at("2026-09-05T15:00:00Z").deadlineOnSeoul()).isEqualTo(PolicyDeadline.from(raw).date()).hasToString("2026-09-07");
+        assertThat(at("2026-09-05T15:00:00Z").daysUntilDeadline()).isOne();
+        assertThat(at("2026-09-07T14:59:59Z").daysUntilDeadline()).isZero();
+        assertThat(at("2026-09-07T15:00:00Z").daysUntilDeadline()).isEqualTo(-1);
+        assertThat(PolicyRecruitment.from(MovingFeeRules.NUMBER, 1, MovingFeeRules.CONTENT_HASH, raw, Instant.parse("2026-04-13T15:00:00Z")))
+                .satisfies(moving -> {
+                    assertThat(moving.deadlineOnSeoul()).hasToString("2026-04-14");
+                    assertThat(moving.daysUntilDeadline()).isZero();
+                });
+        raw.put("aplyPrdSeCd", "0057002").remove("aplyYmd");
+        assertThat(at("2026-09-06T00:00:00Z").deadlineOnSeoul()).isNull();
+        assertThat(at("2026-09-06T00:00:00Z").daysUntilDeadline()).isNull();
+    }
     private PolicyRecruitment at(String time) { return PolicyRecruitment.from("123", 1, "hash", raw, Instant.parse(time)); }
 }

@@ -1,13 +1,15 @@
 import Link from "next/link";
 import { SiteShell } from "@/components/site-shell";
 import { publicMetadata, siteName, siteDescription } from "@/lib/public-metadata";
+import { CategoryIcon, categoryKey, categoryLabel, policyCategories } from "@/features/policies/policy-category";
 import { formatPolicyPeriod } from "@/features/policies/policy-period";
+import { RecruitmentBadge } from "@/features/policies/policy-recruitment";
 import { loadPolicies } from "./policies/load-policies";
 
 export const dynamic = "force-dynamic";
 export function generateMetadata() { return publicMetadata("/", siteName, siteDescription); }
 
-const searchTopics = ["일자리", "주거", "장학금", "저축"];
+const searchTopics = ["창업", "취업", "장학금", "대출"];
 
 export default async function HomePage() {
   const open = await loadPolicies("", 1, false, "OPEN", 4);
@@ -16,32 +18,26 @@ export default async function HomePage() {
       <main id="main-content" className="home-main">
         <div className="home-start">
           <section aria-labelledby="intro-title" className="home-intro">
-            <p className="location-label">서울 청년을 위한 정책 안내</p>
-            <h1 id="intro-title">필요한 지원을 찾고,<br />신청 조건까지 확인하세요.</h1>
-            <p>일자리부터 주거·교육·생활비까지.<br />공식 정책 안내를 한곳에서 살펴보세요.</p>
+            <p className="location-label">서울 청년 정책</p>
+            <h1 id="intro-title">어떤 지원이<br />필요하세요?</h1>
+            <p>분야를 고르거나 검색해서 공식 정책 안내를 확인하세요.</p>
             <form className="policy-search" action="/policies" role="search">
               <label htmlFor="home-query" className="sr-only">정책 검색</label>
-              <input id="home-query" type="search" name="q" maxLength={80} placeholder="어떤 지원을 찾고 있나요?" />
+              <input id="home-query" type="search" name="q" maxLength={80} placeholder="장학금, 취업, 대출…" />
               <button type="submit" className="button-primary">검색</button>
             </form>
             <nav className="home-topics" aria-label="정책 검색어 바로가기">
               <span>찾아보기</span>
               {searchTopics.map(topic => <Link key={topic} href={`/policies?q=${encodeURIComponent(topic)}`}>{topic}</Link>)}
             </nav>
-            <Link className="text-link" href="/policies">전체 정책 보기</Link>
           </section>
 
-          <section className="start-panel" aria-labelledby="start-title">
-            <h2 id="start-title">정책별 연령 비교</h2>
-            <p className="start-description">생년월일로 연령 조건을 비교하고, 정책별 질문으로 다른 조건도 확인하세요.</p>
-            <ul className="condition-list" aria-label="입력할 기본 조건">
-              <li><strong>생년월일</strong><small>양력 기준</small></li>
-              <li><strong>서울 거주지</strong><small>주민등록상 주소</small></li>
-              <li><strong>취업상태</strong><small>현재 주된 상태</small></li>
-            </ul>
-            <Link href="/conditions" className="button-primary button-block">내 조건 입력하기</Link>
-            <p className="privacy-note">로그인 없이 이용할 수 있어요.<br />입력 내용은 조건 비교에만 사용하고 자동 저장하지 않아요.</p>
-          </section>
+          <nav className="category-tiles" aria-label="분야로 찾기">
+            {policyCategories.map(category => <Link key={category.key} href={`/policies?category=${category.key}`} className="category-tile" data-category={category.key}>
+              <CategoryIcon category={category.key} />{category.label}
+            </Link>)}
+            <Link href="/policies" className="category-tile" data-category="ALL"><CategoryIcon category="ALL" />전체 정책</Link>
+          </nav>
         </div>
 
         {/* 조회에 실패하면 빈 결과로 오해하지 않도록 영역을 표시하지 않는다. */}
@@ -51,8 +47,11 @@ export default async function HomePage() {
             {open.data.total > 0 && <Link className="text-link" href="/policies?recruitmentStatus=OPEN">{open.data.total}건 모두 보기</Link>}
           </div>
           {open.data.items.length > 0 ? <ul className="home-open-list">
-            {open.data.items.map(policy => <li key={policy.policyNumber}>
-              <span className="policy-category">{policy.category || "청년 정책"}</span>
+            {open.data.items.map(policy => <li key={policy.policyNumber} className="home-open-card">
+              <div className="policy-card-top">
+                <span className="category-chip" data-category={categoryKey(policy.category)}>{categoryLabel(policy.category)}</span>
+                <RecruitmentBadge recruitment={policy.recruitment} />
+              </div>
               <Link href={`/policies/${policy.policyNumber}`}>{policy.title}</Link>
               <p>{policy.organization || "온통청년 제공"}</p>
               <p className="policy-period"><strong>신청기간</strong><span>{formatPolicyPeriod(policy.applicationPeriod)}</span></p>
@@ -62,6 +61,11 @@ export default async function HomePage() {
         </section>}
 
         <section className="home-followup" aria-label="정책 이용 안내">
+          <Link href="/conditions" className="condition-banner">
+            <strong>내 조건으로 연령 비교</strong>
+            <span>생년월일로 정책별 연령 조건을 확인해요. 로그인 없이 이용하고, 입력 내용은 자동 저장하지 않아요.</span>
+            <span className="condition-banner-action">조건 입력하기 <span aria-hidden="true">→</span></span>
+          </Link>
           <div>
             <h2>관심 있는 정책은 저장해두세요</h2>
             <p>로그인하면 정책을 저장하고 마감일과 알림을 확인할 수 있어요.</p>

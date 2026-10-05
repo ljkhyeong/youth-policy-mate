@@ -37,7 +37,7 @@ describe("공개 화면의 검색·공유 정보", () => {
     vi.mocked(loadPolicy).mockResolvedValue({ status: "available", data: {
       policyNumber: "123", revision: 1, collectedAt: "2026-09-12T00:00:00Z", sourceUrl: "https://www.youthcenter.go.kr/",
       content: { title: "청년 주거 지원", description: "  신청 기간을\n 확인하세요.  ", category: "주거", organization: "서울시", applicationPeriod: "공고 확인", regionCodes: [], links: [], sections: [], sourceModifiedAtText: "" },
-      recruitment: { status: "UNKNOWN", explanation: "기간 확인 필요", evaluatedAt: "2026-09-12T00:00:00Z" }, sourceNotices: [],
+      recruitment: { status: "UNKNOWN", explanation: "기간 확인 필요", evaluatedAt: "2026-09-12T00:00:00Z", deadlineOnSeoul: null, daysUntilDeadline: null }, sourceNotices: [],
     } });
     const metadata = await policyMetadata({ params: Promise.resolve({ policyNumber: "123" }) });
     expect(metadata.alternates).toEqual({ canonical: "https://policy.example.test/policies/123" });

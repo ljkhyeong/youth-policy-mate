@@ -565,7 +565,7 @@ export interface paths {
             readonly path?: never;
             readonly cookie?: never;
         };
-        /** 정책 검색·질문 제공 여부·접수 상태 필터 */
+        /** 정책 검색·분야·질문 제공 여부·접수 상태 필터. 접수 중인 정책을 먼저, 마감 임박순으로 정렬 */
         readonly get: operations["listPolicies"];
         readonly put?: never;
         readonly post?: never;
@@ -1201,6 +1201,16 @@ export interface components {
             readonly sourceUrl: string;
         };
         readonly PolicyRecruitment: {
+            /**
+             * Format: int32
+             * @description 평가 시점의 서울 날짜부터 마감일까지 남은 일수. 마감일이 없으면 null
+             */
+            readonly daysUntilDeadline: number | null;
+            /**
+             * Format: date
+             * @description 확인한 마감일(서울). 상시·소진형·기간 미확인과 날짜 없는 마감은 null
+             */
+            readonly deadlineOnSeoul: string | null;
             /** Format: date-time */
             readonly evaluatedAt: string;
             readonly explanation: string;
@@ -3466,6 +3476,7 @@ export interface operations {
                 readonly pageSize?: number;
                 readonly questionsOnly?: boolean;
                 readonly recruitmentStatus?: "BEFORE_OPENING" | "OPEN" | "CLOSED" | "ROLLING" | "UNTIL_EXHAUSTED" | "UNKNOWN";
+                readonly category?: "JOB" | "HOUSING" | "EDUCATION" | "FINANCE" | "PARTICIPATION";
             };
             readonly header?: never;
             readonly path?: never;

@@ -15,7 +15,7 @@ const policy: components["schemas"]["PolicyDetailResponse"] = {
       { title: "소득 안내", text: "가구 소득인정액 기준 중위소득 50% 이하" },
     ],
   },
-  recruitment: { status: "CLOSED", explanation: "접수가 마감됐어요.", evaluatedAt: "2026-09-08T00:00:00Z" },
+  recruitment: { status: "CLOSED", explanation: "접수가 마감됐어요.", evaluatedAt: "2026-09-08T00:00:00Z", deadlineOnSeoul: null, daysUntilDeadline: null },
   sourceNotices: [],
 };
 

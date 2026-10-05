@@ -25,8 +25,8 @@ export function PageState({ kind, title, description, label, actions, headingAs:
   return (
     <section className="state-panel" data-kind={kind} aria-labelledby={titleId}>
       <div role={role} aria-atomic={role ? true : undefined}>
-        <p className={`mb-5 flex items-center gap-3 text-sm font-semibold ${kind === "error" ? "text-rose-800" : "text-teal-800"}`}>
-          {kind === "loading" && <span aria-hidden="true" className="size-4 shrink-0 rounded-full border-2 border-teal-200 border-t-teal-800 motion-safe:animate-spin" />}
+        <p className={`mb-5 flex items-center gap-3 text-sm font-semibold ${kind === "error" ? "text-rose-800" : "text-[#3734a8]"}`}>
+          {kind === "loading" && <span aria-hidden="true" className="size-4 shrink-0 rounded-full border-2 border-[#dcdbfa] border-t-[#3734a8] motion-safe:animate-spin" />}
           {label ?? STATE_LABELS[kind]}
         </p>
         <Heading id={titleId} ref={headingRef} tabIndex={headingRef ? -1 : undefined} className="max-w-xl text-2xl leading-relaxed font-bold tracking-tight sm:text-3xl">

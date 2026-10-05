@@ -41,15 +41,16 @@ public class PolicyCatalogController {
     }
 
     @GetMapping
-    @Operation(operationId = "listPolicies", summary = "정책 검색·질문 제공 여부·접수 상태 필터")
+    @Operation(operationId = "listPolicies", summary = "정책 검색·분야·질문 제공 여부·접수 상태 필터. 접수 중인 정책을 먼저, 마감 임박순으로 정렬")
     @ApiResponse(responseCode = "200", content = @Content(schema = @Schema(implementation = PolicyListResponse.class)))
     @ApiResponse(responseCode = "400", content = @Content(schema = @Schema(implementation = PolicyApiError.class)))
     public PolicyListResponse list(@RequestParam(defaultValue = "") @Size(max = 80) String q,
                                    @RequestParam(defaultValue = "1") @Min(1) @Max(1000) int page,
                                    @RequestParam(defaultValue = "20") @Min(1) @Max(50) int pageSize,
                                    @RequestParam(defaultValue = "false") boolean questionsOnly,
-                                   @RequestParam(required = false) RecruitmentStatus recruitmentStatus) {
-        return store.list(q.strip(), page, pageSize, questionsOnly, recruitmentStatus, clock.instant());
+                                   @RequestParam(required = false) RecruitmentStatus recruitmentStatus,
+                                   @RequestParam(required = false) PolicyCategory category) {
+        return store.list(q.strip(), page, pageSize, questionsOnly, recruitmentStatus, category, clock.instant());
     }
 
     @GetMapping("/{policyNumber}")

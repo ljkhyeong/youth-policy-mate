@@ -942,6 +942,35 @@ class PolicyCatalogTest {
         assertThat(store.list("이사비", 1, 20, false, kr.youthpolicymate.policy.RecruitmentStatus.CLOSED, AT).total()).isZero();
     }
 
+    @Test @DisplayName("공개 목록은 분야로 좁히고 접수 중인 정책을 마감 임박순으로 먼저 보여준다")
+    void ordersByAvailabilityAndFiltersCategory() throws Exception {
+        item.put("lclsfNm", "일자리").put("aplyPrdSeCd", "0057001");
+        item.put("plcyNo", "981").put("aplyYmd", "20260801 ~ 20260831"); save("closed", AT.plusSeconds(1));
+        item.put("plcyNo", "982").put("aplyYmd", "20260901 ~ 20260930"); save("open-late", AT.plusSeconds(2));
+        item.put("plcyNo", "983").put("aplyPrdSeCd", "0057002").put("aplyYmd", ""); save("rolling", AT.plusSeconds(3));
+        item.put("plcyNo", "984").put("aplyPrdSeCd", "0057001").put("aplyYmd", "20260901 ~ 20260912"); save("open-soon", AT.plusSeconds(4));
+        item.put("plcyNo", "985").put("aplyYmd", "20261001 ~ 20261012"); save("before", AT.plusSeconds(5));
+        item.put("plcyNo", "986").put("lclsfNm", "금융･복지･문화").put("aplyYmd", "20260901 ~ 20260910"); save("finance", AT.plusSeconds(6));
+        item.put("plcyNo", "987").put("lclsfNm", "금융·복지·문화").put("aplyYmd", "20260801 ~ 20260802"); save("finance-dot", AT.plusSeconds(7));
+        item.put("plcyNo", "988").put("lclsfNm", "일자리").put("aplyYmd", "20261001 ~ 20261031"); save("before-later", AT.plusSeconds(8));
+
+        // 마감 임박순은 접수 중에만 적용하고 접수 전은 최근 수집순이다.
+        var numbers = store.list("", 1, 20, false, null, null, AT).items().stream().map(PolicySummary::policyNumber).toList();
+        assertThat(numbers).containsSubsequence("986", "984", "982", "988", "985", "983", "981");
+        assertThat(store.list("", 1, 20, false, null, PolicyCategory.JOB, AT).total()).isEqualTo(6);
+        assertThat(store.list("", 1, 20, false, kr.youthpolicymate.policy.RecruitmentStatus.OPEN, PolicyCategory.JOB, AT).items())
+                .extracting(PolicySummary::policyNumber).containsExactly("984", "982");
+        mvc.perform(get("/api/v1/policies").param("category", "FINANCE")).andExpect(status().isOk())
+                .andExpect(jsonPath("$.total").value(2)).andExpect(jsonPath("$.items[0].policyNumber").value("986"))
+                .andExpect(jsonPath("$.items[0].recruitment.deadlineOnSeoul").value("2026-09-10"))
+                .andExpect(jsonPath("$.items[0].recruitment.daysUntilDeadline").value(5))
+                .andExpect(jsonPath("$.items[1].recruitment.status").value("CLOSED"));
+        mvc.perform(get("/api/v1/policies").param("category", "JOB").param("recruitmentStatus", "ROLLING")).andExpect(status().isOk())
+                .andExpect(jsonPath("$.total").value(1)).andExpect(jsonPath("$.items[0].recruitment.deadlineOnSeoul").value(org.hamcrest.Matchers.nullValue()))
+                .andExpect(jsonPath("$.items[0].recruitment.daysUntilDeadline").value(org.hamcrest.Matchers.nullValue()));
+        mvc.perform(get("/api/v1/policies").param("category", "INVALID")).andExpect(status().isBadRequest());
+    }
+
     @Test @DisplayName("기존 정책을 삭제하거나 개정을 늘리지 않고 접수 검색 기간을 이전한다")
     void backfillsRecruitmentForExistingPolicies() throws Exception {
         var config = org.flywaydb.core.Flyway.configure().dataSource(postgres.getJdbcUrl(), postgres.getUsername(), postgres.getPassword())

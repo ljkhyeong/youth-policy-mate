@@ -148,6 +148,12 @@ public class PolicyCatalogStore {
 
     @Transactional(readOnly = true, isolation = org.springframework.transaction.annotation.Isolation.REPEATABLE_READ)
     public PolicyListResponse list(String query, int page, int pageSize, boolean questionsOnly, RecruitmentStatus recruitmentStatus, Instant now) {
+        return list(query, page, pageSize, questionsOnly, recruitmentStatus, null, now);
+    }
+
+    @Transactional(readOnly = true, isolation = org.springframework.transaction.annotation.Isolation.REPEATABLE_READ)
+    public PolicyListResponse list(String query, int page, int pageSize, boolean questionsOnly, RecruitmentStatus recruitmentStatus,
+                                   PolicyCategory category, Instant now) {
         var reviewed = reviewedHashes(rules.published(), now);
         var parameters = new HashMap<String, Object>();
         parameters.put("query", query);
@@ -165,14 +171,19 @@ public class PolicyCatalogStore {
             where += " AND " + alternatives;
         }
         where += recruitmentFilter(recruitmentStatus, now, parameters);
+        if (category != null) {
+            where += " AND p.content->>'category' IN (:categories)";
+            parameters.put("categories", category.labels());
+        }
         var total = jdbc.sql("SELECT count(*) FROM policies p" + where).params(parameters).query(Long.class).single();
+        parameters.put("orderNow", now.atOffset(ZoneOffset.UTC));
         var items = jdbc.sql("""
                 SELECT p.policy_number, p.current_revision, p.content_hash, p.last_collected_at,
                     p.content->>'title' AS title, p.content->>'description' AS description,
                     p.content->>'category' AS category, p.content->>'organization' AS organization,
                     p.content->>'applicationPeriod' AS application_period,
                 """ + PERIOD_SOURCE + " FROM policies p " + SOURCE_JOIN + where
-                        + " ORDER BY p.last_collected_at DESC, p.policy_number LIMIT :limit OFFSET :offset")
+                        + " ORDER BY " + AVAILABILITY_ORDER + ", p.last_collected_at DESC, p.policy_number LIMIT :limit OFFSET :offset")
                 .params(parameters).param("limit", pageSize).param("offset", (page - 1) * pageSize)
                 .query((rs, row) -> new PolicySummary(rs.getString("policy_number"), rs.getString("title"),
                             rs.getString("description"), rs.getString("category"), rs.getString("organization"),
@@ -185,6 +196,15 @@ public class PolicyCatalogStore {
                 .list();
         return new PolicyListResponse(items, page, pageSize, total, (long) page * pageSize < total);
     }
+
+    // 공개 목록은 접수 중인 정책을 마감 임박순으로 먼저 보여준다. 검색용 모집 기간과 같은 기준이다.
+    private static final String AVAILABILITY_ORDER = """
+            CASE WHEN p.recruitment_kind = 'PERIOD' AND p.recruitment_opens_at <= :orderNow AND p.recruitment_closes_at > :orderNow THEN 0
+                 WHEN p.recruitment_kind = 'PERIOD' AND p.recruitment_opens_at > :orderNow THEN 1
+                 WHEN p.recruitment_kind IN ('ROLLING', 'UNTIL_EXHAUSTED') THEN 2
+                 WHEN p.recruitment_kind = 'UNKNOWN' THEN 3 ELSE 4 END,
+            CASE WHEN p.recruitment_kind = 'PERIOD' AND p.recruitment_opens_at <= :orderNow AND p.recruitment_closes_at > :orderNow
+                 THEN p.recruitment_closes_at END""";
 
     private Map<String, String> reviewedHashes(java.util.List<PolicyRuleDefinition> definitions, Instant now) {
         var reviewed = new HashMap<String, String>();

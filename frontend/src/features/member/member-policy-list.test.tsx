@@ -7,7 +7,7 @@ const at = "2026-09-12T00:00:00Z";
 const item: SavedPolicies["items"][number] = {
   policyNumber: "99990000000000000001", title: "저장한 정책", savedRevision: 1, currentRevision: 2, savedAt: at,
   applicationPeriod: "상시 접수", deadline: { date: null, note: "상시 접수라 마감 알림을 제공하지 않아요." },
-  recruitment: { status: "ROLLING", explanation: "상시 접수 안내", evaluatedAt: at },
+  recruitment: { status: "ROLLING", explanation: "상시 접수 안내", evaluatedAt: at, deadlineOnSeoul: null, daysUntilDeadline: null },
 };
 const base = { calendar: true, query: "", changedOnly: false, filter: "" as const, onSearch: vi.fn(), onFilterChange: vi.fn(), busy: false, onRemove: vi.fn() };
 
@@ -31,7 +31,7 @@ describe("내 정책 마감 일정", () => {
 
   it("서버의 종료 상태와 날짜를 그대로 표시하고 지난 마감의 알림을 약속하지 않는다", () => {
     const closed = { ...item, title: "종료 정책", deadline: { date: "2026-09-11", note: "공식 안내 확인" },
-      recruitment: { status: "CLOSED" as const, explanation: "공고의 마감 시각이 지났어요.", evaluatedAt: at } };
+      recruitment: { status: "CLOSED" as const, explanation: "공고의 마감 시각이 지났어요.", evaluatedAt: at, deadlineOnSeoul: null, daysUntilDeadline: null } };
     const html = renderToStaticMarkup(<MemberPolicyList {...base} policies={[item, closed]} filter="CLOSED" />);
     expect(html).toContain("2026-09-11 마감");
     expect(html).toContain("공고의 마감 시각이 지났어요");

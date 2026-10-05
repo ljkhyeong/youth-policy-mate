@@ -11,7 +11,7 @@ const policy: components["schemas"]["PolicySummary"] = {
   policyNumber: "123", title: "시험 지원", description: "지원 안내", category: "교육",
   organization: "시험 기관", applicationPeriod: "공식 안내 확인", collectedAt: "2026-09-05T01:00:00Z",
   questionnaireAvailable: true,
-  recruitment: { status: "UNKNOWN", explanation: "신청기간을 확인해주세요.", evaluatedAt: "2026-09-06T00:00:00Z" },
+  recruitment: { status: "UNKNOWN", explanation: "신청기간을 확인해주세요.", evaluatedAt: "2026-09-06T00:00:00Z", deadlineOnSeoul: null, daysUntilDeadline: null },
 };
 
 describe("정책 목록의 공통요건 질문 탐색", () => {
@@ -40,7 +40,7 @@ describe("정책 목록의 공통요건 질문 탐색", () => {
   it("검색·페이지 이동에 필터를 유지하고 필터 전환은 첫 페이지로 돌아간다", async () => {
     vi.mocked(loadPolicies).mockResolvedValue({ status: "available", data: { items: [policy], page: 2, pageSize: 20, total: 41, hasNext: true } });
     const html = renderToStaticMarkup(await PoliciesPage({ searchParams: Promise.resolve({ q: "시험&지원", page: "2", questionsOnly: "true", recruitmentStatus: "OPEN" }) }));
-    expect(loadPolicies).toHaveBeenCalledWith("시험&지원", 2, true, "OPEN");
+    expect(loadPolicies).toHaveBeenCalledWith("시험&지원", 2, true, "OPEN", 20, undefined);
     expect(html).toContain('type="hidden" name="questionsOnly" value="true"');
     const query = encodeURIComponent("시험&지원");
     expect(html).toContain(`href="/policies?q=${query}&amp;page=3&amp;questionsOnly=true&amp;recruitmentStatus=OPEN"`);
@@ -55,7 +55,7 @@ describe("정책 목록의 공통요건 질문 탐색", () => {
   it("질문이 없는 정책에는 질문 이동을 표시하지 않고 전체 조회를 유지한다", async () => {
     vi.mocked(loadPolicies).mockResolvedValue({ status: "available", data: { items: [{ ...policy, questionnaireAvailable: false }], page: 1, pageSize: 20, total: 1, hasNext: false } });
     const html = renderToStaticMarkup(await PoliciesPage({ searchParams: Promise.resolve({}) }));
-    expect(loadPolicies).toHaveBeenCalledWith("", 1, false, "");
+    expect(loadPolicies).toHaveBeenCalledWith("", 1, false, "", 20, undefined);
     expect(html).toContain('href="/policies/123"');
     expect(html).not.toContain('href="/policies/123#policy-questions"');
     expect(html).not.toContain('type="hidden" name="questionsOnly"');
@@ -75,5 +75,24 @@ describe("정책 목록의 공통요건 질문 탐색", () => {
     expect(html).toContain("첫 페이지 보기");
     expect(html).toContain(`href="/policies?q=${encodeURIComponent("시험")}&amp;page=1&amp;questionsOnly=true"`);
     expect(html).not.toContain("질문이 있는 정책 중 검색 결과가 없어요");
+  });
+
+  it("분야 필터는 검색어·접수 상태·질문 필터를 유지하고 잘못된 분야는 무시한다", async () => {
+    vi.mocked(loadPolicies).mockResolvedValue({ status: "available", data: { items: [policy], page: 1, pageSize: 20, total: 21, hasNext: true } });
+    const html = renderToStaticMarkup(await PoliciesPage({ searchParams: Promise.resolve({ q: "지원", questionsOnly: "true", recruitmentStatus: "OPEN", category: "HOUSING" }) }));
+    expect(html).toContain('href="/policies?q=%EC%A7%80%EC%9B%90&amp;page=2&amp;questionsOnly=true&amp;recruitmentStatus=OPEN&amp;category=HOUSING"');
+    expect(html).toContain(">마감 임박순<");
+    expect(loadPolicies).toHaveBeenCalledWith("지원", 1, true, "OPEN", 20, "HOUSING");
+    expect(html).toContain('type="hidden" name="category" value="HOUSING"');
+    expect(html).toContain('href="/policies?q=%EC%A7%80%EC%9B%90&amp;page=1&amp;questionsOnly=true&amp;recruitmentStatus=OPEN&amp;category=JOB"');
+    expect(html).toContain('href="/policies?q=%EC%A7%80%EC%9B%90&amp;page=1&amp;questionsOnly=true&amp;recruitmentStatus=OPEN"');
+    expect(html).toMatch(/aria-current="page"[^>]*>주거<|data-category="HOUSING" aria-current="page">주거</);
+    expect(html).toContain("‘지원’ 검색 결과 · 주거 · 접수 기간");
+    vi.mocked(loadPolicies).mockClear();
+    const unfiltered = renderToStaticMarkup(await PoliciesPage({ searchParams: Promise.resolve({ category: "UNKNOWN_CATEGORY" }) }));
+    expect(loadPolicies).toHaveBeenCalledWith("", 1, false, "", 20, undefined);
+    expect(unfiltered).toContain("접수 중인 정책부터 마감 임박순");
+    const closed = renderToStaticMarkup(await PoliciesPage({ searchParams: Promise.resolve({ recruitmentStatus: "CLOSED" }) }));
+    expect(closed).not.toContain("policy-order-note");
   });
 });

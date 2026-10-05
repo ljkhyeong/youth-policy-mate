@@ -9,8 +9,14 @@ export const policyCategories: readonly { key: PolicyCategoryKey; label: string 
   { key: "EDUCATION", label: "교육·직업훈련" }, { key: "PARTICIPATION", label: "참여·기반" },
 ];
 
-export const categoryLabel = (category: string | null | undefined) => category ? category.replaceAll("･", "·") : "청년 정책";
-export const categoryKey = (category: string | null | undefined) => policyCategories.find(item => item.label === categoryLabel(category))?.key;
+// 원천 대분류는 쉼표로 묶인 복수 값일 수 있어 분야마다 나눈다. 분야가 없으면 기본 표시를 사용한다.
+// 앞뒤 공백은 서버 분야 필터(PolicyCatalogStore)와 같은 일반·탭·줄바꿈·NBSP·전각 공백만 뺀다.
+const sourceSpaces = /^[ \t\n\r\u00a0\u3000]+|[ \t\n\r\u00a0\u3000]+$/g;
+export const categoryLabels = (category: string | null | undefined) => {
+  const labels = [...new Set((category ?? "").split(",").map(part => part.replace(sourceSpaces, "").replaceAll("･", "·")).filter(Boolean))];
+  return labels.length > 0 ? labels : ["청년 정책"];
+};
+export const categoryKey = (label: string) => policyCategories.find(item => item.label === label)?.key;
 export const isPolicyCategory = (value: unknown): value is PolicyCategoryKey => policyCategories.some(item => item.key === value);
 
 const icons: Record<PolicyCategoryKey | "ALL", ReactNode> = {
@@ -25,4 +31,10 @@ const icons: Record<PolicyCategoryKey | "ALL", ReactNode> = {
 export function CategoryIcon({ category }: { category: PolicyCategoryKey | "ALL" }) {
   return <svg className="category-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"
     strokeLinecap="round" strokeLinejoin="round">{icons[category]}</svg>;
+}
+
+export function CategoryChips({ category }: { category: string | null | undefined }) {
+  return <span className="category-chips">
+    {categoryLabels(category).map(label => <span key={label} className="category-chip" data-category={categoryKey(label)}>{label}</span>)}
+  </span>;
 }

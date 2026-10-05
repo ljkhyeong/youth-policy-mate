@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { PolicyRecruitment, RecruitmentBadge, RecruitmentExplanation } from "@/features/policies/policy-recruitment";
-import { categoryKey, categoryLabel } from "@/features/policies/policy-category";
+import { CategoryChips } from "@/features/policies/policy-category";
 import { formatPolicyPeriod } from "@/features/policies/policy-period";
 import type { components } from "@/generated/policy-api";
 import { PolicyQuestionnaire } from "@/features/eligibility/policy-questionnaire";
@@ -18,7 +18,7 @@ export function collectedTime(value: string) {
 export function PolicyCard({ policy }: { policy: Summary }) {
   return <article className="policy-card">
     <div className="policy-card-top">
-      <span className="category-chip" data-category={categoryKey(policy.category)}>{categoryLabel(policy.category)}</span>
+      <CategoryChips category={policy.category} />
       <RecruitmentBadge recruitment={policy.recruitment} />
     </div>
     <h2><Link href={`/policies/${policy.policyNumber}`}>{policy.title}</Link></h2>
@@ -37,7 +37,7 @@ export function PolicyArticle({ policy }: { policy: Detail }) {
   const content = policy.content;
   return <article className="policy-article">
     <header className="policy-detail-heading">
-      <div className="policy-eyebrow"><span className="category-chip" data-category={categoryKey(content.category)}>{categoryLabel(content.category)}</span><span>{content.organization || "온통청년 제공"}</span></div>
+      <div className="policy-eyebrow"><CategoryChips category={content.category} /><span>{content.organization || "온통청년 제공"}</span></div>
       <h1>{content.title}</h1>
       <p className="policy-lead">{content.description}</p>
       <div className="policy-date-panel"><p>신청 기간</p><strong>{formatPolicyPeriod(content.applicationPeriod)}</strong>

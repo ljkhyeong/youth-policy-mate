@@ -172,7 +172,7 @@ public class PolicyCatalogStore {
         }
         where += recruitmentFilter(recruitmentStatus, now, parameters);
         if (category != null) {
-            where += " AND p.content->>'category' IN (:categories)";
+            where += " AND " + categoryMatch("categories");
             parameters.put("categories", category.labels());
         }
         var total = jdbc.sql("SELECT count(*) FROM policies p" + where).params(parameters).query(Long.class).single();
@@ -197,13 +197,30 @@ public class PolicyCatalogStore {
         return new PolicyListResponse(items, page, pageSize, total, (long) page * pageSize < total);
     }
 
-    // 목록의 분야 필터와 같은 표기 비교를 써서 타일의 수와 이동한 목록의 전체 건수를 맞춘다.
+    // 목록의 분야 필터와 같은 조건으로 세어 타일의 수와 이동한 목록의 전체 건수를 맞춘다. 복수 분류는 분야마다 센다.
     public PolicyCategoryCounts categoryCounts() {
-        var byLabel = jdbc.sql("SELECT coalesce(p.content->>'category', '') AS category, count(*) AS count FROM policies p WHERE p.current_revision > 0 GROUP BY 1")
-                .query((rs, row) -> Map.entry(rs.getString("category"), rs.getLong("count"))).list();
-        var items = java.util.Arrays.stream(PolicyCategory.values()).map(category -> new PolicyCategoryCounts.Item(category,
-                byLabel.stream().filter(entry -> category.labels().contains(entry.getKey())).mapToLong(Map.Entry::getValue).sum())).toList();
-        return new PolicyCategoryCounts(items, byLabel.stream().mapToLong(Map.Entry::getValue).sum());
+        var categories = PolicyCategory.values();
+        var columns = new StringJoiner(", ");
+        var parameters = new HashMap<String, Object>();
+        for (var category : categories) {
+            columns.add("count(*) FILTER (WHERE " + categoryMatch("labels" + category.ordinal()) + ")");
+            parameters.put("labels" + category.ordinal(), category.labels());
+        }
+        var counts = jdbc.sql("SELECT count(*), " + columns + " FROM policies p WHERE p.current_revision > 0").params(parameters)
+                .query((rs, row) -> {
+                    var values = new long[categories.length + 1];
+                    for (int i = 0; i < values.length; i++) values[i] = rs.getLong(i + 1);
+                    return values;
+                }).single();
+        var items = java.util.Arrays.stream(categories).map(category -> new PolicyCategoryCounts.Item(category, counts[category.ordinal() + 1])).toList();
+        return new PolicyCategoryCounts(items, counts[0]);
+    }
+
+    // 원천 대분류는 쉼표로 묶인 복수 값일 수 있어 값마다 앞뒤 공백을 빼고 비교한다.
+    // 공백은 화면의 분야 칩(policy-category.tsx)과 같은 일반·탭·줄바꿈·NBSP·전각 공백이다.
+    private static String categoryMatch(String parameter) {
+        return "EXISTS (SELECT 1 FROM unnest(string_to_array(p.content->>'category', ',')) AS part(label)"
+                + " WHERE btrim(part.label, ' ' || chr(9) || chr(10) || chr(13) || chr(160) || chr(12288)) IN (:" + parameter + "))";
     }
 
     // 공개 목록은 접수 중인 정책을 마감 임박순으로 먼저 보여준다. 검색용 모집 기간과 같은 기준이다.

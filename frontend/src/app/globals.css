@@ -235,12 +235,13 @@ select {
   [data-category="FINANCE"] { --category-bg: #ffe8d9; --category-ink: #8a3d12; }
   [data-category="EDUCATION"] { --category-bg: #ece6ff; --category-ink: #4b2fa6; }
   [data-category="PARTICIPATION"] { --category-bg: #fff2c2; --category-ink: #6b5200; }
+  .category-chips { display: inline-flex; flex-wrap: wrap; gap: 6px; }
   .category-chip { display: inline-flex; align-items: center; min-height: 24px; padding: 0 9px; border-radius: 999px; background: #f3f2f9; color: #3f4166; font-size: 12px; font-weight: 700; }
   .category-filter { display: flex; gap: 8px; margin: 8px -6px 0; padding: 6px; overflow-x: auto; scrollbar-width: none; }
   .category-filter a { flex: 0 0 auto; display: inline-flex; align-items: center; min-height: 40px; padding: 0 14px; border-radius: 999px; background: #f3f2f9; color: #3f4166; font-size: 14px; font-weight: 650; text-decoration: none; }
   .category-filter a[aria-current="page"] { background: var(--app-blue); color: white; }
   .recruitment-status { display: inline-flex; align-items: center; gap: 8px; }
-  .recruitment-dday { color: #11734b; font-size: 14px; font-weight: 800; letter-spacing: -0.02em; }
+  .recruitment-dday { color: #11734b; font-size: 14px; font-weight: 800; letter-spacing: -0.02em; white-space: nowrap; }
 
   .condition-banner { display: flex; flex-direction: column; gap: 8px; padding: 22px 24px; border-radius: 20px; background: var(--app-blue); color: white; text-decoration: none; }
   .condition-banner:hover { background: var(--app-blue-dark); }
@@ -839,7 +840,8 @@ select {
   .policy-card { border: 1px solid var(--app-line); border-radius: 18px; background: white; padding: 24px; }
   article.policy-card { display: flex; flex-direction: column; }
   .policy-card-top { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
-  .policy-card-top .recruitment-status { flex: 1; }
+  /* 분야 칩이 여러 개면 접수 상태를 줄이지 않고 다음 줄로 넘긴다. */
+  .policy-card-top .recruitment-status { flex: 1 0 auto; }
   .policy-card-top .recruitment-dday { margin-left: auto; }
   .recruitment-explanation { font-size: 12px; color: var(--app-muted); }
   .recruitment-explanation summary { display: list-item; cursor: pointer; padding-block: 7px; }
@@ -848,7 +850,7 @@ select {
   article.policy-card .policy-card-actions { margin-top: auto; padding-top: 12px; }
 
   .policy-eyebrow { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; font-size: 12px; line-height: 1.5; color: var(--app-muted); }
-  .policy-eyebrow > span:first-child:not(.category-chip) { color: var(--app-blue-dark); font-weight: 750; }
+  .policy-eyebrow > span:first-child:not(.category-chips) { color: var(--app-blue-dark); font-weight: 750; }
   .policy-card h2 { margin: 14px 0 0; font-size: 20px; font-weight: 750; letter-spacing: -.035em; line-height: 1.5; }
   .policy-card h2 a { color: var(--app-text); text-decoration: none; }
   .policy-card h2 a:hover { color: var(--app-blue-dark); text-decoration: underline; text-underline-offset: 4px; }
@@ -1058,7 +1060,7 @@ select {
 @layer components {
 .policy-recruitment { margin: 12px 0; }
 .policy-recruitment p { margin: 8px 0 0; color: var(--app-muted); font-size: 13px; line-height: 1.65; font-weight: 400; }
-.recruitment-badge { display: inline-block; padding: 4px 9px; border-radius: 6px; background: #edf1ff; color: #3734a8; font-size: 12px; font-weight: 700; }
+.recruitment-badge { display: inline-block; white-space: nowrap; padding: 4px 9px; border-radius: 6px; background: #edf1ff; color: #3734a8; font-size: 12px; font-weight: 700; }
 .recruitment-badge[data-status="OPEN"], .recruitment-badge[data-status="ROLLING"] { background: #e6f6ee; color: #11734b; }
 .recruitment-badge[data-status="CLOSED"] { background: #eef0f3; color: #606775; }
 .recruitment-badge[data-status="UNKNOWN"], .recruitment-badge[data-status="UNTIL_EXHAUSTED"] { background: #fbf3dc; color: #806515; }

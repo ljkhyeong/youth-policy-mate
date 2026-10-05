@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { SiteShell } from "@/components/site-shell";
 import { publicMetadata, siteName, siteDescription } from "@/lib/public-metadata";
-import { CategoryIcon, categoryKey, categoryLabel, policyCategories, type PolicyCategoryKey } from "@/features/policies/policy-category";
+import { CategoryChips, CategoryIcon, policyCategories, type PolicyCategoryKey } from "@/features/policies/policy-category";
 import { formatPolicyPeriod } from "@/features/policies/policy-period";
 import { RecruitmentBadge } from "@/features/policies/policy-recruitment";
 import { loadCategoryCounts, loadPolicies } from "./policies/load-policies";
@@ -55,7 +55,7 @@ export default async function HomePage() {
           {open.data.items.length > 0 ? <ul className="home-open-list">
             {open.data.items.map(policy => <li key={policy.policyNumber} className="home-open-card">
               <div className="policy-card-top">
-                <span className="category-chip" data-category={categoryKey(policy.category)}>{categoryLabel(policy.category)}</span>
+                <CategoryChips category={policy.category} />
                 <RecruitmentBadge recruitment={policy.recruitment} />
               </div>
               <Link href={`/policies/${policy.policyNumber}`}>{policy.title}</Link>

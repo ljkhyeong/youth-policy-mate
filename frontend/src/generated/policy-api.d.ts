@@ -1016,7 +1016,7 @@ export interface components {
             readonly count: number;
         };
         readonly PolicyCategoryCounts: {
-            /** @description 다섯 분야를 항상 같은 순서로 제공. 정책이 없으면 0 */
+            /** @description 다섯 분야를 항상 같은 순서로 제공. 정책이 없으면 0. 복수 분류 정책은 분야마다 세므로 합이 total보다 클 수 있음 */
             readonly items: readonly components["schemas"]["PolicyCategoryCount"][];
             /**
              * Format: int64

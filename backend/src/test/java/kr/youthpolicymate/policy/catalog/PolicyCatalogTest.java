@@ -167,7 +167,7 @@ class PolicyCatalogTest {
         assertThat(evaluation.revision()).isOne();
     }
 
-    @Test @DisplayName("11개 검토 정책이 DB 규칙으로 질문을 제공하고 생년월일로 답할 수 있는 9개 연령 항목을 연결한다")
+    @Test @DisplayName("12개 검토 정책이 DB 규칙으로 질문을 제공하고 생년월일로 답할 수 있는 10개 연령 항목을 연결한다")
     void servesAllDataRules() {
         int prefills = 0;
         var birth = java.time.LocalDate.parse("1992-02-29");
@@ -180,11 +180,13 @@ class PolicyCatalogTest {
             if (!filled.answers().isEmpty()) {
                 prefills++;
                 var response = questions.evaluate(definition.policyNumber(), new PolicyQuestions.Request(1, questionnaire.ruleVersion(), filled.answers()));
-                assertThat(response.checks().getFirst().outcome()).isEqualTo(LegacyPolicyRules.age(definition.policyNumber(), birth, AT).outcome());
+                var expected = LegacyPolicyRules.TYPES_BY_NUMBER.containsKey(definition.policyNumber())
+                        ? LegacyPolicyRules.age(definition.policyNumber(), birth, AT) : definition.compareBirth(birth, AT).age();
+                assertThat(response.checks().getFirst().outcome()).isEqualTo(expected.outcome());
             }
         }
-        assertThat(prefills).isEqualTo(9);
-        assertThat(store.list("", 1, 20, true, null, AT).total()).isEqualTo(11);
+        assertThat(prefills).isEqualTo(10);
+        assertThat(store.list("", 1, 20, true, null, AT).total()).isEqualTo(12);
     }
 
     @Test @org.springframework.transaction.annotation.Transactional

@@ -62,7 +62,9 @@ class PolicyRuleMigrationTest {
                 for (var birthText : List.of("1983-01-01", "1986-01-01", "1986-01-02", "1991-01-01", "1992-02-29", "2007-01-01", "2007-12-31", "2011-05-31", "2011-06-01")) {
                     var birth = LocalDate.parse(birthText);
                     var comparison = definition.compareBirth(birth, now);
-                    assertThat(comparison.age()).isEqualTo(LegacyPolicyRules.age(definition.policyNumber(), birth, now));
+                    // 데이터 이전 전의 고정 자료가 있는 정책만 이전 결과와 비교한다.
+                    if (LegacyPolicyRules.TYPES_BY_NUMBER.containsKey(definition.policyNumber()))
+                        assertThat(comparison.age()).isEqualTo(LegacyPolicyRules.age(definition.policyNumber(), birth, now));
                     var response = definition.evaluate(1, new Request(1, definition.versionAt(now), definition.prefill(birth, now)), now);
                     assertThat(response.checks().getFirst().outcome()).isEqualTo(comparison.age().outcome());
                 }

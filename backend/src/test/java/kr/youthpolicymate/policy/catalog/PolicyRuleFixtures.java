@@ -26,7 +26,7 @@ final class PolicyRuleFixtures {
         try {
             var mapper = JsonMapper.builder().build();
             var definitions = new HashMap<String, PolicyRuleDefinition>();
-            for (var file : List.of("V23__seed_reviewed_policy_rules.sql", "V24__migrate_policy_question_rules.sql")) {
+            for (var file : List.of("V23__seed_reviewed_policy_rules.sql", "V24__migrate_policy_question_rules.sql", "V33__seed_k_newdeal_academy_rule.sql")) {
                 var matcher = Pattern.compile("\\$rule\\$(.*?)\\$rule\\$", Pattern.DOTALL)
                         .matcher(Files.readString(Path.of("src/main/resources/db/migration/" + file)));
                 while (matcher.find()) {

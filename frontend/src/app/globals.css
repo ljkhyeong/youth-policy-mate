@@ -624,7 +624,7 @@ select {
     border-radius: 14px;
     background: #f0effc;
     padding: 16px;
-    color: #174baf;
+    color: var(--app-blue-dark);
     text-align: left;
   }
 
@@ -822,7 +822,9 @@ select {
   .policy-filters a { display: inline-flex; align-items: center; min-height: 44px; padding: 8px 16px; border: 1px solid var(--app-line); border-radius: 24px; background: white; color: var(--app-muted); text-decoration: none; font-size: 14px; font-weight: 650; }
   .policy-filters a[aria-current="page"] { background: var(--app-blue); border-color: var(--app-blue); color: white; }
   .policy-question-badge { display: inline-block; margin-top: 12px; padding: 4px 10px; border-radius: 8px; background: #f0effc; color: var(--app-blue-dark); font-size: 12px; font-weight: 650; }
-  .policy-card-actions { display: flex; flex-wrap: wrap; gap: 4px 20px; }
+  .policy-card-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 20px; margin-top: 7px; }
+  .policy-card-actions .text-link { margin-top: 0; }
+  .policy-card-actions .text-button { padding: 0; font-size: 13px; }
   .policy-question-next { margin: 16px 0; padding: 0 16px 12px; border-left: 3px solid var(--app-blue-dark); background: #f6f5fb; }
   .policy-coverage { margin: 14px 0 22px; color: var(--app-muted); font-size: 13px; line-height: 1.75; }
   .policy-coverage a { color: var(--app-blue-dark); text-decoration: underline; text-underline-offset: 3px; }
@@ -923,7 +925,13 @@ select {
 .member-tabs { display: flex; gap: 8px; margin: 24px 0; border-bottom: 1px solid var(--app-line); }
 .member-tabs a { padding: 14px 18px; font-weight: 650; text-align: center; }
 .member-tabs a[aria-current] { color: var(--app-blue-dark); border-bottom: 3px solid var(--app-blue); }
-.member-deadline { font-weight: 750; color: var(--app-blue-dark); }
+.saved-policy[data-dated] { display: grid; grid-template-columns: 72px minmax(0, 1fr); gap: 16px; align-items: start; }
+.saved-policy-body { min-width: 0; }
+.saved-policy h2 { margin-top: 10px; }
+.saved-policy-note { margin: 8px 0 0; font-size: 14px; line-height: 1.7; }
+.member-deadline { display: flex; flex-direction: column; align-items: center; margin: 0; padding: 10px 4px; border-radius: 14px; background: #f0effc; color: var(--app-blue-dark); text-align: center; line-height: 1.3; }
+.member-deadline span { font-size: 11px; font-weight: 650; }
+.member-deadline strong { font-size: 20px; font-weight: 800; letter-spacing: -0.03em; }
 .saved-policy-changes { margin: 12px 0 20px; }
 .member-calendar-filter { width: 100%; min-height: 48px; padding: 10px 12px; border: 1px solid var(--app-line); border-radius: 10px; background: white; color: inherit; font: inherit; }
 .member-calendar-filter:focus-visible { outline: 3px solid var(--app-blue); outline-offset: 2px; }
@@ -959,6 +967,7 @@ select {
   .policy-questionnaire .question-scope { font-weight: 700; }
   .policy-questionnaire .question-privacy { color: var(--app-muted); font-size: 13px; }
   .policy-questionnaire > .text-link { display: inline-flex; margin-top: 22px; }
+  .policy-questionnaire > .button-primary + .text-link { margin-left: 20px; }
   .policy-question-fields { display: grid; gap: 24px; margin: 24px 0; }
   .policy-question-field label { display: block; font-size: 15px; font-weight: 650; line-height: 1.7; }
   .policy-question-field label span { color: var(--app-muted); }

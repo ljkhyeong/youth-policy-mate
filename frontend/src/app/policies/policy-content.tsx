@@ -43,6 +43,7 @@ export function PolicyArticle({ policy }: { policy: Detail }) {
       <div className="policy-date-panel"><p>신청 기간</p><strong>{formatPolicyPeriod(content.applicationPeriod)}</strong>
         <PolicyRecruitment recruitment={policy.recruitment} />
       </div>
+      <SavePolicyButton key={policy.policyNumber} policyNumber={policy.policyNumber} />
       <nav className="policy-detail-nav" aria-label="정책 상세 바로가기">
         <a href="#policy-support">지원 내용</a>
         <a href="#policy-official">공식 안내</a>
@@ -71,7 +72,6 @@ export function PolicyArticle({ policy }: { policy: Detail }) {
       </section>
     </div>
     <PolicyQuestionnaire key={`${policy.policyNumber}-${policy.revision}`} policyNumber={policy.policyNumber} />
-    <SavePolicyButton key={policy.policyNumber} policyNumber={policy.policyNumber} />
     <footer className="policy-source">
       <p>출처: 온통청년</p>
       <p>수집 시각: <time dateTime={policy.collectedAt}>{collectedTime(policy.collectedAt)}</time> (서울)</p>

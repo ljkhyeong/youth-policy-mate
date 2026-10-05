@@ -33,7 +33,8 @@ describe("내 정책 마감 일정", () => {
     const closed = { ...item, title: "종료 정책", deadline: { date: "2026-09-11", note: "공식 안내 확인" },
       recruitment: { status: "CLOSED" as const, explanation: "공고의 마감 시각이 지났어요.", evaluatedAt: at, deadlineOnSeoul: null, daysUntilDeadline: null } };
     const html = renderToStaticMarkup(<MemberPolicyList {...base} policies={[item, closed]} filter="CLOSED" />);
-    expect(html).toContain("2026-09-11 마감");
+    expect(html).toContain("<span>2026</span><strong>09.11</strong><span>금요일 마감</span>");
+    expect(html).toContain('href="/policies/99990000000000000001"');
     expect(html).toContain("공고의 마감 시각이 지났어요");
     expect(html).not.toContain("상시 접수라 마감 알림");
     expect(html).not.toContain("지난 알림 날짜는 건너뛰어요");

@@ -1,8 +1,6 @@
 package kr.youthpolicymate.ingestion;
 
 import kr.youthpolicymate.YouthPolicyMateApplication;
-import org.springframework.boot.SpringApplication;
-import org.springframework.boot.WebApplicationType;
 import tools.jackson.databind.ObjectMapper;
 
 import java.nio.file.Files;
@@ -17,11 +15,7 @@ public final class PolicyAiRuleCommand {
                 || args.length == 5 && args[0].equals("settle") || args.length == 4 && args[0].equals("no-charge")
                 || args.length == 1 && (args[0].equals("auto-run") || args[0].equals("auto-status"))))
             throw new IllegalArgumentException("사용법: prepare <정책번호> <개정> <생성 방식> <요청 UUID> <새 JSON 경로> | generate <요청 UUID> | complete <요청 UUID> <결과 JSON 경로> | status <요청 UUID> | settle <요청 UUID> <청구 확인 ID> <확인 시각> <원화 청구액> | no-charge <요청 UUID> <무과금 확인 ID> <확인 시각> | auto-run | auto-status");
-        var app = new SpringApplication(YouthPolicyMateApplication.class);
-        app.setAdditionalProfiles("local");
-        app.setWebApplicationType(WebApplicationType.NONE);
-        try (var context = app.run("--spring.config.import=optional:file:.env[.properties]", "--app.ontong.schedule.enabled=false",
-                "--app.reminders.enabled=false", "--app.email.enabled=false", "--app.ai.auto.enabled=false")) {
+        try (var context = YouthPolicyMateApplication.startCommand()) {
             var store = context.getBean(PolicyAiRuleDraftStore.class);
             switch (args[0]) {
                 case "auto-run" -> System.out.println(context.getBean(PolicyAiRuleAutoRunner.class).tick());

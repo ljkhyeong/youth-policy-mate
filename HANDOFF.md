@@ -5,6 +5,7 @@
 ## 현재 작업
 
 - `codex/progressive-policy-discovery`의 작업을 원격 `main`에 반영했다(`e9eb93a`→`12622bc`, 빨리 감기). `12622bc`에서 [웹·전체 서버 CI](https://github.com/ljkhyeong/youth-policy-mate/actions/runs/37329708258)를 통과했다.
+- 그 뒤 Claude Design 재설정 시안 중 2안(햇살 친근형)을 화면 전체에 적용했다(색·모양 토큰, 노랑은 고른 것·현재 위치에만). 로컬 웹 검사와 헤드리스 확인을 마쳤고 원격에는 아직 반영하지 않았다. [적용 기록](docs/development/interface-design-review.md#2026-10-06-2안햇살-친근형-적용)·[화면 기준](docs/design/webapp-interface.md#시각-기준)
 - 반영한 작업은 저장 정책 재조회 초점 수정, Claude Code 스킬, 미사용 코드 정리, 화면 개편(분야 탐색·마감 임박순·D-day), 입력 없이 둘러보는 조건 흐름, 홈 분야 타일의 정책 수, 복수 대분류 정책의 분야별 포함, 홈의 상황 선택과 분야 여러 개 필터([D안](docs/development/interface-design-review.md#2026-10-05-상황으로-시작하는-홈)), 운영 경로에 연결되지 않은 AI 예약 복구 모델 제거([결정 기록](docs/development/backend-api-review.md#ai-예약-복구-코드-제거--2026-10-05-적용)), [지역 필터 조사](docs/research/public-region-filter.md)다.
 - 앞서 접수 중인 K-뉴딜 아카데미에 질문 6개와 기본 연령 비교를 V33 규칙으로 추가했다. [K-뉴딜 아카데미 질문](docs/development/k-newdeal-academy-questions.md)
 - 질문 규칙을 정책마다 검토하기 전에도 모든 정책에서 온통청년 API의 표기 조건(연령 범위·연소득 상한·취업 상태·학력)을 상세와 내 조건 결과에 참고로 보여준다. 판정·정렬에는 쓰지 않고 무관·제한없음은 숨긴다. 로컬 40건 중 16건이 표기 연령을 새로 보여준다. 전체 서버 검사·웹 검사와 로컬 DB 헤드리스 확인을 통과했다. [표기 조건 표시](docs/development/source-condition-display.md)

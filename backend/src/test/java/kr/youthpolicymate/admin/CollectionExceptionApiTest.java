@@ -1,5 +1,6 @@
 package kr.youthpolicymate.admin;
 
+import kr.youthpolicymate.ingestion.OntongFixtures;
 import kr.youthpolicymate.ingestion.OntongPolicyCapture;
 import kr.youthpolicymate.policy.catalog.PolicyCatalogStore;
 import org.junit.jupiter.api.BeforeEach;
@@ -16,8 +17,6 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.postgresql.PostgreSQLContainer;
 import tools.jackson.databind.ObjectMapper;
 
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
@@ -109,10 +108,10 @@ class CollectionExceptionApiTest {
     @DisplayName("실패 원본과 같은 번호의 공개 내용만 비교하고 원본·개정·처리 이력은 변경하지 않는다")
     void readsRawAndCurrentPolicyWithoutMutation() throws Exception {
         var parser = new OntongPolicyCapture(mapper);
-        var capture = parser.parse(Files.readString(Path.of("src/test/resources/ontong/list-capture.json")));
+        var capture = parser.parseResponse(OntongFixtures.listBody(mapper), AT);
         var source = capture.items().getFirst().deepCopy();
         var policy = parser.item(source);
-        policies.importPolicy(policy.number(), policy.content(), policy.rawPolicy(), AT, "admin-fixture", policy.contentHash());
+        policies.importPolicy(policy.number(), policy.content(), policy.rawPolicy(), AT, "admin-fixture", policy.contentHash(), AT.getEpochSecond());
         ((tools.jackson.databind.node.ObjectNode) source).put("plcyNm", "");
         var run = page(1);
         item(run, 0, "INVALID_ITEM", source.toString());
@@ -150,17 +149,18 @@ class CollectionExceptionApiTest {
     @DisplayName("직전 내부 개정을 같은 정책에서 조회하고 원본 수집 시각과 최신 수집 시각을 구분한다")
     void readsPreviousRevisionWithItsSource() throws Exception {
         var parser = new OntongPolicyCapture(mapper);
-        var capture = parser.parse(Files.readString(Path.of("src/test/resources/ontong/list-capture.json")));
+        var capture = parser.parseResponse(OntongFixtures.listBody(mapper), AT);
         var source = (tools.jackson.databind.node.ObjectNode) capture.items().getFirst().deepCopy();
         var number = parser.item(source).number();
         for (int revision = 1; revision <= 3; revision++) {
             source.put("plcyNm", "개정 " + revision);
             var policy = parser.item(source);
-            policies.importPolicy(number, policy.content(), policy.rawPolicy(), AT.plusSeconds(revision),
-                    "revision-" + revision, policy.contentHash());
+            var at = AT.plusSeconds(revision);
+            policies.importPolicy(number, policy.content(), policy.rawPolicy(), at, "revision-" + revision, policy.contentHash(), at.getEpochSecond());
         }
         var current = parser.item(source);
-        policies.importPolicy(number, current.content(), current.rawPolicy(), AT.plusSeconds(4), "unchanged", current.contentHash());
+        policies.importPolicy(number, current.content(), current.rawPolicy(), AT.plusSeconds(4), "unchanged", current.contentHash(),
+                AT.plusSeconds(4).getEpochSecond());
         source.put("plcyNm", "");
         var run = page(1);
         item(run, 0, "INVALID_ITEM", source.toString());

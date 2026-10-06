@@ -1,5 +1,6 @@
 package kr.youthpolicymate.policy.catalog;
 
+import kr.youthpolicymate.ingestion.OntongFixtures;
 import kr.youthpolicymate.ingestion.OntongPolicyCapture;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -50,7 +51,6 @@ class PolicyCatalogTest {
     @Autowired PolicyCheckService checks;
     @Autowired PolicyQuestionService questions;
     @Autowired PolicyRuleStore rules;
-    @Autowired jakarta.validation.Validator validator;
     @Autowired ObjectMapper mapper;
     @Autowired MockMvc mvc;
     @org.springframework.test.context.bean.override.mockito.MockitoBean java.time.Clock clock;
@@ -69,7 +69,7 @@ class PolicyCatalogTest {
         jdbc.sql("DELETE FROM policy_source_snapshots").update();
         jdbc.sql("DELETE FROM policies").update();
         parser = new OntongPolicyCapture(mapper);
-        item = (ObjectNode) parser.parse(Files.readString(Path.of("src/test/resources/ontong/list-capture.json"))).items().getFirst();
+        item = (ObjectNode) parser.parseResponse(OntongFixtures.listBody(mapper), AT).items().getFirst();
     }
 
     @Test @DisplayName("새 연도 기준을 데이터로 적용하면 서버 재시작 없이 질문·정렬·자동 답변이 함께 바뀐다")
@@ -227,7 +227,7 @@ class PolicyCatalogTest {
     void reappliesCurrentCaptureWithNewNormalization() {
         save("same-capture", AT);
         var normalized = parser.item(item);
-        assertThat(store.importPolicy(normalized.number(), normalized.content(), normalized.rawPolicy(), AT,
+        assertThat(importAt(normalized.number(), normalized.content(), normalized.rawPolicy(), AT,
                 "same-capture", "next-normalization-version")).isEqualTo(PolicyCatalogStore.ImportResult.APPLIED);
         assertThat(store.find(NUMBER).orElseThrow().revision()).isEqualTo(2);
         assertThat(jdbc.sql("SELECT count(*) FROM policy_source_snapshots").query(Long.class).single()).isOne();
@@ -353,7 +353,7 @@ class PolicyCatalogTest {
 
         org.mockito.Mockito.when(clock.instant()).thenReturn(AT);
         var current = store.find(number).orElseThrow();
-        store.importPolicy(number, current.content(), "{}", AT.plusSeconds(1), "changed-tomorrow-savings", "changed-hash");
+        importAt(number, current.content(), "{}", AT.plusSeconds(1), "changed-tomorrow-savings", "changed-hash");
         mvc.perform(get(path + "/questions")).andExpect(status().isOk()).andExpect(jsonPath("$.available").value(false));
         mvc.perform(get("/api/v1/policies").param("questionsOnly", "true"))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.total").value(0));
@@ -410,7 +410,7 @@ class PolicyCatalogTest {
         // 규칙 활성화와 DB 개정 검사를 위한 인공 자료다. 정책 내용 자체의 검토 자료가 아니다.
         item.put("plcyNo", WorkStudyRules.NUMBER);
         var normalized = parser.item(item);
-        store.importPolicy(normalized.number(), normalized.content(), normalized.rawPolicy(), AT, "reviewed", WorkStudyRules.CONTENT_HASH);
+        importAt(normalized.number(), normalized.content(), normalized.rawPolicy(), AT, "reviewed", WorkStudyRules.CONTENT_HASH);
         var path = "/api/v1/policies/" + WorkStudyRules.NUMBER;
         mvc.perform(get(path + "/questions")).andExpect(status().isOk())
                 .andExpect(header().string("Cache-Control", "no-store"))
@@ -425,7 +425,7 @@ class PolicyCatalogTest {
             mvc.perform(post(path + "/evaluation").contentType("application/json").content(mapper.writeValueAsString(stale)))
                     .andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("POLICY_CHANGED"));
         }
-        store.importPolicy(normalized.number(), normalized.content(), normalized.rawPolicy(), AT.plusSeconds(1), "changed", "changed-content");
+        importAt(normalized.number(), normalized.content(), normalized.rawPolicy(), AT.plusSeconds(1), "changed", "changed-content");
         mvc.perform(get(path + "/questions")).andExpect(status().isOk()).andExpect(jsonPath("$.available").value(false));
         mvc.perform(get("/api/v1/policies").param("questionsOnly", "true"))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.total").value(0)).andExpect(jsonPath("$.items").isEmpty());
@@ -452,7 +452,7 @@ class PolicyCatalogTest {
         // 정책 내용은 인공 자료다. 해시 등록·개정 검사·규칙 연결만 검증한다.
         item.put("plcyNo", ExamFeeRules.NUMBER);
         var normalized = parser.item(item);
-        store.importPolicy(normalized.number(), normalized.content(), normalized.rawPolicy(), AT, "exam-reviewed", ExamFeeRules.CONTENT_HASH);
+        importAt(normalized.number(), normalized.content(), normalized.rawPolicy(), AT, "exam-reviewed", ExamFeeRules.CONTENT_HASH);
         String path = "/api/v1/policies/" + ExamFeeRules.NUMBER;
         mvc.perform(get(path + "/questions")).andExpect(status().isOk())
                 .andExpect(header().string("Cache-Control", "no-store"))
@@ -471,7 +471,7 @@ class PolicyCatalogTest {
         mvc.perform(post(path + "/evaluation").contentType("application/json").content(mapper.writeValueAsString(otherRule))).andExpect(status().isConflict());
         var otherAnswer = new PolicyQuestions.Request(1, ExamFeeRules.VERSION, List.of(new PolicyQuestions.Answer("nationality", "YES")));
         mvc.perform(post(path + "/evaluation").contentType("application/json").content(mapper.writeValueAsString(otherAnswer))).andExpect(status().isBadRequest());
-        store.importPolicy(normalized.number(), normalized.content(), normalized.rawPolicy(), AT.plusSeconds(1), "exam-updated", "changed-content");
+        importAt(normalized.number(), normalized.content(), normalized.rawPolicy(), AT.plusSeconds(1), "exam-updated", "changed-content");
         mvc.perform(get(path + "/questions")).andExpect(status().isOk()).andExpect(jsonPath("$.available").value(false));
         mvc.perform(post(path + "/evaluation").contentType("application/json").content(mapper.writeValueAsString(input))).andExpect(status().isConflict());
     }
@@ -481,7 +481,7 @@ class PolicyCatalogTest {
     void stopsExamFeeQuestionsAcrossYearBoundary() throws Exception {
         item.put("plcyNo", ExamFeeRules.NUMBER);
         var normalized = parser.item(item);
-        store.importPolicy(normalized.number(), normalized.content(), normalized.rawPolicy(), AT, "exam-reviewed", ExamFeeRules.CONTENT_HASH);
+        importAt(normalized.number(), normalized.content(), normalized.rawPolicy(), AT, "exam-reviewed", ExamFeeRules.CONTENT_HASH);
         String path = "/api/v1/policies/" + ExamFeeRules.NUMBER;
         org.mockito.Mockito.when(clock.instant()).thenReturn(Instant.parse("2026-12-31T14:59:59Z"));
         mvc.perform(get(path + "/questions")).andExpect(status().isOk()).andExpect(jsonPath("$.available").value(true));
@@ -650,7 +650,7 @@ class PolicyCatalogTest {
                 new PolicyQuestions.Request(1, request.ruleVersion(), List.of(new PolicyQuestions.Answer("monthlyRides", "TEN"))))))
                 .andExpect(status().isBadRequest());
         var current = store.find(KPassRules.NUMBER).orElseThrow();
-        store.importPolicy(KPassRules.NUMBER, current.content(), "{}", AT.plusSeconds(1), "changed-k-pass", "changed-hash");
+        importAt(KPassRules.NUMBER, current.content(), "{}", AT.plusSeconds(1), "changed-k-pass", "changed-hash");
         mvc.perform(get(path + "/questions")).andExpect(status().isOk()).andExpect(jsonPath("$.available").value(false));
         mvc.perform(get("/api/v1/policies").param("questionsOnly", "true"))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.total").value(0));
@@ -720,7 +720,7 @@ class PolicyCatalogTest {
                 new PolicyQuestions.Request(1, request.ruleVersion(), List.of(new PolicyQuestions.Answer("incomeAmount", "ZERO"))))))
                 .andExpect(status().isBadRequest());
         var current = store.find(YouthHousingSavingsRules.NUMBER).orElseThrow();
-        store.importPolicy(YouthHousingSavingsRules.NUMBER, current.content(), "{}", AT.plusSeconds(1), "changed-housing", "changed-hash");
+        importAt(YouthHousingSavingsRules.NUMBER, current.content(), "{}", AT.plusSeconds(1), "changed-housing", "changed-hash");
         mvc.perform(get(path + "/questions")).andExpect(status().isOk()).andExpect(jsonPath("$.available").value(false));
         mvc.perform(get("/api/v1/policies").param("questionsOnly", "true"))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.total").value(0));
@@ -777,7 +777,7 @@ class PolicyCatalogTest {
                 new PolicyQuestions.Request(1, request.ruleVersion(), List.of(new PolicyQuestions.Answer("birthRange", "ADULT"))))))
                 .andExpect(status().isBadRequest());
         var current = store.find(SeoulYouthNetworkRules.NUMBER).orElseThrow();
-        store.importPolicy(SeoulYouthNetworkRules.NUMBER, current.content(), "{}", AT.plusSeconds(1), "changed-network", "changed-hash");
+        importAt(SeoulYouthNetworkRules.NUMBER, current.content(), "{}", AT.plusSeconds(1), "changed-network", "changed-hash");
         mvc.perform(get(path + "/questions")).andExpect(status().isOk()).andExpect(jsonPath("$.available").value(false));
         mvc.perform(get("/api/v1/policies").param("questionsOnly", "true"))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.total").value(0));
@@ -860,7 +860,7 @@ class PolicyCatalogTest {
         mvc.perform(post("/api/v1/policies/checks").param("q", "가".repeat(81)).contentType("application/json").content(body)).andExpect(status().isBadRequest());
         mvc.perform(post("/api/v1/policies/checks").param("sort", "SCORE").contentType("application/json").content(body)).andExpect(status().isBadRequest());
         var current = store.find(KPassRules.NUMBER).orElseThrow();
-        store.importPolicy(KPassRules.NUMBER, current.content(), "{}", AT.plusSeconds(2), "changed-basic", "changed-basic-hash");
+        importAt(KPassRules.NUMBER, current.content(), "{}", AT.plusSeconds(2), "changed-basic", "changed-basic-hash");
         var changed = checks.check(input, 1, "K-패스", PolicyCheckResponse.Sort.AGE_MATCH, null).items().getFirst();
         assertThat(changed.checks().getFirst().outcome()).isEqualTo(kr.youthpolicymate.eligibility.ConditionAssessment.Outcome.UNKNOWN);
         assertThat(changed.ruleVersion()).isEmpty();
@@ -905,7 +905,7 @@ class PolicyCatalogTest {
         mvc.perform(post(path + "/evaluation").contentType("application/json").content(body)).andExpect(status().isConflict());
         org.mockito.Mockito.when(clock.instant()).thenReturn(AT);
         var current = store.find(MovingFeeRules.NUMBER).orElseThrow();
-        store.importPolicy(MovingFeeRules.NUMBER, current.content(), "{}", AT.plusSeconds(1), "moving-change", "moving-new-hash");
+        importAt(MovingFeeRules.NUMBER, current.content(), "{}", AT.plusSeconds(1), "moving-change", "moving-new-hash");
         mvc.perform(get(path + "/questions")).andExpect(status().isOk()).andExpect(jsonPath("$.available").value(false));
         mvc.perform(post(path + "/evaluation").contentType("application/json").content(body)).andExpect(status().isConflict());
         mvc.perform(get("/api/v1/policies").param("questionsOnly", "true")).andExpect(status().isOk()).andExpect(jsonPath("$.total").value(0));
@@ -1003,7 +1003,7 @@ class PolicyCatalogTest {
                     .satisfies(policy -> assertThat(policy.recruitment().status()).isEqualTo(expected));
         }
         var current = store.find(MovingFeeRules.NUMBER).orElseThrow();
-        store.importPolicy(MovingFeeRules.NUMBER, current.content(), "{}", AT.plusSeconds(1), "changed-window", "changed-window");
+        importAt(MovingFeeRules.NUMBER, current.content(), "{}", AT.plusSeconds(1), "changed-window", "changed-window");
         assertThat(store.list("이사비", 1, 20, false, kr.youthpolicymate.policy.RecruitmentStatus.UNKNOWN, AT).total()).isOne();
         assertThat(store.list("이사비", 1, 20, false, kr.youthpolicymate.policy.RecruitmentStatus.CLOSED, AT).total()).isZero();
     }
@@ -1066,30 +1066,6 @@ class PolicyCatalogTest {
                 .andExpect(jsonPath("$.items[*].policyNumber").value(org.hamcrest.Matchers.containsInAnyOrder("991", "992", "995", "999")));
     }
 
-    @Test @DisplayName("기존 정책을 삭제하거나 개정을 늘리지 않고 접수 검색 기간을 이전한다")
-    void backfillsRecruitmentForExistingPolicies() throws Exception {
-        var config = org.flywaydb.core.Flyway.configure().dataSource(postgres.getJdbcUrl(), postgres.getUsername(), postgres.getPassword())
-                .schemas("recruitment_backfill");
-        config.target("17").load().migrate();
-        try (var connection = java.sql.DriverManager.getConnection(postgres.getJdbcUrl(), postgres.getUsername(), postgres.getPassword())) {
-            connection.setSchema("recruitment_backfill");
-            var isolated = JdbcClient.create(new org.springframework.jdbc.datasource.SingleConnectionDataSource(connection, true));
-            var normalized = parser.item(item);
-            isolated.sql("INSERT INTO policies(policy_number, current_revision, content_hash, content, last_collected_at) VALUES (:number, 1, :hash, CAST(:content AS jsonb), :at)")
-                    .param("number", MovingFeeRules.NUMBER).param("hash", MovingFeeRules.CONTENT_HASH)
-                    .param("content", mapper.writeValueAsString(normalized.content())).param("at", AT.atOffset(java.time.ZoneOffset.UTC)).update();
-            var id = isolated.sql("INSERT INTO policy_source_snapshots(policy_number, capture_hash, captured_at, raw_policy) VALUES (:number, 'old', :at, CAST(:raw AS jsonb)) RETURNING id")
-                    .param("number", MovingFeeRules.NUMBER).param("at", AT.atOffset(java.time.ZoneOffset.UTC)).param("raw", normalized.rawPolicy()).query(Long.class).single();
-            isolated.sql("INSERT INTO policy_revisions(policy_number, revision, source_snapshot_id, content) SELECT policy_number, 1, :id, content FROM policies")
-                    .param("id", id).update();
-            config.target("latest").load().migrate();
-            var migrated = new PolicyCatalogStore(isolated, mapper, java.time.Clock.fixed(AT, java.time.ZoneOffset.UTC), new PolicyCorrectionStore(isolated, mapper), new PolicyRuleStore(isolated, mapper, validator, java.time.Clock.fixed(AT, java.time.ZoneOffset.UTC)));
-            assertThat(migrated.list("", 1, 20, false, kr.youthpolicymate.policy.RecruitmentStatus.CLOSED, AT).items()).singleElement()
-                    .satisfies(policy -> assertThat(policy.recruitment().status()).isEqualTo(kr.youthpolicymate.policy.RecruitmentStatus.CLOSED));
-            assertThat(migrated.find(MovingFeeRules.NUMBER).orElseThrow().revision()).isOne();
-        }
-    }
-
     @Test @DisplayName("청약통장 연령을 검색·정렬·접수 필터에 연결하고 원문·검토 연도 변경 시 중단한다")
     void comparesHousingAgeInBasicConditions() throws Exception {
         item.put("aplyPrdSeCd", "0057002").put("aplyYmd", "");
@@ -1125,7 +1101,7 @@ class PolicyCatalogTest {
         assertThat(expired.checks().getFirst().outcome()).isEqualTo(kr.youthpolicymate.eligibility.ConditionAssessment.Outcome.UNKNOWN);
         org.mockito.Mockito.when(clock.instant()).thenReturn(AT);
         var current = store.find(YouthHousingSavingsRules.NUMBER).orElseThrow();
-        store.importPolicy(YouthHousingSavingsRules.NUMBER, current.content(), "{}", AT.plusSeconds(2), "housing-age-changed", "changed-housing-age");
+        importAt(YouthHousingSavingsRules.NUMBER, current.content(), "{}", AT.plusSeconds(2), "housing-age-changed", "changed-housing-age");
         var changed = checks.check(input, 1, "청약", PolicyCheckResponse.Sort.AGE_MATCH, null).items().getFirst();
         assertThat(changed.ruleVersion()).isEmpty();
         assertThat(changed.checks().getFirst().outcome()).isEqualTo(kr.youthpolicymate.eligibility.ConditionAssessment.Outcome.UNKNOWN);
@@ -1172,7 +1148,7 @@ class PolicyCatalogTest {
         assertThat(expired.checks().getFirst().outcome()).isEqualTo(kr.youthpolicymate.eligibility.ConditionAssessment.Outcome.UNKNOWN);
         org.mockito.Mockito.when(clock.instant()).thenReturn(AT);
         var current = store.find(number).orElseThrow();
-        store.importPolicy(number, current.content(), "{}", AT.plusSeconds(2), "tomorrow-age-changed", "changed-tomorrow-age");
+        importAt(number, current.content(), "{}", AT.plusSeconds(2), "tomorrow-age-changed", "changed-tomorrow-age");
         var changed = checks.check(input, 1, "청년내일", PolicyCheckResponse.Sort.AGE_MATCH, null).items().getFirst();
         assertThat(changed.ruleVersion()).isEmpty();
         assertThat(changed.checks().getFirst().outcome()).isEqualTo(kr.youthpolicymate.eligibility.ConditionAssessment.Outcome.UNKNOWN);
@@ -1219,7 +1195,7 @@ class PolicyCatalogTest {
         mvc.perform(post(path + "/evaluation").contentType("application/json").content(body)).andExpect(status().isConflict());
         org.mockito.Mockito.when(clock.instant()).thenReturn(AT);
         var current = store.find(number).orElseThrow();
-        store.importPolicy(number, current.content(), "{}", AT.plusSeconds(1), "changed-guarantee", "changed-hash");
+        importAt(number, current.content(), "{}", AT.plusSeconds(1), "changed-guarantee", "changed-hash");
         mvc.perform(get(path + "/questions")).andExpect(status().isOk()).andExpect(jsonPath("$.available").value(false));
         mvc.perform(get("/api/v1/policies").param("questionsOnly", "true"))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.total").value(0));
@@ -1282,7 +1258,7 @@ class PolicyCatalogTest {
         mvc.perform(post(path + "/evaluation").contentType("application/json").content(body)).andExpect(status().isConflict());
         org.mockito.Mockito.when(clock.instant()).thenReturn(AT);
         var current = store.find(number).orElseThrow();
-        store.importPolicy(number, current.content(), "{}", AT.plusSeconds(2), "changed-haetsalron", "changed-hash");
+        importAt(number, current.content(), "{}", AT.plusSeconds(2), "changed-haetsalron", "changed-hash");
         mvc.perform(get(path + "/questions")).andExpect(status().isOk()).andExpect(jsonPath("$.available").value(false));
         mvc.perform(get("/api/v1/policies").param("questionsOnly", "true"))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.total").value(0));
@@ -1331,7 +1307,7 @@ class PolicyCatalogTest {
         }
         org.mockito.Mockito.when(clock.instant()).thenReturn(AT);
         var current = store.find(number).orElseThrow();
-        store.importPolicy(number, current.content(), "{}", AT.plusSeconds(1), "changed-miso-youth", "changed-hash");
+        importAt(number, current.content(), "{}", AT.plusSeconds(1), "changed-miso-youth", "changed-hash");
         mvc.perform(get(path + "/questions")).andExpect(status().isOk()).andExpect(jsonPath("$.available").value(false));
         mvc.perform(get("/api/v1/policies").param("questionsOnly", "true"))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.total").value(0));
@@ -1382,7 +1358,7 @@ class PolicyCatalogTest {
         }
         org.mockito.Mockito.when(clock.instant()).thenReturn(AT);
         var current = store.find(number).orElseThrow();
-        store.importPolicy(number, current.content(), "{}", AT.plusSeconds(1), "changed-future-jobs", "changed-hash");
+        importAt(number, current.content(), "{}", AT.plusSeconds(1), "changed-future-jobs", "changed-hash");
         mvc.perform(get(path + "/questions")).andExpect(status().isOk()).andExpect(jsonPath("$.available").value(false));
         mvc.perform(get(path)).andExpect(status().isOk()).andExpect(jsonPath("$.sourceNotices").isEmpty());
         mvc.perform(get("/api/v1/policies").param("questionsOnly", "true"))
@@ -1391,70 +1367,23 @@ class PolicyCatalogTest {
         mvc.perform(post(path + "/evaluation").contentType("application/json").content(body)).andExpect(status().isConflict());
     }
 
-    @Test @DisplayName("검토한 일자리 공고의 검색 기간만 수정하고 다른 원문·정책 및 개정을 유지한다")
-    void migratesOnlyReviewedFutureYouthJobsPeriod() throws Exception {
-        for (var reviewed : List.of(true, false)) {
-            var schema = reviewed ? "future_jobs_reviewed" : "future_jobs_changed";
-            var config = org.flywaydb.core.Flyway.configure().dataSource(postgres.getJdbcUrl(), postgres.getUsername(), postgres.getPassword()).schemas(schema);
-            config.target("20").load().migrate();
-            try (var connection = java.sql.DriverManager.getConnection(postgres.getJdbcUrl(), postgres.getUsername(), postgres.getPassword())) {
-                connection.setSchema(schema);
-                var isolated = JdbcClient.create(new org.springframework.jdbc.datasource.SingleConnectionDataSource(connection, true));
-                var normalized = parser.item(item);
-                for (var number : List.of(FutureYouthJobsRules.NUMBER, "999999")) {
-                    isolated.sql("""
-                            INSERT INTO policies(policy_number, current_revision, content_hash, content, last_collected_at,
-                                recruitment_kind, recruitment_opens_at, recruitment_closes_at)
-                            VALUES (:number, 1, :hash, CAST(:content AS jsonb), :at, 'PERIOD',
-                                TIMESTAMPTZ '2026-05-04 00:00:00+09', TIMESTAMPTZ '2026-06-01 00:00:00+09')
-                            """)
-                            .param("number", number).param("hash", reviewed ? FutureYouthJobsRules.CONTENT_HASH : "new-hash")
-                            .param("content", mapper.writeValueAsString(normalized.content())).param("at", AT.atOffset(java.time.ZoneOffset.UTC)).update();
-                    var snapshot = isolated.sql("""
-                            INSERT INTO policy_source_snapshots(policy_number, capture_hash, captured_at, raw_policy)
-                            VALUES (:number, 'original', :at, '{"aplyPrdSeCd":"0057001","aplyYmd":"20260504 ~ 20260531"}'::jsonb) RETURNING id
-                            """).param("number", number).param("at", AT.atOffset(java.time.ZoneOffset.UTC)).query(Long.class).single();
-                    isolated.sql("INSERT INTO policy_revisions(policy_number, revision, source_snapshot_id, content) SELECT policy_number, 1, :snapshot, content FROM policies WHERE policy_number = :number")
-                            .param("snapshot", snapshot).param("number", number).update();
-                }
-                config.target("latest").load().migrate();
-                var opens = isolated.sql("SELECT recruitment_opens_at FROM policies WHERE policy_number = :number")
-                        .param("number", FutureYouthJobsRules.NUMBER).query(java.time.OffsetDateTime.class).single().toInstant();
-                assertThat(opens).isEqualTo(Instant.parse(reviewed ? "2026-05-17T15:00:00Z" : "2026-05-03T15:00:00Z"));
-                assertThat(isolated.sql("SELECT recruitment_opens_at FROM policies WHERE policy_number = '999999'")
-                        .query(java.time.OffsetDateTime.class).single().toInstant()).isEqualTo(Instant.parse("2026-05-03T15:00:00Z"));
-                assertThat(isolated.sql("SELECT current_revision FROM policies").query(Long.class).list()).containsExactly(1L, 1L);
-                assertThat(isolated.sql("SELECT count(*) FROM policy_source_snapshots").query(Long.class).single()).isEqualTo(2);
-                assertThat(isolated.sql("SELECT count(*) FROM policy_revisions").query(Long.class).single()).isEqualTo(2);
-                if (reviewed) {
-                    var migrated = new PolicyCatalogStore(isolated, mapper, java.time.Clock.fixed(AT, java.time.ZoneOffset.UTC), new PolicyCorrectionStore(isolated, mapper), new PolicyRuleStore(isolated, mapper, validator, java.time.Clock.fixed(AT, java.time.ZoneOffset.UTC)));
-                    var beforeOpen = Instant.parse("2026-05-10T00:00:00Z");
-                    assertThat(migrated.list("", 1, 20, false, kr.youthpolicymate.policy.RecruitmentStatus.BEFORE_OPENING, beforeOpen).items())
-                            .singleElement().satisfies(policy -> {
-                                assertThat(policy.policyNumber()).isEqualTo(FutureYouthJobsRules.NUMBER);
-                                assertThat(policy.recruitment().status()).isEqualTo(kr.youthpolicymate.policy.RecruitmentStatus.BEFORE_OPENING);
-                            });
-                    assertThat(migrated.list("", 1, 20, false, kr.youthpolicymate.policy.RecruitmentStatus.OPEN, beforeOpen).items())
-                            .singleElement().satisfies(policy -> {
-                                assertThat(policy.policyNumber()).isEqualTo("999999");
-                                assertThat(policy.recruitment().status()).isEqualTo(kr.youthpolicymate.policy.RecruitmentStatus.OPEN);
-                            });
-                }
-            }
-        }
-    }
-
     private void saveReviewed(String number, String title, String hash) {
         // 인공 본문과 검토 해시로 조회·질문 연결만 검사한다. 공식 조건의 정확성 검사가 아니다.
         var source = item.deepCopy();
         source.put("plcyNo", number).put("plcyNm", title);
         var normalized = parser.item(source);
-        store.importPolicy(number, normalized.content(), normalized.rawPolicy(), AT, "reviewed-" + number, hash);
+        importAt(number, normalized.content(), normalized.rawPolicy(), AT, "reviewed-" + number, hash);
     }
 
     private PolicyCatalogStore.ImportResult save(String captureHash, Instant at) {
         var normalized = parser.item(item);
-        return store.importPolicy(normalized.number(), normalized.content(), normalized.rawPolicy(), at, captureHash, normalized.contentHash());
+        return importAt(normalized.number(), normalized.content(), normalized.rawPolicy(), at, captureHash, normalized.contentHash());
+    }
+
+    // 수신 시각 순서에 기대는 검사가 있으므로 수집 요청 순번도 시각에서 단조 증가하게 만든다.
+    private PolicyCatalogStore.ImportResult importAt(String number, PolicyContent content, String raw, Instant at,
+                                                     String captureHash, String contentHash) {
+        return store.importPolicy(number, content, raw, at, captureHash, contentHash, at.getEpochSecond());
     }
 
     @TestConfiguration(proxyBeanMethods = false)

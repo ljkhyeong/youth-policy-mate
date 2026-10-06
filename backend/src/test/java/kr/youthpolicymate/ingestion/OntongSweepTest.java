@@ -16,8 +16,6 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.postgresql.PostgreSQLContainer;
 import tools.jackson.databind.ObjectMapper;
 import tools.jackson.databind.node.ObjectNode;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
@@ -192,8 +190,7 @@ class OntongSweepTest {
 
     private void advance(long seconds) { now.updateAndGet(value -> value.plusSeconds(seconds)); }
     private OntongApiClient.Response response(int page, int count, int total, boolean invalidFirst) throws Exception {
-        var capture = mapper.readTree(Files.readString(Path.of("src/test/resources/ontong/list-capture.json")));
-        var body = (ObjectNode) mapper.readTree(capture.path("response").path("rawBody").asString());
+        var body = (ObjectNode) mapper.readTree(OntongFixtures.listBody(mapper));
         var result = (ObjectNode) body.path("result");
         ((ObjectNode) result.path("pagging")).put("pageNum", page).put("pageSize", 10).put("totCount", total);
         var source = (ObjectNode) result.path("youthPolicyList").get(0); var items = result.putArray("youthPolicyList");

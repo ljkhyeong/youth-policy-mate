@@ -164,7 +164,7 @@ public class OntongCollectionStore {
             finishItem(page.runId(), index, null, "INVALID_ITEM");
             return;
         }
-        var result = catalog.importCollectedPolicy(item.number(), item.content(), item.rawPolicy(),
+        var result = catalog.importPolicy(item.number(), item.content(), item.rawPolicy(),
                 parsed.capturedAt(), parsed.hash(), item.contentHash(), page.sequence());
         // 정책 반영과 완료 기록을 함께 커밋한다. 중간 실패 시 둘 다 롤백한다.
         finishItem(page.runId(), index, item.number(), result.name());

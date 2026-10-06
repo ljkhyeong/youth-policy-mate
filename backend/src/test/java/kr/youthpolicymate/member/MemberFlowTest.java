@@ -1,5 +1,6 @@
 package kr.youthpolicymate.member;
 
+import kr.youthpolicymate.ingestion.OntongFixtures;
 import kr.youthpolicymate.ingestion.OntongPolicyCapture;
 import kr.youthpolicymate.policy.catalog.PolicyCatalogStore;
 import org.junit.jupiter.api.BeforeEach;
@@ -22,8 +23,6 @@ import org.testcontainers.postgresql.PostgreSQLContainer;
 import tools.jackson.databind.ObjectMapper;
 import tools.jackson.databind.node.ObjectNode;
 
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneId;
@@ -83,7 +82,7 @@ class MemberFlowTest {
         jdbc.sql("DELETE FROM policy_revisions").update();
         jdbc.sql("DELETE FROM policy_source_snapshots").update();
         jdbc.sql("DELETE FROM policies").update();
-        raw = (ObjectNode) new OntongPolicyCapture(mapper).parse(Files.readString(Path.of("src/test/resources/ontong/list-capture.json"))).items().getFirst();
+        raw = (ObjectNode) new OntongPolicyCapture(mapper).parseResponse(OntongFixtures.listBody(mapper), Instant.parse("2026-09-04T00:00:00Z")).items().getFirst();
         raw.put("aplyPrdSeCd", "0057001").put("aplyYmd", "20260901 ~ 20260912");
         raw.put("plcySprtCn", "학업 지원").put("plcyAplyMthdCn", "공식 신청처 접수").put("etcMttrCn", "");
         capture = 0;
@@ -923,7 +922,7 @@ class MemberFlowTest {
         var item = new OntongPolicyCapture(mapper).item(raw);
         capture++;
         policies.importPolicy(item.number(), item.content(), item.rawPolicy(), Instant.parse("2026-09-04T00:00:00Z").plusSeconds(capture),
-                "member-test-" + capture, item.contentHash());
+                "member-test-" + capture, item.contentHash(), capture);
     }
     private void time(String now) {
         var fixed = Clock.fixed(Instant.parse(now), ZoneId.of("UTC"));

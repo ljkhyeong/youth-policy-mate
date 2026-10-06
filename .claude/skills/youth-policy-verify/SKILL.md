@@ -39,7 +39,7 @@ allowed-tools:
 | `policy/catalog/` 질문·판정표(`PolicyRuleDefinition`, `PolicyQuestion*`, `BasicConditions`) | `test:policy-questions` | 규칙 형식은 `PolicyRuleDefinitionTest`, DB 적용·목록은 `test:policy-catalog` |
 | `policy/catalog/` 목록·상세·저장소(`PolicyCatalogStore`, `*Response`) | `test:policy-catalog` | 응답 형식이 바뀌면 API 계약 행 |
 | `policy/Recruitment*`, `ApplicationPeriod` | `test:recruitment` | `catalog/PolicyRecruitment*`·`PolicyDeadline*`은 해당 테스트 클래스 |
-| `ingestion/Ontong*`, `PolicyCaptureImport` | `test:policy-collection` | |
+| `ingestion/Ontong*` | `test:policy-collection` | |
 | `ingestion/AiBudgetReservation*`, `AiRequestBudget`, `PolicyAiResult`, `policy/PolicyObservation` | `test:ai-reservation-db` | 요청·결과 타입이 바뀌면 운영 규칙 추출 경로를 포함한 `test:ai-rule-generation`도 |
 | `ingestion/PolicyAiExecutionCoordinator` | `test:ai-execution` | |
 | `ingestion/PolicyAiRule*`, `OpenAiRuleClient` | `test:ai-rule-generation` | 스케줄러는 `test:ai-rule-auto`, 초안 저장소만이면 `test:ai-rule-drafts` |

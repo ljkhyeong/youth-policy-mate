@@ -21,8 +21,6 @@ import tools.jackson.databind.ObjectMapper;
 import tools.jackson.databind.node.ObjectNode;
 
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.time.*;
 import java.util.*;
 import java.util.concurrent.*;
@@ -420,8 +418,8 @@ class PolicyAiRuleGenerationTest {
     private long heads() { return jdbc.sql("SELECT count(*) FROM policy_rule_heads WHERE policy_number = :number").param("number", NUMBER).query(Long.class).single(); }
     private void source(String title, Instant at) throws Exception {
         var parser = new OntongPolicyCapture(mapper);
-        var json = (ObjectNode) parser.parse(Files.readString(Path.of("src/test/resources/ontong/list-capture.json"))).items().getFirst().deepCopy();
+        var json = (ObjectNode) parser.parseResponse(OntongFixtures.listBody(mapper), at).items().getFirst().deepCopy();
         var item = parser.item(json.put("plcyNo", NUMBER).put("plcyNm", title));
-        policies.importPolicy(item.number(), item.content(), item.rawPolicy(), at, UUID.randomUUID().toString(), item.contentHash());
+        policies.importPolicy(item.number(), item.content(), item.rawPolicy(), at, UUID.randomUUID().toString(), item.contentHash(), at.getEpochSecond());
     }
 }

@@ -18,7 +18,7 @@ when_to_use: backend의 ingestion 패키지(Ontong*, PolicyAi*, AiBudget*, OpenA
 
 | 영역 | 코드(`backend/.../ingestion/`) | 먼저 볼 문서 |
 |---|---|---|
-| 온통청년 수집·범위 재개 | `Ontong*`, `PolicyCaptureImport` | `docs/research/ontong-api-contract.md`, `docs/development/policy-range-collection.md` |
+| 온통청년 수집·범위 재개 | `Ontong*` | `docs/research/ontong-api-contract.md`, `docs/development/policy-range-collection.md` |
 | 개정 적용 | `policy/catalog/PolicyCatalogStore` | `docs/design/policy-revision-application.md` |
 | AI 요청 판단·예산 예약 | `AiRequestBudget`, `AiBudgetReservation*` | `docs/design/ai-request-admission.md`, `docs/design/ai-budget-reservation-lifecycle.md` |
 | AI 실행·규칙 초안·자동 처리 | `PolicyAiExecutionCoordinator`, `PolicyAiRule*`, `OpenAiRuleClient` | `docs/design/policy-ai-execution.md`, `docs/development/ai-rule-drafts.md`, `docs/development/ai-rule-automation.md` |
@@ -33,7 +33,7 @@ when_to_use: backend의 ingestion 패키지(Ontong*, PolicyAi*, AiBudget*, OpenA
 | 명령 | 영향 |
 |---|---|
 | `npm run probe:ontong` | 온통청년 API 호출(`ONTONG_API_KEY`) |
-| `npm run collect:policy`, `npm run import:policy` | 외부 수집·로컬 DB 정책 반영 |
+| `npm run collect:policy` | 외부 수집·로컬 DB 정책 반영 |
 | `npm run ai:policy-rules` | OpenAI 호출과 비용 발생 |
 | `npm run ai:costs` | OpenAI 관리자 키로 비용 조회 |
 

@@ -1,5 +1,6 @@
 package kr.youthpolicymate.admin;
 
+import kr.youthpolicymate.ingestion.OntongFixtures;
 import kr.youthpolicymate.ingestion.OntongPolicyCapture;
 import kr.youthpolicymate.ingestion.PolicyAiRuleDraftStore;
 import kr.youthpolicymate.policy.catalog.PolicyCatalogStore;
@@ -18,8 +19,6 @@ import org.testcontainers.postgresql.PostgreSQLContainer;
 import tools.jackson.databind.ObjectMapper;
 import tools.jackson.databind.node.ObjectNode;
 
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
@@ -44,6 +43,7 @@ class PolicyAiRunApiTest {
     @Autowired PolicyCatalogStore policies;
     @Autowired PolicyAiRuleDraftStore drafts;
     @MockitoSpyBean PolicyAiRunStore runs;
+    private long sequence;
 
     @BeforeEach void setup() {
         insertMembers(jdbc);
@@ -148,10 +148,11 @@ class PolicyAiRunApiTest {
 
     private String source(int index, String title) throws Exception {
         var parser = new OntongPolicyCapture(mapper);
-        var raw = (ObjectNode) parser.parse(Files.readString(Path.of("src/test/resources/ontong/list-capture.json"))).items().getFirst().deepCopy();
+        var raw = (ObjectNode) parser.parseResponse(OntongFixtures.listBody(mapper), Instant.now()).items().getFirst().deepCopy();
         raw.put("plcyNo", "999900000000000000%02d".formatted(index)).put("plcyNm", title);
         var item = parser.item(raw);
-        policies.importPolicy(item.number(), item.content(), item.rawPolicy(), Instant.now(), UUID.randomUUID().toString(), item.contentHash());
+        // 같은 초에 같은 정책을 다시 반입하므로 수집 요청 순번은 호출 순서로 정한다.
+        policies.importPolicy(item.number(), item.content(), item.rawPolicy(), Instant.now(), UUID.randomUUID().toString(), item.contentHash(), ++sequence);
         return item.number();
     }
     private UUID request(String number) {

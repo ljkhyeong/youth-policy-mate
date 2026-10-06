@@ -64,6 +64,7 @@ class PolicyCorrectionApiTest {
         postJson(ROOT, body);
         assertThat(title()).isEqualTo("보정 제목");
         assertThat(revision()).isEqualTo(2);
+        assertThat(correction.path("appliedRevision").asLong()).isEqualTo(2);
         assertThat(count("policy_corrections")).isOne();
         assertThat(count("policy_source_snapshots")).isOne();
         assertThat(jdbc.sql("SELECT raw_policy->>'plcyNm' FROM policy_source_snapshots").query(String.class).single()).isEqualTo("원본 제목");
@@ -113,9 +114,10 @@ class PolicyCorrectionApiTest {
         var conflict = active();
         var body = resolution(conflict, "KEEP");
         var path = ROOT + "/" + conflict.path("id").asString() + "/resolutions";
-        postJson(path, body);
+        var resolved = postJson(path, body);
         postJson(path, body);
         assertThat(revision()).isEqualTo(3);
+        assertThat(resolved.path("resolvedRevision").asLong()).isEqualTo(revision());
         assertThat(count("policy_corrections")).isEqualTo(2);
         assertThat(active().path("sourceValue").asString()).isEqualTo("새 원본 제목");
         assertThat(title()).isEqualTo("보정 제목");
@@ -229,17 +231,6 @@ class PolicyCorrectionApiTest {
                 .content(request(UUID.randomUUID(), "ORGANIZATION", "보정 기관"))).andExpect(status().isConflict());
     }
 
-    @Test @DisplayName("순번 없는 캡처도 더 오래된 충돌 원본을 적용하지 않는다")
-    void ordersLocalCaptures() throws Exception {
-        local("원본 제목", 1);
-        postJson(ROOT, request(UUID.randomUUID(), "TITLE", "보정 제목"));
-        assertThat(local("새 원본 제목", 3)).isEqualTo(PolicyCatalogStore.ImportResult.CORRECTION_CONFLICT);
-        assertThat(local("이전 원본 제목", 2)).isEqualTo(PolicyCatalogStore.ImportResult.STALE);
-        var conflict = active();
-        postJson(ROOT + "/" + conflict.path("id").asString() + "/resolutions", resolution(conflict, "USE_SOURCE"));
-        assertThat(title()).isEqualTo("새 원본 제목");
-    }
-
     private String request(UUID id, String field, String value) {
         return mapper.writeValueAsString(Map.of("requestId", id, "policyNumber", "123", "expectedRevision", 1,
                 "field", field, "value", value, "reason", "공식 안내 확인"));
@@ -259,11 +250,7 @@ class PolicyCorrectionApiTest {
     }
     private PolicyCatalogStore.ImportResult ingest(String title, String description, long sequence) {
         var parsed = new OntongPolicyCapture(mapper).item(raw(title, description));
-        return catalog.importCollectedPolicy("123", parsed.content(), parsed.rawPolicy(), AT.plusSeconds(sequence), "capture-" + sequence, parsed.contentHash(), sequence);
-    }
-    private PolicyCatalogStore.ImportResult local(String title, int second) {
-        var parsed = new OntongPolicyCapture(mapper).item(raw(title, "설명"));
-        return catalog.importPolicy("123", parsed.content(), parsed.rawPolicy(), AT.plusSeconds(second), "local-" + second, parsed.contentHash());
+        return catalog.importPolicy("123", parsed.content(), parsed.rawPolicy(), AT.plusSeconds(sequence), "capture-" + sequence, parsed.contentHash(), sequence);
     }
     private JsonNode raw(String title, String description) {
         return mapper.valueToTree(Map.of("plcyNo", "123", "plcyNm", title, "plcyExplnCn", description,

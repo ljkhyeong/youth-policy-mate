@@ -3,6 +3,7 @@ package kr.youthpolicymate.admin;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.*;
 import kr.youthpolicymate.policy.catalog.PolicyContent;
+import kr.youthpolicymate.policy.catalog.PolicyCorrectionStore.Field;
 
 import java.time.Instant;
 import java.util.List;
@@ -10,7 +11,6 @@ import java.util.UUID;
 
 public final class PolicyCorrections {
     private PolicyCorrections() {}
-    public enum Field { TITLE, ORGANIZATION }
     public enum Status { ACTIVE, CONFLICT, RELEASED }
     public enum Action { KEEP, USE_SOURCE }
 

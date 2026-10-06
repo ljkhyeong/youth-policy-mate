@@ -6,8 +6,6 @@ import org.springframework.stereotype.Repository;
 import tools.jackson.databind.ObjectMapper;
 import tools.jackson.databind.JsonNode;
 
-import java.time.Instant;
-import java.time.OffsetDateTime;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -21,15 +19,12 @@ public class PolicyCorrectionStore {
 
     Optional<Active> active(String number) {
         return jdbc.sql("""
-                SELECT c.id, c.field, c.value, c.status, s.raw_policy::text AS source, conflict.captured_at AS conflict_at
+                SELECT c.id, c.field, c.value, c.status, s.raw_policy::text AS source
                 FROM policy_corrections c JOIN policy_source_snapshots s ON s.id = c.source_snapshot_id
-                LEFT JOIN policy_source_snapshots conflict ON conflict.id = c.conflict_snapshot_id
                 WHERE c.policy_number = :number AND c.status <> 'RELEASED'
-                """).param("number", number).query((rs, row) -> {
-                    var at = rs.getObject("conflict_at", OffsetDateTime.class);
-                    return new Active(rs.getObject("id", UUID.class), rs.getString("field"), rs.getString("value"),
-                            rs.getString("status"), mapper.readTree(rs.getString("source")), at == null ? null : at.toInstant());
-                }).optional();
+                """).param("number", number).query((rs, row) -> new Active(rs.getObject("id", UUID.class),
+                        Field.valueOf(rs.getString("field")), rs.getString("value"), rs.getString("status"),
+                        mapper.readTree(rs.getString("source")))).optional();
     }
 
     void conflict(UUID id, long snapshotId) {
@@ -37,13 +32,18 @@ public class PolicyCorrectionStore {
                 .param("snapshot", snapshotId).param("id", id).update();
     }
 
-    public static String sourceKey(String field) { return switch (field) {
-        case "TITLE" -> "plcyNm";
-        case "ORGANIZATION" -> "sprvsnInstCdNm";
-        default -> throw new IllegalArgumentException("보정 항목을 확인해주세요.");
-    }; }
+    /** 보정할 수 있는 표시 항목과 원천 필드. toString을 재정의하면 Jackson 3 기본 설정에서 JSON 값이 바뀐다. */
+    public enum Field {
+        TITLE("plcyNm"), ORGANIZATION("sprvsnInstCdNm");
 
-    public static String sourceValue(JsonNode raw, String field) { return raw.path(sourceKey(field)).asString("").strip(); }
+        private final String sourceKey;
 
-    record Active(UUID id, String field, String value, String status, JsonNode source, Instant conflictAt) {}
+        Field(String sourceKey) { this.sourceKey = sourceKey; }
+
+        public String sourceKey() { return sourceKey; }
+
+        public String sourceValue(JsonNode raw) { return raw.path(sourceKey).asString("").strip(); }
+    }
+
+    record Active(UUID id, Field field, String value, String status, JsonNode source) {}
 }

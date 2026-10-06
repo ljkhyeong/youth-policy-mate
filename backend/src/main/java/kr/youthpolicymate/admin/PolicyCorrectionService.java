@@ -3,7 +3,7 @@ package kr.youthpolicymate.admin;
 import kr.youthpolicymate.ingestion.OntongPolicyCapture;
 import kr.youthpolicymate.policy.catalog.PolicyCatalogStore;
 import kr.youthpolicymate.policy.catalog.PolicyContent;
-import kr.youthpolicymate.policy.catalog.PolicyCorrectionStore;
+import kr.youthpolicymate.policy.catalog.PolicyCorrectionStore.Field;
 import org.springframework.context.annotation.Profile;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Service;
@@ -23,8 +23,11 @@ class PolicyCorrectionService {
     private final JdbcClient jdbc;
     private final ObjectMapper mapper;
     private final PolicyCatalogStore catalog;
+    private final OntongPolicyCapture parser;
+    // 보정 생성·해소는 잠근 개정이 요청 개정과 같고 반영 결과가 APPLIED(개정+1)일 때만 커밋되므로 결과 개정을 계산한다.
     private static final String ITEMS = """
-            SELECT c.*, p.current_revision, source.raw_policy::text AS source_raw,
+            SELECT c.*, c.requested_revision + 1 AS applied_revision, c.resolved_expected_revision + 1 AS resolved_revision,
+                   p.current_revision, source.raw_policy::text AS source_raw,
                    review.id AS review_id, review.raw_policy::text AS review_raw
             FROM policy_corrections c JOIN policies p ON p.policy_number = c.policy_number
             JOIN policy_revisions r ON r.policy_number = p.policy_number AND r.revision = p.current_revision
@@ -32,8 +35,8 @@ class PolicyCorrectionService {
             JOIN policy_source_snapshots review ON review.id = COALESCE(c.resolved_snapshot_id, c.conflict_snapshot_id, r.source_snapshot_id)
             """;
 
-    PolicyCorrectionService(JdbcClient jdbc, ObjectMapper mapper, PolicyCatalogStore catalog) {
-        this.jdbc = jdbc; this.mapper = mapper; this.catalog = catalog;
+    PolicyCorrectionService(JdbcClient jdbc, ObjectMapper mapper, PolicyCatalogStore catalog, OntongPolicyCapture parser) {
+        this.jdbc = jdbc; this.mapper = mapper; this.catalog = catalog; this.parser = parser;
     }
 
     @Transactional
@@ -51,10 +54,10 @@ class PolicyCorrectionService {
         if (current.revision() != request.expectedRevision() || jdbc.sql("SELECT EXISTS(SELECT 1 FROM policy_corrections WHERE policy_number = :number AND status <> 'RELEASED')")
                 .param("number", request.policyNumber()).query(Boolean.class).single()) throw new PolicyCorrections.Changed();
         var content = mapper.readValue(current.content(), PolicyContent.class);
-        var shown = request.field() == PolicyCorrections.Field.TITLE ? content.title() : content.organization();
+        var shown = request.field() == Field.TITLE ? content.title() : content.organization();
         if (shown.equals(request.value().strip())) throw new PolicyCorrections.Invalid();
-        insert(request.requestId(), request.policyNumber(), request.field().name(), current.sourceId(), request.value().strip(),
-                request.reason().strip(), actor, current.revision(), null);
+        insert(request.requestId(), request.policyNumber(), request.field(), current.sourceId(), request.value().strip(),
+                request.reason().strip(), actor, current.revision());
         apply(request.policyNumber(), current, current.sourceId());
         return item(request.requestId()).orElseThrow();
     }
@@ -83,14 +86,14 @@ class PolicyCorrectionService {
         jdbc.sql("""
                 UPDATE policy_corrections SET status = 'RELEASED', resolved_request_id = :request, resolution = :action,
                     resolved_by = :actor, resolved_reason = :reason, resolved_snapshot_id = :snapshot,
-                    resolved_expected_revision = :revision, resolved_revision = :result, resolved_at = statement_timestamp()
+                    resolved_expected_revision = :revision, resolved_at = statement_timestamp()
                 WHERE id = :id
                 """).param("request", request.requestId()).param("action", request.action().name()).param("actor", actor)
                 .param("reason", request.reason().strip()).param("snapshot", request.reviewSnapshotId())
-                .param("revision", request.expectedRevision()).param("result", current.revision() + 1).param("id", id).update();
+                .param("revision", request.expectedRevision()).param("id", id).update();
         if (request.action() == PolicyCorrections.Action.KEEP) {
-            insert(request.requestId(), number, correction.field().name(), correction.reviewSnapshotId(), correction.value(),
-                    request.reason().strip(), actor, current.revision(), id);
+            insert(request.requestId(), number, correction.field(), correction.reviewSnapshotId(), correction.value(),
+                    request.reason().strip(), actor, current.revision());
         }
         apply(number, current, correction.reviewSnapshotId());
         return item(id).orElseThrow();
@@ -104,24 +107,22 @@ class PolicyCorrectionService {
         return new PolicyCorrections.Page(hasNext ? items.subList(0, pageSize) : items, page, pageSize, hasNext);
     }
 
-    private void insert(UUID id, String number, String field, long source, String value, String reason, UUID actor, long revision, UUID previous) {
+    private void insert(UUID id, String number, Field field, long source, String value, String reason, UUID actor, long revision) {
         jdbc.sql("""
                 INSERT INTO policy_corrections(id, policy_number, field, source_snapshot_id, value, reason, actor_id,
-                    requested_revision, applied_revision, status, previous_correction_id)
-                VALUES (:id, :number, :field, :source, :value, :reason, :actor, :revision, :applied, 'ACTIVE', :previous)
-                """).param("id", id).param("number", number).param("field", field).param("source", source).param("value", value)
-                .param("reason", reason).param("actor", actor).param("revision", revision).param("applied", revision + 1)
-                .param("previous", previous).update();
+                    requested_revision, status)
+                VALUES (:id, :number, :field, :source, :value, :reason, :actor, :revision, 'ACTIVE')
+                """).param("id", id).param("number", number).param("field", field.name()).param("source", source).param("value", value)
+                .param("reason", reason).param("actor", actor).param("revision", revision).update();
     }
 
     private void apply(String number, Current current, long snapshotId) {
         var source = jdbc.sql("SELECT raw_policy::text AS raw, capture_hash, captured_at FROM policy_source_snapshots WHERE id = :id AND policy_number = :number")
                 .param("id", snapshotId).param("number", number).query((rs, row) -> new Source(rs.getString("raw"), rs.getString("capture_hash"),
                         rs.getObject("captured_at", OffsetDateTime.class).toInstant())).single();
-        var parsed = new OntongPolicyCapture(mapper).item(mapper.readTree(source.raw()));
+        var parsed = parser.item(mapper.readTree(source.raw()));
         var at = source.at().isAfter(current.collectedAt()) ? source.at() : current.collectedAt();
-        var result = current.sequence() > 0 ? catalog.importCollectedPolicy(number, parsed.content(), parsed.rawPolicy(), at, source.hash(), parsed.contentHash(), current.sequence())
-                : catalog.importPolicy(number, parsed.content(), parsed.rawPolicy(), at, source.hash(), parsed.contentHash());
+        var result = catalog.importPolicy(number, parsed.content(), parsed.rawPolicy(), at, source.hash(), parsed.contentHash(), current.sequence());
         if (result != PolicyCatalogStore.ImportResult.APPLIED) throw new PolicyCorrections.Changed();
     }
 
@@ -143,13 +144,14 @@ class PolicyCorrectionService {
     }
 
     private PolicyCorrections.Item map(ResultSet rs) throws SQLException {
-        var field = rs.getString("field");
+        var field = Field.valueOf(rs.getString("field"));
+        var review = mapper.readTree(rs.getString("review_raw"));
         var resolved = rs.getObject("resolved_at", OffsetDateTime.class);
-        return new PolicyCorrections.Item(rs.getObject("id", UUID.class), rs.getString("policy_number"), PolicyCorrections.Field.valueOf(field),
+        return new PolicyCorrections.Item(rs.getObject("id", UUID.class), rs.getString("policy_number"), field,
                 rs.getString("value"), rs.getString("reason"), rs.getObject("actor_id", UUID.class), rs.getLong("requested_revision"),
                 rs.getLong("applied_revision"), rs.getObject("created_at", OffsetDateTime.class).toInstant(), PolicyCorrections.Status.valueOf(rs.getString("status")),
-                PolicyCorrectionStore.sourceValue(mapper.readTree(rs.getString("source_raw")), field), rs.getLong("review_id"),
-                PolicyCorrectionStore.sourceValue(mapper.readTree(rs.getString("review_raw")), field), rs.getLong("current_revision"), new OntongPolicyCapture(mapper).item(mapper.readTree(rs.getString("review_raw"))).content(),
+                field.sourceValue(mapper.readTree(rs.getString("source_raw"))), rs.getLong("review_id"),
+                field.sourceValue(review), rs.getLong("current_revision"), parser.item(review).content(),
                 rs.getString("resolution"), rs.getObject("resolved_by", UUID.class), rs.getString("resolved_reason"),
                 rs.getObject("resolved_revision", Long.class), resolved == null ? null : resolved.toInstant());
     }

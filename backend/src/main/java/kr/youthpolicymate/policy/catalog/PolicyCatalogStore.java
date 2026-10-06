@@ -32,6 +32,7 @@ public class PolicyCatalogStore {
     private final java.time.Clock clock;
     private final PolicyCorrectionStore corrections;
     private final PolicyRuleStore rules;
+    private final OntongPolicyCapture parser;
     private static final String SOURCE_JOIN = """
             LEFT JOIN policy_revisions r ON r.policy_number = p.policy_number AND r.revision = p.current_revision
             LEFT JOIN policy_source_snapshots s ON s.id = r.source_snapshot_id
@@ -49,8 +50,9 @@ public class PolicyCatalogStore {
     private static final String PERIOD_SOURCE = "jsonb_build_object(" + PERIOD_FIELDS + ") AS raw_policy\n";
     private static final String DETAIL_SOURCE = "jsonb_build_object(" + PERIOD_FIELDS + ", " + CONDITION_FIELDS + ") AS raw_policy\n";
 
-    public PolicyCatalogStore(JdbcClient jdbc, ObjectMapper mapper, java.time.Clock clock, PolicyCorrectionStore corrections, PolicyRuleStore rules) {
-        this.jdbc = jdbc; this.mapper = mapper; this.clock = clock; this.corrections = corrections; this.rules = rules;
+    public PolicyCatalogStore(JdbcClient jdbc, ObjectMapper mapper, java.time.Clock clock, PolicyCorrectionStore corrections,
+                              PolicyRuleStore rules, OntongPolicyCapture parser) {
+        this.jdbc = jdbc; this.mapper = mapper; this.clock = clock; this.corrections = corrections; this.rules = rules; this.parser = parser;
     }
 
     Optional<QuestionVersion> questionVersion(String number) {
@@ -66,27 +68,15 @@ public class PolicyCatalogStore {
 
     @Transactional
     public ImportResult importPolicy(String number, PolicyContent content, String rawPolicy,
-                                     Instant capturedAt, String captureHash, String contentHash) {
-        return apply(number, content, rawPolicy, capturedAt, captureHash, contentHash, 0);
-    }
-
-    @Transactional
-    public ImportResult importCollectedPolicy(String number, PolicyContent content, String rawPolicy,
-                                              Instant capturedAt, String captureHash, String contentHash, long requestSequence) {
+                                     Instant capturedAt, String captureHash, String contentHash, long requestSequence) {
         if (requestSequence <= 0) throw new IllegalArgumentException("수집 요청 순번이 필요합니다.");
-        return apply(number, content, rawPolicy, capturedAt, captureHash, contentHash, requestSequence);
-    }
-
-    private ImportResult apply(String number, PolicyContent content, String rawPolicy,
-                               Instant capturedAt, String captureHash, String contentHash, long requestSequence) {
         jdbc.sql("INSERT INTO policies(policy_number) VALUES (:number) ON CONFLICT DO NOTHING")
                 .param("number", number).update();
         var current = jdbc.sql("""
-                SELECT current_revision, content_hash, last_collected_at, last_request_sequence
+                SELECT current_revision, content_hash, last_request_sequence
                 FROM policies WHERE policy_number = :number FOR UPDATE
                 """)
-                .param("number", number).query((rs, row) -> new Current(rs.getLong(1), rs.getString(2),
-                        rs.getObject(3, OffsetDateTime.class), rs.getLong(4))).single();
+                .param("number", number).query((rs, row) -> new Current(rs.getLong(1), rs.getString(2), rs.getLong(3))).single();
         var currentCorrectionId = jdbc.sql("SELECT correction_id FROM policy_revisions WHERE policy_number = :number AND revision = :revision")
                 .param("number", number).param("revision", current.revision()).query(UUID.class).optional().orElse(null);
         var correction = corrections.active(number).orElse(null);
@@ -99,31 +89,25 @@ public class PolicyCatalogStore {
         if (correction == null && currentCorrectionId == null && snapshot.isEmpty() && contentHash.equals(current.hash()) && requestSequence <= current.requestSequence()) {
             return ImportResult.REPLAYED;
         }
-        // 직접 수집을 시작한 정책은 요청 발급 순서로 비교한다. 순번 없는 과거 캡처는 덮어쓰지 않는다.
-        if (current.requestSequence() > 0 && (requestSequence < current.requestSequence()
-                || (requestSequence == current.requestSequence() && snapshot.isPresent()))) return ImportResult.STALE;
-        // 로컬 캡처의 수신 시각 순서다. 원천 서버의 개정 순서를 보장하는 값으로 사용하지 않는다.
-        if (current.requestSequence() == 0 && current.collectedAt() != null && (capturedAt.isBefore(current.collectedAt().toInstant())
-                || (capturedAt.equals(current.collectedAt().toInstant()) && snapshot.isPresent()))) return ImportResult.STALE;
+        // 수집 요청 발급 순서로 비교한다. 낮은 순번의 늦은 응답은 원본만 남기고 현재 내용을 덮지 않는다.
+        if (requestSequence < current.requestSequence()
+                || (requestSequence == current.requestSequence() && snapshot.isPresent())) return ImportResult.STALE;
         // 현재 캡처의 표시 규칙만 바뀐 경우 기존 원본을 참조하는 새 개정을 만든다.
         var snapshotId = snapshot.orElseGet(() -> jdbc.sql("SELECT id FROM policy_source_snapshots WHERE policy_number = :number AND capture_hash = :hash")
                 .param("number", number).param("hash", captureHash).query(Long.class).single());
         UUID correctionId = null;
         if (correction != null) {
-            if (requestSequence == 0 && correction.conflictAt() != null
-                    && (capturedAt.isBefore(correction.conflictAt()) || (capturedAt.equals(correction.conflictAt()) && snapshot.isPresent())))
-                return ImportResult.STALE;
             var raw = mapper.readTree(rawPolicy);
-            if (correction.status().equals("CONFLICT") || !PolicyCorrectionStore.sourceValue(raw, correction.field())
-                    .equals(PolicyCorrectionStore.sourceValue(correction.source(), correction.field()))) {
+            if (correction.status().equals("CONFLICT")
+                    || !correction.field().sourceValue(raw).equals(correction.field().sourceValue(correction.source()))) {
                 corrections.conflict(correction.id(), snapshotId);
                 jdbc.sql("UPDATE policies SET last_request_sequence = :sequence WHERE policy_number = :number")
                         .param("sequence", requestSequence).param("number", number).update();
                 return ImportResult.CORRECTION_CONFLICT;
             }
             var corrected = (tools.jackson.databind.node.ObjectNode) raw.deepCopy();
-            corrected.put(PolicyCorrectionStore.sourceKey(correction.field()), correction.value());
-            var parsed = new OntongPolicyCapture(mapper).item(corrected);
+            corrected.put(correction.field().sourceKey(), correction.value());
+            var parsed = parser.item(corrected);
             content = parsed.content(); contentHash = parsed.contentHash(); correctionId = correction.id();
         }
         var changed = !contentHash.equals(current.hash()) || !Objects.equals(correctionId, currentCorrectionId);
@@ -347,5 +331,5 @@ public class PolicyCatalogStore {
     public enum ImportResult { APPLIED, UNCHANGED, REPLAYED, STALE, CORRECTION_CONFLICT }
     record CheckSource(PolicyDetailResponse policy, JsonNode raw, boolean questionnaireAvailable, PolicyAgeComparison comparison) {}
     record QuestionVersion(long revision, String contentHash, PolicyRuleDefinition definition) {}
-    private record Current(long revision, String hash, OffsetDateTime collectedAt, long requestSequence) {}
+    private record Current(long revision, String hash, long requestSequence) {}
 }

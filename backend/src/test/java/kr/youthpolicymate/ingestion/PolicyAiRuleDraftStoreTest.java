@@ -19,8 +19,6 @@ import org.testcontainers.postgresql.PostgreSQLContainer;
 import tools.jackson.databind.ObjectMapper;
 import tools.jackson.databind.node.ObjectNode;
 
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.time.*;
 import java.util.*;
 import java.util.concurrent.Callable;
@@ -194,9 +192,10 @@ class PolicyAiRuleDraftStoreTest {
     }
     private void source(String title, int seconds) throws Exception {
         var parser = new OntongPolicyCapture(mapper);
-        var json = (ObjectNode) parser.parse(Files.readString(Path.of("src/test/resources/ontong/list-capture.json"))).items().getFirst().deepCopy();
+        var json = (ObjectNode) parser.parseResponse(OntongFixtures.listBody(mapper), NOW).items().getFirst().deepCopy();
         var item = parser.item(json.put("plcyNo", NUMBER).put("plcyNm", title));
-        policies.importPolicy(item.number(), item.content(), item.rawPolicy(), NOW.plusSeconds(seconds), UUID.randomUUID().toString(), item.contentHash());
+        var at = NOW.plusSeconds(seconds);
+        policies.importPolicy(item.number(), item.content(), item.rawPolicy(), at, UUID.randomUUID().toString(), item.contentHash(), at.getEpochSecond());
     }
     private <T> List<T> concurrent(Callable<T> action) throws Exception {
         var ready = new CountDownLatch(2);

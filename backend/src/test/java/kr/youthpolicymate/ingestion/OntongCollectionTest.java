@@ -22,8 +22,6 @@ import org.testcontainers.postgresql.PostgreSQLContainer;
 import tools.jackson.databind.ObjectMapper;
 import tools.jackson.databind.node.ObjectNode;
 
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.time.Instant;
 import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
@@ -67,7 +65,7 @@ class OntongCollectionTest {
             return new OntongApiClient.Response(AT, original);
         });
         assertThat(job("fetch", run).getStatus()).isEqualTo(BatchStatus.COMPLETED);
-        assertThat(catalog.list("", 1, 20, false, null, AT).total()).isEqualTo(2);
+        assertThat(catalog.list("", 1, 20, false, null, java.util.Set.of(), AT).total()).isEqualTo(2);
         assertThat(store.status(run).getFirst()).contains("처리 2/2", "실패 0");
         assertThat(jdbc.sql("SELECT count(*) FROM batch_job_execution WHERE status = 'COMPLETED'").query(Long.class).single()).isPositive();
         assertThat(jdbc.sql("SELECT count(*) FROM batch_job_execution_params WHERE parameter_value LIKE '%collection-test-key%'").query(Long.class).single()).isZero();
@@ -102,7 +100,7 @@ class OntongCollectionTest {
         assertThat(jdbc.sql("SELECT raw_policy->>'plcyNm' FROM ontong_collection_items WHERE run_id = :id ORDER BY item_index")
                 .param("id", run).query(String.class).list()).containsExactly("첫 정책", "두 번째 정책", "마지막 정책");
         assertThat(store.pending(run)).isEmpty();
-        assertThat(catalog.list("", 1, 20, false, null, AT).total()).isEqualTo(3);
+        assertThat(catalog.list("", 1, 20, false, null, java.util.Set.of(), AT).total()).isEqualTo(3);
         verifyNoInteractions(client);
     }
 
@@ -112,7 +110,7 @@ class OntongCollectionTest {
         var run = UUID.randomUUID();
         when(client.fetch(anyString(), eq(1))).thenReturn(new OntongApiClient.Response(AT, body("정상 정책", "")));
         assertThat(job("fetch", run).getStatus()).isEqualTo(BatchStatus.FAILED);
-        assertThat(catalog.list("", 1, 20, false, null, AT).total()).isOne();
+        assertThat(catalog.list("", 1, 20, false, null, java.util.Set.of(), AT).total()).isOne();
         assertThat(store.pending(run)).containsExactly(1);
         assertThat(job("replay", run).getStatus()).isEqualTo(BatchStatus.FAILED);
         assertThat(store.itemStatus(run)).anyMatch(value -> value.contains("INVALID_ITEM") && value.contains("시도 2"));
@@ -132,7 +130,7 @@ class OntongCollectionTest {
         assertThat(store.pending(run)).containsExactly(0, 1);
         assertThat(jdbc.sql("SELECT outcome FROM ontong_collection_items WHERE run_id = :id ORDER BY item_index")
                 .param("id", run).query(String.class).list()).containsExactly("INVALID_ITEM", "INVALID_ITEM", "APPLIED");
-        var policies = catalog.list("", 1, 20, false, null, AT);
+        var policies = catalog.list("", 1, 20, false, null, java.util.Set.of(), AT);
         assertThat(policies.total()).isOne();
         assertThat(policies.items().getFirst().title()).isEqualTo("정상 정책");
         verifyNoInteractions(client);
@@ -153,14 +151,14 @@ class OntongCollectionTest {
         jdbc.sql("CREATE TRIGGER reject_item_success BEFORE INSERT ON ontong_collection_item_attempts FOR EACH ROW EXECUTE FUNCTION reject_item_success()").update();
         try {
             assertThat(job("fetch", run).getStatus()).isEqualTo(BatchStatus.FAILED);
-            assertThat(catalog.list("", 1, 20, false, null, AT).total()).isEqualTo(2);
+            assertThat(catalog.list("", 1, 20, false, null, java.util.Set.of(), AT).total()).isEqualTo(2);
             assertThat(store.pending(run)).containsExactly(1);
         } finally {
             jdbc.sql("DROP TRIGGER reject_item_success ON ontong_collection_item_attempts").update();
             jdbc.sql("DROP FUNCTION reject_item_success()").update();
         }
         assertThat(job("replay", run).getStatus()).isEqualTo(BatchStatus.COMPLETED);
-        assertThat(catalog.list("", 1, 20, false, null, AT).total()).isEqualTo(3);
+        assertThat(catalog.list("", 1, 20, false, null, java.util.Set.of(), AT).total()).isEqualTo(3);
         assertThat(jdbc.sql("SELECT count(*) FROM policy_revisions").query(Long.class).single()).isEqualTo(3);
         assertThat(jdbc.sql("SELECT outcome FROM ontong_collection_item_attempts WHERE item_index = 1 ORDER BY attempt").query(String.class).list())
                 .containsExactly("STORE_FAILED", "APPLIED");
@@ -186,7 +184,7 @@ class OntongCollectionTest {
     }
 
     @Test
-    @DisplayName("내용이 같은 후속 요청도 순번을 갱신하여 늦게 도착한 이전 응답과 과거 캡처를 차단한다")
+    @DisplayName("내용이 같은 후속 요청도 순번을 갱신하여 늦게 도착한 이전 응답을 차단한다")
     void rejectsLateEarlierRequest() throws Exception {
         service.applyStored(stored(body("현재 정책"), AT));
         var old = UUID.randomUUID();
@@ -196,10 +194,6 @@ class OntongCollectionTest {
         store.received(old, new OntongApiClient.Response(AT.plusSeconds(10), body("늦은 이전 내용")));
         service.applyStored(old);
         assertThat(store.itemStatus(old).getFirst()).contains("STALE");
-        var parser = new OntongPolicyCapture(mapper);
-        var legacy = parser.item(parser.parseResponse(body("과거 캡처"), AT.plusSeconds(20)).items().getFirst());
-        assertThat(catalog.importPolicy(legacy.number(), legacy.content(), legacy.rawPolicy(), AT.plusSeconds(20), "legacy", legacy.contentHash()))
-                .isEqualTo(PolicyCatalogStore.ImportResult.STALE);
         assertThat(catalog.find(NUMBER).orElseThrow().revision()).isOne();
         assertThat(catalog.find(NUMBER).orElseThrow().content().title()).isEqualTo("현재 정책");
     }
@@ -234,8 +228,7 @@ class OntongCollectionTest {
     }
 
     private String body(String... titles) throws Exception {
-        var capture = mapper.readTree(Files.readString(Path.of("src/test/resources/ontong/list-capture.json")));
-        var body = (ObjectNode) mapper.readTree(capture.path("response").path("rawBody").asString());
+        var body = (ObjectNode) mapper.readTree(OntongFixtures.listBody(mapper));
         var result = (ObjectNode) body.path("result");
         ((ObjectNode) result.path("pagging")).put("pageSize", 10);
         var source = (ObjectNode) result.path("youthPolicyList").get(0);

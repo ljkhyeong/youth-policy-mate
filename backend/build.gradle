@@ -56,7 +56,6 @@ tasks.named('test') {
 
 // 운영 명령은 루트 .env를 읽도록 저장소 루트에서 실행한다.
 [
-    importPolicyCapture: ['kr.youthpolicymate.ingestion.PolicyCaptureImport', '확인한 온통청년 목록 캡처 최대 10건을 로컬 DB에 적재한다.'],
     collectPolicyPage: ['kr.youthpolicymate.ingestion.OntongCollectionCommand', '서울 필터의 한 페이지를 수집하거나 저장 원본 재처리·이력을 조회한다.'],
     managePolicyRules: ['kr.youthpolicymate.policy.catalog.PolicyRuleCommand', '공고 규칙 초안·적용 버전·재검토 상태를 관리한다.'],
     managePolicyAiRules: ['kr.youthpolicymate.ingestion.PolicyAiRuleCommand', '공고 개정에 연결한 AI 추출 요청과 규칙 초안 결과를 저장한다.'],

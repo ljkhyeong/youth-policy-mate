@@ -1,5 +1,6 @@
 package kr.youthpolicymate.admin;
 
+import kr.youthpolicymate.ingestion.OntongFixtures;
 import kr.youthpolicymate.ingestion.OntongPolicyCapture;
 import kr.youthpolicymate.policy.catalog.PolicyCatalogStore;
 import kr.youthpolicymate.policy.catalog.PolicyRuleDefinition;
@@ -20,8 +21,6 @@ import org.testcontainers.postgresql.PostgreSQLContainer;
 import tools.jackson.databind.ObjectMapper;
 import tools.jackson.databind.node.ObjectNode;
 
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.time.*;
 import java.util.*;
 
@@ -263,10 +262,11 @@ class PolicyRuleReviewApiTest {
 
     private OntongPolicyCapture.Item source(int index, String title, int seconds) throws Exception {
         var parser = new OntongPolicyCapture(mapper);
-        var source = (ObjectNode) parser.parse(Files.readString(Path.of("src/test/resources/ontong/list-capture.json"))).items().getFirst().deepCopy();
+        var source = (ObjectNode) parser.parseResponse(OntongFixtures.listBody(mapper), NOW).items().getFirst().deepCopy();
         source.put("plcyNo", "999900000000000000%02d".formatted(index)); source.put("plcyNm", title);
         var item = parser.item(source);
-        policies.importPolicy(item.number(), item.content(), item.rawPolicy(), NOW.plusSeconds(seconds), UUID.randomUUID().toString(), item.contentHash());
+        var at = NOW.plusSeconds(seconds);
+        policies.importPolicy(item.number(), item.content(), item.rawPolicy(), at, UUID.randomUUID().toString(), item.contentHash(), at.getEpochSecond());
         return item;
     }
     private UUID draft(OntongPolicyCapture.Item item, Instant from, Instant until, String version) {

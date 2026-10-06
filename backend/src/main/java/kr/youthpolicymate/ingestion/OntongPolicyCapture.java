@@ -1,6 +1,7 @@
 package kr.youthpolicymate.ingestion;
 
 import kr.youthpolicymate.policy.catalog.PolicyContent;
+import org.springframework.stereotype.Component;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 
@@ -14,33 +15,12 @@ import java.util.HexFormat;
 import java.util.List;
 import java.util.TreeMap;
 
-/** 온통청년 점검 도구의 목록 캡처를 읽는다. 외부 요청과 DB 저장은 하지 않는다. */
+/** 온통청년 목록 응답을 검사하고 정책 항목을 정규화한다. 외부 요청과 DB 저장은 하지 않는다. */
+@Component
 public final class OntongPolicyCapture {
-    private static final String ENDPOINT = "https://www.youthcenter.go.kr/go/ythip/getPlcy";
     private final ObjectMapper mapper;
 
     public OntongPolicyCapture(ObjectMapper mapper) { this.mapper = mapper; }
-
-    public Parsed parse(String document) {
-        try {
-            var capture = mapper.readTree(document);
-            var request = capture.path("request");
-            var parameters = request.path("parameters");
-            if (!ENDPOINT.equals(request.path("endpoint").asString())
-                    || !"1".equals(parameters.path("pageType").asString())
-                    || !"json".equals(parameters.path("rtnType").asString())
-                    || capture.path("response").path("status").asInt() != 200) {
-                throw invalid();
-            }
-            var raw = capture.path("response").path("rawBody");
-            if (!raw.isString()) throw invalid();
-            var capturedAt = Instant.parse(capture.path("capturedAt").asString());
-            return parseResponse(raw.asString(), capturedAt);
-        } catch (RuntimeException exception) {
-            // 원문·인증키·파싱 오류의 입력 내용을 로그로 전파하지 않는다.
-            throw invalid();
-        }
-    }
 
     public Parsed parseResponse(String raw, Instant capturedAt) {
         try {
@@ -132,7 +112,7 @@ public final class OntongPolicyCapture {
     }
 
     private static IllegalArgumentException invalid() {
-        return new IllegalArgumentException("지원하는 정상 목록 캡처 또는 표시 가능한 승인 정책이 아닙니다.");
+        return new IllegalArgumentException("지원하는 정상 목록 응답 또는 표시 가능한 승인 정책이 아닙니다.");
     }
 
     public record Parsed(Instant capturedAt, String hash, List<JsonNode> items, int page, int pageSize, long total) {}

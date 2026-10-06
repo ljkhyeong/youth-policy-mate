@@ -25,14 +25,14 @@ export function PageState({ kind, title, description, label, actions, headingAs:
   return (
     <section className="state-panel" data-kind={kind} aria-labelledby={titleId}>
       <div role={role} aria-atomic={role ? true : undefined}>
-        <p className={`mb-5 flex items-center gap-3 text-sm font-semibold ${kind === "error" ? "text-rose-800" : "text-[var(--brand)]"}`}>
+        <p className={`mb-5 flex items-center gap-3 text-sm font-semibold ${kind === "error" ? "text-[var(--danger)]" : "text-[var(--brand)]"}`}>
           {kind === "loading" && <span aria-hidden="true" className="size-4 shrink-0 rounded-full border-2 border-[var(--brand-line)] border-t-[var(--brand)] motion-safe:animate-spin" />}
           {label ?? STATE_LABELS[kind]}
         </p>
         <Heading id={titleId} ref={headingRef} tabIndex={headingRef ? -1 : undefined} className="max-w-xl text-2xl leading-relaxed font-bold tracking-tight sm:text-3xl">
           {title}
         </Heading>
-        <p className="mt-4 max-w-lg text-sm leading-7 text-stone-600 sm:text-base sm:leading-8">{description}</p>
+        <p className="mt-4 max-w-lg text-sm leading-7 text-[var(--muted)] sm:text-base sm:leading-8">{description}</p>
       </div>
       {actions && <div className="state-actions">{actions}</div>}
     </section>

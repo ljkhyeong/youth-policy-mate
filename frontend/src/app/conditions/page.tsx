@@ -23,7 +23,7 @@ export default function ConditionsPage() {
             <span aria-hidden="true">✓</span>
             입력 내용은 조건 비교에만 사용하고 자동 저장하지 않아요
           </div>
-          <noscript><p className="mt-5 text-sm text-rose-800">조건 입력을 사용하려면 브라우저의 JavaScript를 켜주세요.</p></noscript>
+          <noscript><p className="mt-5 text-sm text-[var(--danger)]">조건 입력을 사용하려면 브라우저의 JavaScript를 켜주세요.</p></noscript>
         </header>
         <ConditionForm today={getSeoulDate(new Date())} />
       </main>

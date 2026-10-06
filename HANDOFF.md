@@ -1,19 +1,18 @@
 # 작업 인계
 
-2026-10-06 기준. 개발 이력은 Git과 [개발 문서](docs/development/)에서 확인한다.
+2026-10-07 기준. 개발 이력은 Git과 [개발 문서](docs/development/)에서 확인한다.
 
 ## 현재 작업
 
-- `codex/progressive-policy-discovery`의 작업을 원격 `main`에 빨리 감기로 반영했다(`e9eb93a`→`11d32fa`). 최신 `11d32fa`에서 [웹·전체 서버 CI](https://github.com/ljkhyeong/youth-policy-mate/actions/runs/37401169359)를 통과했다.
-- 그 뒤 화면 디자인을 Claude Design 새판 시안 1안 ‘형광펜 공고문’으로 바꿨다(공고문 조판·형광펜·볼펜 메모·도장, 한글 웹 폰트 2종). 직전 2안(햇살 친근형)은 대체됐다. 로컬 웹 검사·헤드리스 확인과 원격 CI를 통과했다. [적용 기록](docs/development/interface-design-review.md#2026-10-06-1안-형광펜-공고문-적용)·[화면 기준](docs/design/webapp-interface.md#시각-기준)
-- 반영한 작업은 저장 정책 재조회 초점 수정, Claude Code 스킬, 미사용 코드 정리, 화면 개편(분야 탐색·마감 임박순·D-day), 입력 없이 둘러보는 조건 흐름, 홈 분야 타일의 정책 수, 복수 대분류 정책의 분야별 포함, 홈의 상황 선택과 분야 여러 개 필터([D안](docs/development/interface-design-review.md#2026-10-05-상황으로-시작하는-홈)), 운영 경로에 연결되지 않은 AI 예약 복구 모델 제거([결정 기록](docs/development/backend-api-review.md#ai-예약-복구-코드-제거--2026-10-05-적용)), [지역 필터 조사](docs/research/public-region-filter.md)다.
-- 앞서 접수 중인 K-뉴딜 아카데미에 질문 6개와 기본 연령 비교를 V33 규칙으로 추가했다. [K-뉴딜 아카데미 질문](docs/development/k-newdeal-academy-questions.md)
-- 질문 규칙을 정책마다 검토하기 전에도 모든 정책에서 온통청년 API의 표기 조건(연령 범위·연소득 상한·취업 상태·학력)을 상세와 내 조건 결과에 참고로 보여준다. 판정·정렬에는 쓰지 않고 무관·제한없음은 숨긴다. 로컬 40건 중 16건이 표기 연령을 새로 보여준다. 전체 서버 검사·웹 검사와 로컬 DB 헤드리스 확인을 통과했다. [표기 조건 표시](docs/development/source-condition-display.md)
+- `codex/progressive-policy-discovery`에 어두운 화면을 추가해 로컬에 커밋했다(원격 미반영). 원격 `main`은 1안 ‘형광펜 공고문’까지인 `11d32fa`에서 [웹·전체 서버 CI](https://github.com/ljkhyeong/youth-policy-mate/actions/runs/37401169359)를 통과한 상태다.
+- 어두운 화면은 기기 설정을 따르고 바닥글 `화면: 시스템 · 밝게 · 어둡게`로 바꾼다. 고른 값은 이 브라우저 `localStorage`(`ypm-theme`)에만 저장하고 `<head>` 스크립트로 첫 화면 전에 적용한다. 어두운 토큰은 `globals.css`의 `@variant dark` 한 곳에 있고, 두 화면의 글자 4.5:1·입력 테두리 3:1을 `theme-contrast.test.ts`가 확인한다. 가는 회색이던 입력 테두리 3곳도 3:1로 맞췄다. [적용 기록](docs/development/interface-design-review.md#2026-10-07-어두운-화면-적용)·[화면 기준](docs/design/webapp-interface.md#시각-기준)
+- 검증: 관련 웹 테스트·`check:web`·`build:web` 통과. 로컬 DB·서버와 운영·개발 모드 웹으로 헤드리스 확인했다(홈·목록·상세·조건, 1280·390px, 기기 설정·선택 저장·다른 탭·키보드·첫 화면 깜빡임). 회원 화면과 관리자 상세는 화면별로 열어 보지 않았다. 개발 전용 `/dev/**` 미리보기는 밝은 화면용 고정 색이 남아 어두운 화면 대비를 보장하지 않는다. 검증용 서버·웹·DB는 종료했다.
 - 로컬 DB에는 V33까지 적용돼 있다. 정기 수집·AI 자동 처리·이메일·알림은 비활성화다. 실제 OAuth·Resend 연동, 이미지 빌드·공유기·TLS·k3s·백업 운영 설정은 사용자가 진행한다. 백업·외부 공급자 데이터의 보관/삭제와 관리자 기록 보관 기준은 남아 있다.
 
 ## 구현·검증 범위
 
 - 정책 조회: 로컬 수집 40건의 검색·분야 필터·상세·원문 링크를 제공한다. 공개 목록은 접수 중 정책을 마감 임박순으로 먼저 보여주고 접수 기간인 정책에 D-day를 표시한다. 상세에 온통청년 표기 조건을 참고로 보여주고, 홈은 “요즘 어떤 상황이세요?”로 상황(분야)을 여러 개 고르게 하고 분야별 정책 수를 함께 표시하며, 목록은 분야 여러 개를 함께 고를 수 있다. 여러 분야로 분류된 정책은 분야마다 포함한다. [화면 개편](docs/development/interface-design-review.md#2026-10-05-화면-개편) 검토된 원문 충돌은 상세에서 별도 안내하며 빈 안내 목록이 검토 완료를 뜻하지 않는다. 서울 대상 전체 정책을 수집한 상태는 아니다. [조회](docs/development/policy-catalog.md)·[수집과 재개](docs/development/policy-range-collection.md)·[충돌 안내](docs/development/policy-source-notices.md)
+- 화면: ‘형광펜 공고문’ 디자인과 어두운 화면(기기 설정 추종·바닥글 선택)을 제공한다. Claude Design 디자인 시스템에는 밝은 화면 값만 있다. [화면 기준](docs/design/webapp-interface.md#시각-기준)
 - 공개 페이지: 운영 주소를 기준으로 검색 허용·대표 주소·공개 공유 제목과 설명을 만든다. 정책 목록의 페이지별 주소와 개인/검색/오류 화면의 검색 제외를 구분한다. [설정과 기본 사이트맵](docs/development/public-page-metadata.md)
 - 관리자 수집 예외: `/admin/collection-exceptions`에서 원본·직전 개정 비교와 사유를 남기는 항목 재처리를 제공한다. `/pages`는 페이지 실패, `/replays`는 재처리 이력, `/corrections`는 보정 관리다. 정책명·운영 기관 중 한 항목을 원본과 분리해 보정하고, 새 원본과 충돌하면 현재 내용을 유지한 뒤 관리자가 해소한다. V19·V20에 작업자·사유·적용 개정을 기록하며 같은 요청은 한 번만 처리한다. AI 추출 목록에서는 마지막 시도와 현재 결과·비용 상태를 조회한다. 실제 관리자 계정 연결은 남아 있다. [AI 추출 조회](docs/development/admin-ai-runs.md)·[설정과 계약](docs/development/admin-collection-exceptions.md)·[보정 범위](docs/development/policy-corrections.md)
 - 조건 질문: 국가근로장학금·응시료 지원·K-패스·청년주택드림청약통장·서울청년정책네트워크·상반기 이사비 지원·청년내일저축계좌·전세보증금반환보증 보증료 지원·햇살론유스·청년 미래이음 대출·미래 청년 일자리 5월 모집·K-뉴딜 아카데미를 제공한다. 정책별 소득·중복지원·참여 제한·보증한도의 미확인을 구분한다. 실제 증빙·기타 제한·선발은 기관 심사가 필요하며 전체 자격은 추가 확인으로 유지한다. [질문 탐색](docs/development/policy-question-discovery.md)·[이사비](docs/development/moving-fee-questions.md)·[저축계좌](docs/development/youth-tomorrow-savings-questions.md)·[보증료](docs/development/guarantee-fee-questions.md)·[햇살론유스](docs/development/haetsalron-youth-questions.md)·[K-뉴딜 아카데미](docs/development/k-newdeal-academy-questions.md)·[미래이음](docs/development/miso-youth-future-questions.md)·[미래 청년 일자리](docs/development/future-youth-jobs-questions.md)

@@ -1,5 +1,13 @@
 @import "tailwindcss";
 
+/* 어두운 화면 조건. 사용자가 고른 값(<html data-theme>)이 기기 설정보다 우선하고, 고르지 않았으면 기기 설정을 따른다. */
+@custom-variant dark {
+  &:where([data-theme="dark"], [data-theme="dark"] *) { @slot; }
+  @media (prefers-color-scheme: dark) {
+    &:where(:root:not([data-theme="light"]), :root:not([data-theme="light"]) *) { @slot; }
+  }
+}
+
 :root {
   color-scheme: light;
   background: var(--page);
@@ -8,7 +16,7 @@
   word-break: keep-all;
   overflow-wrap: anywhere;
   -webkit-font-smoothing: antialiased;
-  /* 1안 ‘형광펜 공고문’. 흰 종이에 먹색 글자, 볼펜 파랑 메모·체크, 형광펜 강조, 인주색 도장. Claude Design 디자인 시스템과 값이 같다. */
+  /* 1안 ‘형광펜 공고문’. 흰 종이에 먹색 글자, 볼펜 파랑 메모·체크, 형광펜 강조, 인주색 도장. 밝은 화면 값은 Claude Design 디자인 시스템과 같다. */
   --font-sans: "Pretendard Variable", Pretendard, "SUIT Variable", SUIT, "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
   --font-body-serif: var(--font-serif), "AppleMyungjo", "Nanum Myeongjo", serif;
   --font-hand: var(--font-pen), "Nanum Pen Script", cursive;
@@ -47,9 +55,49 @@
   --radius-card: 0;
   --radius-control: 0;
   --shadow-card: none;
-  /* 볼펜 체크와 동그라미. 데이터 URI라 변수를 쓸 수 없어 --pen 값을 직접 넣었다. */
+  /* 볼펜 체크와 동그라미. 데이터 URI라 변수를 쓸 수 없어 --pen 값을 직접 넣었고, 어두운 화면 블록에 밝은 --pen 값으로 한 벌 더 둔다. */
   --pen-check: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 30 30'%3E%3Cpath d='M4 16C8 19 10 23 12 26C16 16 22 8 29 2' fill='none' stroke='%231f3fae' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
   --pen-circle: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 40' preserveAspectRatio='none'%3E%3Cpath d='M8 22C6 8 40 2 70 5C96 8 99 26 80 33C58 40 18 38 7 27C2 21 10 12 22 9' fill='none' stroke='%231f3fae' stroke-width='2.2' stroke-linecap='round' vector-effect='non-scaling-stroke'/%3E%3C/svg%3E");
+
+  /* 같은 공고 조판을 어두운 먹지 위에 둔다. 볼펜·도장은 밝게 바꾸고, 형광펜은 밝은 글자 뒤 반투명 띠로 칠하며, 기본 버튼은 미색으로 뒤집는다.
+     글자 4.5:1·입력 테두리 3:1 기준은 theme-contrast.test.ts가 두 화면 모두 확인한다. */
+  @variant dark {
+    color-scheme: dark;
+    --page: #15171a;
+    --surface: #15171a;
+    --surface-sunken: #1f2226;
+    --surface-glass: rgba(21, 23, 26, 0.97);
+    --ink: #ecebe6;
+    --ink-soft: #d3d5d9;
+    --muted: #a9aeb6;
+    --line: #3a3f46;
+    --line-strong: #ecebe6;
+    --brand: #ecebe6;
+    --brand-strong: #ffffff;
+    --brand-tint: #1f2226;
+    --brand-line: #4a5058;
+    --on-brand: #15171a;
+    --on-brand-muted: #4a4f57;
+    --pen: #9db4ff;
+    --pen-strong: #c5d2ff;
+    --marker: rgba(255, 242, 122, 0.3);
+    --stamp: #ff7b6e;
+    --stamp-before: #9db4ff;
+    --stamp-unsure: #e3ad55;
+    --stamp-closed: #a9aeb6;
+    --focus-ring: #9db4ff;
+    --positive: #6fcf97;
+    --positive-tint: #15281e;
+    --caution: #e3ad55;
+    --caution-tint: #2a2112;
+    --closed: #a9aeb6;
+    --closed-tint: #24272c;
+    --danger: #ff8a80;
+    --danger-tint: #2d1a1a;
+    --danger-line: #ff6b5e;
+    --pen-check: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 30 30'%3E%3Cpath d='M4 16C8 19 10 23 12 26C16 16 22 8 29 2' fill='none' stroke='%239db4ff' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+    --pen-circle: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 40' preserveAspectRatio='none'%3E%3Cpath d='M8 22C6 8 40 2 70 5C96 8 99 26 80 33C58 40 18 38 7 27C2 21 10 12 22 9' fill='none' stroke='%239db4ff' stroke-width='2.2' stroke-linecap='round' vector-effect='non-scaling-stroke'/%3E%3C/svg%3E");
+  }
 }
 
 * {
@@ -171,6 +219,18 @@ mark {
     font-size: 12px;
     line-height: 1.7;
   }
+
+  .app-footer p { margin: 0; }
+  /* 화면 색 선택. 실제 라디오는 투명하게 겹쳐 키보드·화면 낭독기가 그대로 쓰고, 고른 값은 굵은 글자와 밑줄로 표시한다. */
+  .theme-switch { display: flex; flex-wrap: wrap; align-items: center; min-width: 0; margin: 4px 0 0; padding: 0; border: 0; }
+  /* float를 주면 legend가 테두리 위가 아니라 줄 안의 첫 항목으로 놓인다. */
+  .theme-switch legend { float: left; margin-right: 8px; padding: 0; }
+  .theme-switch legend::after { content: ":"; }
+  .theme-switch label { position: relative; display: inline-flex; min-height: 44px; align-items: center; cursor: pointer; }
+  .theme-switch label + label::before { content: "·"; margin: 0 8px; }
+  .theme-switch input { position: absolute; width: 1px; height: 1px; margin: 0; opacity: 0; }
+  .theme-switch input:checked + span { color: var(--ink); font-weight: 900; text-decoration: underline; text-underline-offset: 4px; }
+  .theme-switch input:focus-visible + span { outline: 3px solid var(--focus-ring); outline-offset: 2px; }
 
   .home-main {
     max-width: 72rem !important;
@@ -310,19 +370,6 @@ mark {
   .button-block {
     width: 100%;
   }
-
-  .button-arrow {
-    display: inline-flex;
-    width: 24px;
-    height: 24px;
-    align-items: center;
-    justify-content: center;
-    margin-left: auto;
-    border-radius: 0;
-    background: rgba(255, 255, 255, 0.17);
-    font-size: 16px;
-  }
-
 
   .text-link {
     display: inline-flex;
@@ -976,7 +1023,7 @@ mark {
   .policy-question-field label { display: block; font-size: 15px; font-weight: 650; line-height: 1.7; }
   .policy-question-field label span { color: var(--muted); }
   .policy-question-field > p { color: var(--muted); font-size: 13px; margin: 4px 0 10px; }
-  .policy-question-field select { width: 100%; min-width: 0; min-height: 48px; padding: 10px 30px 10px 12px; border: 1px solid var(--line); border-radius: 0; background: var(--surface); color: var(--ink); font: inherit; font-size: 14px; }
+  .policy-question-field select { width: 100%; min-width: 0; min-height: 48px; padding: 10px 30px 10px 12px; border: 1px solid var(--line-strong); border-radius: 0; background: var(--surface); color: var(--ink); font: inherit; font-size: 14px; }
   .question-actions { display: flex; gap: 10px; flex-wrap: wrap; }
   .question-feedback { color: var(--caution); }
   .policy-question-result { margin-top: 28px; border-top: 1px solid var(--line); padding-top: 24px; }
@@ -996,7 +1043,7 @@ mark {
 .email-settings { margin-block-end: 1.25rem; }
 .email-settings fieldset { border: 0; padding: 0; margin: 1.25rem 0; display: grid; gap: .6rem; min-width: 0; }
 .email-settings label { font-weight: 650; }
-.email-settings input { width: 100%; min-width: 0; padding: .8rem 1rem; border: 1px solid var(--line); border-radius: .75rem; background: var(--surface); color: inherit; }
+.email-settings input { width: 100%; min-width: 0; padding: .8rem 1rem; border: 1px solid var(--line-strong); border-radius: .75rem; background: var(--surface); color: inherit; }
 .email-settings input:focus-visible { outline: 3px solid var(--focus-ring); outline-offset: 2px; }
 .email-settings button { width: fit-content; max-width: 100%; }
 .email-current { padding-block: .8rem; overflow-wrap: anywhere; }
@@ -1008,7 +1055,7 @@ mark {
 .rule-review-search { display: grid; gap: 12px; }
 .rule-review-field { display: grid; gap: 8px; min-width: 0; }
 .rule-review-search label { font-weight: 650; }
-.rule-review-search input, .rule-review-search select { width: 100%; min-width: 0; min-height: 48px; border: 1px solid var(--line); border-radius: 0; background: var(--surface); padding: 10px 12px; color: inherit; font: inherit; }
+.rule-review-search input, .rule-review-search select { width: 100%; min-width: 0; min-height: 48px; border: 1px solid var(--line-strong); border-radius: 0; background: var(--surface); padding: 10px 12px; color: inherit; font: inherit; }
 .rule-review-search :is(input, select):focus-visible { outline: 3px solid var(--focus-ring); outline-offset: 2px; }
 .rule-review-search .form-actions { display: flex; flex-direction: row; align-items: center; gap: 16px; margin: 0; padding: 0; border: 0; }
 .rule-review-search .button-primary { width: auto; margin: 0; }

@@ -278,3 +278,37 @@ Claude Design 재설정 시안(현재·공공 안내형·햇살 친근형·서�
 - 회원 응답을 모의해 로그인 상태의 관심 정책·마감 일정(390·1280px)을 확인했다. 마감 일정에서는 날짜 칸에만 동그라미가 남는다.
 - 키보드로 상황 칸을 고르면 볼펜 체크와 볼펜 파랑 초점 테두리가 보였다.
 - 서버 코드는 바꾸지 않아 서버 검사는 직전 원격 CI 결과를 재사용했다. 확인 후 검증용 서버·웹·브라우저와 로컬 DB를 종료했다. 기존 3000·8080 서버는 변경하지 않았다.
+
+## 2026-10-07 어두운 화면 적용
+
+[PRD](../PRD/0001_product-baseline/spec.md)와 [웹앱 기준](../design/webapp-interface.md#시각-기준)에 정한 어두운 화면을 적용했다. 같은 공고 조판을 어두운 먹지 위에 두고, 기기 설정을 따르되 바닥글에서 `시스템 · 밝게 · 어둡게`를 고를 수 있다.
+
+| 영역 | 바꾼 내용 |
+|---|---|
+| 색 토큰 | `globals.css`에서 `@custom-variant dark`로 조건을 한 번 정의하고, 어두운 값은 `:root` 안 `@variant dark` 블록 한 곳에 둔다. 빌드가 `[data-theme=dark]`와 `@media (prefers-color-scheme: dark)` + `:not([data-theme=light])` 두 규칙으로 펼친다. 같은 블록에서 `color-scheme: dark`로 날짜 입력·선택 상자·스크롤바도 어둡게 한다 |
+| 색 값 | 기준 문서의 바탕·글자·보조 글자·볼펜·도장·갈색 도장·형광펜(30% 띠) 외에, 보조 면 `#1F2226`, 구분선 `#3A3F46`, 성공 `#6FCF97`, 오류 `#FF8A80`, 오류 입력 테두리 `#FF6B5E`, 각 안내 바탕을 정했다. 볼펜 체크·동그라미 그림은 밝은 볼펜 색으로 한 벌 더 둔다 |
+| 선택과 저장 | `frontend/src/lib/theme-preference.ts`. 밝게·어둡게만 `localStorage`(`ypm-theme`)에 저장하고 `<html data-theme>`를 붙인다. 시스템은 저장값과 속성을 지운다. 저장하지 못해도 이 화면에는 적용한다 |
+| 깜빡임 방지 | 루트 레이아웃 `<head>`의 인라인 스크립트가 첫 화면 전에 저장값을 적용하고, `<html suppressHydrationWarning>`로 속성 차이를 허용한다. `ThemeSync`가 개발 모드 재마운트 뒤 다시 적용하고 다른 탭의 변경을 반영한다 |
+| 바닥글 | `ThemeSwitch`. 실제 라디오를 투명하게 겹친 `fieldset`이라 방향키로 고를 수 있고, 고른 값은 굵은 글자·밑줄로 표시한다 |
+| 고정 색 정리 | 상태 화면(`page-state.tsx`)과 조건 화면의 `text-rose-800`·`text-stone-600`을 토큰으로 바꿨다. 쓰지 않는 `.button-arrow`(흰색 고정)를 지웠다 |
+| 입력 테두리 | 질문 선택 상자·이메일 입력·관리자 규칙 검색의 가는 회색 테두리(`--line`)를 `--line-strong`으로 바꿨다. 밝은 화면에서도 3:1 미만이던 테두리다 |
+
+Tailwind 4가 `light-dark()`를 변환하지 않고 그대로 내보내며 기준 브라우저(Safari 16.4)가 이를 지원하지 않아 쓰지 않았다. 대비는 `frontend/src/app/theme-contrast.test.ts`가 두 화면의 실제 토큰으로 계산한다(글자 4.5:1, 입력 테두리·초점 3:1). 밝은 화면의 색·그림 토큰마다 어두운 값이 있는지도 확인한다. 선택 영역 바탕(`--brand-line`)과 로딩 원의 회색 고리는 장식이라 대상에서 뺐다.
+
+### 검증
+
+| 명령 | 결과 | 로그 |
+|---|---|---|
+| `npm run verify -- test:web -- src/lib/theme-preference.test.ts src/app/theme-contrast.test.ts src/components/page-state.test.tsx src/app/policies/page.test.tsx` | 통과 | `.local/verification/1791322488793-c3569b39.log` |
+| `npm run verify -- check:web` | 린트·타입 검사 통과 | `.local/verification/1791322497816-79ab459d.log` |
+| `npm run verify -- build:web` | 프로덕션 빌드 통과. 빌드 CSS에서 밝은 `:root` → `[data-theme=dark]` → 기기 설정 규칙 순서를 확인 | `.local/verification/1791322505636-02e589ff.log` |
+| `npm run verify -- test:web -- src/app/theme-contrast.test.ts` | 검토 후 오류 입력칸 글자 대비 쌍을 추가하고 통과 | `.local/verification/1791323135286-b029e223.log` |
+
+- 로컬 DB·서버(8080)와 운영 모드 웹(3103), 로컬 정책 40건으로 Playwright CLI 헤드리스 확인을 했다. 회원 응답은 사용하지 않았다.
+  - 저장값이 없으면 기기 설정(밝게·어둡게)을 따른다.
+  - 어둡게를 고르면 저장되고 새로고침 뒤에도 유지된다. 기기가 어두워도 밝게를 고르면 밝게, 시스템을 고르면 저장값과 속성이 지워진다.
+  - 다른 탭에서 바꾸면 열린 탭에도 반영된다. 방향키로 선택이 바뀌고, 고른 항목에 볼펜 파랑 초점 테두리가 보인다.
+  - 홈·목록·조건 세 화면에서 `<body>`가 삽입되는 시점에 이미 `data-theme`이 붙어 있어 밝은 화면이 먼저 그려지지 않는다. 콘솔 오류는 없다.
+  - 홈·목록·상세·조건을 1280·390px 어두운 화면으로 열어 가로 넘침이 없었다. 도장·볼펜 동그라미·형광펜 띠·미색 기본 버튼·날짜 입력의 달력 아이콘이 어두운 바탕에서 읽힌다.
+- 개발 모드 웹(3103)에서도 홈·목록·관리자 화면이 하이드레이션 뒤 `data-theme`을 유지했고 하이드레이션·`<script>` 경고가 없었다.
+- 회원 화면(관심 정책·일정·알림)과 관리자 상세 화면은 같은 토큰을 쓰지만 이번에 화면별로 열어 보지 않았다. 확인 후 검증용 서버·웹·브라우저와 로컬 DB를 종료했다.

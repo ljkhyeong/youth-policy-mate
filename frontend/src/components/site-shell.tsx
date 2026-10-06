@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { ThemeSwitch } from "@/components/theme-switch";
 
 type Section = "home" | "policies" | "conditions" | "my";
 const sections: readonly { key: Section; href: string; label: string }[] = [
@@ -24,7 +25,8 @@ export function SiteShell({ children, active }: { children: React.ReactNode; act
       </header>
       {children}
       <footer className="app-footer">
-        신청 자격과 접수 여부는 공식 신청처에서 확인해주세요.
+        <p>신청 자격과 접수 여부는 공식 신청처에서 확인해주세요.</p>
+        <ThemeSwitch />
       </footer>
     </div>
   );

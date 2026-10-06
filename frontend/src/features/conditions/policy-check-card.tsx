@@ -1,6 +1,6 @@
 import Link from "next/link";
 import type { PolicyChecks } from "@/features/member/member-api";
-import { formatPolicyPeriod } from "@/features/policies/policy-period";
+import { PolicyPeriodText } from "@/features/policies/policy-period-text";
 import { RecruitmentBadge, RecruitmentExplanation } from "@/features/policies/policy-recruitment";
 
 const outcomeLabels = { MET: "충족", NOT_MET: "불충족", UNKNOWN: "추가 확인 필요" };
@@ -15,7 +15,7 @@ export function PolicyCheckCard({ policy, showExplanation }: { policy: PolicyChe
     </div>
     <h3><Link href={`/policies/${policy.policyNumber}`}>{policy.title}</Link></h3>
     {showExplanation && <p className="check-explanation">{policy.explanation}</p>}
-    <p className="policy-period"><strong>신청기간</strong><span>{formatPolicyPeriod(policy.applicationPeriod)}</span></p>
+    <p className="policy-period"><strong>신청기간</strong><PolicyPeriodText period={policy.applicationPeriod} recruitment={policy.recruitment} /></p>
     <RecruitmentExplanation recruitment={policy.recruitment} />
     {policy.questionnaireAvailable && <div className="policy-question-next">
       <span className="policy-question-badge">신청 조건 질문</span>

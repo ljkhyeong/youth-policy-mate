@@ -5,7 +5,7 @@ import { useRef, useState } from "react";
 import { SavedPolicyChanges } from "./saved-policy-changes";
 import { RecruitmentBadge, RecruitmentExplanation, RecruitmentOptions, type RecruitmentFilter } from "@/features/policies/policy-recruitment";
 import type { SavedPolicies } from "./member-api";
-import { formatPolicyPeriod } from "@/features/policies/policy-period";
+import { PolicyPeriodText } from "@/features/policies/policy-period-text";
 
 export function MemberPolicyList({ policies, calendar, query, changedOnly, filter, onSearch, onFilterChange, busy, onRemove }: {
   policies: SavedPolicies["items"]; calendar: boolean; filter: RecruitmentFilter;
@@ -55,7 +55,7 @@ export function MemberPolicyList({ policies, calendar, query, changedOnly, filte
         <div className="saved-policy-body">
           <div className="policy-card-top"><RecruitmentBadge recruitment={policy.recruitment} /></div>
           <h2><Link href={`/policies/${policy.policyNumber}`}>{policy.title}</Link></h2>
-          <p className="policy-period"><strong>신청기간</strong><span>{formatPolicyPeriod(policy.applicationPeriod)}</span></p>
+          <p className="policy-period"><strong>신청기간</strong><PolicyPeriodText period={policy.applicationPeriod} recruitment={policy.recruitment} /></p>
           <p className="saved-policy-note">{policy.deadline.note}</p>
           {policy.savedRevision !== policy.currentRevision && <>
             <p className="member-change">저장한 뒤 정책 내용이 바뀌었어요. 최신 안내를 확인해주세요.</p>

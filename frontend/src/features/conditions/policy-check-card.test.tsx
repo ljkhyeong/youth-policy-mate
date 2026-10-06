@@ -16,7 +16,8 @@ describe("내 조건 결과 카드", () => {
     const html = renderToStaticMarkup(<PolicyCheckCard policy={policy} showExplanation={false} />);
     expect(html).toContain("조건 확인 전");
     expect(html).not.toContain("필요한 조건을 추가해보세요");
-    expect(html).toContain("2026.07.01 ~ 2026.11.17");
+    // 접수 기간인 정책은 마감일에 볼펜 동그라미를 친다.
+    expect(html).toContain('2026.07.01 ~ <span class="pen-circle">2026.11.17</span>');
     expect(html).toContain("D-43");
     expect(html).toContain('href="/policies/123#policy-questions"');
     expect(html).toContain("입력: 미입력");

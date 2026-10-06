@@ -25,7 +25,7 @@ describe("정책 상세의 온통청년 표기 조건", () => {
     const html = renderToStaticMarkup(<PolicyArticle policy={{ ...policy, sourceConditions: [
       { label: "연령", value: "만 19~34세" }, { label: "소득", value: "연소득 3,500만 원 이하" }] }} />);
     expect(html).toContain("온통청년 표기 조건");
-    expect(html).toContain("<dt>연령</dt><dd>만 19~34세</dd>");
+    expect(html).toContain("<dt>연령</dt><dd><mark>만 19~34세</mark></dd>");
     expect(html).toContain("여기에 없는 조건이 있을 수 있어요");
     expect(html.indexOf("온통청년 표기 조건")).toBeLessThan(html.indexOf(policy.content.sections[0].text));
     expect(renderToStaticMarkup(<PolicyArticle policy={policy} />)).not.toContain("온통청년 표기 조건");

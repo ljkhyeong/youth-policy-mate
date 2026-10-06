@@ -6,6 +6,7 @@ import jakarta.validation.constraints.*;
 import kr.youthpolicymate.eligibility.*;
 import java.time.*;
 import java.util.*;
+import static kr.youthpolicymate.policy.SeoulTime.SEOUL;
 import static kr.youthpolicymate.policy.catalog.PolicyQuestions.*;
 import static kr.youthpolicymate.eligibility.ConditionAssessment.Outcome.UNKNOWN;
 
@@ -26,7 +27,6 @@ public record PolicyRuleDefinition(
         Boolean monthly, @Valid PeriodNotice periodNotice,
         @Schema(types = {"string", "null"}) String ageNotice,
         @Valid RemainingVariant remainingVariant) {
-    private static final ZoneId SEOUL = ZoneId.of("Asia/Seoul");
     public PolicyRuleDefinition { monthly = Boolean.TRUE.equals(monthly); }
 
     @Schema(name = "PolicyRuleCheck", requiredProperties = {"questionId", "label", "evidence", "cases", "unknownExplanation"})
@@ -49,7 +49,7 @@ public record PolicyRuleDefinition(
                              @Schema(types = {"integer", "null"}) @PositiveOrZero Integer maximumInclusive,
                              @Schema(types = {"string", "null"}, format = "date") LocalDate referenceDate,
                              @NotBlank String below, @NotBlank String within, @Schema(types = {"string", "null"}) String above, boolean showCalculatedAge) {
-        LocalDate referenceAt(Instant now) { return referenceDate == null ? now.atZone(SEOUL).toLocalDate() : referenceDate; }
+        LocalDate referenceAt(Instant now) { return referenceDate == null ? LocalDate.ofInstant(now, SEOUL) : referenceDate; }
         ConditionAssessment assessment(LocalDate birth, Instant now, SourceEvidence evidence) {
             return AgeConditionEvaluator.evaluate(new AgeCondition.CompletedYears(questionId, minimumInclusive,
                     maximumInclusive == null ? Integer.MAX_VALUE : maximumInclusive, referenceAt(now), evidence), Optional.of(birth));

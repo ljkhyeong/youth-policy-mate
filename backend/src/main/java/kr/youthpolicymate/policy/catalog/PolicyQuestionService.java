@@ -5,7 +5,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import java.time.Clock;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.util.List;
+
+import static kr.youthpolicymate.policy.SeoulTime.SEOUL;
 
 @Service
 @Profile("!preview")
@@ -30,7 +33,7 @@ public class PolicyQuestionService {
     @Transactional(readOnly = true, isolation = org.springframework.transaction.annotation.Isolation.REPEATABLE_READ)
     public PolicyQuestions.Prefill prefill(String number, PolicyQuestions.PrefillRequest input) {
         var now = clock.instant();
-        if (input.birthDate().getYear() < 1 || input.birthDate().isAfter(now.atZone(java.time.ZoneId.of("Asia/Seoul")).toLocalDate()))
+        if (input.birthDate().getYear() < 1 || input.birthDate().isAfter(LocalDate.ofInstant(now, SEOUL)))
             throw new IllegalArgumentException("생년월일을 확인해주세요.");
         return new PolicyQuestions.Prefill(current(number, input.revision(), input.ruleVersion(), now).definition().prefill(input.birthDate(), now));
     }

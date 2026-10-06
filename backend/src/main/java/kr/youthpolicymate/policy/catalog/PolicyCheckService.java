@@ -3,6 +3,7 @@ package kr.youthpolicymate.policy.catalog;
 import kr.youthpolicymate.eligibility.EligibilityStatus;
 import kr.youthpolicymate.policy.RecruitmentStatus;
 import static kr.youthpolicymate.eligibility.ConditionAssessment.Outcome.*;
+import static kr.youthpolicymate.policy.SeoulTime.SEOUL;
 import org.springframework.context.annotation.Profile;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
@@ -11,7 +12,6 @@ import tools.jackson.databind.JsonNode;
 
 import java.time.Clock;
 import java.time.LocalDate;
-import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -26,7 +26,7 @@ public class PolicyCheckService {
     @Transactional(readOnly = true, isolation = org.springframework.transaction.annotation.Isolation.REPEATABLE_READ)
     public PolicyCheckResponse check(BasicConditions input, int page, String query, PolicyCheckResponse.Sort sort, RecruitmentStatus recruitmentStatus) {
         var now = clock.instant();
-        var today = LocalDate.ofInstant(now, ZoneId.of("Asia/Seoul"));
+        var today = LocalDate.ofInstant(now, SEOUL);
         input.validate(today);
         var policies = store.listForCheck(PageRequest.of(page - 1, 20), query, sort, input, recruitmentStatus, now);
         var items = new ArrayList<PolicyCheckResponse.Item>();

@@ -10,10 +10,11 @@ import tools.jackson.databind.ObjectMapper;
 import java.time.Clock;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
-import java.time.ZoneId;
 import java.util.List;
 import java.util.Comparator;
 import java.util.UUID;
+
+import static kr.youthpolicymate.policy.SeoulTime.SEOUL;
 
 @Service
 @Profile("!preview")
@@ -26,7 +27,7 @@ public class MemberPolicyStore {
     public MemberPolicyStore(JdbcClient jdbc, ObjectMapper mapper, PolicyCatalogStore policies, Clock clock) {
         this.jdbc = jdbc; this.mapper = mapper; this.policies = policies; this.clock = clock;
     }
-    private LocalDate today() { return LocalDate.now(clock.withZone(ZoneId.of("Asia/Seoul"))); }
+    private LocalDate today() { return LocalDate.ofInstant(clock.instant(), SEOUL); }
     private void lock(UUID member) {
         if (jdbc.sql("SELECT id FROM members WHERE id = :id FOR UPDATE").param("id", member).query(UUID.class).optional().isEmpty()) {
             throw new org.springframework.security.access.AccessDeniedException("회원 확인이 필요합니다.");
@@ -192,7 +193,7 @@ public class MemberPolicyStore {
                 """).param("id",notification).param("member",member).param("number",number).param("generation",generation)
                 .param("revision",revision).param("kind",kind).param("title",title).param("message",message).update();
         if (inserted == 0) return;
-        var expires = kind.startsWith("DEADLINE_") ? today().plusDays(1).atStartOfDay(ZoneId.of("Asia/Seoul")).toOffsetDateTime() : null;
+        var expires = kind.startsWith("DEADLINE_") ? today().plusDays(1).atStartOfDay(SEOUL).toOffsetDateTime() : null;
         jdbc.sql("""
                 INSERT INTO member_email_outbox(id, member_id, settings_version, kind, notification_id, state, created_at, expires_at)
                 SELECT :id, member_id, version, 'POLICY', :notification, 'PENDING', :now, :expires

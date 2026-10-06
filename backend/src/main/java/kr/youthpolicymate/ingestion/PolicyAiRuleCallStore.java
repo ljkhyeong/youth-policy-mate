@@ -15,12 +15,11 @@ import java.util.Optional;
 import java.util.UUID;
 
 import static kr.youthpolicymate.ingestion.AiDatabaseTime.dbTime;
+import static kr.youthpolicymate.policy.SeoulTime.SEOUL;
 
 @Repository
 @Profile("!preview")
 public class PolicyAiRuleCallStore {
-    private static final ZoneId SEOUL = ZoneId.of("Asia/Seoul");
-
     // 자동 실행의 예산 확인도 같은 서울 기준 월 예산을 사용한다.
     static String monthlyBudgetId(Instant at) {
         return "policy-ai-" + YearMonth.from(at.atZone(SEOUL));

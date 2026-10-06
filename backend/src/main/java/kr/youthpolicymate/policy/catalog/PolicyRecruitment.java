@@ -10,8 +10,9 @@ import tools.jackson.databind.JsonNode;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
-import java.time.ZoneId;
 import java.util.Optional;
+
+import static kr.youthpolicymate.policy.SeoulTime.SEOUL;
 
 @JsonInclude(JsonInclude.Include.ALWAYS)
 @Schema(requiredProperties = {"status", "explanation", "evaluatedAt", "deadlineOnSeoul", "daysUntilDeadline"})
@@ -40,7 +41,6 @@ public record PolicyRecruitment(RecruitmentStatus status, String explanation, In
         return PolicyApplicationPeriod.parse(raw);
     }
     private static ApplicationPeriod.Times times(Instant open, Instant close) {
-        var seoul = ZoneId.of("Asia/Seoul");
-        return new ApplicationPeriod.Times(open.atZone(seoul), close.atZone(seoul));
+        return new ApplicationPeriod.Times(open.atZone(SEOUL), close.atZone(SEOUL));
     }
 }

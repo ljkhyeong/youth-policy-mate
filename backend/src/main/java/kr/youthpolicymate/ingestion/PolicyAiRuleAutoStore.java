@@ -10,11 +10,11 @@ import java.util.List;
 import java.util.UUID;
 
 import static kr.youthpolicymate.ingestion.AiDatabaseTime.dbTime;
+import static kr.youthpolicymate.policy.SeoulTime.SEOUL;
 
 @Repository
 @Profile("!preview")
 public class PolicyAiRuleAutoStore {
-    private static final ZoneId SEOUL = ZoneId.of("Asia/Seoul");
     private static final String CURRENT_REQUEST = """
             p.current_revision = q.revision AND p.content_hash = q.content_hash
             AND NOT EXISTS (SELECT 1 FROM policy_ai_rule_requests newer
@@ -33,7 +33,7 @@ public class PolicyAiRuleAutoStore {
         expire(now, limits.maximumAttempts());
         if (jdbc.sql("SELECT EXISTS(SELECT 1 FROM policy_ai_rule_auto_runs WHERE state = 'RUNNING')").query(Boolean.class).single())
             return new Claim("BUSY", null);
-        var start = now.atZone(SEOUL).toLocalDate().atStartOfDay(SEOUL).toInstant();
+        var start = LocalDate.ofInstant(now, SEOUL).atStartOfDay(SEOUL).toInstant();
         if (jdbc.sql("SELECT count(*) FROM policy_ai_rule_auto_runs WHERE started_at >= :start")
                 .param("start", dbTime(start)).query(Long.class).single() >= limits.dailyLimit()) return new Claim("DAILY_LIMIT", null);
         if (jdbc.sql("SELECT EXISTS(SELECT 1 FROM policy_ai_rule_auto_runs WHERE started_at > :cutoff)")

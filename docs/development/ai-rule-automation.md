@@ -8,7 +8,7 @@
 - 자동 실행을 처음 켰을 때의 미처리 공고에도 한도를 적용한다. 매년 공고가 바뀌면 수집된 새 개정과 해시로 판단하며 이전 연도 자료를 복사하지 않는다.
 - `PolicyAiRuleAutoStore`가 최신 정책을 잠그고 추출 요청과 실행 기록을 함께 저장한다. 짧은 PostgreSQL advisory 잠금으로 여러 서버의 선택·일일 한도·간격을 조정하며 외부 호출 전에는 잠금을 해제한다.
 - `PolicyAiRuleAutoRunner`는 기존 생성 서비스를 호출한다. 비용 예약, 발송 직전 최신성 확인, 응답 저장, 관리자 초안 생성은 수동 호출과 같다. AI 결과를 자동 적용하지 않는다.
-- `PolicyAiRuleScheduler`는 웹 서버에서만 별도 활성화한다. 60초 간격으로 한 번 확인하며 AI 전용 스레드를 사용한다. 수집·알림은 기본 스케줄러를 사용한다. 실제 작업 시작 간격은 DB의 최근 시작 시각으로 제한한다.
+- `PolicyAiRuleScheduler`는 웹 서버에서만 별도 활성화한다. 60초 간격으로 한 번 확인하며 수집·이메일·알림과 함께 Boot 기본 스케줄러(`spring.task.scheduling.pool.size`=4, 작업마다 스레드 1개)를 사용해 AI 응답 대기가 다른 작업을 막지 않는다. 실제 작업 시작 간격은 DB의 최근 시작 시각으로 제한한다.
 
 ## 설정과 명령
 
@@ -53,13 +53,13 @@ V28의 `policy_ai_rule_auto_runs`에 요청·시도 번호·시작/만료/완료
 
 ## 검증
 
-검증 명령은 `npm run verify -- test:ai-rule-auto`다. 실제 PostgreSQL과 가짜 HTTP 공급자로 신규/변경 공고·같은 내용 재수집·관리자 작업 제외·동시 배정·일일 한도·제한 재시도·중단 후 재개·결과 미확인 재호출 차단·예산 소진 후 기존 예약/응답 재처리를 확인한다. 스케줄러 기본 비활성화·웹 서버 한정 등록·기존 작업과 스레드 분리도 확인한다.
+검증 명령은 `npm run verify -- test:ai-rule-auto`다. 실제 PostgreSQL과 가짜 HTTP 공급자로 신규/변경 공고·같은 내용 재수집·관리자 작업 제외·동시 배정·일일 한도·제한 재시도·중단 후 재개·결과 미확인 재호출 차단·예산 소진 후 기존 예약/응답 재처리를 확인한다. 스케줄러 기본 비활성화·웹 서버 한정 등록도 확인한다.
 
-Java 25.0.3·PostgreSQL 18.6에서 다음 검증을 통과했다. 검증 이후 변경은 문서뿐이다.
+Java 25.0.3·PostgreSQL 18.6에서 다음 검증을 통과했다. 스케줄러를 Boot 기본 풀로 바꾼 뒤 `test:ai-rule-auto`를 다시 실행했다.
 
 | 검증 | 결과·로그 |
 |---|---|
-| `npm run verify -- test:ai-rule-auto` | 위 자동 처리·복구·스케줄러 검사와 기존 생성 경로 통과. `.local/verification/1789175310104-87761747.log` |
+| `npm run verify -- test:ai-rule-auto` | 위 자동 처리·복구·스케줄러 검사와 기존 생성 경로 통과. `.local/verification/1791330264593-9804b2a8.log` |
 | `npm run verify -- check:backend` | 전체 서버·DB·API 계약 검사 통과. `.local/verification/1789175362712-74f1cda6.log` |
 | 운영 명령·로컬 서버 | `auto-status` 조회·V28 적용·서버 상태 조회 200 확인. `/tmp/youth-ai-auto-command.log`, `/tmp/youth-ai-auto-runtime.log` |
 

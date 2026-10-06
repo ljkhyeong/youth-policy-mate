@@ -1,17 +1,17 @@
 package kr.youthpolicymate.member;
 
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnBooleanProperty;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplication;
-import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Profile;
 import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.scheduling.annotation.Scheduled;
+import org.springframework.stereotype.Component;
 
-@Configuration
+@Component
 @EnableScheduling
 @Profile("!preview")
 @ConditionalOnWebApplication(type = ConditionalOnWebApplication.Type.SERVLET)
-@ConditionalOnProperty(name = "app.email.enabled", havingValue = "true")
+@ConditionalOnBooleanProperty("app.email.enabled")
 public class MemberEmailScheduler {
     private final MemberEmailDelivery delivery;
     public MemberEmailScheduler(MemberEmailDelivery delivery) { this.delivery = delivery; }

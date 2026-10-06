@@ -78,6 +78,8 @@ Next.js의 서버 내부 접속 주소는 `POLICY_API_BASE_URL`이다. 로컬 �
 | `REMINDER_DELIVERY_TIME` | `09:00` | 서울 날짜의 당일 알림 처리 시작 시간 |
 | `REMINDER_POLL_MS` | `60000` | 처리 대상 재확인 간격과 최초 대기 시간 |
 
+환경변수는 `application.yaml`의 `app.reminders.enabled`·`app.reminders.delivery-time`·`app.reminders.poll`에 연결한다.
+
 오전 9시는 로컬 확인용 기본값이다. 운영 시각·재확인 간격을 정한 뒤 명시적으로 활성화한다. 서버가 시작 시간 이후에 켜지면 당일 알림만 처리하고 지난 날짜를 몰아서 보내지 않는다. 반복 실행에서 최대 100명의 대상을 조회하고 회원별로 짧게 처리한다. 저장 목록 조회 시에도 최신 개정 반영이 일어나므로 이 조회는 DB 변경을 포함한다.
 
 서비스 내 알림과 [이메일 주소 확인·수신 동의·Outbox·SMTP 어댑터](member-email-reminders.md)를 구현했다. 실제 이메일 공급자·발신 도메인·수신함 전달은 미검증이며 브라우저 푸시는 제공하지 않는다.

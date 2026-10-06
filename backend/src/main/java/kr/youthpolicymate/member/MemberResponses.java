@@ -1,6 +1,5 @@
 package kr.youthpolicymate.member;
 
-import com.fasterxml.jackson.annotation.JsonInclude;
 import io.swagger.v3.oas.annotations.media.Schema;
 import kr.youthpolicymate.policy.catalog.BasicConditions;
 import kr.youthpolicymate.policy.catalog.PolicyContent;
@@ -14,7 +13,6 @@ public final class MemberResponses {
     public record Session(boolean authenticated, String displayName, String suggestedBirthDate, String csrfToken, List<Provider> providers) {}
     @Schema(name = "LoginProvider", requiredProperties = {"id", "name", "url"})
     public record Provider(String id, String name, String url) {}
-    @JsonInclude(JsonInclude.Include.ALWAYS)
     @Schema(name = "MemberConditions", requiredProperties = {"conditions"})
     public record Conditions(@Schema(types = {"object", "null"}) BasicConditions conditions) {}
     @Schema(name = "SavedPolicy", requiredProperties = {"policyNumber", "title", "savedRevision", "currentRevision", "deadline", "savedAt", "applicationPeriod", "recruitment"})

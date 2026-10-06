@@ -70,10 +70,10 @@
 
 카카오·네이버 Redirect URI는 각각 `https://<공개 도메인>/login/oauth2/code/kakao`, `/login/oauth2/code/naver`다. 웹훅 경로에는 로그인·브라우저용 CSRF 검사를 두지 않고 서명을 검증한다. 다른 회원 변경 API는 기존 로그인·CSRF 검사를 유지한다.
 
-- API는 `0.0.0.0:8080`에서 실행하며 전달된 HTTPS 헤더를 처리하고 `Secure; HttpOnly; SameSite=Lax` 세션 쿠키를 사용한다. 프록시가 전달 헤더를 설정·덮어쓰고 API 포트는 내부에서만 접근하도록 운영자가 구성한다.
+- API는 모든 주소의 8080 포트(Spring Boot 기본값)에서 실행하며 전달된 HTTPS 헤더를 처리하고 `Secure; HttpOnly; SameSite=Lax` 세션 쿠키를 사용한다. 프록시가 전달 헤더를 설정·덮어쓰고 API 포트는 내부에서만 접근하도록 운영자가 구성한다.
 - API 시작·생존 확인: `/actuator/health/liveness`. 준비 확인: `/actuator/health/readiness`이며 DB 연결을 포함한다. DB 장애를 생존 검사에 넣어 재시작을 반복하지 않는다. `/actuator`는 외부 Ingress에 연결하지 않는다.
 - 웹 시작·생존 확인: `/healthz`. API·DB 상태는 API의 준비 검사에서 판단한다.
-- API 종료 대기 시간은 30초다. Pod의 종료 유예 시간은 이보다 길게 설정한다. DB는 PostgreSQL 18 계열을 기준으로 검증했으며 Flyway가 V32까지 적용한다.
+- API 종료 대기 시간은 Spring Boot 기본값인 30초다. Pod의 종료 유예 시간은 이보다 길게 설정한다. DB는 PostgreSQL 18 계열을 기준으로 검증했으며 Flyway가 V32까지 적용한다.
 - 앱은 DB 세션을 사용한다. 초기 API 인스턴스는 1개를 기준으로 하고, 여러 인스턴스의 수집·외부 공급자 호출량은 별도 검증 후 늘린다.
 
 Spring 기본 [상태 확인 기능](https://docs.spring.io/spring-boot/reference/actuator/endpoints.html)을 사용한다. 라우터·인증서·Ingress·PVC·자원 제한·백업 주기는 이 저장소에서 운영 적용하지 않았다.

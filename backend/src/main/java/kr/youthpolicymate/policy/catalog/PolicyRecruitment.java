@@ -1,6 +1,5 @@
 package kr.youthpolicymate.policy.catalog;
 
-import com.fasterxml.jackson.annotation.JsonInclude;
 import io.swagger.v3.oas.annotations.media.Schema;
 import kr.youthpolicymate.policy.ApplicationPeriod;
 import kr.youthpolicymate.policy.RecruitmentAssessment;
@@ -14,7 +13,6 @@ import java.util.Optional;
 
 import static kr.youthpolicymate.policy.SeoulTime.SEOUL;
 
-@JsonInclude(JsonInclude.Include.ALWAYS)
 @Schema(requiredProperties = {"status", "explanation", "evaluatedAt", "deadlineOnSeoul", "daysUntilDeadline"})
 public record PolicyRecruitment(RecruitmentStatus status, String explanation, Instant evaluatedAt,
                                 @Schema(types = {"string", "null"}, format = "date", description = "확인한 마감일(서울). 상시·소진형·기간 미확인과 날짜 없는 마감은 null")

@@ -44,7 +44,6 @@ class ProductionRuntimeTest {
     void preparesProxyLoginAndProbes() throws Exception {
         assertThat(environment.getProperty("APP_FRONTEND_URL")).isEqualTo("https://policy.example.test");
         assertThat(environment.getProperty("APP_BACKEND_URL")).isEqualTo("https://policy.example.test");
-        assertThat(environment.getProperty("server.address")).isEqualTo("0.0.0.0");
         var login = mvc.perform(get("/oauth2/authorization/kakao").header("X-Forwarded-Proto", "https").header("X-Forwarded-Host", "policy.example.test"))
                 .andExpect(status().is3xxRedirection())
                 .andExpect(header().string("Set-Cookie", containsString("Secure")))

@@ -1,6 +1,5 @@
 package kr.youthpolicymate.admin;
 
-import com.fasterxml.jackson.annotation.JsonInclude;
 import io.swagger.v3.oas.annotations.media.Schema;
 import kr.youthpolicymate.member.ResendEmailLookup;
 import java.time.Instant;
@@ -18,7 +17,6 @@ public final class EmailDeliveries {
     @Schema(name = "AdminEmailDeliverySummary", requiredProperties = {"total", "failed", "unknown"})
     public record Summary(long total, long failed, long unknown) {}
 
-    @JsonInclude(JsonInclude.Include.ALWAYS)
     @Schema(name = "AdminEmailDelivery", requiredProperties = {"id", "kind", "state", "provider", "providerMessageId", "createdAt", "startedAt", "finishedAt", "providerEventAt"})
     public record Item(UUID id, Kind kind, State state,
                        @Schema(types = {"string", "null"}, allowableValues = {"smtp", "resend"}) String provider,

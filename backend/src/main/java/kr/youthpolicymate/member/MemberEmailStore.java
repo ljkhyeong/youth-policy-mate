@@ -1,6 +1,5 @@
 package kr.youthpolicymate.member;
 
-import com.fasterxml.jackson.annotation.JsonInclude;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.Validator;
 import org.springframework.context.annotation.Profile;
@@ -135,7 +134,6 @@ public class MemberEmailStore {
     }
     static OffsetDateTime at(Instant instant) { return instant.atOffset(java.time.ZoneOffset.UTC); }
     private record Check(UUID version, String hash, OffsetDateTime expires, int attempts) {}
-    @JsonInclude(JsonInclude.Include.ALWAYS)
     @Schema(name = "MemberEmailSettings", requiredProperties = {"available", "addressRegistered", "address", "verified", "enabled", "verificationExpiresAt", "verificationDelivery", "deliveryIssue"})
     public record Settings(boolean available, boolean addressRegistered, @Schema(types = {"string", "null"}) String address,
                            boolean verified, boolean enabled, @Schema(types = {"string", "null"}, format = "date-time") Instant verificationExpiresAt,

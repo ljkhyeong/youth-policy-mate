@@ -1,12 +1,10 @@
 package kr.youthpolicymate.policy.catalog;
 
-import com.fasterxml.jackson.annotation.JsonInclude;
 import io.swagger.v3.oas.annotations.media.Schema;
 import tools.jackson.databind.JsonNode;
 
 import java.time.LocalDate;
 
-@JsonInclude(JsonInclude.Include.ALWAYS)
 @Schema(requiredProperties = {"date", "note"})
 public record PolicyDeadline(@Schema(types = {"string", "null"}, format = "date") LocalDate date, String note) {
     public static PolicyDeadline from(JsonNode raw) {

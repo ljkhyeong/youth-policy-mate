@@ -13,7 +13,6 @@ import kr.youthpolicymate.member.SocialMemberService;
 import kr.youthpolicymate.member.MemberIdentityStore;
 import kr.youthpolicymate.member.MemberSessionFilter;
 import org.springframework.security.web.context.SecurityContextHolderFilter;
-import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.core.env.Environment;
 import org.springframework.security.oauth2.client.OAuth2AuthorizedClientService;
 import org.springframework.security.oauth2.client.authentication.OAuth2AuthenticationToken;
@@ -25,8 +24,8 @@ class SecurityConfiguration {
 
     @Bean
     SecurityFilterChain securityFilterChain(HttpSecurity http, Environment env, AdminAccess adminAccess,
-            ObjectProvider<InMemoryClientRegistrationRepository> registrations, ObjectProvider<SocialMemberService> social,
-            ObjectProvider<OAuth2AuthorizedClientService> authorizedClients, ObjectProvider<MemberIdentityStore> identities) throws Exception {
+            InMemoryClientRegistrationRepository registrations, SocialMemberService social,
+            OAuth2AuthorizedClientService authorizedClients, MemberIdentityStore identities) throws Exception {
         http
                 .csrf(csrf -> csrf.ignoringRequestMatchers("/api/v1/email-unsubscribe/*", "/api/v1/webhooks/resend", "/api/v1/policies/checks", "/api/v1/policies/*/evaluation", "/api/v1/policies/*/question-prefill"))
                 .requestCache(cache -> cache.disable())
@@ -63,18 +62,16 @@ class SecurityConfiguration {
                         .anyRequest().denyAll())
                 .logout(logout -> logout.logoutUrl("/api/v1/logout").invalidateHttpSession(true)
                         .deleteCookies("YPM_SESSION").logoutSuccessHandler((request, response, authentication) -> response.setStatus(204)));
-        var configured = registrations.getIfAvailable();
-        if (configured != null && configured.iterator().hasNext()) {
+        if (registrations.iterator().hasNext()) {
             var frontend = env.getProperty("APP_FRONTEND_URL", "http://127.0.0.1:3000");
-            http.oauth2Login(login -> login.userInfoEndpoint(info -> info.userService(social.getObject()))
+            http.oauth2Login(login -> login.userInfoEndpoint(info -> info.userService(social))
                     .successHandler((request, response, authentication) -> {
                         var token = (OAuth2AuthenticationToken) authentication;
-                        authorizedClients.getObject().removeAuthorizedClient(token.getAuthorizedClientRegistrationId(), token.getName());
+                        authorizedClients.removeAuthorizedClient(token.getAuthorizedClientRegistrationId(), token.getName());
                         response.sendRedirect(frontend + "/login/complete");
                     }).failureHandler((request, response, exception) -> response.sendRedirect(frontend + "/login?error=login")));
         }
-        var memberIdentities = identities.getIfAvailable();
-        if (memberIdentities != null) http.addFilterAfter(new MemberSessionFilter(memberIdentities), SecurityContextHolderFilter.class);
+        http.addFilterAfter(new MemberSessionFilter(identities), SecurityContextHolderFilter.class);
         return http.build();
     }
 

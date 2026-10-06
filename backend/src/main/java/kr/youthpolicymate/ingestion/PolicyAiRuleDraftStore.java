@@ -10,8 +10,6 @@ import org.springframework.context.annotation.Profile;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
-import tools.jackson.core.JacksonException;
-import tools.jackson.databind.DeserializationFeature;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 
@@ -43,11 +41,11 @@ public class PolicyAiRuleDraftStore {
             if (!saved.policyNumber().equals(input.policyNumber()) || saved.revision() != input.revision()
                     || !saved.generationVersion().equals(input.generationVersion()) || !saved.requestedBy().equals(input.requestedBy()))
                 throw new IllegalStateException("다른 입력에 사용한 요청 ID입니다.");
-            if (!current.matches(saved)) throw new IllegalStateException("요청 기준 공고가 바뀌었습니다. 현재 개정으로 새 요청을 준비해주세요.");
+            if (!current.matches(saved.revision(), saved.contentHash())) throw new IllegalStateException("요청 기준 공고가 바뀌었습니다. 현재 개정으로 새 요청을 준비해주세요.");
             if (hasNewerRequest(saved)) throw new IllegalStateException("더 최근의 추출 요청이 있습니다. 최신 요청을 확인해주세요.");
             return saved;
         }
-        if (current.revision() != input.revision()) throw new IllegalStateException("공고 개정이 바뀌었습니다. 최신 내용을 확인해주세요.");
+        if (current.currentRevision() != input.revision()) throw new IllegalStateException("공고 개정이 바뀌었습니다. 최신 내용을 확인해주세요.");
         jdbc.sql("""
                 INSERT INTO policy_ai_rule_requests(id, policy_number, revision, content_hash, generation_version, requested_by)
                 VALUES (:id, :number, :revision, :hash, :generation, :actor)
@@ -58,7 +56,7 @@ public class PolicyAiRuleDraftStore {
 
     @Transactional
     public Result complete(UUID requestId, String body) {
-        if (body == null || body.getBytes(StandardCharsets.UTF_8).length > 131072)
+        if (body == null || body.getBytes(StandardCharsets.UTF_8).length > PolicyRuleStore.MAX_DEFINITION_BYTES)
             throw new IllegalArgumentException("추출 결과는 UTF-8 128KB까지 저장할 수 있습니다.");
         var request = findPrepared(requestId).orElseThrow(() -> new IllegalArgumentException("AI 조건 추출 요청을 찾을 수 없습니다."));
         var current = lockPolicy(request.policyNumber());
@@ -70,7 +68,7 @@ public class PolicyAiRuleDraftStore {
 
         Status status;
         UUID versionId = null;
-        if (!current.matches(request)) status = Status.SOURCE_CHANGED;
+        if (!current.matches(request.revision(), request.contentHash())) status = Status.SOURCE_CHANGED;
         else if (hasNewerRequest(request)) status = Status.REQUEST_SUPERSEDED;
         else {
             var definition = parse(body);
@@ -102,7 +100,7 @@ public class PolicyAiRuleDraftStore {
     // 호출 예약·발송 기록과 같은 트랜잭션에서 검사할 때 정책 행 잠금을 유지한다.
     @Transactional
     public boolean lockCurrent(Prepared request) {
-        return lockPolicy(request.policyNumber()).matches(request) && !hasNewerRequest(request)
+        return lockPolicy(request.policyNumber()).matches(request.revision(), request.contentHash()) && !hasNewerRequest(request)
                 && storedResult(request.id()).isEmpty();
     }
 
@@ -112,20 +110,12 @@ public class PolicyAiRuleDraftStore {
     }
 
     private PolicyRuleDefinition parse(String body) {
-        try {
-            PolicyRuleDefinition definition = mapper.readerFor(PolicyRuleDefinition.class)
-                    .with(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, DeserializationFeature.FAIL_ON_TRAILING_TOKENS)
-                    .readValue(body);
-            if (definition == null) return null;
-            definition.validate(validator);
-            return definition;
-        } catch (JacksonException | IllegalArgumentException exception) { return null; }
+        try { return rules.parseStrict(body); }
+        catch (IllegalArgumentException exception) { return null; }
     }
 
-    private Current lockPolicy(String number) {
-        return jdbc.sql("SELECT current_revision, content_hash FROM policies WHERE policy_number = :number AND current_revision > 0 FOR UPDATE")
-                .param("number", number).query((rs, row) -> new Current(rs.getLong("current_revision"), rs.getString("content_hash")))
-                .optional().orElseThrow(() -> new IllegalArgumentException("공개된 정책 원문을 찾을 수 없습니다."));
+    private PolicyRuleStore.PublishedHead lockPolicy(String number) {
+        return rules.lockPublished(number).orElseThrow(() -> new IllegalArgumentException("공개된 정책 원문을 찾을 수 없습니다."));
     }
 
     private Optional<Prepared> findPrepared(UUID id) {
@@ -157,7 +147,4 @@ public class PolicyAiRuleDraftStore {
     public enum Status { DRAFT_CREATED, SOURCE_CHANGED, REQUEST_SUPERSEDED, INVALID_DEFINITION, INVALID_REFERENCE, VERSION_CONFLICT }
     public record Result(UUID requestId, Status status, UUID versionId, String bodySha256, Instant recordedAt) {}
     private record StoredResult(String body, Result result) {}
-    private record Current(long revision, String contentHash) {
-        boolean matches(Prepared request) { return revision == request.revision() && contentHash.equals(request.contentHash()); }
-    }
 }

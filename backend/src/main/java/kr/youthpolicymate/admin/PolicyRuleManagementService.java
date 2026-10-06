@@ -6,11 +6,8 @@ import org.springframework.context.annotation.Profile;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import tools.jackson.core.JacksonException;
-import tools.jackson.databind.DeserializationFeature;
 import tools.jackson.databind.ObjectMapper;
 
-import java.nio.charset.StandardCharsets;
 import java.time.OffsetDateTime;
 import java.util.Optional;
 import java.util.UUID;
@@ -35,7 +32,7 @@ class PolicyRuleManagementService {
             if (!rules.definition(replay.get().versionId()).equals(definition)) throw new PolicyRuleActions.Changed();
             return replay.get();
         }
-        if (current.revision() != request.expectedRevision() || !current.hash().equals(definition.contentHash())) throw new PolicyRuleActions.Changed();
+        if (!current.matches(request.expectedRevision(), definition.contentHash())) throw new PolicyRuleActions.Changed();
         UUID id;
         try { id = rules.draft(definition, actor.toString(), request.reason().strip()); }
         catch (IllegalArgumentException exception) { throw new PolicyRuleActions.Invalid(); }
@@ -50,7 +47,7 @@ class PolicyRuleManagementService {
             return replay.get();
         }
         scopedDefinition(number, id);
-        if (current.revision() != request.expectedRevision()) throw new PolicyRuleActions.Changed();
+        if (current.currentRevision() != request.expectedRevision()) throw new PolicyRuleActions.Changed();
         try { rules.publish(id, request.expectedRuleVersion(), actor.toString()); }
         catch (IllegalStateException exception) { throw new PolicyRuleActions.Changed(); }
         catch (IllegalArgumentException exception) { throw new PolicyRuleActions.Invalid(); }
@@ -69,19 +66,12 @@ class PolicyRuleManagementService {
     }
 
     private PolicyRuleDefinition parse(String json) {
-        if (json.getBytes(StandardCharsets.UTF_8).length > 131072) throw new PolicyRuleActions.Invalid();
-        try {
-            PolicyRuleDefinition definition = mapper.readerFor(PolicyRuleDefinition.class)
-                    .with(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES).readValue(json);
-            if (definition == null) throw new PolicyRuleActions.Invalid();
-            return definition;
-        } catch (JacksonException exception) { throw new PolicyRuleActions.Invalid(); }
+        try { return rules.parseStrict(json); }
+        catch (IllegalArgumentException exception) { throw new PolicyRuleActions.Invalid(); }
     }
 
-    private Current lock(String number) {
-        return jdbc.sql("SELECT current_revision, content_hash FROM policies WHERE policy_number = :number AND current_revision > 0 FOR UPDATE")
-                .param("number", number).query((rs, row) -> new Current(rs.getLong("current_revision"), rs.getString("content_hash")))
-                .optional().orElseThrow(PolicyRuleActions.Missing::new);
+    private PolicyRuleStore.PublishedHead lock(String number) {
+        return rules.lockPublished(number).orElseThrow(PolicyRuleActions.Missing::new);
     }
 
     private Optional<PolicyRuleActions.Result> replay(UUID requestId, String number, UUID actor, long revision, String reason,
@@ -108,5 +98,4 @@ class PolicyRuleManagementService {
                 .param("actor", actor).param("revision", revision).param("expected", expectedVersion).param("reason", reason.strip()).update();
         return replay(requestId, number, actor, revision, reason, action, expectedVersion).orElseThrow();
     }
-    private record Current(long revision, String hash) {}
 }

@@ -17,7 +17,7 @@ public final class PolicyRuleCommand {
                 case "export" -> Files.writeString(Path.of(args[2]), context.getBean(ObjectMapper.class)
                         .writerWithDefaultPrettyPrinter().writeValueAsString(store.definition(UUID.fromString(args[1]))), StandardOpenOption.CREATE_NEW);
                 case "draft" -> {
-                    var definition = context.getBean(ObjectMapper.class).readValue(Files.readString(Path.of(args[1])), PolicyRuleDefinition.class);
+                    var definition = store.parseStrict(Files.readString(Path.of(args[1])));
                     System.out.println("등록한 초안: " + store.draft(definition, actor, args[2]));
                 }
                 case "publish" -> { store.publish(UUID.fromString(args[1]), args[2], actor); System.out.println("규칙을 적용했습니다."); }

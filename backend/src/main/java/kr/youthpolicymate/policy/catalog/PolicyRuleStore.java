@@ -4,20 +4,50 @@ import jakarta.validation.Validator;
 import org.springframework.context.annotation.Profile;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.DeserializationFeature;
 import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.ObjectReader;
+import java.nio.charset.StandardCharsets;
 import java.time.*;
 import java.util.*;
 
 @Repository
 @Profile("!preview")
 public class PolicyRuleStore {
+    public static final int MAX_DEFINITION_BYTES = 131072;
     private final JdbcClient jdbc;
     private final ObjectMapper mapper;
+    private final ObjectReader strictReader;
     private final Validator validator;
     private final Clock clock;
     public PolicyRuleStore(JdbcClient jdbc, ObjectMapper mapper, Validator validator, Clock clock) {
         this.jdbc = jdbc; this.mapper = mapper; this.validator = validator; this.clock = clock;
+        strictReader = mapper.readerFor(PolicyRuleDefinition.class)
+                .with(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, DeserializationFeature.FAIL_ON_TRAILING_TOKENS);
+    }
+    /** 관리자 업로드·AI 추출·운영 명령이 같은 기준으로 규칙 JSON을 받는다. 실패하면 IllegalArgumentException. */
+    public PolicyRuleDefinition parseStrict(String json) {
+        if (json == null) throw new IllegalArgumentException("규칙 JSON이 비어 있습니다.");
+        if (json.getBytes(StandardCharsets.UTF_8).length > MAX_DEFINITION_BYTES) throw new IllegalArgumentException("규칙 파일은 UTF-8 128KB까지 받을 수 있습니다.");
+        PolicyRuleDefinition definition;
+        try { definition = strictReader.readValue(json); }
+        catch (JacksonException exception) { throw new IllegalArgumentException("규칙 JSON 형식을 확인해주세요.", exception); }
+        if (definition == null) throw new IllegalArgumentException("규칙 JSON이 비어 있습니다.");
+        definition.validate(validator);
+        return definition;
+    }
+    /** 구성요소 이름이 열 이름(current_revision, content_hash)과 맞아야 query(Class)가 값을 채운다. */
+    public record PublishedHead(long currentRevision, String contentHash) {
+        public boolean matches(long revision, String hash) { return currentRevision == revision && contentHash.equals(hash); }
+    }
+    /** 공개 정책 행을 호출자 트랜잭션 안에서 잠근다. */
+    @Transactional(propagation = Propagation.MANDATORY)
+    public Optional<PublishedHead> lockPublished(String number) {
+        return jdbc.sql("SELECT current_revision, content_hash FROM policies WHERE policy_number = :number AND current_revision > 0 FOR UPDATE")
+                .param("number", number).query(PublishedHead.class).optional();
     }
     @Transactional
     public UUID draft(PolicyRuleDefinition definition, String actor, String reason) {
@@ -36,8 +66,7 @@ public class PolicyRuleStore {
         if (actor == null || actor.isBlank()) throw new IllegalArgumentException("작업자가 필요합니다.");
         var definition = definition(id);
         definition.validate(validator);
-        var hash = jdbc.sql("SELECT content_hash FROM policies WHERE policy_number = :number AND current_revision > 0 FOR UPDATE")
-                .param("number", definition.policyNumber()).query(String.class).optional().orElseThrow(() -> new IllegalStateException("정책 원문이 없습니다."));
+        var hash = lockPublished(definition.policyNumber()).orElseThrow(() -> new IllegalStateException("정책 원문이 없습니다.")).contentHash();
         var current = jdbc.sql("""
                 SELECT v.rule_version FROM policy_rule_heads h JOIN policy_rule_versions v ON v.id = h.version_id
                 WHERE h.policy_number = :number

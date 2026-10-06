@@ -18,13 +18,13 @@ when_to_use: backend의 eligibility 패키지나 policy/catalog의 질문·조�
 
 | 역할 | 위치 |
 |---|---|
-| 조건별 비교 | `backend/.../eligibility/`의 `AgeConditionEvaluator`, `ResidenceConditionEvaluator`, `EmploymentConditionEvaluator`, `IncomeConditionEvaluator` |
+| 조건별 비교 | `backend/.../eligibility/`의 `AgeConditionEvaluator` |
 | 전체 결과 결합·상태 | `eligibility/EligibilityDecision`, `EligibilityStatus`, `ConditionAssessment` |
 | 공고별 질문·판정표 실행 | `policy/catalog/PolicyRuleDefinition`, `PolicyQuestionService`, `PolicyQuestions` |
 | 기본 조건 목록 비교 | `policy/catalog/BasicConditions`, `PolicyCheckService`, `PolicyAgeComparison`, `PolicyCatalogStore` |
 | 화면 | `frontend/src/features/eligibility/`, `frontend/src/features/conditions/` |
 
-조건별 판단 근거는 `docs/development/`의 `age-condition.md`·`residence-condition.md`·`employment-condition.md`·`income-condition.md`·`eligibility-decision.md`, 취업·소득 설계는 `docs/design/`의 `employment-condition.md`·`income-condition.md`에 있다. 바꿀 조건의 문서만 읽는다.
+조건별 판단 근거는 `docs/development/`의 `age-condition.md`·`eligibility-decision.md`, 취업·소득 설계는 `docs/design/`의 `employment-condition.md`·`income-condition.md`에 있다. 바꿀 조건의 문서만 읽는다.
 
 ### 구현할 때
 

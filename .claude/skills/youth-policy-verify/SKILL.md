@@ -48,13 +48,11 @@ allowed-tools:
 | `member/MemberEmail*`, `*EmailSender`, `Resend*` | `test:email` | |
 | `member/EmailCrypto`, `EmailKeyRotation*` | `test:email-key-rotation` | |
 | `member/` 저장 정책·계정·알림 | `test:member-flow` | |
-| `schedule/**` | `test:reminders` | |
 | `admin/Collection*`, `PolicyCorrection*`, `PolicyRule*` | `test:admin-collection` | |
 | `admin/PolicyAiRun*` | `test:admin-ai` | |
 | `admin/EmailDelivery*` | `test:admin-email` | |
 | `config/SecurityConfiguration`, `AdminAccess` | `test:admin-ai`(AdminAccessTest 포함) | 공통 보안 영향이 넓으면 `check:backend` |
 | `application-prod.yaml`, 운영 프로필 구성 | `test:runtime` | |
-| `devpreview/**` | `test:preview-api` | |
 | Flyway SQL·Java 마이그레이션 | 해당 기능의 DB 테스트 | 여러 기능 테이블에 영향이 있으면 `check:backend` |
 | `backend/build.gradle`, 공통 `application.yaml` | `check:backend` | |
 | 컴파일 확인만 필요 | `compile:backend` | 실행 파일만 필요하면 `package:backend` |

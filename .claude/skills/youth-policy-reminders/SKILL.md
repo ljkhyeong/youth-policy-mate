@@ -1,7 +1,7 @@
 ---
 name: youth-policy-reminders
 description: 청년정책메이트의 관심 정책 저장/해제·마감 일정·서비스 내/이메일 알림·수신 동의·수신 해제·예약 취소·Outbox 전달·공급자 상태 변경 기준. 저장소 공통 스킬에 Claude Code 작업 보충과 실제 발송 경계를 더한다.
-when_to_use: backend의 schedule 패키지나 member의 저장 정책·알림·이메일(MemberReminderScheduler, MemberEmail*, Smtp/Resend*, EmailKeyRotation*) 코드, admin 이메일 발송 현황, 화면의 내 정책·일정·알림·이메일 설정을 바꿀 때.
+when_to_use: backend member의 저장 정책·알림·이메일(MemberReminderScheduler, MemberEmail*, Smtp/Resend*, EmailKeyRotation*) 코드, admin 이메일 발송 현황, 화면의 내 정책·일정·알림·이메일 설정을 바꿀 때.
 ---
 
 # 일정과 알림
@@ -18,12 +18,11 @@ when_to_use: backend의 schedule 패키지나 member의 저장 정책·알림·�
 
 | 영역 | 코드 | 문서(`docs/development/`) |
 |---|---|---|
-| 마감 후보 계산 | `schedule/DeadlineReminderCandidates`, `policy/RecruitmentSchedule` | `deadline-reminder-candidates.md`, `recruitment-period.md` |
-| 저장 정책·서비스 내 알림 | `member/MemberPolicyStore`, `MemberReminderScheduler` | `member-policy-flow.md`, `member-notifications.md`, `member-calendar.md` |
+| 저장 정책·D-7·D-3·D-1 예약·서비스 내 알림 | `member/MemberPolicyStore`, `MemberReminderScheduler`, `policy/catalog/PolicyDeadline` | `member-policy-flow.md`, `member-notifications.md`, `member-calendar.md`, `recruitment-period.md` |
 | 이메일 Outbox·발송 | `member/MemberEmail*`, `SmtpMemberEmailSender`, `ResendMemberEmailSender` | `member-email-reminders.md` |
 | 공급자 결과·웹훅·상태 조회 | `member/Resend*`, `admin/EmailDelivery*` | `email-provider-status.md`, `admin-email-deliveries.md` |
 | 수신 해제·설정 복구·키 교체 | `member/MemberEmailUnsubscribe*`, `EmailCrypto`, `EmailKeyRotation*` | `email-unsubscribe.md`, `email-settings-recovery.md`, `email-key-rotation.md` |
-| 화면 | `frontend/src/features/reminders/`, `features/member/`의 알림·이메일·저장 컴포넌트 | `member-navigation.md` |
+| 화면 | `frontend/src/features/member/`의 알림·이메일·저장 컴포넌트 | `member-navigation.md` |
 
 ### 실제 발송 경계
 
@@ -33,5 +32,5 @@ when_to_use: backend의 schedule 패키지나 member의 저장 정책·알림·�
 
 ### 검증
 
-- 마감 후보는 `test:reminders`, 저장·알림·이메일 흐름은 `test:member-flow`·`test:email`, 관리자 발송 현황은 `test:admin-email`, 키 교체는 `test:email-key-rotation`이다. 서울 날짜 경계는 고정 `Clock`으로 만든다.
+- 저장·예약·알림·이메일 흐름은 `test:member-flow`·`test:email`, 관리자 발송 현황은 `test:admin-email`, 키 교체는 `test:email-key-rotation`이다. 서울 날짜 경계는 고정 `Clock`으로 만든다.
 - 테스트 선택과 기록은 `youth-policy-verify` 스킬을 따른다.

@@ -68,31 +68,15 @@ Spring Batch와 PostgreSQL로 [한 페이지 수집·실행 이력·저장 원�
 
 API 인증키 없이 사용할 수 있는 비회원 조건 입력 화면(`/conditions`)을 구현했습니다. 홈은 상황을 표시하는 신청서 양식으로 시작하는 앱 화면이고, 모든 폭에서 상단 글자 메뉴로 홈·정책 찾기·내 조건·내 정책을 이동할 수 있습니다. 화면은 ‘형광펜 공고문’ 디자인을 따르며, 기기 설정을 따르는 어두운 화면과 바닥글의 화면 선택(시스템·밝게·어둡게)을 제공합니다([화면 기준](docs/design/webapp-interface.md#시각-기준)). 생년월일·서울 자치구·주된 취업상태를 입력하고, 확인·수정·초기화할 수 있습니다. 입력 중에는 화면 상태로만 사용하고, 정책 확인 버튼을 눌렀을 때만 서버에 보냅니다. 계정 저장은 로그인 후 별도 버튼으로 선택합니다. 화면 입력은 새로고침하면 초기화됩니다. 화면 기준은 [웹앱 인터페이스](docs/design/webapp-interface.md)에 정리했습니다.
 
-조건 입력의 로딩 화면과 공통 오류·404 안내를 추가했습니다. 개발 모드의 `/dev/states`에서 로딩·빈 결과·오류를 미리 볼 수 있습니다. 실제 검색 결과가 아닌 화면 점검용이며, 운영 빌드에서는 이 경로를 404로 처리합니다.
+조건 입력의 로딩 화면과 공통 오류·404 안내를 추가했습니다.
 
-서버에는 항목별 결과를 3단계 자격 상태로 합치는 모델과 근거 구조를 추가했습니다. 확인한 연령 범위·거주 지역·단일 취업 요건·소득 구간을 비교합니다. 정책 미해석·예외·사용자 정보 누락을 구분하며, `npm run test:eligibility`로 인증키·DB 없이 단위 테스트를 실행할 수 있습니다.
+서버에는 항목별 결과를 3단계 자격 상태로 합치는 모델과 근거 구조를 추가했습니다. 확인한 연령 범위를 비교합니다. 정책 미해석·예외·사용자 정보 누락을 구분하며, `npm run test:eligibility`로 인증키·DB 없이 단위 테스트를 실행할 수 있습니다.
 
-취업 조건은 [설계](docs/design/employment-condition.md)에 따라 [단일 사실·명시적 답변 비교](docs/development/employment-condition.md)를 구현했습니다. 정책·개정·정의·기준일이 다른 답변은 재사용하지 않습니다. 개발 전용 `/dev/employment`에서 [추가 확인 질문](docs/development/employment-question-preview.md)을 인공 자료로 점검할 수 있습니다. 주된 상태의 자동 변환, 원천 코드 매핑과 실제 정책의 질문·판정 연결은 아직 없습니다.
-
-소득은 [설계](docs/design/income-condition.md)에 따라 [명시적 원화 구간 비교기](docs/development/income-condition.md)를 구현했습니다. 개인·가구, 소득 정의·기간·적용 기준이 맞는 답변만 비교하며 구간 일부만 허용 범위에 겹치면 추가 확인으로 남깁니다. 소득 47건을 포함한 서버 판정 테스트 117건과 빌드가 통과했습니다. 원천 매핑·기준표 계산은 아직 없습니다.
-
-개발 전용 `/dev/income`에서 [소득 질문 미리보기](docs/development/income-question-preview.md)를 제공합니다. 대상·기간·단위를 안내하고 구간·모름 답변의 확인·수정·삭제와 기간 변경 시 초기화를 점검합니다. 구간 추가 확인은 별도 인공 상황이며 현재 답변을 판정한 결과가 아닙니다. 실제 소득을 입력할 필요가 없고 서버 전송·저장·판정 연결은 없습니다. 웹 테스트 17건·린트·타입 검사·빌드와 운영 경로 404를 확인했습니다.
-
-개발 전용 `/dev/eligibility`에서 [자격 결과·근거 미리보기](docs/development/eligibility-result-preview.md)를 제공합니다. 네 가지 고정 인공 결과로 모집 상태와 자격 안내의 분리, 항목별 미확인 이유, 정책 검토 이슈와 근거 펼치기를 점검합니다. 화면은 전체 상태를 다시 계산하지 않습니다. 결과 표시 작업에서 웹 테스트 24건·린트·타입 검사·빌드, 운영 경로 404와 모바일·데스크톱 표시를 확인했습니다. 실제 정책·서버 판정에는 연결하지 않았습니다.
+당시 함께 만든 거주·취업·소득 비교기, 마감 알림 후보 계산(`schedule` 모듈), 개발 전용 `/dev` 미리보기 화면과 `preview` 프로필의 인공 자료 API·계약은 실제 판정이 [공고별 조건 데이터](docs/ADR/0003_공고별_조건_데이터.md)로, 마감 알림 예약이 회원 저장 흐름으로 옮겨 가면서 2026-10-07 제거했습니다. [결정 기록](docs/ADR/0002_서버_DTO_기반_API_계약_생성.md#개발-전용-계약-제거--2026-10-07)
 
 서버에 [모집 기간 상태 계산](docs/development/recruitment-period.md)을 추가했습니다. 확인된 날짜 범위는 서울 날짜로, 시각 범위는 명시된 시간대로 비교합니다. 상시·소진 시 종료·기간 미확인에 가짜 마감일을 만들지 않습니다. `npm run test:recruitment`로 인증키·DB 없이 검사할 수 있습니다. 이 모델을 추가할 때 모집 23건과 기존 자격 판정 117건, 총 140건 및 서버 빌드가 통과했습니다. 현재 개발용 인공 자료만 화면에 연결했고 원천 파싱·실제 정책·알림은 아직 연결하지 않았습니다.
 
-별도 일정 모듈에 [마감 알림 후보 날짜 계산](docs/development/deadline-reminder-candidates.md)을 추가했습니다. 서울 마감 날짜에서 D-7·D-3·D-1을 계산하고, 지난 날짜는 제외하며 오늘 후보는 발송 시각 확인 필요로 남깁니다. `npm run test:reminders`로 17건을 실행할 수 있습니다. 마감 날짜 제공 8건을 포함한 서버 단위 테스트 총 165건과 빌드가 통과했습니다. 실제 저장·수신 동의·예약·발송은 아직 구현하지 않았습니다.
-
-개발 전용 `/dev/reminders`에서 [마감·알림 후보 미리보기](docs/development/deadline-reminder-preview.md)를 제공합니다. 날짜형·시각형 마감, 오늘 후보의 발송 시각 확인 필요, 후보가 없는 이유를 일곱 가지 고정 인공 자료로 표시합니다. 화면은 날짜나 모집 상태를 계산하지 않으며 실제 서버·저장·예약·발송과 연결하지 않았습니다. 웹 테스트 32건·린트·타입 검사·빌드, 운영 경로 404와 모바일·데스크톱 표시를 확인했습니다.
-
-별도 `/dev/reminders/server`에는 [개발 서버 계산](docs/development/reminder-preview-api.md)을 연결했습니다. `npm run dev:preview-api`로 DB·인증키 없이 실행하며 기존 모집·후보 모델의 계산 결과를 받습니다. 서버 DTO → OpenAPI → TypeScript 생성과 계약 일치 검사를 추가했습니다. 서버 172건·웹 39건, 린트·타입 검사·빌드와 연결 실패 후 복구·운영 404를 확인했습니다. 실제 정책·회원·예약·발송 연결은 아닙니다.
-
 GitHub Actions에 웹·서버 병렬 CI를 구성했습니다. 인증키 없이 기존 테스트·린트·타입 검사·빌드를 실행하며 서버는 실제 PostgreSQL 통합 테스트를 포함합니다. 로컬 검사와 CI 문법 검사는 통과했지만, 원격 푸시와 GitHub 실행은 아직 하지 않았습니다. 범위와 남은 확인 사항은 [CI 안내](docs/development/ci.md)를 참고합니다.
-
-`/dev/eligibility/server`에는 [자격 판정·항목별 근거의 서버 계산](docs/development/eligibility-preview-api.md)을 연결했습니다. 고정 인공 규칙과 답변을 기존 비교기·집계 모델로 계산하며 실제 조건 입력은 읽지 않습니다. 서버 175건·웹 45건과 생성 계약·린트·타입 검사·빌드, 연결 실패 후 복구·운영 404를 확인했습니다.
-
-`/dev/eligibility/interactive`에서는 [인공 취업·소득 답변 재판정](docs/development/eligibility-answer-trial.md)을 점검합니다. 정해진 답변 코드를 기존 서버 비교기로 계산하며 질문 개정·기준 변경 시 답변과 결과를 초기화합니다. 답변 변경 후 늦게 도착한 응답은 무시합니다. 서버 180건·웹 53건, 생성 계약·린트·타입 검사·빌드, 오류 후 재시도·운영 404를 확인했습니다. 실제 개인정보는 받지 않습니다.
 
 [AI 요청 예약·정산](docs/development/ai-budget-reservation-lifecycle.md)에서는 요청별 최대 비용 보유, 외부 호출, 결과 미확인, 실제 비용 정산과 확인된 무과금 해제를 구분합니다. 타임아웃이면 예약액을 유지하고 종료 결과가 충돌하면 기존 확정을 바꾸지 않습니다. 예약·정산 규칙은 PostgreSQL 저장소에서 구현·검증하며 별도 메모리 상태 엔진은 유지하지 않습니다.
 
@@ -122,23 +106,11 @@ AI 예약 복구 작업자·후보 상태·요청 전 판단·개정 적용 순�
 - [CI 구성과 검증 범위](docs/development/ci.md)
 - [모바일 우선 웹앱 인터페이스 기준](docs/design/webapp-interface.md)
 - [비회원 조건 입력의 구현 범위](docs/development/guest-conditions.md)
-- [공통 상태 화면과 개발 미리보기](docs/development/page-states.md)
-- [추가 확인 질문과 답변 미리보기](docs/development/employment-question-preview.md)
-- [소득 구간 질문과 추가 확인 미리보기](docs/development/income-question-preview.md)
-- [자격 결과·근거 표시와 개발 미리보기](docs/development/eligibility-result-preview.md)
+- [공통 상태 화면](docs/development/page-states.md)
 - [자격 판정 결과 집계와 근거 구조](docs/development/eligibility-decision.md)
 - [명시적 연령 조건 비교와 미지원 범위](docs/development/age-condition.md)
-- [명시적 거주 조건 비교와 기준일 처리](docs/development/residence-condition.md)
-- [단일 취업 조건 비교와 답변 재사용 제한](docs/development/employment-condition.md)
-- [명시적 소득 구간 비교와 입력 기준 확인](docs/development/income-condition.md)
 - [모집 기간·마감 상태의 날짜와 시각 설계](docs/design/recruitment-period.md)
 - [모집 기간 상태 구현과 경계 검증](docs/development/recruitment-period.md)
-- [마감 알림 후보 날짜 설계](docs/design/deadline-reminder-candidates.md)
-- [마감 알림 후보 계산과 검증](docs/development/deadline-reminder-candidates.md)
-- [마감·알림 후보 표시와 개발 미리보기](docs/development/deadline-reminder-preview.md)
-- [개발 전용 마감 계산 API·생성 계약·서버 연결](docs/development/reminder-preview-api.md)
-- [개발 전용 자격 판정 API·근거·서버 연결](docs/development/eligibility-preview-api.md)
-- [인공 취업·소득 답변 변경과 서버 재판정](docs/development/eligibility-answer-trial.md)
 - [온통청년 인증키 설정과 응답 점검](docs/development/ontong-api-probe.md)
 - [온통청년 API 조사와 확인할 계약](docs/research/ontong-api-contract.md)
 - [정책 수집·판정 데이터 구조 초안](docs/design/policy-data-model.md)
@@ -155,7 +127,7 @@ AI 예약 복구 작업자·후보 상태·요청 전 판단·개정 적용 순�
 
 ## 개발 시작
 
-[AGENTS.md](AGENTS.md)와 HANDOFF를 읽고 요청에 맞는 `skills/`의 전용 스킬을 적용합니다. 웹은 Node.js 24 LTS와 npm, 서버는 Gradle 실행용 JDK 21 이상이 필요합니다. 앱에 필요한 Java 25는 Gradle 도구체인으로 준비합니다. DB 연결 서버·통합 테스트에는 Docker가 필요하지만 개발 전용 인공 자료 API는 DB·Docker 없이 실행할 수 있습니다.
+[AGENTS.md](AGENTS.md)와 HANDOFF를 읽고 요청에 맞는 `skills/`의 전용 스킬을 적용합니다. 웹은 Node.js 24 LTS와 npm, 서버는 Gradle 실행용 JDK 21 이상이 필요합니다. 앱에 필요한 Java 25는 Gradle 도구체인으로 준비합니다. DB 연결 서버·통합 테스트에는 Docker가 필요합니다.
 
 조건 입력 화면은 인증키·DB·백엔드 없이 실행할 수 있습니다. 저장소 루트에서 실행합니다.
 
@@ -164,7 +136,7 @@ npm ci
 npm run dev:web
 ```
 
-인공 자료의 서버 계산은 다른 터미널에서 `npm run dev:preview-api`를 실행한 뒤 [마감 서버 연결](http://127.0.0.1:3000/dev/reminders/server), [자격 서버 연결](http://127.0.0.1:3000/dev/eligibility/server) 또는 [답변 재판정](http://127.0.0.1:3000/dev/eligibility/interactive)을 엽니다. DB 연결 서버도 확인하려면 DB를 준비하고 다른 터미널에서 백엔드를 실행합니다.
+DB 연결 서버도 확인하려면 DB를 준비하고 다른 터미널에서 백엔드를 실행합니다.
 
 ```sh
 npm run db:up

@@ -6,11 +6,11 @@
 
 | 구성 | 버전·위치 | 현재 역할 |
 |---|---|---|
-| 웹 | Next.js 16.3.3, React 19.2.8, `frontend/` | 시작 화면·비회원 조건 입력·공통 상태 안내·개발 전용 질문·자격 결과·마감 후보 표시 |
+| 웹 | Next.js 16.3.3, React 19.2.8, `frontend/` | 시작 화면·조건 입력·정책 조회·회원·관리자 화면·공통 상태 안내 |
 | 웹 개발 도구 | TypeScript 5.9.3, Tailwind CSS 4.3.3, ESLint 9.39.5, Vitest 4.1.11 | 타입 검사·스타일·린트·입력 및 상태 화면 테스트 |
-| API 계약 | springdoc-openapi 3.1.0, openapi-typescript 7.13.0 | 개발 전용 서버 DTO의 OpenAPI 3.1·TypeScript 생성과 일치 검사 |
-| 서버 | Java 25, Spring Boot 4.1.1, `backend/` | 앱 기동·DB 연결·접근 차단·조건 비교·모집/알림 후보 계산·개정 적용·수집·AI 후보/비용·예약 상태 검사 |
-| 모듈 구성 | 기능별 Java 패키지 | 회원 `member`, 자격 판정 `eligibility`, 정책 `policy`, 알림 후보 `schedule`, 수집·AI `ingestion` |
+| API 계약 | springdoc-openapi 3.1.0, openapi-typescript 7.13.0 | 정책·회원·관리자 서버 DTO의 OpenAPI 3.1·TypeScript 생성과 일치 검사 |
+| 서버 | Java 25, Spring Boot 4.1.1, `backend/` | 앱 기동·DB 연결·접근 차단·조건 비교·모집 상태 계산·개정 적용·수집·AI 후보/비용·예약 상태 검사 |
+| 모듈 구성 | 기능별 Java 패키지 | 회원 `member`, 자격 판정 `eligibility`, 정책 `policy`, 수집·AI `ingestion` |
 | DB 접근 | Spring JDBC, Spring Data Commons | JdbcClient·JdbcTemplate과 JDBC 트랜잭션을 사용한다. Commons는 페이지 처리에 사용하며 JPA/Hibernate·Modulith 의존성은 없다. |
 | 빌드 | Gradle Wrapper 9.7.1, npm 잠금 파일 | 백엔드·프런트엔드 빌드 |
 | DB | PostgreSQL 18.6 Alpine, `compose.yaml` | 프로젝트 전용 로컬 DB |
@@ -60,28 +60,14 @@ DB가 정상 상태가 되면 웹과 다른 터미널에서 서버를 실행한�
 npm run dev:backend
 ```
 
-DB 없이 서버 계산 결과를 확인하려면 위 DB 연결 서버 대신 `npm run dev:preview-api`를 실행한다. 고정 인공 자료만 계산하는 `preview` 프로필이며 루프백 8081을 사용한다. [개발 API 실행·계약 안내](reminder-preview-api.md)를 따른다. 운영에 이 프로필을 활성화하지 않는다.
-
 | 항목 | 로컬 주소 |
 |---|---|
 | 웹 | <http://127.0.0.1:3000> |
 | 조건 입력 | <http://127.0.0.1:3000/conditions> |
-| 상태 미리보기 · 개발 전용 | <http://127.0.0.1:3000/dev/states> |
-| 추가 확인 질문 · 개발 전용 | <http://127.0.0.1:3000/dev/employment> |
-| 소득 질문 · 개발 전용 | <http://127.0.0.1:3000/dev/income> |
-| 자격 결과·근거 · 개발 전용 | <http://127.0.0.1:3000/dev/eligibility> |
-| 마감·알림 후보 · 개발 전용 | <http://127.0.0.1:3000/dev/reminders> |
-| 마감 후보 서버 연결 · 개발 전용 | <http://127.0.0.1:3000/dev/reminders/server> |
-| 자격 판정 서버 연결 · 개발 전용 | <http://127.0.0.1:3000/dev/eligibility/server> |
-| 인공 답변 재판정 · 개발 전용 | <http://127.0.0.1:3000/dev/eligibility/interactive> |
-| 인공 마감 계산 API · preview 전용 | <http://127.0.0.1:8081/api/dev/reminder-examples> |
-| 인공 자격 계산 API · preview 전용 | <http://127.0.0.1:8081/api/dev/eligibility-examples> |
-| 인공 질문 GET·재판정 POST · preview 전용 | <http://127.0.0.1:8081/api/dev/eligibility-trial> |
-| 생성 OpenAPI · preview 전용 | <http://127.0.0.1:8081/dev/openapi> |
 | 서버 상태 | <http://127.0.0.1:8080/actuator/health> |
 | PostgreSQL | `127.0.0.1:55432` |
 
-웹과 로컬·preview 프로필의 서버·DB는 루프백 주소에만 연결한다. 다른 기기에 공개하거나 운영에 배포하기 위한 설정이 아니다. 기본 서버는 GET `/actuator/health`와 공개 정책 목록·상세 GET을 허용한다. preview는 두 고정 예시 API·명세의 GET, `/api/dev/eligibility-trial`의 질문 GET·인공 계산 POST를 추가 허용한다. 상태 응답에 DB 연결 문자열이나 상세 정보를 노출하지 않는다. 실제 정책은 [조회 안내](policy-catalog.md), 회원 인증은 [회원 기능](member-policy-flow.md), 이메일은 [이메일 설정](member-email-reminders.md)을 참고한다.
+웹과 로컬 프로필의 서버·DB는 루프백 주소에만 연결한다. 다른 기기에 공개하거나 운영에 배포하기 위한 설정이 아니다. 기본 서버는 GET `/actuator/health`와 공개 정책 목록·상세 GET을 허용한다. 상태 응답에 DB 연결 문자열이나 상세 정보를 노출하지 않는다. 실제 정책은 [조회 안내](policy-catalog.md), 회원 인증은 [회원 기능](member-policy-flow.md), 이메일은 [이메일 설정](member-email-reminders.md)을 참고한다.
 
 ### DB 설정 변경
 
@@ -118,8 +104,6 @@ npm run test:eligibility
 npm run test:recruitment
 npm run test:ai-reservation-db
 npm run test:ai-execution
-npm run test:reminders
-npm run test:preview-api
 npm run check:api-types
 npm run check:web
 npm run build:web
@@ -128,11 +112,9 @@ npm run check:tools
 npm audit
 ```
 
-`test:eligibility`는 순수 Java 집계 14건·연령 비교 18건·거주 비교 17건·취업 비교 21건·소득 비교 47건, 총 117건을 실행한다. API 인증키·DB·Docker 없이 충족·불충족·미확인·예외와 근거 보존, 조건별 범위·기준일·답변 기준 일치를 확인한다. 실제 정책 원문 해석의 정확도 검증은 아니다. 구현 범위는 [자격 판정 결과](eligibility-decision.md), [연령 비교](age-condition.md), [거주 비교](residence-condition.md), [단일 취업 비교](employment-condition.md), [소득 구간 비교](income-condition.md)를 따른다.
+`test:eligibility`는 순수 Java 판정 집계와 연령 비교를 실행한다. API 인증키·DB·Docker 없이 충족·불충족·미확인·예외와 근거 보존, 연령 범위·기준일을 확인한다. 실제 정책 원문 해석의 정확도 검증은 아니다. 구현 범위는 [자격 판정 결과](eligibility-decision.md), [연령 비교](age-condition.md)를 따른다.
 
 `test:recruitment`는 순수 Java 모집 상태 23건과 마감 날짜 제공 8건, 총 31건을 실행한다. 서울 날짜 경계·명시적 접수 종료 시각·상시·소진 시 종료·미확인 이유·근거 보존을 검사하며 API 인증키·DB·Docker가 필요하지 않다. [모집 기간 구현](recruitment-period.md)에 입력 범위와 실제 원문 해석이 아닌 점을 정리했다.
-
-`test:reminders`는 마감 알림 후보 날짜 테스트 17건을 실행한다. 월·연도·윤일 경계, 오늘 후보 구분·지난 날짜 제외, 후보 없음 사유와 개정 변경 후 계산을 확인한다. 인증키·DB·Docker 없이 실행하며 실제 예약·발송 검증은 아니다. [후보 날짜 구현](deadline-reminder-candidates.md)을 참고한다.
 
 `test:ai-reservation-db`는 PostgreSQL 18.6에서 예약·잔액 동시 갱신, 재전달·충돌, 시간·한도 경계, 호출·결과 미확인·정산·취소·무과금 해제, 동시 요청과 DB 제약을 검사한다. Docker가 필요하며 외부 AI나 공급자 청구는 사용하지 않는다. [AI 예약·정산 구현](ai-budget-reservation-lifecycle.md)을 따른다.
 
@@ -140,14 +122,14 @@ npm audit
 
 `check:tools`는 응답 점검 도구의 인공 응답 테스트 7개를 실행한다. API 인증키·Docker·네트워크가 필요하지 않으며 실제 API 계약을 검증하지 않는다.
 
-`test:web`은 기존 조건·상태·질문·결과 표시 32개, 마감 API 연결 7개·자격 API 연결 6개·인공 답변 재판정 8개, 총 53개를 실행한다. 날짜·기준·상태·근거 보존, 오류 원문 비노출, 실패 시 결과 미제공, 늦은 응답 무시와 운영 모드 호출 차단을 포함한다. API 인증키·Docker·네트워크가 필요하지 않다.
+`test:web`은 웹 화면·API 중계·상태 처리 Vitest 테스트를 실행한다. 날짜·기준·상태·근거 보존, 오류 원문 비노출, 실패 시 결과 미제공과 늦은 응답 무시를 포함한다. API 인증키·Docker·네트워크가 필요하지 않다.
 
-`test:preview-api`는 마감 API 4건·자격 API 3건·인공 답변 재판정 5건·공통 계약 1건, 총 13건을 실행하며 DB·Docker가 필요하지 않다. `npm run generate:api`는 실제 생성 OpenAPI와 TypeScript를 갱신하고 `check:api-types`는 타입의 최신 여부만 확인한다. 재생성 절차는 [개발 API 안내](reminder-preview-api.md#계약-생성과-검사)를 따른다.
+`npm run generate:api`는 실제 생성 OpenAPI(`api/openapi.policy.json`)와 TypeScript를 갱신하고 `check:api-types`는 타입의 최신 여부만 확인한다. 계약 생성에는 PostgreSQL Testcontainers가 필요하다. 생성 방식은 [ADR-0002](../ADR/0002_서버_DTO_기반_API_계약_생성.md)를 따른다.
 
-기본 상태·접근 차단 통합 테스트는 다음 2개이며, AI 예약·실행 저장소 검사는 별도 PostgreSQL Testcontainers 테스트로 실행한다.
+기본 상태·접근 차단 통합 테스트는 다음을 확인하며, AI 예약·실행 저장소 검사는 별도 PostgreSQL Testcontainers 테스트로 실행한다.
 
 1. 실제 PostgreSQL 조회와 상태 응답 `UP`, 상세 정보 비노출.
-2. 상태 확인 외 경로와 개발 API의 접근 차단, 기본 모드에서 개발 컨트롤러 미등록.
+2. 상태 확인 외 운영 점검·명세 경로(`/actuator/env`, `/v3/api-docs`)의 접근 차단.
 
 기동 후 수동 상태 확인:
 
@@ -170,29 +152,9 @@ CI 구성 후에는 macOS arm64의 별도 임시 복사본에서 Node.js 24.20.0
 
 연령 비교기 추가 후에는 `npm run test:eligibility`의 32건과 `./backend/gradlew -p backend assemble --no-daemon` 빌드가 통과했다. 생일·윤일 경계와 미해석 조건은 인공 입력으로 검사했다. 실제 정책 API는 호출하지 않았으며 웹·PostgreSQL 통합 검사는 다시 실행하지 않았다. 상세 범위는 [연령 비교 검증 기록](age-condition.md#코드와-검증)을 따른다.
 
-거주 비교기 추가 후에는 `npm run test:eligibility`의 49건과 서버 `assemble`이 통과했다. 전국·서울·자치구 범위, 입력 기준일 차이와 미해석 조건을 인공 입력으로 검사했다. 기존 UI와 서버의 자치구 표시 이름 25개가 같은지도 확인했다. 실제 API 호출·프런트엔드 검사·PostgreSQL 통합 검사는 이번 작업에서 실행하지 않았다. 상세 범위는 [거주 비교 검증 기록](residence-condition.md#코드와-검증)을 따른다.
-
-단일 취업 비교기 추가 후에는 `npm run test:eligibility`의 70건과 서버 `assemble`이 통과했다. 해당·비해당 요구 방향, 모름·누락, 정책 개정·정의·기준일이 다른 답변의 재사용 차단과 기존 집계를 인공 입력으로 검사했다. 실제 API 호출·프런트엔드 검사·PostgreSQL 통합 검사는 이번 작업에서 실행하지 않았다. 상세 범위는 [취업 비교 검증 기록](employment-condition.md#코드와-검증)을 따른다.
-
-추가 확인 질문 미리보기 구현 후에는 웹 테스트 12개·린트·타입 검사·프로덕션 빌드가 통과했다. 개발 경로 200과 운영 경로 404, 답변 확인·수정·삭제와 질문 개정 변경 시 초기화, 데스크톱·모바일 배치를 확인했다. 서버·DB 검사는 다시 실행하지 않았다. 키보드 검증의 한계와 빌드 캐시 처리 기록은 [추가 질문 검증 기록](employment-question-preview.md#검증-결과와-한계)을 따른다.
-
-소득 구간 비교기 추가 후에는 `./backend/gradlew -p backend test --tests 'kr.youthpolicymate.eligibility.*' assemble --no-daemon`으로 판정 117건과 서버 빌드가 통과했다. 포함 경계·일부 겹침·소수 정밀도·0원과 모름 구분·다른 입력 기준의 재사용 차단을 인공 자료로 확인했다. 실제 API·원천 매핑·소득 화면·보험료 산정 검증은 아니며 웹·PostgreSQL 통합 검사는 다시 실행하지 않았다. 상세 범위는 [소득 비교 검증 기록](income-condition.md#코드와-검증)을 따른다.
-
-소득 질문 미리보기 추가 후에는 웹 테스트 17개·린트·타입 검사·프로덕션 빌드가 통과했다. 개발 경로 200·운영 경로 404, 답변 확인·수정·삭제와 기간 변경·새로고침 초기화, 데스크톱·모바일 구간 표시를 확인했다. 키보드 전용 흐름은 도구 입력 한계로 미확인이고 서버·DB 검사는 다시 실행하지 않았다. 생성 캐시 재생성 등 환경 처리와 범위는 [소득 질문 검증 기록](income-question-preview.md#검증-결과와-한계)을 따른다.
-
-결과 표시 컴포넌트와 미리보기 추가 후에는 웹 테스트 24개·린트·타입 검사·프로덕션 빌드가 통과했다. 개발 결과 경로 200·운영 결과 경로 404와 운영 조건 입력 200, 네 예시 전환·근거 펼치기·새로고침 초기화와 반응형 표시를 확인했다. 서버·DB 검사는 다시 실행하지 않았다. 키보드 입력의 검증 한계와 상세 범위는 [결과 화면 검증 기록](eligibility-result-preview.md#검증-결과와-한계)을 따른다.
+2026-08-31까지 추가한 거주·취업·소득 비교기, 마감 알림 후보 날짜, `/dev` 미리보기 화면과 preview API의 검증 기록은 해당 코드를 2026-10-07 제거하면서 함께 삭제했다. 필요하면 저장소 이력에서 확인한다.
 
 2026-08-31 모집 기간 모델 추가 후에는 모집 기간 23건과 기존 자격 판정 117건을 함께 실행해 총 140건이 통과했고 서버 `assemble`도 통과했다. 웹·PostgreSQL 통합 검사는 다시 실행하지 않았다. Gradle 캐시 접근 권한 처리와 Java agent 경고, 검증한 경계는 [모집 기간 검증 기록](recruitment-period.md#실행한-검증)을 따른다.
-
-2026-08-31 마감 알림 후보 날짜 추가 후에는 후보 17건·마감 날짜 제공 8건을 포함한 총 165건과 서버 `assemble`이 통과했다. 기존 자격 판정 117건·모집 상태 23건도 함께 실행했다. 웹·PostgreSQL 통합 검사는 다시 실행하지 않았으며, 실제 예약·발송은 연결하지 않았다. [후보 날짜 검증 기록](deadline-reminder-candidates.md#검증)에 상세 범위를 정리했다.
-
-2026-08-31 마감·알림 후보 미리보기 추가 후에는 웹 테스트 32개·린트·타입 검사·프로덕션 빌드가 통과했다. 개발 경로 200·운영 경로 404와 운영 조건 입력 200, 일곱 예시 전환·근거 표시·새로고침 초기화, 데스크톱·모바일 표시를 확인했다. 서버·DB 검사는 다시 실행하지 않았다. 키보드 입력과 새로고침 후 요소 조회의 도구 한계는 [마감 후보 화면 검증 기록](deadline-reminder-preview.md#검증-결과와-한계)에 정리했다.
-
-같은 날 개발 API 연결 후에는 서버 172건(도메인 165·API 5·실제 DB/기본 차단 2)과 전체 빌드, 웹 39건·생성 타입 검사·린트·타입 검사·빌드를 통과했다. 서버 미기동 오류에서 기동 후 다시 불러오기로 복구했고, 개발 200·운영 404와 반응형을 확인했다. 운영 모드에서 로딩 스트리밍 전에 차단하도록 레이아웃을 두었다. [API 연결 검증 기록](reminder-preview-api.md#검증-결과와-한계)에 범위와 한계를 정리했다.
-
-자격 API 연결 후에는 서버 175건(도메인 165·API/계약 8·실제 DB/기본 차단 2)과 전체 빌드, 웹 45건·생성 타입 검사·린트·타입 검사·빌드를 통과했다. null 허용 enum의 실제 명세도 검사하며 서버 중지 후 복구·개발 200·운영 404를 확인했다. [자격 서버 연결 기록](eligibility-preview-api.md)에 미확인 키보드 흐름과 실제 정책 연결 범위를 정리했다.
-
-인공 답변 재판정 연결 후에는 서버 180건(도메인 165·API/계약 13·실제 DB/기본 차단 2)과 전체 빌드, 웹 53건·생성 계약·린트·타입 검사·빌드를 통과했다. 인공 코드만 전송하고 이전 질문 답변은 재사용하지 않는다. 답변 변경·실패·재시도·운영 404와 미확인 범위는 [재판정 검증 기록](eligibility-answer-trial.md#검증)을 따른다.
 
 AI 예약 상태 추가 후에는 전용 13건과 전체 서버 242건(도메인 227·API/계약 13·실제 DB/기본 차단 2), 빌드가 실패·건너뛰기 없이 통과했다. 웹·브라우저·실제 AI·DB 예약·공급자 청구는 검사하지 않았다. [예약 상태 검증 기록](ai-budget-reservation-lifecycle.md#검사)을 따른다.
 

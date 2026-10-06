@@ -16,8 +16,8 @@ when_to_use: backend의 Controller·요청/응답 record·예외 처리기를 �
 
 ### 생성 파일
 
-- `api/openapi.policy.json`·`api/openapi.preview.json`과 `frontend/src/generated/policy-api.d.ts`·`preview-api.d.ts`는 생성 결과다. Edit·Write로 고치지 않는다. 타입이 틀리면 서버 DTO·컨트롤러를 고치고 다시 생성한다.
-- 공개·회원·관리자 계약은 `exportPolicyOpenApi`(PostgreSQL Testcontainers 필요), 개발 전용 preview 계약은 `exportPreviewOpenApi`가 만든다. 생성 전에 `docker info --format '{{.ServerVersion}}'`로 Docker를 확인한다.
+- `api/openapi.policy.json`과 `frontend/src/generated/policy-api.d.ts`는 생성 결과다. Edit·Write로 고치지 않는다. 타입이 틀리면 서버 DTO·컨트롤러를 고치고 다시 생성한다.
+- 공개·회원·관리자 계약은 `exportPolicyOpenApi`(PostgreSQL Testcontainers 필요)가 만든다. 생성 전에 `docker info --format '{{.ServerVersion}}'`로 Docker를 확인한다.
 - 생성 후 `git diff --stat -- api frontend/src/generated`로 의도한 계약만 바뀌었는지 확인한다. 의도하지 않은 `operationId`·스키마 이름 변경이 보이면 서버 이름을 고정한다.
 
 ### 웹의 소비 방식

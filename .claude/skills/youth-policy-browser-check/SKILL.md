@@ -14,7 +14,7 @@ AGENTS.md에 따라 브라우저 검증은 헤드리스로 실행한다. 사용�
 ## 1. 실행 중인 서버 확인
 
 ```bash
-lsof -nP -iTCP:3000 -iTCP:3103 -iTCP:8080 -iTCP:8081 -iTCP:55432 -sTCP:LISTEN
+lsof -nP -iTCP:3000 -iTCP:3103 -iTCP:8080 -iTCP:55432 -sTCP:LISTEN
 ```
 
 - 3000·8080에서 실행 중인 서버는 사용자 것으로 보고 재시작·종료하지 않는다. 읽기 전용 확인에는 재사용할 수 있지만, 상태를 바꾸는 흐름은 검증용 서버에서 확인한다.
@@ -25,7 +25,6 @@ lsof -nP -iTCP:3000 -iTCP:3103 -iTCP:8080 -iTCP:8081 -iTCP:55432 -sTCP:LISTEN
 | 확인 대상 | 실행 |
 |---|---|
 | 화면 컴포넌트·상태 표시만 | 웹만 실행하고 API는 Playwright `route`로 모의 응답 |
-| 개발 전용 계산 화면(`/dev/**`) | `npm run dev:preview-api`(8081, DB 불필요) + 웹 |
 | 실제 정책 목록·상세·회원 흐름 | `npm run db:up` → `npm run dev:backend`(8080) + 웹 |
 
 - 서버·웹은 Bash `run_in_background`로 실행하고, 준비 여부는 `curl --retry 60 --retry-delay 1 --retry-connrefused -sf -o /dev/null <주소>`로 기다린다. `sleep` 반복은 쓰지 않는다.

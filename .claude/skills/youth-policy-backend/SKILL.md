@@ -16,7 +16,7 @@ when_to_use: backend/ 아래 Java·설정·마이그레이션을 수정하거나
 
 ### 코드 위치
 
-- `backend/src/main/java/kr/youthpolicymate/` 아래 기능 패키지: `member`(회원·OAuth·세션·이메일 Outbox), `policy`(모집·개정)와 `policy/catalog`(조회·질문·규칙 데이터), `eligibility`(조건 비교), `schedule`(마감 후보), `ingestion`(수집·AI·예산 예약), `admin`(관리자 API), `config`(보안·시간), `devpreview`(preview 프로필 전용).
+- `backend/src/main/java/kr/youthpolicymate/` 아래 기능 패키지: `member`(회원·OAuth·세션·이메일 Outbox), `policy`(모집·개정)와 `policy/catalog`(조회·질문·규칙 데이터), `eligibility`(조건 비교), `ingestion`(수집·AI·예산 예약), `admin`(관리자 API), `config`(보안·시간).
 - DB 접근은 `JdbcClient`·`JdbcTemplate`과 `@Transactional`이다. 저장소 클래스 이름은 `*Store`가 많다. 새 계층을 만들기 전에 같은 패키지의 `*Store`·`*Service` 구성을 따른다.
 - 현재 시각은 `config/TimeConfiguration`의 `Clock` 빈(UTC)을 주입받는다. 서울 날짜가 필요하면 `ZoneId.of("Asia/Seoul")`로 명시 변환한다. `LocalDate.now()`·`Instant.now()`를 직접 호출하지 않는다.
 

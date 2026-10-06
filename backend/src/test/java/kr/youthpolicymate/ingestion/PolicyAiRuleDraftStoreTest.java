@@ -1,5 +1,6 @@
 package kr.youthpolicymate.ingestion;
 
+import kr.youthpolicymate.admin.AdminApiTest;
 import kr.youthpolicymate.policy.catalog.PolicyCatalogStore;
 import kr.youthpolicymate.policy.catalog.PolicyRuleDefinition;
 import kr.youthpolicymate.policy.catalog.PolicyRuleStore;
@@ -7,13 +8,9 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
-import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.dao.DataAccessException;
 import org.springframework.jdbc.core.simple.JdbcClient;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
-import org.springframework.security.oauth2.core.user.DefaultOAuth2User;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.testcontainers.junit.jupiter.Container;
@@ -31,17 +28,15 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
+import static kr.youthpolicymate.admin.AdminTestSupport.*;
 import static kr.youthpolicymate.ingestion.PolicyAiRuleDraftStore.Status.*;
 import static org.assertj.core.api.Assertions.*;
 import static org.mockito.Mockito.when;
-import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.oauth2Login;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @Testcontainers
-@SpringBootTest(properties = {"app.admin.member-ids=10000000-0000-0000-0000-000000000001",
-        "app.reminders.enabled=false", "app.email.enabled=false", "app.ontong.schedule.enabled=false"})
-@AutoConfigureMockMvc
+@AdminApiTest
 class PolicyAiRuleDraftStoreTest {
     private static final String NUMBER = "99980000000000000001";
     private static final Instant NOW = Instant.parse("2026-09-12T00:00:00Z");
@@ -55,11 +50,7 @@ class PolicyAiRuleDraftStoreTest {
     @MockitoBean Clock clock;
 
     @BeforeEach void setup() throws Exception {
-        jdbc.sql("""
-                INSERT INTO members(id, provider, provider_subject, display_name)
-                VALUES ('10000000-0000-0000-0000-000000000001', 'kakao', 'admin-fixture', '검증 관리자')
-                ON CONFLICT (id) DO NOTHING
-                """).update();
+        insertMembers(jdbc);
         when(clock.instant()).thenReturn(NOW);
         when(clock.getZone()).thenReturn(ZoneId.of("Asia/Seoul"));
         jdbc.sql("DELETE FROM policy_ai_rule_candidates").update();
@@ -88,9 +79,7 @@ class PolicyAiRuleDraftStoreTest {
         assertThat(ruleHeadCount()).isZero();
         assertThat(count("policy_ai_rule_candidates")).isEqualTo(1);
         assertThat(rules.definition(result.versionId())).isEqualTo(mapper.readValue(body, PolicyRuleDefinition.class));
-        var admin = oauth2Login().oauth2User(new DefaultOAuth2User(List.of(new SimpleGrantedAuthority("ROLE_MEMBER")),
-                Map.of("memberId", "10000000-0000-0000-0000-000000000001"), "memberId"));
-        mvc.perform(get("/api/v1/admin/policy-rule-reviews/" + NUMBER).with(admin)).andExpect(status().isOk())
+        mvc.perform(get("/api/v1/admin/policy-rule-reviews/" + NUMBER).with(social(ADMIN))).andExpect(status().isOk())
                 .andExpect(jsonPath("$.item.draftCount").value(1)).andExpect(jsonPath("$.versions[0].state").value("DRAFT"))
                 .andExpect(jsonPath("$.versions[0].createdBy").value("AI/test-extraction-v1"));
         mvc.perform(get("/api/v1/policies/" + NUMBER + "/questions")).andExpect(jsonPath("$.available").value(false));

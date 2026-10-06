@@ -9,16 +9,11 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
-import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.simple.JdbcClient;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
-import org.springframework.security.oauth2.core.user.DefaultOAuth2User;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.test.web.servlet.request.RequestPostProcessor;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.postgresql.PostgreSQLContainer;
@@ -31,6 +26,7 @@ import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
 
+import static kr.youthpolicymate.admin.AdminTestSupport.*;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.*;
@@ -38,12 +34,9 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @Testcontainers
-@SpringBootTest(properties = {"app.admin.member-ids=10000000-0000-0000-0000-000000000001",
-        "app.reminders.enabled=false", "app.email.enabled=false", "app.ontong.schedule.enabled=false"})
-@AutoConfigureMockMvc
+@AdminApiTest
 class CollectionReplayApiTest {
     private static final String ROOT = "/api/v1/admin/collection-exceptions";
-    private static final String ADMIN = "10000000-0000-0000-0000-000000000001";
     private static final Instant AT = Instant.parse("2026-09-07T00:00:00Z");
     @Container @ServiceConnection
     static final PostgreSQLContainer postgres = new PostgreSQLContainer("postgres:18.6-alpine");
@@ -55,12 +48,7 @@ class CollectionReplayApiTest {
     @MockitoBean OntongApiClient client;
 
     @BeforeEach void clear() {
-        jdbc.sql("""
-                INSERT INTO members(id, provider, provider_subject, display_name) VALUES
-                ('10000000-0000-0000-0000-000000000001', 'kakao', 'admin-fixture', '검증 관리자'),
-                ('20000000-0000-0000-0000-000000000002', 'naver', 'member-fixture', '검증 회원')
-                ON CONFLICT (id) DO NOTHING
-                """).update();
+        insertMembers(jdbc);
         jdbc.sql("TRUNCATE ontong_collection_pages, policies CASCADE").update();
     }
     @AfterEach void noExternalRequests() { verifyNoInteractions(client); }
@@ -160,14 +148,14 @@ class CollectionReplayApiTest {
         var run = prepared("정책 제목");
         var body = request(UUID.randomUUID(), "권한 검증");
         mvc.perform(post(path(run)).with(csrf()).contentType(MediaType.APPLICATION_JSON).content(body)).andExpect(status().isUnauthorized());
-        mvc.perform(post(path(run)).with(social("20000000-0000-0000-0000-000000000002")).with(csrf()).contentType(MediaType.APPLICATION_JSON).content(body)).andExpect(status().isForbidden());
+        mvc.perform(post(path(run)).with(social(MEMBER)).with(csrf()).contentType(MediaType.APPLICATION_JSON).content(body)).andExpect(status().isForbidden());
         mvc.perform(post(path(run)).with(social(ADMIN)).contentType(MediaType.APPLICATION_JSON).content(body)).andExpect(status().isForbidden());
         for (var invalid : List.of(request(UUID.randomUUID(), " "), request(UUID.randomUUID(), "가".repeat(501)), "{}", "{")) {
             mvc.perform(post(path(run)).with(social(ADMIN)).with(csrf()).contentType(MediaType.APPLICATION_JSON).content(invalid))
                     .andExpect(status().isBadRequest());
         }
         mvc.perform(get(ROOT + "/replays")).andExpect(status().isUnauthorized());
-        mvc.perform(get(ROOT + "/replays").with(social("20000000-0000-0000-0000-000000000002"))).andExpect(status().isForbidden());
+        mvc.perform(get(ROOT + "/replays").with(social(MEMBER))).andExpect(status().isForbidden());
         assertThat(jdbc.sql("SELECT count(*) FROM admin_collection_replays").query(Long.class).single()).isZero();
     }
 
@@ -187,7 +175,4 @@ class CollectionReplayApiTest {
 
     private String request(UUID id, String reason) { return mapper.writeValueAsString(new CollectionReplays.Request(id, 1, reason)); }
     private String path(UUID run) { return ROOT + "/" + run + "/0/replays"; }
-    private static RequestPostProcessor social(String id) {
-        return oauth2Login().oauth2User(new DefaultOAuth2User(List.of(new SimpleGrantedAuthority("ROLE_MEMBER")), Map.of("memberId", id), "memberId"));
-    }
 }

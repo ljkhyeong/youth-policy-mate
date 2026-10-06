@@ -6,17 +6,12 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
-import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.dao.DataAccessResourceFailureException;
 import org.springframework.jdbc.core.simple.JdbcClient;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
-import org.springframework.security.oauth2.core.user.DefaultOAuth2User;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.test.web.servlet.request.RequestPostProcessor;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.postgresql.PostgreSQLContainer;
@@ -25,9 +20,9 @@ import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
 
+import static kr.youthpolicymate.admin.AdminTestSupport.*;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
@@ -36,13 +31,10 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @Testcontainers
-@SpringBootTest(properties = {"app.admin.member-ids=10000000-0000-0000-0000-000000000001",
-        "app.email.enabled=false", "app.reminders.enabled=false", "app.ontong.schedule.enabled=false", "app.ai.auto.enabled=false"})
-@AutoConfigureMockMvc
+@AdminApiTest
 class EmailDeliveryApiTest {
     private static final String ROOT = "/api/v1/admin/email-deliveries";
-    private static final String ADMIN = "10000000-0000-0000-0000-000000000001";
-    private static final UUID MEMBER = UUID.fromString("20000000-0000-0000-0000-000000000002");
+    private static final UUID MEMBER = UUID.fromString(AdminTestSupport.MEMBER);
     private static final Instant NOW = Instant.parse("2026-09-12T12:00:00Z");
     @Container @ServiceConnection static final PostgreSQLContainer postgres = new PostgreSQLContainer("postgres:18.6-alpine");
     @Autowired MockMvc mvc;
@@ -58,12 +50,7 @@ class EmailDeliveryApiTest {
         jdbc.sql("DELETE FROM members").update();
         jdbc.sql("INSERT INTO members(id, provider, provider_subject, display_name) VALUES (:id, 'kakao', 'private-subject', '비공개 회원')")
                 .param("id", MEMBER).update();
-        jdbc.sql("""
-                INSERT INTO members(id, provider, provider_subject, display_name) VALUES
-                ('10000000-0000-0000-0000-000000000001', 'kakao', 'admin-fixture', '검증 관리자'),
-                ('20000000-0000-0000-0000-000000000002', 'naver', 'member-fixture', '검증 회원')
-                ON CONFLICT (id) DO NOTHING
-                """).update();
+        insertMembers(jdbc);
     }
 
     @Test @DisplayName("관리자 소셜 세션만 발송 현황을 조회하며 변경 요청은 허용하지 않는다")
@@ -181,8 +168,5 @@ class EmailDeliveryApiTest {
                 VALUES (:id, :member, :version, 'VERIFICATION', :state, :created, 'resend')
                 """).param("id", id(value)).param("member", MEMBER).param("version", UUID.randomUUID())
                 .param("state", state).param("created", created.atOffset(ZoneOffset.UTC)).update();
-    }
-    private static RequestPostProcessor social(String id) {
-        return oauth2Login().oauth2User(new DefaultOAuth2User(List.of(new SimpleGrantedAuthority("ROLE_MEMBER")), Map.of("memberId", id), "memberId"));
     }
 }

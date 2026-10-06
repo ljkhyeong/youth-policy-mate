@@ -8,17 +8,12 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
-import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.dao.DataAccessResourceFailureException;
 import org.springframework.jdbc.core.simple.JdbcClient;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
-import org.springframework.security.oauth2.core.user.DefaultOAuth2User;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.test.web.servlet.request.RequestPostProcessor;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.postgresql.PostgreSQLContainer;
@@ -30,6 +25,7 @@ import java.nio.file.Path;
 import java.time.*;
 import java.util.*;
 
+import static kr.youthpolicymate.admin.AdminTestSupport.*;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.not;
@@ -39,12 +35,9 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @Testcontainers
-@SpringBootTest(properties = {"app.admin.member-ids=10000000-0000-0000-0000-000000000001",
-        "app.reminders.enabled=false", "app.email.enabled=false", "app.ontong.schedule.enabled=false"})
-@AutoConfigureMockMvc
+@AdminApiTest
 class PolicyRuleReviewApiTest {
     private static final String ROOT = "/api/v1/admin/policy-rule-reviews";
-    private static final String ADMIN = "10000000-0000-0000-0000-000000000001";
     private static final Instant NOW = Instant.parse("2026-09-12T00:00:00Z");
     @Container @ServiceConnection static final PostgreSQLContainer postgres = new PostgreSQLContainer("postgres:18.6-alpine");
     @Autowired MockMvc mvc;
@@ -56,12 +49,7 @@ class PolicyRuleReviewApiTest {
     @MockitoSpyBean PolicyRuleReviewStore reviews;
 
     @BeforeEach void setup() {
-        jdbc.sql("""
-                INSERT INTO members(id, provider, provider_subject, display_name) VALUES
-                ('10000000-0000-0000-0000-000000000001', 'kakao', 'admin-fixture', '검증 관리자'),
-                ('20000000-0000-0000-0000-000000000002', 'naver', 'member-fixture', '검증 회원')
-                ON CONFLICT (id) DO NOTHING
-                """).update();
+        insertMembers(jdbc);
         when(clock.instant()).thenReturn(NOW);
         when(clock.getZone()).thenReturn(ZoneId.of("Asia/Seoul"));
         jdbc.sql("DELETE FROM admin_policy_rule_actions").update();
@@ -114,7 +102,7 @@ class PolicyRuleReviewApiTest {
                     .andExpect(status().isUnauthorized());
             mvc.perform(post(path).with(social(ADMIN)).contentType("application/json").content("{}"))
                     .andExpect(status().isForbidden());
-            mvc.perform(post(path).with(social("20000000-0000-0000-0000-000000000002")).with(csrf()).contentType("application/json").content("{}"))
+            mvc.perform(post(path).with(social(MEMBER)).with(csrf()).contentType("application/json").content("{}"))
                     .andExpect(status().isForbidden());
         }
         mvc.perform(get(ROOT + "/" + policy.number() + "/versions/" + id)).andExpect(status().isUnauthorized());
@@ -196,7 +184,7 @@ class PolicyRuleReviewApiTest {
     void protectsAccess() throws Exception {
         for (var path : List.of(ROOT, ROOT + "/99990000000000000001")) {
             mvc.perform(get(path)).andExpect(status().isUnauthorized()).andExpect(header().string("Cache-Control", containsString("no-store")));
-            mvc.perform(get(path).with(social("20000000-0000-0000-0000-000000000002"))).andExpect(status().isForbidden());
+            mvc.perform(get(path).with(social(MEMBER))).andExpect(status().isForbidden());
             mvc.perform(get(path).with(user(ADMIN).roles("ADMIN"))).andExpect(status().isForbidden());
             mvc.perform(post(path).with(social(ADMIN)).with(csrf())).andExpect(status().isForbidden());
         }
@@ -300,8 +288,5 @@ class PolicyRuleReviewApiTest {
     }
     private UUID publish(OntongPolicyCapture.Item item, Instant from, Instant until) {
         var id = draft(item, from, until, "review-v1"); rules.publish(id, "none", "검증 작업자"); return id;
-    }
-    private static RequestPostProcessor social(String id) {
-        return oauth2Login().oauth2User(new DefaultOAuth2User(List.of(new SimpleGrantedAuthority("ROLE_MEMBER")), Map.of("memberId", id), "memberId"));
     }
 }

@@ -7,16 +7,11 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
-import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.dao.DataAccessResourceFailureException;
 import org.springframework.jdbc.core.simple.JdbcClient;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
-import org.springframework.security.oauth2.core.user.DefaultOAuth2User;
 import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.test.web.servlet.request.RequestPostProcessor;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.postgresql.PostgreSQLContainer;
@@ -27,9 +22,9 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Instant;
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
 
+import static kr.youthpolicymate.admin.AdminTestSupport.*;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.not;
@@ -39,12 +34,9 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @Testcontainers
-@SpringBootTest(properties = {"app.admin.member-ids=10000000-0000-0000-0000-000000000001",
-        "app.ai.auto.enabled=false", "app.reminders.enabled=false", "app.email.enabled=false", "app.ontong.schedule.enabled=false"})
-@AutoConfigureMockMvc
+@AdminApiTest
 class PolicyAiRunApiTest {
     private static final String ROOT = "/api/v1/admin/policy-ai-runs";
-    private static final String ADMIN = "10000000-0000-0000-0000-000000000001";
     @Container @ServiceConnection static final PostgreSQLContainer postgres = new PostgreSQLContainer("postgres:18.6-alpine");
     @Autowired MockMvc mvc;
     @Autowired JdbcClient jdbc;
@@ -54,12 +46,7 @@ class PolicyAiRunApiTest {
     @MockitoSpyBean PolicyAiRunStore runs;
 
     @BeforeEach void setup() {
-        jdbc.sql("""
-                INSERT INTO members(id, provider, provider_subject, display_name) VALUES
-                ('10000000-0000-0000-0000-000000000001', 'kakao', 'admin-fixture', '검증 관리자'),
-                ('20000000-0000-0000-0000-000000000002', 'naver', 'member-fixture', '검증 회원')
-                ON CONFLICT (id) DO NOTHING
-                """).update();
+        insertMembers(jdbc);
         for (var table : List.of("policy_ai_rule_auto_runs", "policy_ai_rule_calls", "ai_request_reservations", "ai_budgets", "policy_ai_rule_candidates", "policy_ai_rule_requests",
                 "policy_revisions", "policy_source_snapshots", "policies")) jdbc.sql("DELETE FROM " + table).update();
     }
@@ -67,7 +54,7 @@ class PolicyAiRunApiTest {
     @Test @DisplayName("관리자 소셜 세션만 조회하며 변경 요청은 허용하지 않는다")
     void protectsAccess() throws Exception {
         mvc.perform(get(ROOT)).andExpect(status().isUnauthorized()).andExpect(header().string("Cache-Control", containsString("no-store")));
-        mvc.perform(get(ROOT).with(social("20000000-0000-0000-0000-000000000002"))).andExpect(status().isForbidden());
+        mvc.perform(get(ROOT).with(social(MEMBER))).andExpect(status().isForbidden());
         mvc.perform(get(ROOT).with(user(ADMIN).roles("ADMIN"))).andExpect(status().isForbidden());
         mvc.perform(post(ROOT).with(social(ADMIN)).with(csrf())).andExpect(status().isForbidden());
         mvc.perform(get(ROOT).with(social(ADMIN))).andExpect(status().isOk()).andExpect(header().string("Cache-Control", "no-store"))
@@ -178,8 +165,5 @@ class PolicyAiRunApiTest {
                     now() + (:seconds + 600) * interval '1 second',
                     CASE WHEN :state = 'RUNNING' THEN NULL ELSE now() + (:seconds + 1) * interval '1 second' END, :state)
                 """).param("id", UUID.randomUUID()).param("request", request).param("attempt", attempt).param("state", state).param("seconds", seconds).update();
-    }
-    private static RequestPostProcessor social(String id) {
-        return oauth2Login().oauth2User(new DefaultOAuth2User(List.of(new SimpleGrantedAuthority("ROLE_MEMBER")), Map.of("memberId", id), "memberId"));
     }
 }

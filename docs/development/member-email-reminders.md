@@ -18,20 +18,19 @@
 
 ## 설정과 실행
 
-`EMAIL_PROVIDER`로 Resend API 또는 SMTP를 선택한다. Resend는 발송 결과 웹훅을 제공한다. SMTP 어댑터는 **STARTTLS가 필수인 SMTP**를 지원하며 암호화되지 않은 SMTP나 465 포트의 암묵적 TLS 방식은 제공하지 않는다.
+이메일은 Resend API로만 발송하고 발송 결과는 서명된 웹훅으로 받는다. 이전의 SMTP 어댑터와 공급자 선택 설정(`EMAIL_PROVIDER`)은 2026-10-07에 제거했다. Resend 키·웹훅 설정은 [외부 API 연결 안내](external-api-runtime.md#resend-연결)를 따른다.
 
 | 설정 | 의미 |
 |---|---|
-| `EMAIL_ENABLED` | 기본 `false`. 선택한 공급자 발송과 10초 간격의 대기 처리기를 함께 활성화 |
+| `EMAIL_ENABLED` | 기본 `false`. Resend 발송과 10초 간격의 대기 처리기를 함께 활성화 |
 | `EMAIL_ENCRYPTION_KEY` | 32바이트 난수를 Base64로 인코딩한 AES 키. 실제 값은 비밀 설정으로 보관 |
-| `EMAIL_SMTP_HOST`, `EMAIL_SMTP_PORT` | 공급자의 STARTTLS 호스트·포트. 기본 포트 587 |
-| `EMAIL_SMTP_USERNAME`, `EMAIL_SMTP_PASSWORD` | SMTP 인증. 사용자명이 있으면 인증 사용 |
+| `RESEND_API_KEY`, `RESEND_WEBHOOK_SECRET` | Resend 발송 키와 웹훅 서명 키 |
 | `EMAIL_FROM` | 공급자에서 사용을 허용한 단일 발신 주소 |
 | `APP_FRONTEND_URL` | 메일의 정책 상세·수신 해제 링크에 사용할 프런트엔드 주소 |
 
-SMTP에서 `EMAIL_ENABLED=true`인데 암호화 키·호스트·발신 주소가 빠지면 서버 기동을 거절한다. 연결·읽기·쓰기 제한 시간은 각각 5초다. 실제 발신 도메인 인증, 공급자 제한, 반송·스팸·수신함 도착 여부는 공급자를 정한 후 별도로 확인해야 한다.
+`app.email.*` 설정은 `EmailProperties`로 바인딩하고 기동할 때 검증한다. `EMAIL_ENABLED=true`인데 암호화 키·발신 주소·`RESEND_API_KEY`·`RESEND_WEBHOOK_SECRET` 중 하나가 빠지면 서버 기동을 거절한다. 발신 주소 형식(`@Email`, 254자 이하)은 발송을 꺼도 검사한다. 키 값은 검증 오류와 로그에 남기지 않는다. 실제 발신 도메인 인증, 공급자 제한, 반송·스팸·수신함 도착 여부는 운영 설정 후 별도로 확인해야 한다.
 
-SMTP 연결 설정은 `application.yaml`의 `spring.mail.*`로 바인딩하고 Boot가 생성한 메일 빈을 사용한다. 기존 `EMAIL_*` 환경변수와 직접 지정한 `app.email.host/port/username/password`는 계속 지원한다. 상태 확인 API는 SMTP 연결을 검사하지 않는다. 주소 형식은 `MemberEmailAddress`의 Jakarta Validation 제약을 HTTP 입력·서비스 직접 호출·발신 주소 설정에서 공유한다. [코드 정리와 검증 결과](backend-api-review.md)를 참고한다.
+회원이 입력한 주소 형식은 `MemberEmailAddress`의 Jakarta Validation 제약으로 HTTP 입력에서 확인한다. [코드 정리와 검증 결과](backend-api-review.md)를 참고한다.
 
 키는 재시작 후에도 같은 값을 유지해야 기존 주소를 읽을 수 있다. 교체할 때는 서비스 중지 후 [키 점검·일괄 재암호화 명령](email-key-rotation.md)을 사용한다. 주소·인증 완료·동의는 유지하고 미완료 확인 코드는 만료한다. 실제 키 교체·운영 보관 기간·실제 공급자 수신 확인은 운영자가 진행한다. 비밀 값·주소·확인 코드를 로그나 문서에 넣지 않는다.
 
@@ -39,10 +38,10 @@ SMTP 연결 설정은 `application.yaml`의 `spring.mail.*`로 바인딩하고 B
 
 ## 저장과 발송
 
-- `MemberEmailStore`: 회원 잠금, 주소 확인·동의·요청 제한. 주소는 AES-GCM으로 암호화하고 회원·설정 개정·용도를 암호문에 결합한다. 확인용 비교 값은 HMAC으로 저장한다.
+- `MemberEmailStore`: 회원 잠금, 주소 확인·동의·요청 제한과 메일 링크의 수신 해제. 주소는 AES-GCM으로 암호화하고 회원·설정 개정·용도를 암호문에 결합한다. 확인용 비교 값은 HMAC으로 저장한다.
 - `MemberPolicyStore`: 서비스 내 알림 생성과 이메일 요청 삽입을 같은 트랜잭션으로 처리한다. 같은 알림의 이메일 요청은 DB 유일성 제약으로 중복 생성하지 않는다.
 - `MemberEmailDelivery`: 회원 → 정책 → 발송 대기 순서로 잠근 뒤 설정 개정·주소 확인·동의·현재 저장 세대·최신 정책 개정을 재검사한다. 서울 날짜가 지난 마감 메일은 취소한다. 내용 변경 메일도 개정이 달라지면 취소하고 최신 알림으로 바꾼다.
-- 짧은 트랜잭션에서 한 번만 `SENDING`으로 배정한 다음 잠금을 해제하고 선택한 발송 공급자를 호출한다. 호출 시 열려 있는 트랜잭션을 허용하지 않는다. 암호화한 발송용 확인 코드는 배정·취소 시 지운다.
+- 짧은 트랜잭션에서 한 번만 `SENDING`으로 배정한 다음 잠금을 해제하고 Resend를 호출한다. 호출 시 열려 있는 트랜잭션을 허용하지 않는다. 암호화한 발송용 확인 코드는 배정·취소 시 지운다.
 - 연락처는 설정 테이블 한 곳에만 저장한다. Outbox에는 회원·설정 개정·알림 식별자를 기록하며 주소를 복제하지 않는다.
 
 | 발송 상태 | 의미 |
@@ -53,7 +52,7 @@ SMTP 연결 설정은 `application.yaml`의 `spring.mail.*`로 바인딩하고 B
 | `DELIVERED` | 수신 메일 서버 전달 |
 | `DELAYED` | 수신 서버 처리 지연 |
 | `BOUNCED`, `COMPLAINED`, `SUPPRESSED` | 반송·스팸 신고·공급자 차단. 해당 주소 알림 중단 |
-| `FAILED` | 인증·메일 준비 실패, 공급자 요청 거절 또는 실패 웹훅 |
+| `FAILED` | 공급자 요청 거절(408·409를 제외한 4xx) 또는 실패 웹훅 |
 | `UNKNOWN` | 접수 여부 미확인 또는 2분 넘게 결과가 기록되지 않은 발송 |
 | `CANCELED` | 수신·저장·개정·기간 조건이 맞지 않거나 사용자가 취소 |
 
@@ -78,9 +77,9 @@ SMTP 연결 설정은 `application.yaml`의 `spring.mail.*`로 바인딩하고 B
 - 서버 전체 413건·실패/오류/건너뜀 0과 `build` 통과. 기존 403건에 이메일 회원 경계 8건·암호화/SMTP 2건을 추가했다. 이후 정책 메일 본문과 트랜잭션 내부 호출 차단 검사를 보강해 `MemberFlowTest` 16건도 다시 통과했다.
 - 웹 62건, 린트·타입 검사·생성 계약 일치와 Webpack 프로덕션 빌드 통과. OpenAPI 15개 경로이며 nullable 발송 상태 enum에 실제 null 값이 포함되는지 검사했다.
 - PostgreSQL에서 계정 분리·CSRF·확인 만료·실패 횟수 커밋·요청 제한·동의 분리·암호화 저장·동시 단일 배정·트랜잭션 밖 전송·결과 미확인 비재시도·취소·개정·서울 날짜·알림과 요청의 동시 롤백을 확인했다.
-- SMTP 검사는 루프백의 시험 서버가 STARTTLS를 지원하지 않을 때 주소·본문 전송 전에 중단하는 범위다. 발송 성공과 결과 미확인 상태는 테스트용 전송기로 검증했다. 외부 수신함에 시험 메일을 보내지 않았다.
+- 발송 성공과 결과 미확인 상태는 테스트용 전송기로, Resend 요청 형식과 거절·불확실 오류 구분은 로컬 HTTP 서버로 검증했다(`ResendTransportTest`). 외부 수신함에 시험 메일을 보내지 않았다. 초기 SMTP 어댑터의 STARTTLS 검사는 2026-10-07에 어댑터와 함께 삭제했고, 설정 누락 시 기동 거절은 `EmailCryptoTest`가 확인한다.
 - 실제 브라우저의 모바일 390px·데스크톱 1280px에서 미설정 안내, 요청 제한 후 입력 유지, 코드 오류 후 확인, 별도 수신 동의, 수신 해제·주소 삭제를 확인했다. 키보드 Enter로 동의 버튼을 실행했고 모바일 가로 넘침이 없었다. 계정 변경 중 이전 주소의 늦은 응답을 폐기하는 것도 확인했다. 회원 응답은 브라우저 테스트 자료로 대체했고 검사 후 제거했다.
-- 로컬 서버에 V17을 적용했다. 정상 상태 응답, 이메일 설정의 비회원 401, 기존 정책 40건과 이메일 요청 0건을 확인했다. SMTP·암호화 키·발신 주소와 소셜 키는 미설정이며 `.env`를 바꾸지 않았다.
+- 로컬 서버에 V17을 적용했다. 정상 상태 응답, 이메일 설정의 비회원 401, 기존 정책 40건과 이메일 요청 0건을 확인했다. 이메일 공급자·암호화 키·발신 주소와 소셜 키는 미설정이며 `.env`를 바꾸지 않았다.
 - 전체 테스트 종료 중 기존 Spring Session 만료 정리 작업의 DB 연결 중단 경고가 재현됐다. JUnit 실패는 없으며 테스트 컨텍스트/컨테이너 종료 순서 정리는 별도 작업이다.
 
 검사 명령은 `./backend/gradlew -p backend test build --no-daemon`, `npm run test --workspace frontend`, `npm run lint --workspace frontend`, `npm run typecheck --workspace frontend`, `npm run check:api-types --workspace frontend`, `npm run build --workspace frontend -- --webpack`이다. 실제 소셜 로그인과 외부 수신함 전달은 공급자 설정 이후 별도 확인해야 한다.

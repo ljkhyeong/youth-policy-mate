@@ -9,22 +9,22 @@
 | 정책 수집 | 온통청년 API를 이미 사용한다. 공고 개정·누락·호출 한도 처리는 서비스에 필요하므로 유지한다. |
 | 소셜 로그인 | Spring Security로 카카오·네이버 OAuth를 연동했다. 직접 비밀번호 인증을 추가할 필요가 없다. |
 | 공고 조건 추출 | OpenAI API가 이미 연결돼 있다. 근거 확인·예산 제한·최신 개정 확인은 우리 서비스의 책임이다. [프로젝트 월 비용 조회 명령](openai-costs.md)은 공급자 집계를 확인하며 요청별 예산을 자동 정산하지 않는다. |
-| 이메일 | **Resend 발송 API와 서명 웹훅을 추가했다.** 수신 서버 전달·반송·신고·차단 결과를 공급자에게 받는다. SMTP도 선택할 수 있다. |
+| 이메일 | **Resend 발송 API와 서명 웹훅을 사용한다.** 수신 서버 전달·반송·신고·차단 결과를 공급자에게 받는다. SMTP 어댑터는 2026-10-07에 제거했다. |
 | 마감 일정 | 공고의 날짜를 사용한다. 공휴일 API가 신청 마감일을 대신하지 못하므로 추가하지 않는다. |
 | 외부 캘린더 | 현재 서비스 내 일정을 유지한다. 캘린더 구독·Google 계정 연결은 PRD 제외 범위이며, 별도 사용자 수요가 확인되면 검토한다. |
 | 자격 판정·동의·알림 생성 | 일반 외부 API로 대체할 수 없는 제품 규칙이다. 전송은 공급자에 맡기고 판단·회원 소유권·취소 처리는 앱에 둔다. |
 
 ## Resend 연결
 
-`EMAIL_PROVIDER=resend`를 선택한다. `EMAIL_ENABLED=true`일 때 `EMAIL_ENCRYPTION_KEY`, `EMAIL_FROM`, `RESEND_API_KEY`, `RESEND_WEBHOOK_SECRET`가 필요하다. 암호화 키는 32바이트 난수의 Base64 문자열이며 재시작 때 유지한다. `.env.production.example`에는 실제 키를 넣지 않았다.
+`EMAIL_ENABLED=true`일 때 `EMAIL_ENCRYPTION_KEY`, `EMAIL_FROM`, `RESEND_API_KEY`, `RESEND_WEBHOOK_SECRET`가 필요하며 하나라도 빠지면 기동을 거절한다. 암호화 키는 32바이트 난수의 Base64 문자열이며 재시작 때 유지한다. `.env.production.example`에는 실제 키를 넣지 않았다.
 
 관리자에서 [Resend 발송 상태 조회](email-provider-status.md)를 사용하려면 선택 값 `RESEND_READ_API_KEY`를 설정한다. Resend `full_access` 권한이 필요하며, 발송 전용 `RESEND_API_KEY`와 별도로 사용한다. 미설정 시 조회만 사용할 수 없고 발송 설정은 바뀌지 않는다.
 
 - 발송: `POST https://api.resend.com/emails`. Outbox ID를 `Idempotency-Key: email/{id}`와 `outbox_id` 태그에 넣는다. Resend의 멱등 키 보관 기간은 24시간이므로 무기한 중복 방지를 보장하지 않는다. [공식 발송 API](https://resend.com/docs/api-reference/emails/send-email)·[멱등 키](https://resend.com/docs/dashboard/emails/idempotency-keys)
 - API 요청에는 공급자가 요구하는 `User-Agent: youth-policy-mate/1.0`을 명시한다. [API 공통 요구사항](https://resend.com/docs/api-reference/introduction)
-- 처리: 10초 간격으로 인증 메일을 우선하며 Resend는 한 번에 최대 5건, SMTP는 최대 50건을 배정한다. 연결 제한은 5초, Resend 응답 제한은 10초다. 운영 초기에는 API 한 인스턴스를 기준으로 한다. 공급자 계정 전체의 실제 호출·일/월 한도는 운영자가 확인한다. [공급자 한도](https://resend.com/docs/api-reference/rate-limit)
+- 처리: 10초 간격으로 인증 메일을 우선하며 한 번에 최대 5건을 배정한다. 연결 제한은 5초, Resend 응답 제한은 10초다. 운영 초기에는 API 한 인스턴스를 기준으로 한다. 공급자 계정 전체의 실제 호출·일/월 한도는 운영자가 확인한다. [공급자 한도](https://resend.com/docs/api-reference/rate-limit)
 - 발송 전 회원·주소 설정 버전·동의·저장 정책·최신 개정을 재확인한다. 외부 호출 중에는 DB 트랜잭션을 열지 않는다.
-- 명확한 요청 거절은 `FAILED`, 응답 단절·타임아웃·불확실한 오류는 `UNKNOWN`이다. 자동 재발송하지 않으며, Resend 웹훅으로 결과를 보완한다. 서비스 내 알림은 유지한다.
+- 명확한 요청 거절(408·409를 제외한 4xx)은 `FAILED`, 응답 단절·타임아웃·불확실한 오류는 `UNKNOWN`이다. 자동 재발송하지 않으며, Resend 웹훅으로 결과를 보완한다. 서비스 내 알림은 유지한다.
 - 발송 키와 웹훅 키는 다르다. `EMAIL_ENABLED=false`여도 Resend와 웹훅 키가 설정돼 있으면 이미 발송한 이메일의 결과를 받는다.
 - 정책 메일에는 [로그인 없는 수신 해제](email-unsubscribe.md)를 제공한다. 기존 공개 주소·Ingress를 사용하며, 운영자는 DKIM 서명과 실제 수신 서비스의 버튼·본문 링크를 확인한다.
 
@@ -47,12 +47,12 @@
 
 | 대상 | 필요한 값 |
 |---|---|
-| 웹·API 공통 | `PUBLIC_APP_URL=https://<공개 도메인>` — 마지막 `/` 없이 같은 주소 사용 |
+| 웹·API 공통 | `PUBLIC_APP_URL=https://<공개 도메인>` — 같은 주소 사용. API는 끝의 `/`를 지워 사용한다 |
 | 웹 | `POLICY_API_BASE_URL=http://<API Service>:8080`, `HOSTNAME=0.0.0.0`, `PORT=3000` |
 | API | `SPRING_PROFILES_ACTIVE=prod`, `DB_HOST`, `DB_PORT=5432`, `DB_NAME`, `DB_USER`, `DB_PASSWORD` |
 | 로그인 | 사용할 공급자의 `KAKAO_CLIENT_ID/SECRET`, `NAVER_CLIENT_ID/SECRET` |
 | 관리자 | `ADMIN_MEMBER_IDS`에 실제 가입한 회원 UUID 등록 |
-| 이메일 | 위 Resend 값. 기존 SMTP는 `.env.example` 참고 |
+| 이메일 | 위 Resend 값 |
 | 수집·AI·알림 | 예시의 관련 키·한도·주기를 설정한 뒤 각각 활성화 |
 
 초기 예시에서 정기 수집·AI·이메일·알림은 모두 꺼져 있다. 빈 키나 `example.com` 주소로 공급자 연동이 되는 것은 아니다. 이메일을 켜도 서비스 내 정기 알림은 `REMINDERS_ENABLED`를 별도로 켜야 한다. 이메일 암호화 키를 교체할 때는 환경변수만 바꾸지 말고 서비스 중지 후 [키 점검·재암호화 명령](email-key-rotation.md)을 실행한다. 실제 키와 운영 적용은 사용자가 관리한다.

@@ -27,7 +27,7 @@
 
 ## 공급자 연결과 운영 확인
 
-SMTP는 Spring의 `MimeMessageHelper`, Resend는 발송 API의 `headers`로 `List-Unsubscribe`와 `List-Unsubscribe-Post`를 넣는다. 표준이 HTTPS를 요구하므로 API 공개 주소가 HTTPS일 때만 두 헤더를 넣고, 로컬 HTTP에서는 본문 확인 링크만 제공한다. 새 환경변수나 공급자 계정은 필요하지 않다. 운영 `PUBLIC_APP_URL`과 기존 `/api/v1` Ingress 경로를 사용한다.
+Resend 발송 API의 `headers`로 `List-Unsubscribe`와 `List-Unsubscribe-Post`를 넣는다. 표준이 HTTPS를 요구하므로 API 공개 주소가 HTTPS일 때만 두 헤더를 넣고, 로컬 HTTP에서는 본문 확인 링크만 제공한다. 새 환경변수나 공급자 계정은 필요하지 않다. 운영 `PUBLIC_APP_URL`과 기존 `/api/v1` Ingress 경로를 사용한다.
 
 헤더와 POST 형식은 [RFC 8058](https://www.rfc-editor.org/rfc/rfc8058.html), Resend 연결은 [공식 수신 해제 안내](https://resend.com/docs/dashboard/emails/add-unsubscribe-to-transactional-emails)를 따른다. 메일 서비스의 버튼 노출은 실제 메일의 DKIM 서명과 수신 서비스 판단에 달려 있다. 운영자는 발신 도메인 등록 후 서명에 두 수신 해제 헤더가 포함되는지와 실제 버튼·본문 링크를 확인한다. 메일 서비스가 제공하는 연락처 목록과 우리 회원 설정을 중복 관리하지 않는다.
 
@@ -45,7 +45,7 @@ SMTP는 Spring의 `MimeMessageHelper`, Resend는 발송 API의 `headers`로 `Lis
 | `npm run generate:api` 후 `npm run verify -- check:api-types` | 생성 계약 일치. `.local/verification/1789189857883-58178074.log` |
 | `npm run verify -- build:web` | 웹 운영 빌드 통과. `.local/verification/1789189962862-23c33490.log` |
 
-서버 검사는 PostgreSQL에서 GET 무변경·두 폼 형식·반복 해제·다른 회원 세션·재동의·주소 변경·탈퇴·장애 롤백·발송 비활성 상태를 확인했다. SMTP 메시지와 Resend 모의 요청에 헤더를 확인했으며 인증 코드 메일에는 넣지 않는다. 첫 계약 생성의 테스트 컴파일 오류는 기존 발송 모의 객체의 인자를 수정한 뒤 해소했다.
+서버 검사는 PostgreSQL에서 GET 무변경·두 폼 형식·반복 해제·다른 회원 세션·재동의·주소 변경·탈퇴·장애 롤백·발송 비활성 상태를 확인했다. SMTP 메시지와 Resend 모의 요청에 헤더를 확인했으며 인증 코드 메일에는 넣지 않는다(SMTP 검사는 2026-10-07 어댑터와 함께 삭제). 첫 계약 생성의 테스트 컴파일 오류는 기존 발송 모의 객체의 인자를 수정한 뒤 해소했다.
 
 별도 브라우저에서 확인 버튼·키보드·오류 재시도·중복 방지·늦은 응답 무시·잘못된 링크·완료 초점과 데스크톱/모바일 표시를 확인했다. 처리 요청 4건은 모두 모의 응답이었으며 실제 수신 해제는 하지 않았다. 결과는 `/tmp/youth-unsubscribe-ui/result.log`, 화면은 같은 디렉터리의 `desktop.png`·`mobile.png`·`complete.png`에 있다. 검증 세션은 종료했다.
 

@@ -49,7 +49,6 @@
 | `NAVER_CLIENT_ID`, `NAVER_CLIENT_SECRET` | 네이버 로그인 앱의 Client ID와 Secret |
 | `APP_FRONTEND_URL` | 브라우저 웹 주소, 로컬 기본 `http://127.0.0.1:3000` |
 | `APP_BACKEND_URL` | 브라우저가 접근할 로그인 서버 주소, 로컬 기본 `http://127.0.0.1:8080` |
-| `APP_COOKIE_SECURE` | HTTPS 쿠키 여부. 운영 기본 `true`, `local` 프로필만 `false` |
 
 각 제공자의 ID와 Secret이 모두 있어야 해당 로그인 연결을 켠다. 리다이렉트 주소를 앱에 정확히 등록한다.
 
@@ -57,6 +56,8 @@
 - 네이버: `http://127.0.0.1:8080/login/oauth2/code/naver`
 
 웹과 서버를 `localhost`와 `127.0.0.1`로 섞지 않는다. 쿠키는 포트가 아닌 호스트를 기준으로 공유된다. 운영에서는 같은 HTTPS 호스트 아래에서 웹과 로그인 경로를 제공하는 역방향 프록시 구성이 필요하다. `/oauth2/authorization/*`, `/login/oauth2/code/*`는 Spring으로 전달한다. 별도 호스트 배포는 현재 쿠키 중계 방식으로 지원하지 않는다.
+
+세션 쿠키(`YPM_SESSION`, HttpOnly·SameSite=Lax)는 `application.yaml`의 `server.servlet.session.cookie.*`로 정하며 Spring Boot가 내장 서버에 적용한다. HTTPS 전용(`secure`)이 기본이고 `local` 프로필만 끈다. 운영에서 바꿔야 하면 `SERVER_SERVLET_SESSION_COOKIE_SECURE`를 쓴다.
 
 Next.js에도 `APP_FRONTEND_URL`을 같은 웹 주소로 설정한다. 변경 요청의 Origin을 이 주소와 비교한다. 로컬 기본은 `http://127.0.0.1:3000`이다.
 
@@ -82,7 +83,7 @@ Next.js의 서버 내부 접속 주소는 `POLICY_API_BASE_URL`이다. 로컬 �
 
 오전 9시는 로컬 확인용 기본값이다. 운영 시각·재확인 간격을 정한 뒤 명시적으로 활성화한다. 서버가 시작 시간 이후에 켜지면 당일 알림만 처리하고 지난 날짜를 몰아서 보내지 않는다. 반복 실행에서 최대 100명의 대상을 조회하고 회원별로 짧게 처리한다. 저장 목록 조회 시에도 최신 개정 반영이 일어나므로 이 조회는 DB 변경을 포함한다.
 
-서비스 내 알림과 [이메일 주소 확인·수신 동의·Outbox·SMTP 어댑터](member-email-reminders.md)를 구현했다. 실제 이메일 공급자·발신 도메인·수신함 전달은 미검증이며 브라우저 푸시는 제공하지 않는다.
+서비스 내 알림과 [이메일 주소 확인·수신 동의·Outbox·Resend 발송](member-email-reminders.md)을 구현했다. 실제 이메일 공급자·발신 도메인·수신함 전달은 미검증이며 브라우저 푸시는 제공하지 않는다.
 
 ## API와 검증
 

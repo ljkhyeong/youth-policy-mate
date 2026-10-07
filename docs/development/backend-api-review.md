@@ -6,8 +6,8 @@
 
 | 대상 | 변경 내용 |
 |---|---|
-| [SMTP](../../backend/src/main/java/kr/youthpolicymate/member/SmtpMemberEmailSender.java) | Boot가 만든 메일 빈을 주입한다. 호스트·포트·인코딩·TLS·타임아웃을 `spring.mail.*` 설정으로 옮겼다. 사용자명에 따라 인증 사용 여부를 정하는 기존 조건만 코드에 남겼다. |
-| [이메일 주소](../../backend/src/main/java/kr/youthpolicymate/member/MemberEmailAddress.java) | 자체 정규식을 제거하고 `@Email`·`@NotBlank`·`@Size(max = 254)`를 선언했다. HTTP 입력은 `@Valid`, 서비스 직접 호출과 발신 주소 설정은 `Validator.validateValue`로 같은 제약을 확인한다. |
+| SMTP 어댑터(`SmtpMemberEmailSender`, 2026-10-07 Resend 단일화로 제거) | Boot가 만든 메일 빈을 주입한다. 호스트·포트·인코딩·TLS·타임아웃을 `spring.mail.*` 설정으로 옮겼다. 사용자명에 따라 인증 사용 여부를 정하는 기존 조건만 코드에 남겼다. |
+| [이메일 주소](../../backend/src/main/java/kr/youthpolicymate/member/MemberEmailAddress.java) | 자체 정규식을 제거하고 `@Email`·`@NotBlank`·`@Size(max = 254)`를 선언했다. HTTP 입력은 `@Valid`로 확인한다. 2026-10-07부터 서비스 직접 호출의 중복 재검증을 없앴고, 발신 주소는 `EmailProperties`의 `@Email`·`@Size`로 기동 시 검증한다. |
 | [OAuth 제공자 저장소](../../backend/src/main/java/kr/youthpolicymate/member/MemberConfiguration.java) | 내부 `Registrations` 클래스를 `InMemoryClientRegistrationRepository`로 교체했다. 변경 불가능한 LinkedHashMap으로 카카오·네이버 순서와 제공자가 없는 상태를 유지한다. |
 | 재시도 정책(`AiReservationRecoveryRetryPolicy`, 2026-10-05 제거) | `List.copyOf` 이후의 null 원소 검사 3곳을 제거했다. 예약 ID·순번·완료 상태·재시도 간격 검사는 유지한다. |
 | 임대 갱신 스케줄러(`PolicyAiRecoveryHeartbeat`, 2026-10-05 제거) | 호출되지 않는 `HeartbeatScheduler.scheduled`와 전용 import를 제거했다. 인터페이스와 관리형 스케줄러는 유지한다. |
@@ -15,8 +15,7 @@
 
 ## 설정과 입력 형식
 
-- 기존 `EMAIL_*` 환경변수를 계속 사용한다. 직접 지정한 `app.email.host/port/username/password`도 Boot 메일 설정에 연결한다. 발신 주소·기능 활성화·암호화 키는 서비스 설정으로 남긴다.
-- 기본 비활성화, 587 포트, STARTTLS 필수, 서버 이름 검사, 연결·읽기·쓰기 5초 제한을 유지한다. SMTP 자동 설정으로 상태 확인 API가 새 외부 연결을 만들지 않도록 메일 상태 검사는 비활성화했다.
+- 기존 `EMAIL_*` 환경변수를 계속 사용한다. 발신 주소·기능 활성화·암호화 키는 서비스 설정으로 남긴다. 2026-10-07에 SMTP 설정(`spring.mail.*`, `EMAIL_SMTP_*`, 메일 상태 검사 비활성화)을 어댑터와 함께 삭제하고 `app.email.*`를 `EmailProperties` 하나로 바인딩했다.
 - 이메일 형식은 Jakarta Validation 구현체의 기준을 따른다. 기존 정규식이 허용하던 `.first@example.test`, `first..last@example.test`는 이제 거절한다. `first.last+tag@example.test`는 허용한다. 실제 주소 소유 확인과 수신 동의는 별도다.
 - OpenAPI와 TypeScript를 서버 DTO에서 재생성했다. 계약 변경은 주소 필드의 `format: email` 추가이며 필드명·필수 여부·응답 구조는 그대로다.
 
@@ -34,7 +33,7 @@
 - `npm run generate:api`: OpenAPI·TypeScript 생성 통과.
 - `npm run verify -- check:backend`: 서버 전체 453건, 실패·오류·건너뜀 0, 빌드 통과. 공통 메일·보안 설정 변경을 포함해 한 번 실행했다.
 - `npm run verify -- check:api-types`, `npm run verify -- check:web`: 생성 타입 일치·린트·타입 검사 통과.
-- 기존 테스트를 활용하고 OAuth 설정·미설정, 이메일 주소의 HTTP·서비스 검증, SMTP 자동 설정 연결을 보완했다. 로컬 SMTP의 평문 전송 차단도 통과했다. 삭제한 null 분기를 반복하는 테스트는 추가하지 않았다.
+- 기존 테스트를 활용하고 OAuth 설정·미설정, 이메일 주소의 HTTP·서비스 검증, SMTP 자동 설정 연결을 보완했다. 로컬 SMTP의 평문 전송 차단도 통과했다(SMTP 검사는 2026-10-07 어댑터와 함께 삭제). 삭제한 null 분기를 반복하는 테스트는 추가하지 않았다.
 - 실제 카카오·네이버 로그인과 외부 수신함 전달은 이번 검증 범위에 포함하지 않았다.
 
 표준 API의 동작은 [Spring Boot 이메일 설정](https://docs.spring.io/spring-boot/reference/io/email.html), [Spring Security OAuth 설정](https://docs.spring.io/spring-security/reference/servlet/oauth2/login/core.html), [Jakarta Email 제약](https://jakarta.ee/specifications/bean-validation/3.1/apidocs/jakarta/validation/constraints/email), [JDK List.copyOf](https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/util/List.html#copyOf(java.util.Collection))를 확인했다. OAuth Map 생성자의 빈 설정 지원은 로컬 Spring Security 7.1.1 바이트코드와 애플리케이션 테스트에서도 확인했다.
@@ -191,7 +190,7 @@ Temurin 25.0.3에서 `npm run verify -- check:backend`로 서버 전체 테스�
 ### 유지한 것
 
 - 조건 입력 화면의 진행 중인 변경으로 사용처가 없어진 `globals.css`의 진행 표시·확인 요약 스타일 약 120줄은 그 변경과 함께 정리한다.
-- 관리자 저장소의 null 허용 시각 변환(약 5줄)과 회원 행 잠금 중복(약 4줄)은 공통 헬퍼·생성자 의존성을 늘리는 비용이 더 커서 유지했다. 두 새로고침 버튼은 문구·스타일이 달라 합치지 않았다.
+- 관리자 저장소의 null 허용 시각 변환(약 5줄)과 회원 행 잠금 중복(약 4줄)은 공통 헬퍼·생성자 의존성을 늘리는 비용이 더 커서 유지했다. 2026-10-07에 이메일 쪽 잠금은 `MemberIdentityStore.lock` 정적 메서드로 옮겼다. 두 새로고침 버튼은 문구·스타일이 달라 합치지 않았다.
 - 컨트롤러별 `CacheControl.noStore()`, 목적이 다른 크기·잠금 검사, 보안 경로 목록, 의존성·환경변수 예시는 모두 사용 중이거나 동작이 달라져 유지했다.
 
 ### 결정이 필요한 코드

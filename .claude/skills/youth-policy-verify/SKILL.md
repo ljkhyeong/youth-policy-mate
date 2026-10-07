@@ -45,8 +45,8 @@ allowed-tools:
 | `ingestion/PolicyAiRule*`, `OpenAiRuleClient` | `test:ai-rule-generation` | 스케줄러는 `test:ai-rule-auto`, 초안 저장소만이면 `test:ai-rule-drafts` |
 | `ingestion/OpenAiCosts*` | `test:ai-costs` | |
 | `member/SocialMemberService`, 세션·로그인 | `test:member-login` | 보안 설정이 바뀌면 `check:backend` |
-| `member/MemberEmail*`, `*EmailSender`, `Resend*` | `test:email` | |
-| `member/EmailCrypto`, `EmailKeyRotation*` | `test:email-key-rotation` | |
+| `member/MemberEmail*`, `Resend*` | `test:email` | |
+| `member/EmailCrypto`, `EmailProperties`, `EmailKeyRotation*` | `test:email-key-rotation` | 설정 바인딩·기동 거절은 `EmailCryptoTest` 클래스 |
 | `member/` 저장 정책·계정·알림 | `test:member-flow` | |
 | `admin/Collection*`, `PolicyCorrection*`, `PolicyRule*` | `test:admin-collection` | |
 | `admin/PolicyAiRun*` | `test:admin-ai` | |

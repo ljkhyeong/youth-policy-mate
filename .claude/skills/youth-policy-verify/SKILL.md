@@ -51,7 +51,7 @@ allowed-tools:
 | `admin/PolicyAiRun*` | `test:admin-ai` | |
 | `admin/EmailDelivery*` | `test:admin-email` | |
 | `config/SecurityConfiguration`, `AdminAccess`, `ApiException*`, `member/MemberSessionFilter` | `test:admin-ai`(AdminAccessTest 포함) | 오류 응답·공통 보안 영향이 넓으면 `check:backend` |
-| `application-prod.yaml`, 운영 프로필 구성 | `test:runtime` | |
+| `application-prod.yaml`, 운영 프로필 구성, `config/AppUrls` | `test:runtime` | |
 | Flyway 마이그레이션(`db/migration/*.sql`) | 해당 기능의 DB 테스트 | 여러 기능 테이블에 영향이 있으면 `check:backend`, 규칙 시드(`V2__seed_reviewed_policy_rules.sql`)는 `PolicyRuleFixtures`가 읽으므로 `test:policy-questions`와 `PolicyRuleDefinitionTest` |
 | `backend/build.gradle`, 공통 `application.yaml` | `check:backend` | |
 | 컴파일 확인만 필요 | `compile:backend` | 실행 파일만 필요하면 `package:backend` |

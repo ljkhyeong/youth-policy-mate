@@ -16,5 +16,6 @@ management:
 
 app:
   url:
-    frontend: ${PUBLIC_APP_URL}
-    backend: ${PUBLIC_APP_URL}
+    # 값이 없으면 빈 문자열이 되어 AppUrls 검증이 기동을 막는다.
+    frontend: ${PUBLIC_APP_URL:}
+    backend: ${PUBLIC_APP_URL:}

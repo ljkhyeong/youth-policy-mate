@@ -10,7 +10,6 @@ import jakarta.validation.constraints.Pattern;
 import kr.youthpolicymate.config.AppUrls;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplication;
 import org.springframework.context.annotation.Profile;
-import org.springframework.http.CacheControl;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -33,7 +32,7 @@ public class MemberEmailUnsubscribeController {
     @Operation(operationId = "openEmailUnsubscribe", summary = "수신 해제 확인 화면 이동 · 설정 변경 없음")
     @ApiResponse(responseCode = "303", description = "확인 화면 이동")
     public ResponseEntity<Void> open(@PathVariable @Pattern(regexp = "[A-Za-z0-9_-]{43}") String token) {
-        return ResponseEntity.status(303).cacheControl(CacheControl.noStore()).header("Referrer-Policy", "no-referrer")
+        return ResponseEntity.status(303).header("Referrer-Policy", "no-referrer")
                 .location(URI.create(urls.frontend() + "/email-unsubscribe#" + token)).build();
     }
 
@@ -49,7 +48,7 @@ public class MemberEmailUnsubscribeController {
     @ApiResponse(responseCode = "503", description = "저장소 사용 불가")
     public ResponseEntity<Void> unsubscribe(@PathVariable @Pattern(regexp = "[A-Za-z0-9_-]{43}") String token,
             @io.swagger.v3.oas.annotations.Parameter(hidden = true) @Valid @ModelAttribute Form input) {
-        return ResponseEntity.status(store.unsubscribe(token) ? 200 : 404).cacheControl(CacheControl.noStore()).build();
+        return ResponseEntity.status(store.unsubscribe(token) ? 200 : 404).build();
     }
 
     @Schema(name = "EmailUnsubscribeForm", requiredProperties = "List-Unsubscribe")

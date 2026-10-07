@@ -1,29 +1,30 @@
 package kr.youthpolicymate.config;
 
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplication;
-import org.springframework.http.HttpMethod;
-import org.springframework.security.config.annotation.web.builders.HttpSecurity;
-import org.springframework.security.core.userdetails.UserDetailsService;
-import org.springframework.security.provisioning.InMemoryUserDetailsManager;
-import org.springframework.security.web.SecurityFilterChain;
-import org.springframework.security.oauth2.client.registration.InMemoryClientRegistrationRepository;
-import kr.youthpolicymate.member.SocialMemberService;
+import jakarta.servlet.DispatcherType;
 import kr.youthpolicymate.member.MemberIdentityStore;
 import kr.youthpolicymate.member.MemberSessionFilter;
-import org.springframework.security.web.context.SecurityContextHolderFilter;
-import org.springframework.core.env.Environment;
+import kr.youthpolicymate.member.SocialMemberService;
+import kr.youthpolicymate.policy.catalog.PolicyApiError;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplication;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
+import org.springframework.http.HttpStatus;
+import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.oauth2.client.OAuth2AuthorizedClientService;
 import org.springframework.security.oauth2.client.authentication.OAuth2AuthenticationToken;
+import org.springframework.security.oauth2.client.registration.InMemoryClientRegistrationRepository;
+import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.logout.HttpStatusReturningLogoutSuccessHandler;
+import org.springframework.security.web.header.HeaderWriterFilter;
 
+/** 캐시 금지는 Spring Security 기본 헤더(Cache-Control no-store 포함)가 모든 응답에 붙이므로 headers()를 끄지 않는다. */
 @Configuration(proxyBeanMethods = false)
-@org.springframework.boot.context.properties.EnableConfigurationProperties(AdminAccess.class)
 @ConditionalOnWebApplication(type = ConditionalOnWebApplication.Type.SERVLET)
 class SecurityConfiguration {
 
     @Bean
-    SecurityFilterChain securityFilterChain(HttpSecurity http, Environment env, AdminAccess adminAccess,
+    SecurityFilterChain securityFilterChain(HttpSecurity http, AppUrls urls, AdminAccess adminAccess,
             InMemoryClientRegistrationRepository registrations, SocialMemberService social,
             OAuth2AuthorizedClientService authorizedClients, MemberIdentityStore identities) throws Exception {
         http
@@ -32,15 +33,14 @@ class SecurityConfiguration {
                 .exceptionHandling(errors -> errors
                         .authenticationEntryPoint((request, response, exception) -> {
                             var path = request.getRequestURI();
-                            response.setStatus(path.startsWith("/api/v1/me/") || path.startsWith("/api/v1/admin/") ? 401 : 403);
-                            response.setContentType("application/json;charset=UTF-8");
-                            response.getWriter().write("{\"code\":\"LOGIN_REQUIRED\",\"message\":\"로그인이 필요합니다.\"}");
+                            new PolicyApiError("LOGIN_REQUIRED", "로그인이 필요합니다.")
+                                    .writeTo(response, path.startsWith("/api/v1/me/") || path.startsWith("/api/v1/admin/") ? 401 : 403);
                         })
-                        .accessDeniedHandler((request, response, exception) -> {
-                            response.setStatus(403); response.setContentType("application/json;charset=UTF-8");
-                            response.getWriter().write("{\"code\":\"ACCESS_DENIED\",\"message\":\"요청 권한과 로그인 상태를 확인해주세요.\"}");
-                        }))
+                        .accessDeniedHandler((request, response, exception) ->
+                                new PolicyApiError("ACCESS_DENIED", "요청 권한과 로그인 상태를 확인해주세요.").writeTo(response, 403)))
                 .authorizeHttpRequests(requests -> requests
+                        // 처리하지 못한 예외의 오류 응답(/error 재디스패치)이 403으로 바뀌지 않게 한다.
+                        .dispatcherTypeMatchers(DispatcherType.ERROR).permitAll()
                         .requestMatchers(HttpMethod.GET, "/actuator/health", "/actuator/health/liveness", "/actuator/health/readiness").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/v1/webhooks/resend").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/v1/email-unsubscribe/*").permitAll()
@@ -49,35 +49,20 @@ class SecurityConfiguration {
                         .requestMatchers(HttpMethod.GET, "/api/v1/policies", "/api/v1/policies/*", "/api/v1/policies/*/questions").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/v1/policies/checks", "/api/v1/policies/*/evaluation", "/api/v1/policies/*/question-prefill").permitAll()
                         .requestMatchers("/api/v1/me/**").hasRole("MEMBER")
-                        .requestMatchers(HttpMethod.POST, "/api/v1/admin/collection-exceptions/*/*/replays",
-                                "/api/v1/admin/policy-corrections", "/api/v1/admin/policy-corrections/*/resolutions",
-                                "/api/v1/admin/policy-rule-reviews/*/drafts", "/api/v1/admin/policy-rule-reviews/*/versions/*/publish")
-                            .access(adminAccess.authorization())
-                        .requestMatchers(HttpMethod.GET, "/api/v1/admin/collection-exceptions", "/api/v1/admin/collection-exceptions/pages", "/api/v1/admin/collection-exceptions/replays",
-                                "/api/v1/admin/collection-exceptions/*/*",
-                                "/api/v1/admin/policy-corrections", "/api/v1/admin/policy-corrections/policies/*",
-                                "/api/v1/admin/policy-rule-reviews", "/api/v1/admin/policy-rule-reviews/*",
-                                "/api/v1/admin/policy-rule-reviews/*/versions/*", "/api/v1/admin/policy-ai-runs", "/api/v1/admin/email-deliveries", "/api/v1/admin/email-deliveries/*/provider-status")
-                            .access(adminAccess.authorization())
+                        .requestMatchers("/api/v1/admin/**").access(adminAccess)
                         .anyRequest().denyAll())
-                .logout(logout -> logout.logoutUrl("/api/v1/logout").invalidateHttpSession(true)
-                        .deleteCookies("YPM_SESSION").logoutSuccessHandler((request, response, authentication) -> response.setStatus(204)));
+                .logout(logout -> logout.logoutUrl("/api/v1/logout")
+                        .logoutSuccessHandler(new HttpStatusReturningLogoutSuccessHandler(HttpStatus.NO_CONTENT)));
         if (registrations.iterator().hasNext()) {
-            var frontend = env.getProperty("APP_FRONTEND_URL", "http://127.0.0.1:3000");
             http.oauth2Login(login -> login.userInfoEndpoint(info -> info.userService(social))
                     .successHandler((request, response, authentication) -> {
                         var token = (OAuth2AuthenticationToken) authentication;
                         authorizedClients.removeAuthorizedClient(token.getAuthorizedClientRegistrationId(), token.getName());
-                        response.sendRedirect(frontend + "/login/complete");
-                    }).failureHandler((request, response, exception) -> response.sendRedirect(frontend + "/login?error=login")));
+                        response.sendRedirect(urls.frontend() + "/login/complete");
+                    }).failureHandler((request, response, exception) -> response.sendRedirect(urls.frontend() + "/login?error=login")));
         }
-        http.addFilterAfter(new MemberSessionFilter(identities), SecurityContextHolderFilter.class);
+        // 인증 정보를 불러오고 기본 보안 헤더 작성기가 응답을 감싼 뒤, CSRF·로그아웃 처리 전에 탈퇴한 회원의 세션을 끊는다.
+        http.addFilterAfter(new MemberSessionFilter(identities), HeaderWriterFilter.class);
         return http.build();
-    }
-
-    @Bean
-    UserDetailsService userDetailsService() {
-        // 비밀번호 로그인용 기본 사용자나 임시 계정을 생성하지 않는다.
-        return new InMemoryUserDetailsManager();
     }
 }

@@ -54,7 +54,7 @@ class ProductionRuntimeTest {
         // 저장된 인가 요청이 없는 콜백은 로그인 실패로 처리되어 공개 웹 주소의 로그인 화면으로 돌아간다.
         var failure = mvc.perform(get("/login/oauth2/code/kakao").param("code", "unknown").param("state", "unknown"))
                 .andExpect(status().is3xxRedirection()).andReturn().getResponse().getHeader("Location");
-        assertThat(failure).startsWith("https://policy.example.test/").endsWith("/login?error=login");
+        assertThat(failure).isEqualTo(urls.frontend() + "/login?error=login");
         for (String probe : new String[]{"/actuator/health/liveness", "/actuator/health/readiness"}) {
             mvc.perform(get(probe)).andExpect(status().isOk()).andExpect(jsonPath("$.status").value("UP"))
                     .andExpect(jsonPath("$.components").doesNotExist());

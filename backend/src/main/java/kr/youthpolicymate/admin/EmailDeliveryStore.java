@@ -11,6 +11,7 @@ import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.time.temporal.ChronoUnit;
+import java.util.Optional;
 import java.util.UUID;
 
 import static kr.youthpolicymate.admin.EmailDeliveries.*;
@@ -51,9 +52,9 @@ public class EmailDeliveryStore {
         return new Page(items, page, pageSize, total, (long) page * pageSize < total, since, checkedAt, sender.available(), summary);
     }
 
-    public UUID providerMessageId(UUID id) {
+    public Optional<UUID> providerMessageId(UUID id) {
         return jdbc.sql("SELECT provider_message_id FROM member_email_outbox WHERE id = :id AND provider_message_id IS NOT NULL")
-                .param("id", id).query(UUID.class).optional().orElse(null);
+                .param("id", id).query(UUID.class).optional();
     }
 
     private JdbcClient.StatementSpec filtered(String sql, Instant since, Instant now, State state, Kind kind) {

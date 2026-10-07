@@ -1,5 +1,6 @@
 package kr.youthpolicymate.policy.catalog;
 
+import kr.youthpolicymate.config.ApiException;
 import java.time.Instant;
 import java.util.List;
 import java.util.stream.Stream;
@@ -144,7 +145,7 @@ class MovingFeeRulesTest {
         assertThat(result.checks().subList(7, 10)).extracting(Check::providedValue).containsOnly("미응답");
         for (var answers : List.of(List.of(new Answer("income", "LOW")), List.of(new Answer("move", "SEOUL")),
                 List.of(new Answer("move", "COMPLETED"), new Answer("move", "OUTSIDE")))) {
-            assertThatThrownBy(() -> rule(MOVING_FEE).evaluate(1, new Request(1, version(MOVING_FEE), answers), NOW)).isInstanceOf(IllegalArgumentException.class);
+            assertThatThrownBy(() -> rule(MOVING_FEE).evaluate(1, new Request(1, version(MOVING_FEE), answers), NOW)).isInstanceOf(ApiException.class);
         }
     }
 

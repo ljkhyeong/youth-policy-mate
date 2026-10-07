@@ -1,5 +1,6 @@
 package kr.youthpolicymate.policy.catalog;
 
+import kr.youthpolicymate.config.ApiException;
 import kr.youthpolicymate.ingestion.OntongFixtures;
 import kr.youthpolicymate.ingestion.OntongPolicyCapture;
 import org.junit.jupiter.api.BeforeEach;
@@ -12,6 +13,7 @@ import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
+import org.springframework.http.HttpStatus;
 import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpMethod;
 import org.springframework.jdbc.core.simple.JdbcClient;
@@ -32,6 +34,7 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
+import static org.hamcrest.Matchers.containsString;
 import static org.assertj.core.api.Assertions.*;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
@@ -91,7 +94,7 @@ class PolicyCatalogTest {
         rules.publish(id, old.ruleVersion(), "rule-test");
         assertThat(questions.questions(EXAM_FEE).scope()).isEqualTo("2027년 검증용 공고");
         assertThatThrownBy(() -> questions.evaluate(EXAM_FEE, new PolicyQuestions.Request(1, old.ruleVersion(), List.of())))
-                .isInstanceOf(PolicyQuestionService.PolicyChangedException.class);
+                .isInstanceOf(ApiException.class).hasFieldOrPropertyWithValue("status", HttpStatus.CONFLICT);
         var birth = java.time.LocalDate.parse("1991-12-31");
         var prefill = questions.prefill(EXAM_FEE, new PolicyQuestions.PrefillRequest(1, next.ruleVersion(), birth));
         var evaluated = questions.evaluate(EXAM_FEE, new PolicyQuestions.Request(1, next.ruleVersion(), prefill.answers()));
@@ -131,7 +134,7 @@ class PolicyCatalogTest {
         assertThat(questions.questions(EXAM_FEE).available()).isFalse();
         assertThat(rules.status()).anySatisfy(state -> { assertThat(state.ruleVersion()).isEqualTo(current.ruleVersion()); assertThat(state.state()).contains("원문 변경"); });
         assertThatThrownBy(() -> questions.prefill(EXAM_FEE, new PolicyQuestions.PrefillRequest(1, current.ruleVersion(), java.time.LocalDate.parse("2000-01-01"))))
-                .isInstanceOf(PolicyQuestionService.PolicyChangedException.class);
+                .isInstanceOf(ApiException.class).hasFieldOrPropertyWithValue("status", HttpStatus.CONFLICT);
         assertThatThrownBy(() -> rules.publish(ids.getFirst(), current.ruleVersion(), "rule-test")).hasMessageContaining("원문이 바뀌");
         assertThat(store.list("", 1, 20, true, null, java.util.Set.of(), AT).total()).isZero();
     }
@@ -142,7 +145,7 @@ class PolicyCatalogTest {
         var path = "/api/v1/policies/" + EXAM_FEE + "/question-prefill";
         var body = mapper.createObjectNode().put("revision", 1).put("ruleVersion", version(EXAM_FEE)).put("birthDate", "1991-01-01");
         mvc.perform(post(path).contentType("application/json").content(mapper.writeValueAsString(body)))
-                .andExpect(status().isOk()).andExpect(header().string("Cache-Control", "no-store"))
+                .andExpect(status().isOk()).andExpect(header().string("Cache-Control", containsString("no-store")))
                 .andExpect(jsonPath("$.answers[0].value").value("ON_OR_AFTER_1991_01_01"));
         body.put("birthDate", "2027-01-01");
         mvc.perform(post(path).contentType("application/json").content(mapper.writeValueAsString(body))).andExpect(status().isBadRequest());
@@ -219,7 +222,7 @@ class PolicyCatalogTest {
         var current = questions.questions(K_PASS);
         assertThat(current.ruleVersion()).isEqualTo("k-pass-age-test-2026-09");
         assertThatThrownBy(() -> questions.evaluate(K_PASS, new PolicyQuestions.Request(1, original.versionAt(AT), List.of())))
-                .isInstanceOf(PolicyQuestionService.PolicyChangedException.class);
+                .isInstanceOf(ApiException.class).hasFieldOrPropertyWithValue("status", HttpStatus.CONFLICT);
         var answers = questions.prefill(K_PASS, new PolicyQuestions.PrefillRequest(1, current.ruleVersion(), birth)).answers();
         assertThat(questions.evaluate(K_PASS, new PolicyQuestions.Request(1, current.ruleVersion(), answers)).checks().getFirst().outcome())
                 .isEqualTo(kr.youthpolicymate.eligibility.ConditionOutcome.NOT_MET);
@@ -299,7 +302,7 @@ class PolicyCatalogTest {
                 .andExpect(jsonPath("$.revision").value(1))
                 .andExpect(jsonPath("$.content.applicationPeriod").value("20260701 ~ 20261117")).andReturn();
         assertThat(response.getResponse().getContentAsString()).doesNotContain("raw_policy", "PicNm", "apiKeyNm");
-        mvc.perform(get("/api/v1/policies/0")).andExpect(status().isNotFound()).andExpect(jsonPath("$.code").value("POLICY_NOT_FOUND"));
+        mvc.perform(get("/api/v1/policies/0")).andExpect(status().isNotFound()).andExpect(jsonPath("$.code").value("NOT_FOUND"));
     }
 
     @Test
@@ -350,6 +353,21 @@ class PolicyCatalogTest {
     }
 
     @Test
+    @DisplayName("저장소 장애는 조회·조건 비교·질문 모두 503 공통 오류로 숨기고 내부 오류는 입력 오류로 바꾸지 않는다")
+    void separatesStorageAndInternalFailures() throws Exception {
+        org.mockito.Mockito.doThrow(new org.springframework.dao.DataAccessResourceFailureException("비공개 DB 장애 내용"))
+                .when(jdbc).sql(org.mockito.ArgumentMatchers.anyString());
+        for (var request : List.of(get("/api/v1/policies"), get("/api/v1/policies/" + NUMBER), get("/api/v1/policies/" + EXAM_FEE + "/questions"),
+                post("/api/v1/policies/checks").contentType("application/json").content("{}"))) {
+            var body = mvc.perform(request).andExpect(status().isServiceUnavailable())
+                    .andExpect(jsonPath("$.code").value("SERVICE_UNAVAILABLE")).andReturn().getResponse().getContentAsString();
+            assertThat(body).doesNotContain("비공개 DB 장애 내용");
+        }
+        org.mockito.Mockito.doThrow(new IllegalArgumentException("내부 불변식")).when(jdbc).sql(org.mockito.ArgumentMatchers.anyString());
+        assertThatThrownBy(() -> mvc.perform(get("/api/v1/policies"))).hasRootCauseInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
     @DisplayName("공개 정책의 실제 생성 OpenAPI와 저장한 계약이 일치한다")
     void matchesGeneratedContract() throws Exception {
         var response = mvc.perform(get("/contract/policy")).andExpect(status().isOk()).andReturn();
@@ -390,17 +408,17 @@ class PolicyCatalogTest {
         importAt(normalized.number(), normalized.content(), normalized.rawPolicy(), AT, "reviewed", hash(WORK_STUDY));
         var path = "/api/v1/policies/" + WORK_STUDY;
         mvc.perform(get(path + "/questions")).andExpect(status().isOk())
-                .andExpect(header().string("Cache-Control", "no-store"))
+                .andExpect(header().string("Cache-Control", containsString("no-store")))
                 .andExpect(jsonPath("$.available").value(true)).andExpect(jsonPath("$.questions.length()").value(6));
         var request = new PolicyQuestions.Request(1, version(WORK_STUDY), List.of());
         mvc.perform(post(path + "/evaluation").contentType("application/json").content(mapper.writeValueAsString(request)))
-                .andExpect(status().isOk()).andExpect(header().string("Cache-Control", "no-store"))
+                .andExpect(status().isOk()).andExpect(header().string("Cache-Control", containsString("no-store")))
                 .andExpect(jsonPath("$.status").value("NEEDS_REVIEW"))
                 .andExpect(jsonPath("$.commonCriteriaStatus").value("NEEDS_REVIEW"));
         for (var stale : List.of(new PolicyQuestions.Request(2, version(WORK_STUDY), List.of()),
                 new PolicyQuestions.Request(1, "old-rules", List.of()))) {
             mvc.perform(post(path + "/evaluation").contentType("application/json").content(mapper.writeValueAsString(stale)))
-                    .andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("POLICY_CHANGED"));
+                    .andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("CONFLICT"));
         }
         importAt(normalized.number(), normalized.content(), normalized.rawPolicy(), AT.plusSeconds(1), "changed", "changed-content");
         mvc.perform(get(path + "/questions")).andExpect(status().isOk()).andExpect(jsonPath("$.available").value(false));
@@ -432,14 +450,14 @@ class PolicyCatalogTest {
         importAt(normalized.number(), normalized.content(), normalized.rawPolicy(), AT, "exam-reviewed", hash(EXAM_FEE));
         String path = "/api/v1/policies/" + EXAM_FEE;
         mvc.perform(get(path + "/questions")).andExpect(status().isOk())
-                .andExpect(header().string("Cache-Control", "no-store"))
+                .andExpect(header().string("Cache-Control", containsString("no-store")))
                 .andExpect(jsonPath("$.available").value(true)).andExpect(jsonPath("$.questions.length()").value(3))
                 .andExpect(jsonPath("$.questions[0].id").value("birthRange"));
         var input = new PolicyQuestions.Request(1, version(EXAM_FEE), List.of(
                 new PolicyQuestions.Answer("birthRange", "ON_OR_AFTER_1991_01_01"),
                 new PolicyQuestions.Answer("exam", "HRDK_TECHNICAL"), new PolicyQuestions.Answer("remainingUses", "ONE")));
         mvc.perform(post(path + "/evaluation").contentType("application/json").content(mapper.writeValueAsString(input)))
-                .andExpect(status().isOk()).andExpect(header().string("Cache-Control", "no-store"))
+                .andExpect(status().isOk()).andExpect(header().string("Cache-Control", containsString("no-store")))
                 .andExpect(jsonPath("$.policyNumber").value(EXAM_FEE))
                 .andExpect(jsonPath("$.ruleVersion").value(version(EXAM_FEE)))
                 .andExpect(jsonPath("$.commonCriteriaStatus").value("ELIGIBLE"))
@@ -592,7 +610,7 @@ class PolicyCatalogTest {
         var body = mapper.writeValueAsString(input);
         org.mockito.Mockito.when(clock.instant()).thenReturn(Instant.parse("2026-12-31T14:59:59Z"), Instant.parse("2026-12-31T15:00:00Z"));
         mvc.perform(post("/api/v1/policies/checks").contentType("application/json").content(body))
-                .andExpect(status().isOk()).andExpect(header().string("Cache-Control", "no-store"))
+                .andExpect(status().isOk()).andExpect(header().string("Cache-Control", containsString("no-store")))
                 .andExpect(jsonPath("$.evaluatedAt").value("2026-12-31T14:59:59Z"))
                 .andExpect(jsonPath("$.items[0].questionnaireAvailable").value(true))
                 .andExpect(jsonPath("$.items[0].checks[1].providedValue").value("서울특별시 강남구"))
@@ -617,7 +635,7 @@ class PolicyCatalogTest {
                 .andExpect(status().isOk()).andExpect(jsonPath("$.evaluatedAt").value(before.toString()))
                 .andExpect(jsonPath("$.ruleVersion").value("k-pass-2026-v1-2026-09"));
         mvc.perform(post(path + "/evaluation").contentType("application/json").content(body))
-                .andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("POLICY_CHANGED"));
+                .andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("CONFLICT"));
         mvc.perform(get(path + "/questions")).andExpect(status().isOk())
                 .andExpect(jsonPath("$.ruleVersion").value("k-pass-2026-v1-2026-10"))
                 .andExpect(jsonPath("$.scope").value(org.hamcrest.Matchers.startsWith("2026년 10월")));
@@ -630,7 +648,7 @@ class PolicyCatalogTest {
         saveReviewed(K_PASS, "K-패스", hash(K_PASS));
         for (String body : List.of("{}", "{\"birthDate\":null,\"district\":null,\"employmentStatus\":null}")) {
             mvc.perform(post("/api/v1/policies/checks").contentType("application/json").content(body))
-                    .andExpect(status().isOk()).andExpect(header().string("Cache-Control", "no-store"))
+                    .andExpect(status().isOk()).andExpect(header().string("Cache-Control", containsString("no-store")))
                     .andExpect(jsonPath("$.total").value(2))
                     .andExpect(jsonPath("$.items[*].checks[*].outcome").value(org.hamcrest.Matchers.everyItem(org.hamcrest.Matchers.is("UNKNOWN"))))
                     .andExpect(jsonPath("$.items[0].checks[0].providedValue").value("미입력"));
@@ -675,7 +693,7 @@ class PolicyCatalogTest {
         assertThat(checks.check(input, 1, "", PolicyCheckResponse.Sort.RECENT, null).items().getFirst().title()).isEqualTo("미검토 정책 1");
         var body = mapper.writeValueAsString(input);
         mvc.perform(post("/api/v1/policies/checks").param("q", " 응시료 ").param("sort", "RECENT").contentType("application/json").content(body))
-                .andExpect(status().isOk()).andExpect(header().string("Cache-Control", "no-store"))
+                .andExpect(status().isOk()).andExpect(header().string("Cache-Control", containsString("no-store")))
                 .andExpect(jsonPath("$.total").value(1)).andExpect(jsonPath("$.items[0].checks[0].outcome").value("NOT_MET"));
         mvc.perform(post("/api/v1/policies/checks").param("q", "가".repeat(81)).contentType("application/json").content(body)).andExpect(status().isBadRequest());
         mvc.perform(post("/api/v1/policies/checks").param("sort", "SCORE").contentType("application/json").content(body)).andExpect(status().isBadRequest());

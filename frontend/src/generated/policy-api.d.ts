@@ -1535,16 +1535,16 @@ export interface operations {
                     readonly [name: string]: unknown;
                 };
                 content: {
-                    readonly "*/*": components["schemas"]["PolicyApiError"];
+                    readonly "application/json": components["schemas"]["PolicyApiError"];
                 };
             };
-            /** @description 관리자 권한 없음 */
+            /** @description 권한 또는 CSRF 토큰 확인 필요 */
             readonly 403: {
                 headers: {
                     readonly [name: string]: unknown;
                 };
                 content: {
-                    readonly "*/*": components["schemas"]["PolicyApiError"];
+                    readonly "application/json": components["schemas"]["PolicyApiError"];
                 };
             };
             /** @description 수집 처리 또는 이력 조회 실패 */
@@ -1594,16 +1594,16 @@ export interface operations {
                     readonly [name: string]: unknown;
                 };
                 content: {
-                    readonly "*/*": components["schemas"]["PolicyApiError"];
+                    readonly "application/json": components["schemas"]["PolicyApiError"];
                 };
             };
-            /** @description 관리자 권한 없음 */
+            /** @description 권한 또는 CSRF 토큰 확인 필요 */
             readonly 403: {
                 headers: {
                     readonly [name: string]: unknown;
                 };
                 content: {
-                    readonly "*/*": components["schemas"]["PolicyApiError"];
+                    readonly "application/json": components["schemas"]["PolicyApiError"];
                 };
             };
             /** @description 수집 처리 또는 이력 조회 실패 */
@@ -1653,16 +1653,16 @@ export interface operations {
                     readonly [name: string]: unknown;
                 };
                 content: {
-                    readonly "*/*": components["schemas"]["PolicyApiError"];
+                    readonly "application/json": components["schemas"]["PolicyApiError"];
                 };
             };
-            /** @description 관리자 권한 없음 */
+            /** @description 권한 또는 CSRF 토큰 확인 필요 */
             readonly 403: {
                 headers: {
                     readonly [name: string]: unknown;
                 };
                 content: {
-                    readonly "*/*": components["schemas"]["PolicyApiError"];
+                    readonly "application/json": components["schemas"]["PolicyApiError"];
                 };
             };
             /** @description 수집 처리 또는 이력 조회 실패 */
@@ -1712,16 +1712,16 @@ export interface operations {
                     readonly [name: string]: unknown;
                 };
                 content: {
-                    readonly "*/*": components["schemas"]["PolicyApiError"];
+                    readonly "application/json": components["schemas"]["PolicyApiError"];
                 };
             };
-            /** @description 관리자 권한 없음 */
+            /** @description 권한 또는 CSRF 토큰 확인 필요 */
             readonly 403: {
                 headers: {
                     readonly [name: string]: unknown;
                 };
                 content: {
-                    readonly "*/*": components["schemas"]["PolicyApiError"];
+                    readonly "application/json": components["schemas"]["PolicyApiError"];
                 };
             };
             /** @description 현재 실패 상태인 항목 없음 */
@@ -1747,7 +1747,10 @@ export interface operations {
     readonly replayCollectionItem: {
         readonly parameters: {
             readonly query?: never;
-            readonly header?: never;
+            readonly header: {
+                /** @description GET /api/v1/session에서 받은 csrfToken */
+                readonly "X-CSRF-TOKEN": string;
+            };
             readonly path: {
                 readonly runId: string;
                 readonly itemIndex: number;
@@ -1784,16 +1787,16 @@ export interface operations {
                     readonly [name: string]: unknown;
                 };
                 content: {
-                    readonly "*/*": components["schemas"]["PolicyApiError"];
+                    readonly "application/json": components["schemas"]["PolicyApiError"];
                 };
             };
-            /** @description 관리자 권한 없음 */
+            /** @description 권한 또는 CSRF 토큰 확인 필요 */
             readonly 403: {
                 headers: {
                     readonly [name: string]: unknown;
                 };
                 content: {
-                    readonly "*/*": components["schemas"]["PolicyApiError"];
+                    readonly "application/json": components["schemas"]["PolicyApiError"];
                 };
             };
             /** @description 처리 상태 변경 또는 저장 원본 재처리 불가 */
@@ -1855,16 +1858,16 @@ export interface operations {
                     readonly [name: string]: unknown;
                 };
                 content: {
-                    readonly "*/*": components["schemas"]["PolicyApiError"];
+                    readonly "application/json": components["schemas"]["PolicyApiError"];
                 };
             };
-            /** @description 관리자 권한 없음 */
+            /** @description 권한 또는 CSRF 토큰 확인 필요 */
             readonly 403: {
                 headers: {
                     readonly [name: string]: unknown;
                 };
                 content: {
-                    readonly "*/*": components["schemas"]["PolicyApiError"];
+                    readonly "application/json": components["schemas"]["PolicyApiError"];
                 };
             };
             /** @description 발송 현황 조회 실패 */
@@ -1916,7 +1919,7 @@ export interface operations {
                     readonly "application/json": components["schemas"]["PolicyApiError"];
                 };
             };
-            /** @description 관리자 권한 없음 */
+            /** @description 권한 또는 CSRF 토큰 확인 필요 */
             readonly 403: {
                 headers: {
                     readonly [name: string]: unknown;
@@ -1983,16 +1986,16 @@ export interface operations {
                     readonly [name: string]: unknown;
                 };
                 content: {
-                    readonly "*/*": components["schemas"]["PolicyApiError"];
+                    readonly "application/json": components["schemas"]["PolicyApiError"];
                 };
             };
-            /** @description 관리자 권한 없음 */
+            /** @description 권한 또는 CSRF 토큰 확인 필요 */
             readonly 403: {
                 headers: {
                     readonly [name: string]: unknown;
                 };
                 content: {
-                    readonly "*/*": components["schemas"]["PolicyApiError"];
+                    readonly "application/json": components["schemas"]["PolicyApiError"];
                 };
             };
             /** @description 조회 실패 */
@@ -2042,16 +2045,16 @@ export interface operations {
                     readonly [name: string]: unknown;
                 };
                 content: {
-                    readonly "*/*": components["schemas"]["PolicyApiError"];
+                    readonly "application/json": components["schemas"]["PolicyApiError"];
                 };
             };
-            /** @description 관리자 권한 없음 */
+            /** @description 권한 또는 CSRF 토큰 확인 필요 */
             readonly 403: {
                 headers: {
                     readonly [name: string]: unknown;
                 };
                 content: {
-                    readonly "*/*": components["schemas"]["PolicyApiError"];
+                    readonly "application/json": components["schemas"]["PolicyApiError"];
                 };
             };
             /** @description 보정 처리 또는 조회 실패 */
@@ -2068,7 +2071,10 @@ export interface operations {
     readonly createPolicyCorrection: {
         readonly parameters: {
             readonly query?: never;
-            readonly header?: never;
+            readonly header: {
+                /** @description GET /api/v1/session에서 받은 csrfToken */
+                readonly "X-CSRF-TOKEN": string;
+            };
             readonly path?: never;
             readonly cookie?: never;
         };
@@ -2102,16 +2108,16 @@ export interface operations {
                     readonly [name: string]: unknown;
                 };
                 content: {
-                    readonly "*/*": components["schemas"]["PolicyApiError"];
+                    readonly "application/json": components["schemas"]["PolicyApiError"];
                 };
             };
-            /** @description 관리자 권한 없음 */
+            /** @description 권한 또는 CSRF 토큰 확인 필요 */
             readonly 403: {
                 headers: {
                     readonly [name: string]: unknown;
                 };
                 content: {
-                    readonly "*/*": components["schemas"]["PolicyApiError"];
+                    readonly "application/json": components["schemas"]["PolicyApiError"];
                 };
             };
             /** @description 개정 변경·진행 중 보정·요청 ID 충돌 */
@@ -2169,16 +2175,16 @@ export interface operations {
                     readonly [name: string]: unknown;
                 };
                 content: {
-                    readonly "*/*": components["schemas"]["PolicyApiError"];
+                    readonly "application/json": components["schemas"]["PolicyApiError"];
                 };
             };
-            /** @description 관리자 권한 없음 */
+            /** @description 권한 또는 CSRF 토큰 확인 필요 */
             readonly 403: {
                 headers: {
                     readonly [name: string]: unknown;
                 };
                 content: {
-                    readonly "*/*": components["schemas"]["PolicyApiError"];
+                    readonly "application/json": components["schemas"]["PolicyApiError"];
                 };
             };
             /** @description 공개 정책 없음 */
@@ -2204,7 +2210,10 @@ export interface operations {
     readonly resolvePolicyCorrection: {
         readonly parameters: {
             readonly query?: never;
-            readonly header?: never;
+            readonly header: {
+                /** @description GET /api/v1/session에서 받은 csrfToken */
+                readonly "X-CSRF-TOKEN": string;
+            };
             readonly path: {
                 readonly id: string;
             };
@@ -2240,16 +2249,16 @@ export interface operations {
                     readonly [name: string]: unknown;
                 };
                 content: {
-                    readonly "*/*": components["schemas"]["PolicyApiError"];
+                    readonly "application/json": components["schemas"]["PolicyApiError"];
                 };
             };
-            /** @description 관리자 권한 없음 */
+            /** @description 권한 또는 CSRF 토큰 확인 필요 */
             readonly 403: {
                 headers: {
                     readonly [name: string]: unknown;
                 };
                 content: {
-                    readonly "*/*": components["schemas"]["PolicyApiError"];
+                    readonly "application/json": components["schemas"]["PolicyApiError"];
                 };
             };
             /** @description 개정·검토 원본 변경 또는 요청 ID 충돌 */
@@ -2310,16 +2319,16 @@ export interface operations {
                     readonly [name: string]: unknown;
                 };
                 content: {
-                    readonly "*/*": components["schemas"]["PolicyApiError"];
+                    readonly "application/json": components["schemas"]["PolicyApiError"];
                 };
             };
-            /** @description 관리자 권한 없음 */
+            /** @description 권한 또는 CSRF 토큰 확인 필요 */
             readonly 403: {
                 headers: {
                     readonly [name: string]: unknown;
                 };
                 content: {
-                    readonly "*/*": components["schemas"]["PolicyApiError"];
+                    readonly "application/json": components["schemas"]["PolicyApiError"];
                 };
             };
             /** @description 조회 실패 */
@@ -2368,16 +2377,16 @@ export interface operations {
                     readonly [name: string]: unknown;
                 };
                 content: {
-                    readonly "*/*": components["schemas"]["PolicyApiError"];
+                    readonly "application/json": components["schemas"]["PolicyApiError"];
                 };
             };
-            /** @description 관리자 권한 없음 */
+            /** @description 권한 또는 CSRF 토큰 확인 필요 */
             readonly 403: {
                 headers: {
                     readonly [name: string]: unknown;
                 };
                 content: {
-                    readonly "*/*": components["schemas"]["PolicyApiError"];
+                    readonly "application/json": components["schemas"]["PolicyApiError"];
                 };
             };
             /** @description 정책 없음 */
@@ -2403,7 +2412,10 @@ export interface operations {
     readonly createPolicyRuleDraft: {
         readonly parameters: {
             readonly query?: never;
-            readonly header?: never;
+            readonly header: {
+                /** @description GET /api/v1/session에서 받은 csrfToken */
+                readonly "X-CSRF-TOKEN": string;
+            };
             readonly path: {
                 readonly number: string;
             };
@@ -2439,16 +2451,16 @@ export interface operations {
                     readonly [name: string]: unknown;
                 };
                 content: {
-                    readonly "*/*": components["schemas"]["PolicyApiError"];
+                    readonly "application/json": components["schemas"]["PolicyApiError"];
                 };
             };
-            /** @description 관리자 권한 없음 */
+            /** @description 권한 또는 CSRF 토큰 확인 필요 */
             readonly 403: {
                 headers: {
                     readonly [name: string]: unknown;
                 };
                 content: {
-                    readonly "*/*": components["schemas"]["PolicyApiError"];
+                    readonly "application/json": components["schemas"]["PolicyApiError"];
                 };
             };
             /** @description 정책·규칙 없음 */
@@ -2516,16 +2528,16 @@ export interface operations {
                     readonly [name: string]: unknown;
                 };
                 content: {
-                    readonly "*/*": components["schemas"]["PolicyApiError"];
+                    readonly "application/json": components["schemas"]["PolicyApiError"];
                 };
             };
-            /** @description 관리자 권한 없음 */
+            /** @description 권한 또는 CSRF 토큰 확인 필요 */
             readonly 403: {
                 headers: {
                     readonly [name: string]: unknown;
                 };
                 content: {
-                    readonly "*/*": components["schemas"]["PolicyApiError"];
+                    readonly "application/json": components["schemas"]["PolicyApiError"];
                 };
             };
             /** @description 정책·규칙 없음 */
@@ -2560,7 +2572,10 @@ export interface operations {
     readonly publishPolicyRuleDraft: {
         readonly parameters: {
             readonly query?: never;
-            readonly header?: never;
+            readonly header: {
+                /** @description GET /api/v1/session에서 받은 csrfToken */
+                readonly "X-CSRF-TOKEN": string;
+            };
             readonly path: {
                 readonly number: string;
                 readonly id: string;
@@ -2597,16 +2612,16 @@ export interface operations {
                     readonly [name: string]: unknown;
                 };
                 content: {
-                    readonly "*/*": components["schemas"]["PolicyApiError"];
+                    readonly "application/json": components["schemas"]["PolicyApiError"];
                 };
             };
-            /** @description 관리자 권한 없음 */
+            /** @description 권한 또는 CSRF 토큰 확인 필요 */
             readonly 403: {
                 headers: {
                     readonly [name: string]: unknown;
                 };
                 content: {
-                    readonly "*/*": components["schemas"]["PolicyApiError"];
+                    readonly "application/json": components["schemas"]["PolicyApiError"];
                 };
             };
             /** @description 정책·규칙 없음 */
@@ -2728,14 +2743,18 @@ export interface operations {
                 headers: {
                     readonly [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    readonly "application/json": components["schemas"]["PolicyApiError"];
+                };
             };
             /** @description 권한 또는 CSRF 토큰 확인 필요 */
             readonly 403: {
                 headers: {
                     readonly [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    readonly "application/json": components["schemas"]["PolicyApiError"];
+                };
             };
         };
     };
@@ -2763,14 +2782,18 @@ export interface operations {
                 headers: {
                     readonly [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    readonly "application/json": components["schemas"]["PolicyApiError"];
+                };
             };
             /** @description 권한 또는 CSRF 토큰 확인 필요 */
             readonly 403: {
                 headers: {
                     readonly [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    readonly "application/json": components["schemas"]["PolicyApiError"];
+                };
             };
             /** @description 저장소 오류로 탈퇴 미완료 */
             readonly 503: {
@@ -2804,14 +2827,18 @@ export interface operations {
                 headers: {
                     readonly [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    readonly "application/json": components["schemas"]["PolicyApiError"];
+                };
             };
             /** @description 권한 또는 CSRF 토큰 확인 필요 */
             readonly 403: {
                 headers: {
                     readonly [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    readonly "application/json": components["schemas"]["PolicyApiError"];
+                };
             };
         };
     };
@@ -2843,14 +2870,18 @@ export interface operations {
                 headers: {
                     readonly [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    readonly "application/json": components["schemas"]["PolicyApiError"];
+                };
             };
             /** @description 권한 또는 CSRF 토큰 확인 필요 */
             readonly 403: {
                 headers: {
                     readonly [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    readonly "application/json": components["schemas"]["PolicyApiError"];
+                };
             };
         };
     };
@@ -2878,14 +2909,18 @@ export interface operations {
                 headers: {
                     readonly [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    readonly "application/json": components["schemas"]["PolicyApiError"];
+                };
             };
             /** @description 권한 또는 CSRF 토큰 확인 필요 */
             readonly 403: {
                 headers: {
                     readonly [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    readonly "application/json": components["schemas"]["PolicyApiError"];
+                };
             };
         };
     };
@@ -2921,14 +2956,18 @@ export interface operations {
                 headers: {
                     readonly [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    readonly "application/json": components["schemas"]["PolicyApiError"];
+                };
             };
             /** @description 권한 또는 CSRF 토큰 확인 필요 */
             readonly 403: {
                 headers: {
                     readonly [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    readonly "application/json": components["schemas"]["PolicyApiError"];
+                };
             };
             /** @description 이메일 확인 필요 */
             readonly 409: {
@@ -2996,14 +3035,18 @@ export interface operations {
                 headers: {
                     readonly [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    readonly "application/json": components["schemas"]["PolicyApiError"];
+                };
             };
             /** @description 권한 또는 CSRF 토큰 확인 필요 */
             readonly 403: {
                 headers: {
                     readonly [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    readonly "application/json": components["schemas"]["PolicyApiError"];
+                };
             };
             /** @description 이메일 확인 필요 */
             readonly 409: {
@@ -3067,14 +3110,18 @@ export interface operations {
                 headers: {
                     readonly [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    readonly "application/json": components["schemas"]["PolicyApiError"];
+                };
             };
             /** @description 권한 또는 CSRF 토큰 확인 필요 */
             readonly 403: {
                 headers: {
                     readonly [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    readonly "application/json": components["schemas"]["PolicyApiError"];
+                };
             };
             /** @description 이메일 확인 필요 */
             readonly 409: {
@@ -3142,14 +3189,18 @@ export interface operations {
                 headers: {
                     readonly [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    readonly "application/json": components["schemas"]["PolicyApiError"];
+                };
             };
             /** @description 권한 또는 CSRF 토큰 확인 필요 */
             readonly 403: {
                 headers: {
                     readonly [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    readonly "application/json": components["schemas"]["PolicyApiError"];
+                };
             };
             /** @description 이메일 확인 필요 */
             readonly 409: {
@@ -3217,14 +3268,18 @@ export interface operations {
                 headers: {
                     readonly [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    readonly "application/json": components["schemas"]["PolicyApiError"];
+                };
             };
             /** @description 권한 또는 CSRF 토큰 확인 필요 */
             readonly 403: {
                 headers: {
                     readonly [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    readonly "application/json": components["schemas"]["PolicyApiError"];
+                };
             };
             /** @description 이메일 확인 필요 */
             readonly 409: {
@@ -3282,14 +3337,18 @@ export interface operations {
                 headers: {
                     readonly [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    readonly "application/json": components["schemas"]["PolicyApiError"];
+                };
             };
             /** @description 권한 또는 CSRF 토큰 확인 필요 */
             readonly 403: {
                 headers: {
                     readonly [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    readonly "application/json": components["schemas"]["PolicyApiError"];
+                };
             };
         };
     };
@@ -3317,14 +3376,18 @@ export interface operations {
                 headers: {
                     readonly [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    readonly "application/json": components["schemas"]["PolicyApiError"];
+                };
             };
             /** @description 권한 또는 CSRF 토큰 확인 필요 */
             readonly 403: {
                 headers: {
                     readonly [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    readonly "application/json": components["schemas"]["PolicyApiError"];
+                };
             };
         };
     };
@@ -3354,14 +3417,18 @@ export interface operations {
                 headers: {
                     readonly [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    readonly "application/json": components["schemas"]["PolicyApiError"];
+                };
             };
             /** @description 권한 또는 CSRF 토큰 확인 필요 */
             readonly 403: {
                 headers: {
                     readonly [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    readonly "application/json": components["schemas"]["PolicyApiError"];
+                };
             };
         };
     };
@@ -3388,14 +3455,18 @@ export interface operations {
                 headers: {
                     readonly [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    readonly "application/json": components["schemas"]["PolicyApiError"];
+                };
             };
             /** @description 권한 또는 CSRF 토큰 확인 필요 */
             readonly 403: {
                 headers: {
                     readonly [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    readonly "application/json": components["schemas"]["PolicyApiError"];
+                };
             };
         };
     };
@@ -3425,14 +3496,18 @@ export interface operations {
                 headers: {
                     readonly [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    readonly "application/json": components["schemas"]["PolicyApiError"];
+                };
             };
             /** @description 권한 또는 CSRF 토큰 확인 필요 */
             readonly 403: {
                 headers: {
                     readonly [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    readonly "application/json": components["schemas"]["PolicyApiError"];
+                };
             };
         };
     };
@@ -3462,14 +3537,18 @@ export interface operations {
                 headers: {
                     readonly [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    readonly "application/json": components["schemas"]["PolicyApiError"];
+                };
             };
             /** @description 권한 또는 CSRF 토큰 확인 필요 */
             readonly 403: {
                 headers: {
                     readonly [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    readonly "application/json": components["schemas"]["PolicyApiError"];
+                };
             };
         };
     };
@@ -3498,14 +3577,18 @@ export interface operations {
                 headers: {
                     readonly [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    readonly "application/json": components["schemas"]["PolicyApiError"];
+                };
             };
             /** @description 권한 또는 CSRF 토큰 확인 필요 */
             readonly 403: {
                 headers: {
                     readonly [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    readonly "application/json": components["schemas"]["PolicyApiError"];
+                };
             };
         };
     };

@@ -4,6 +4,7 @@ import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import kr.youthpolicymate.policy.catalog.PolicyApiError;
 import org.springframework.dao.DataAccessException;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.oauth2.client.authentication.OAuth2AuthenticationToken;
@@ -33,10 +34,7 @@ public class MemberSessionFilter extends OncePerRequestFilter {
             try { exists = identities.exists(UUID.fromString(token.getName())); }
             catch (IllegalArgumentException invalid) { exists = false; }
             catch (DataAccessException unavailable) {
-                response.setStatus(503);
-                response.setHeader("Cache-Control", "no-store");
-                response.setContentType("application/json;charset=UTF-8");
-                response.getWriter().write("{\"code\":\"MEMBER_UNAVAILABLE\",\"message\":\"로그인 상태를 잠시 확인할 수 없습니다.\"}");
+                new PolicyApiError("MEMBER_UNAVAILABLE", "로그인 상태를 잠시 확인할 수 없습니다.").writeTo(response, 503);
                 return;
             }
             if (!exists) logout.logout(request, response, authentication);

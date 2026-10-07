@@ -1,5 +1,6 @@
 package kr.youthpolicymate.policy.catalog;
 
+import kr.youthpolicymate.config.ApiException;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import java.time.Instant;
@@ -98,7 +99,7 @@ class YouthHousingSavingsRulesTest {
         for (var answers : List.of(List.of(new Answer("monthlyRides", "ZERO")), List.of(new Answer("incomeAmount", "ZERO")),
                 List.of(new Answer("homeOwnership", "NO_HOME"), new Answer("homeOwnership", "OWNS_HOME")))) {
             assertThatThrownBy(() -> rule(YOUTH_HOUSING_SAVINGS).evaluate(1, new Request(1, version(YOUTH_HOUSING_SAVINGS), answers), NOW))
-                    .isInstanceOf(IllegalArgumentException.class);
+                    .isInstanceOf(ApiException.class);
         }
     }
 

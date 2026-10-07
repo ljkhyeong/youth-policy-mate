@@ -28,6 +28,7 @@ import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
 
+import static org.hamcrest.Matchers.containsString;
 import static kr.youthpolicymate.admin.AdminTestSupport.*;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -69,7 +70,7 @@ class PolicyCorrectionApiTest {
         assertThat(count("policy_source_snapshots")).isOne();
         assertThat(jdbc.sql("SELECT raw_policy->>'plcyNm' FROM policy_source_snapshots").query(String.class).single()).isEqualTo("원본 제목");
         mvc.perform(get(ROOT + "/policies/123").with(social(ADMIN))).andExpect(status().isOk())
-                .andExpect(header().string("Cache-Control", "no-store"))
+                .andExpect(header().string("Cache-Control", containsString("no-store")))
                 .andExpect(jsonPath("$.correctionId").value(correction.path("id").asString()))
                 .andExpect(jsonPath("$.previousRevision.content.title").value("원본 제목"));
         mvc.perform(post(ROOT).with(social(ADMIN)).with(csrf()).contentType(MediaType.APPLICATION_JSON)
@@ -241,7 +242,7 @@ class PolicyCorrectionApiTest {
     }
     private JsonNode postJson(String path, String body) throws Exception {
         return mapper.readTree(mvc.perform(post(path).with(social(ADMIN)).with(csrf()).contentType(MediaType.APPLICATION_JSON).content(body))
-                .andExpect(status().isOk()).andExpect(header().string("Cache-Control", "no-store")).andReturn().getResponse().getContentAsString());
+                .andExpect(status().isOk()).andExpect(header().string("Cache-Control", containsString("no-store"))).andReturn().getResponse().getContentAsString());
     }
     private JsonNode active() throws Exception {
         var items = mapper.readTree(mvc.perform(get(ROOT).with(social(ADMIN))).andExpect(status().isOk()).andReturn().getResponse().getContentAsString()).path("items");

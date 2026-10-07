@@ -26,6 +26,7 @@ import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
 
+import static org.hamcrest.Matchers.containsString;
 import static kr.youthpolicymate.admin.AdminTestSupport.*;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -60,7 +61,7 @@ class CollectionReplayApiTest {
         var raw = store.page(run).rawBody();
         var body = request(UUID.randomUUID(), "저장 오류 조치 후 재처리");
         var response = mvc.perform(post(path(run)).with(social(ADMIN)).with(csrf()).contentType(MediaType.APPLICATION_JSON).content(body))
-                .andExpect(status().isOk()).andExpect(header().string("Cache-Control", "no-store"))
+                .andExpect(status().isOk()).andExpect(header().string("Cache-Control", containsString("no-store")))
                 .andExpect(jsonPath("$.outcome").value("APPLIED"))
                 .andExpect(jsonPath("$.policyRevision").value(1)).andExpect(jsonPath("$.attempt").value(2))
                 .andExpect(jsonPath("$.actorId").value(ADMIN)).andReturn().getResponse().getContentAsString();
@@ -77,7 +78,7 @@ class CollectionReplayApiTest {
         assertThat(jdbc.sql("SELECT sum(attempts) FROM ontong_collection_items").query(Long.class).single()).isEqualTo(3);
         mvc.perform(post(path(run)).with(social(ADMIN)).with(csrf()).contentType(MediaType.APPLICATION_JSON)
                         .content(request(UUID.randomUUID(), "새 요청")))
-                .andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("COLLECTION_REPLAY_CHANGED"));
+                .andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("CONFLICT"));
     }
 
     @Test
@@ -115,7 +116,7 @@ class CollectionReplayApiTest {
         jdbc.sql("ALTER TABLE admin_collection_replays ADD CONSTRAINT reject_replay CHECK (reason <> '롤백 검증')").update();
         try {
             mvc.perform(post(path(run)).with(social(ADMIN)).with(csrf()).contentType(MediaType.APPLICATION_JSON).content(body))
-                    .andExpect(status().isServiceUnavailable()).andExpect(jsonPath("$.code").value("COLLECTION_UNAVAILABLE"));
+                    .andExpect(status().isServiceUnavailable()).andExpect(jsonPath("$.code").value("SERVICE_UNAVAILABLE"));
             assertThat(jdbc.sql("SELECT count(*) FROM policies").query(Long.class).single()).isZero();
             assertThat(jdbc.sql("SELECT outcome || ' ' || attempts FROM ontong_collection_items WHERE run_id = :run AND item_index = 0")
                     .param("run", run).query(String.class).single()).isEqualTo("STORE_FAILED 1");

@@ -4,6 +4,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import kr.youthpolicymate.config.ApiException;
 import kr.youthpolicymate.policy.RecruitmentStatus;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
@@ -18,6 +19,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @Profile("!preview")
 @RequestMapping("/api/v1/policies")
+@ApiResponse(responseCode = "200")
 @ApiResponse(responseCode = "503", description = "정책 저장소 조회 실패", content = @Content(schema = @Schema(implementation = PolicyApiError.class)))
 public class PolicyCatalogController {
     private final PolicyCatalogStore store;
@@ -29,20 +31,18 @@ public class PolicyCatalogController {
 
     @org.springframework.web.bind.annotation.PostMapping(value = "/checks", consumes = "application/json")
     @Operation(operationId = "checkPolicyConditions", summary = "기본 조건으로 연령 비교·정책 검색·접수 상태 필터·정렬. 조건은 저장하지 않음")
-    @ApiResponse(responseCode = "200", content = @Content(schema = @Schema(implementation = PolicyCheckResponse.class)))
     @ApiResponse(responseCode = "400", content = @Content(schema = @Schema(implementation = PolicyApiError.class)))
-    public org.springframework.http.ResponseEntity<PolicyCheckResponse> check(
+    public PolicyCheckResponse check(
             @org.springframework.web.bind.annotation.RequestBody @jakarta.validation.Valid BasicConditions input,
             @RequestParam(defaultValue = "1") @Min(1) @Max(1000) int page,
             @RequestParam(defaultValue = "") @Size(max = 80) String q,
             @RequestParam(defaultValue = "AGE_MATCH") PolicyCheckResponse.Sort sort,
             @RequestParam(required = false) RecruitmentStatus recruitmentStatus) {
-        return org.springframework.http.ResponseEntity.ok().cacheControl(org.springframework.http.CacheControl.noStore()).body(checks.check(input, page, q.strip(), sort, recruitmentStatus));
+        return checks.check(input, page, q.strip(), sort, recruitmentStatus);
     }
 
     @GetMapping
     @Operation(operationId = "listPolicies", summary = "정책 검색·분야(여러 개는 하나라도 해당)·질문 제공 여부·접수 상태 필터. 접수 중인 정책을 먼저, 마감 임박순으로 정렬")
-    @ApiResponse(responseCode = "200", content = @Content(schema = @Schema(implementation = PolicyListResponse.class)))
     @ApiResponse(responseCode = "400", content = @Content(schema = @Schema(implementation = PolicyApiError.class)))
     public PolicyListResponse list(@RequestParam(defaultValue = "") @Size(max = 80) String q,
                                    @RequestParam(defaultValue = "1") @Min(1) @Max(1000) int page,
@@ -56,17 +56,15 @@ public class PolicyCatalogController {
 
     @GetMapping("/category-counts")
     @Operation(operationId = "countPoliciesByCategory", summary = "분야별 공개 정책 수. 목록의 분야 필터와 같은 기준")
-    @ApiResponse(responseCode = "200", content = @Content(schema = @Schema(implementation = PolicyCategoryCounts.class)))
     public PolicyCategoryCounts categoryCounts() {
         return store.categoryCounts();
     }
 
     @GetMapping("/{policyNumber}")
     @Operation(operationId = "getPolicy", summary = "정책 상세와 원문 출처 조회")
-    @ApiResponse(responseCode = "200", content = @Content(schema = @Schema(implementation = PolicyDetailResponse.class)))
     @ApiResponse(responseCode = "404", content = @Content(schema = @Schema(implementation = PolicyApiError.class)))
     public PolicyDetailResponse detail(@PathVariable String policyNumber) {
-        if (!policyNumber.matches("[0-9]{1,100}")) throw new PolicyNotFoundException();
-        return store.find(policyNumber).orElseThrow(PolicyNotFoundException::new);
+        if (!policyNumber.matches("[0-9]{1,100}")) throw ApiException.notFound();
+        return store.find(policyNumber).orElseThrow(ApiException::notFound);
     }
 }

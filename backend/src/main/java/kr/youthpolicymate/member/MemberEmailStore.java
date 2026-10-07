@@ -1,7 +1,9 @@
 package kr.youthpolicymate.member;
 
 import io.swagger.v3.oas.annotations.media.Schema;
+import kr.youthpolicymate.config.ApiException;
 import org.springframework.context.annotation.Profile;
+import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -25,7 +27,7 @@ public class MemberEmailStore {
     private void lock(UUID member) { MemberIdentityStore.lock(jdbc, member); }
     // 발송을 켜면 암호화 키가 있다는 것을 EmailProperties 바인딩 검증이 보장한다.
     private boolean available() { return sender.available(); }
-    private void requireAvailable() { if (!available()) throw new EmailException(503, "EMAIL_UNAVAILABLE", "이메일 발송 설정을 준비하고 있어요."); }
+    private void requireAvailable() { if (!available()) throw new ApiException(HttpStatus.SERVICE_UNAVAILABLE, "EMAIL_UNAVAILABLE", "이메일 발송 설정을 준비하고 있어요."); }
     static String context(UUID member, UUID version, String purpose) { return member + ":" + version + ":" + purpose; }
     @Transactional
     public Settings settings(UUID member) {
@@ -52,7 +54,7 @@ public class MemberEmailStore {
                 .param("member", member).param("since", at(now.minusSeconds(3600)))
                 .query(OffsetDateTime.class).list();
         if (recent.size() >= 3 || (!recent.isEmpty() && now.isBefore(recent.getFirst().toInstant().plusSeconds(60))))
-            throw new EmailException(429, "EMAIL_RATE_LIMITED", "확인 메일은 60초 간격, 시간당 3회까지 요청할 수 있어요.");
+            throw new ApiException(HttpStatus.TOO_MANY_REQUESTS, "EMAIL_RATE_LIMITED", "확인 메일은 60초 간격, 시간당 3회까지 요청할 수 있어요.");
         cancel(member);
         UUID version = UUID.randomUUID(); String code = crypto.code();
         Instant expires = now.plusSeconds(600);
@@ -112,7 +114,7 @@ public class MemberEmailStore {
                     """).param("member", member).update();
             int changed = jdbc.sql("UPDATE member_email_settings SET enabled = true, consented_at = COALESCE(consented_at,:now) WHERE member_id = :member AND verified_at IS NOT NULL")
                     .param("member", member).param("now", at(clock.instant())).update();
-            if (changed == 0) throw new EmailException(409, "EMAIL_NOT_VERIFIED", "먼저 이메일 주소를 확인해주세요.");
+            if (changed == 0) throw new ApiException(HttpStatus.CONFLICT, "EMAIL_NOT_VERIFIED", "먼저 이메일 주소를 확인해주세요.");
         } else {
             jdbc.sql("UPDATE member_email_settings SET enabled = false, consented_at = NULL WHERE member_id = :member").param("member", member).update();
             jdbc.sql("UPDATE member_email_outbox SET state = 'CANCELED' WHERE member_id = :member AND kind = 'POLICY' AND state = 'PENDING'").param("member", member).update();
@@ -154,8 +156,4 @@ public class MemberEmailStore {
                            boolean verified, boolean enabled, @Schema(types = {"string", "null"}, format = "date-time") Instant verificationExpiresAt,
                            @Schema(types = {"string", "null"}, allowableValues = {"PENDING", "SENDING", "SENT", "FAILED", "UNKNOWN", "CANCELED", "DELIVERED", "DELAYED", "BOUNCED", "COMPLAINED", "SUPPRESSED"}) String verificationDelivery,
                            @Schema(types = {"string", "null"}, allowableValues = {"BOUNCED", "COMPLAINED", "SUPPRESSED"}) String deliveryIssue) {}
-    public static class EmailException extends RuntimeException {
-        final int status; final String code;
-        EmailException(int status, String code, String message) { super(message); this.status = status; this.code = code; }
-    }
 }

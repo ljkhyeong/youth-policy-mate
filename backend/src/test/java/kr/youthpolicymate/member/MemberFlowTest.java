@@ -1,5 +1,6 @@
 package kr.youthpolicymate.member;
 
+import kr.youthpolicymate.config.ApiException;
 import kr.youthpolicymate.ingestion.OntongFixtures;
 import kr.youthpolicymate.ingestion.OntongPolicyCapture;
 import kr.youthpolicymate.policy.catalog.PolicyCatalogStore;
@@ -32,6 +33,7 @@ import java.util.UUID;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
+import static org.hamcrest.Matchers.containsString;
 import static org.assertj.core.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
@@ -104,7 +106,7 @@ class MemberFlowTest {
         var notifications = notifications(first).items();
         mvc.perform(get("/api/v1/email-unsubscribe/" + token)).andExpect(status().isSeeOther())
                 .andExpect(header().string("Location", "http://127.0.0.1:3000/email-unsubscribe#" + token))
-                .andExpect(header().string("Cache-Control", "no-store"));
+                .andExpect(header().string("Cache-Control", containsString("no-store")));
         assertThat(emails.settings(first).enabled()).isTrue();
         assertThat(mailState(pending)).isEqualTo("PENDING");
         mvc.perform(post("/api/v1/email-unsubscribe/" + token).contentType("application/json").content("{}"))
@@ -117,7 +119,7 @@ class MemberFlowTest {
         when(emailSender.available()).thenReturn(false);
         mvc.perform(unsubscribe(token).with(oauth2Login().oauth2User(user(second))))
                 .andExpect(status().isOk()).andExpect(content().string(""))
-                .andExpect(header().string("Cache-Control", "no-store"));
+                .andExpect(header().string("Cache-Control", containsString("no-store")));
         assertThat(emails.settings(first).enabled()).isFalse();
         assertThat(emails.settings(first).verified()).isTrue();
         assertThat(mailState(pending)).isEqualTo("CANCELED");
@@ -199,7 +201,7 @@ class MemberFlowTest {
                 .when(jdbc).sql("SELECT EXISTS (SELECT 1 FROM members WHERE id = :id)");
         for (String path : List.of("/api/v1/session", "/api/v1/me/conditions")) {
             var result = mvc.perform(get(path).with(oauth2Login().oauth2User(user(first))))
-                    .andExpect(status().isServiceUnavailable()).andExpect(header().string("Cache-Control", "no-store"))
+                    .andExpect(status().isServiceUnavailable()).andExpect(header().string("Cache-Control", containsString("no-store")))
                     .andExpect(jsonPath("$.code").value("MEMBER_UNAVAILABLE")).andReturn();
             assertThat(result.getResponse().getContentAsString()).doesNotContain("비공개 DB 장애 내용");
         }
@@ -220,7 +222,7 @@ class MemberFlowTest {
                 .andExpect(status().isForbidden());
         assertThat(identities.exists(first)).isTrue();
         mvc.perform(delete("/api/v1/me/account?memberId=" + second).with(oauth2Login().oauth2User(user(first))).with(csrf()))
-                .andExpect(status().isNoContent()).andExpect(header().string("Cache-Control", "no-store"));
+                .andExpect(status().isNoContent()).andExpect(header().string("Cache-Control", containsString("no-store")));
         assertThat(identities.exists(first)).isFalse();
         for (String table : List.of("saved_policies", "policy_reminders", "member_notifications", "member_email_settings", "member_email_outbox")) {
             assertThat(jdbc.sql("SELECT count(*) FROM " + table + " WHERE member_id = :member").param("member", first).query(Long.class).single())
@@ -243,7 +245,7 @@ class MemberFlowTest {
         org.mockito.Mockito.doThrow(new org.springframework.dao.DataAccessResourceFailureException("검증용 세션 저장소 장애"))
                 .when(sessions).findByIndexNameAndIndexValue(org.mockito.ArgumentMatchers.anyString(), org.mockito.ArgumentMatchers.eq(first.toString()));
         mvc.perform(delete("/api/v1/me/account").with(oauth2Login().oauth2User(user(first))).with(csrf()))
-                .andExpect(status().isServiceUnavailable()).andExpect(jsonPath("$.code").value("MEMBER_UNAVAILABLE"));
+                .andExpect(status().isServiceUnavailable()).andExpect(jsonPath("$.code").value("SERVICE_UNAVAILABLE"));
         assertThat(identities.exists(first)).isTrue();
         assertThat(members.saved(first).items()).hasSize(1);
         assertThat(emails.settings(first).address()).isEqualTo("first@example.test");
@@ -305,7 +307,7 @@ class MemberFlowTest {
         assertThat(emails.settings(first).deliveryIssue()).isEqualTo("BOUNCED");
         assertThat(emails.settings(first).enabled()).isFalse();
         assertThat(emails.settings(first).verified()).isFalse();
-        assertThatThrownBy(() -> emails.consent(first, true)).isInstanceOf(MemberEmailStore.EmailException.class);
+        assertThatThrownBy(() -> emails.consent(first, true)).isInstanceOf(ApiException.class).hasFieldOrPropertyWithValue("code", "EMAIL_NOT_VERIFIED");
         mvc.perform(webhook(mail, message, "email.delivered", "2026-09-07T12:00:09Z")).andExpect(status().isOk());
         assertThat(mailState(mail)).isEqualTo("BOUNCED");
     }
@@ -385,7 +387,7 @@ class MemberFlowTest {
         members.save(first, NUMBER);
         mvc.perform(get("/api/v1/me/conditions").with(oauth2Login().oauth2User(user(second))))
                 .andExpect(status().isOk()).andExpect(content().json("{\"conditions\":null}"))
-                .andExpect(header().string("Cache-Control", "no-store"));
+                .andExpect(header().string("Cache-Control", containsString("no-store")));
         mvc.perform(get("/api/v1/me/policies").with(oauth2Login().oauth2User(user(second))))
                 .andExpect(jsonPath("$.items").isEmpty());
         mvc.perform(delete("/api/v1/me/policies/" + NUMBER).with(oauth2Login().oauth2User(user(second))).with(csrf()))
@@ -409,7 +411,7 @@ class MemberFlowTest {
 
         mvc.perform(get("/api/v1/me/policies/" + NUMBER + "/changes")).andExpect(status().isUnauthorized());
         var result = mvc.perform(get("/api/v1/me/policies/" + NUMBER + "/changes").with(oauth2Login().oauth2User(user(first))))
-                .andExpect(status().isOk()).andExpect(header().string("Cache-Control", "no-store"))
+                .andExpect(status().isOk()).andExpect(header().string("Cache-Control", containsString("no-store")))
                 .andExpect(jsonPath("$.policyNumber").value(NUMBER)).andExpect(jsonPath("$.savedAt").isNotEmpty())
                 .andExpect(jsonPath("$.saved.revision").value(1)).andExpect(jsonPath("$.current.revision").value(3))
                 .andExpect(jsonPath("$.saved.content.title").value(original.title()))
@@ -429,7 +431,7 @@ class MemberFlowTest {
         assertThat(count("member_email_outbox")).isZero();
         members.remove(first, NUMBER);
         mvc.perform(get("/api/v1/me/policies/" + NUMBER + "/changes").with(oauth2Login().oauth2User(user(first))))
-                .andExpect(status().isNotFound()).andExpect(jsonPath("$.code").value("POLICY_NOT_FOUND"));
+                .andExpect(status().isNotFound()).andExpect(jsonPath("$.code").value("NOT_FOUND"));
         assertThat(members.changes(second, NUMBER).saved().revision()).isEqualTo(2);
         members.save(first, NUMBER);
         var savedAgain = members.changes(first, NUMBER);
@@ -457,7 +459,7 @@ class MemberFlowTest {
         assertThat(unread.items().getFirst().id()).isEqualTo(notificationId(65));
         assertThat(members.notifications(first, Integer.MAX_VALUE, 50, MemberResponses.NotificationFilter.ALL).items()).isEmpty();
         mvc.perform(get("/api/v1/me/notifications").param("page", "6").with(oauth2Login().oauth2User(user(first))))
-                .andExpect(status().isOk()).andExpect(header().string("Cache-Control", "no-store"))
+                .andExpect(status().isOk()).andExpect(header().string("Cache-Control", containsString("no-store")))
                 .andExpect(jsonPath("$.items.length()").value(5)).andExpect(jsonPath("$.page").value(6))
                 .andExpect(jsonPath("$.pageSize").value(20)).andExpect(jsonPath("$.total").value(105))
                 .andExpect(jsonPath("$.hasNext").value(false)).andExpect(jsonPath("$.unreadCount").value(53));
@@ -472,7 +474,7 @@ class MemberFlowTest {
         mvc.perform(get("/api/v1/me/notifications")).andExpect(status().isUnauthorized());
         for (var query : List.of("page=0", "page=-1", "pageSize=0", "pageSize=51", "filter=INVALID")) {
             mvc.perform(get("/api/v1/me/notifications?" + query).with(oauth2Login().oauth2User(user(first))))
-                    .andExpect(status().isBadRequest()).andExpect(jsonPath("$.code").value("INVALID_MEMBER_INPUT"));
+                    .andExpect(status().isBadRequest()).andExpect(jsonPath("$.code").value("INVALID_REQUEST"));
         }
         mvc.perform(get("/api/v1/me/notifications").with(oauth2Login().oauth2User(user(first))))
                 .andExpect(jsonPath("$.items").isEmpty()).andExpect(jsonPath("$.total").value(0))
@@ -560,7 +562,7 @@ class MemberFlowTest {
     @DisplayName("공개 조건 확인은 실제 원문과 검토 필요를 반환하며 생년월일과 회원 조건을 저장하지 않는다")
     void checksWithoutSaving() throws Exception {
         var response = mvc.perform(post("/api/v1/policies/checks").contentType("application/json").content(INPUT))
-                .andExpect(status().isOk()).andExpect(header().string("Cache-Control", "no-store"))
+                .andExpect(status().isOk()).andExpect(header().string("Cache-Control", containsString("no-store")))
                 .andExpect(jsonPath("$.items[0].status").value("NEEDS_REVIEW"))
                 .andExpect(jsonPath("$.items[0].revision").value(1))
                 .andExpect(jsonPath("$.items[0].checks[0].evidence").isNotEmpty()).andReturn();
@@ -780,7 +782,7 @@ class MemberFlowTest {
                 "first..last@example.test", "x".repeat(255) + "@example.test")) {
             mvc.perform(post("/api/v1/me/email-verification").with(oauth2Login().oauth2User(user(first)))
                     .with(csrf()).contentType("application/json").content(mapper.writeValueAsString(new MemberEmailAddress(address))))
-                    .andExpect(status().isBadRequest()).andExpect(jsonPath("$.code").value("INVALID_MEMBER_INPUT"));
+                    .andExpect(status().isBadRequest()).andExpect(jsonPath("$.code").value("INVALID_REQUEST"));
         }
         assertThat(count("member_email_outbox")).isZero();
         emails.request(first, "first.last+tag@example.test");
@@ -805,14 +807,14 @@ class MemberFlowTest {
     @DisplayName("확인 코드는 만료 순간부터 거절하고 재요청 간격과 시간당 제한은 주소 삭제 뒤에도 유지한다")
     void expiresAndLimitsRequests() {
         emails.request(first, "first@example.test"); String old = pendingCode(first);
-        assertThatThrownBy(() -> emails.request(first, "second@example.test")).isInstanceOf(MemberEmailStore.EmailException.class);
+        assertThatThrownBy(() -> emails.request(first, "second@example.test")).isInstanceOf(ApiException.class).hasFieldOrPropertyWithValue("code", "EMAIL_RATE_LIMITED");
         time("2026-09-04T15:10:00Z"); assertThat(emails.confirm(first, old)).isFalse();
         emails.request(first, "second@example.test");
         assertThat(emails.confirm(first, old)).isFalse();
         assertThat(emails.settings(first).address()).isEqualTo("second@example.test");
         time("2026-09-04T15:11:00Z"); emails.request(first, "third@example.test");
         emails.remove(first); time("2026-09-04T15:12:00Z");
-        assertThatThrownBy(() -> emails.request(first, "fourth@example.test")).isInstanceOf(MemberEmailStore.EmailException.class);
+        assertThatThrownBy(() -> emails.request(first, "fourth@example.test")).isInstanceOf(ApiException.class).hasFieldOrPropertyWithValue("code", "EMAIL_RATE_LIMITED");
         assertThat(emails.settings(first).addressRegistered()).isFalse();
     }
 
@@ -827,12 +829,12 @@ class MemberFlowTest {
                 .andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("EMAIL_NOT_VERIFIED"));
         verifiedEmail(); emails.consent(first, true);
         mvc.perform(get("/api/v1/me/email-settings").with(oauth2Login().oauth2User(user(second))))
-                .andExpect(status().isOk()).andExpect(header().string("Cache-Control", "no-store"))
+                .andExpect(status().isOk()).andExpect(header().string("Cache-Control", containsString("no-store")))
                 .andExpect(jsonPath("$.addressRegistered").value(false)).andExpect(content().json("{\"address\":null}"));
         when(emailSender.available()).thenReturn(false);
         emails.consent(first, false); emails.remove(first);
         assertThat(emails.settings(first).available()).isFalse();
-        assertThatThrownBy(() -> emails.request(first, "first@example.test")).isInstanceOf(MemberEmailStore.EmailException.class);
+        assertThatThrownBy(() -> emails.request(first, "first@example.test")).isInstanceOf(ApiException.class).hasFieldOrPropertyWithValue("code", "EMAIL_UNAVAILABLE");
     }
 
     @Test

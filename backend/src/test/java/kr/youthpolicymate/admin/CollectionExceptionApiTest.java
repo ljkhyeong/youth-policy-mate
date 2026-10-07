@@ -67,8 +67,8 @@ class CollectionExceptionApiTest {
         }
         mvc.perform(get(ROOT).with(social(ADMIN))).andExpect(status().isOk())
                 .andExpect(jsonPath("$.items").isEmpty()).andExpect(jsonPath("$.hasNext").value(false))
-                .andExpect(header().string("Cache-Control", "no-store"));
-        mvc.perform(post(ROOT).with(social(ADMIN)).with(csrf())).andExpect(status().isForbidden());
+                .andExpect(header().string("Cache-Control", containsString("no-store")));
+        mvc.perform(post(ROOT).with(social(ADMIN)).with(csrf())).andExpect(status().isMethodNotAllowed());
         mvc.perform(get("/api/v1/policies")).andExpect(status().isOk());
     }
 
@@ -100,7 +100,7 @@ class CollectionExceptionApiTest {
                 .param("id", recent).update();
         mvc.perform(get(ROOT).with(social(ADMIN))).andExpect(jsonPath("$.items.length()").value(1));
         mvc.perform(get(ROOT + "/" + recent + "/1").with(social(ADMIN)))
-                .andExpect(status().isNotFound()).andExpect(jsonPath("$.code").value("COLLECTION_EXCEPTION_NOT_FOUND"));
+                .andExpect(status().isNotFound()).andExpect(jsonPath("$.code").value("NOT_FOUND"));
     }
 
     @Test
@@ -115,7 +115,7 @@ class CollectionExceptionApiTest {
         var run = page(1);
         item(run, 0, "INVALID_ITEM", source.toString());
         var result = mvc.perform(get(ROOT + "/" + run + "/0").with(social(ADMIN)))
-                .andExpect(status().isOk()).andExpect(header().string("Cache-Control", "no-store"))
+                .andExpect(status().isOk()).andExpect(header().string("Cache-Control", containsString("no-store")))
                 .andExpect(jsonPath("$.currentPolicy.policyNumber").value(policy.number()))
                 .andExpect(jsonPath("$.currentPolicy.revision").value(1))
                 .andExpect(jsonPath("$.currentPolicy.content.title").value(policy.content().title()))
@@ -183,14 +183,14 @@ class CollectionExceptionApiTest {
         for (var query : List.of("?page=0", "?page=1001", "?pageSize=0", "?pageSize=51", "?page=abc",
                 "/invalid/0", "/" + UUID.randomUUID() + "/10")) {
             mvc.perform(get(ROOT + query).with(social(ADMIN))).andExpect(status().isBadRequest())
-                    .andExpect(jsonPath("$.code").value("INVALID_COLLECTION_QUERY"))
-                    .andExpect(header().string("Cache-Control", "no-store"));
+                    .andExpect(jsonPath("$.code").value("INVALID_REQUEST"))
+                    .andExpect(header().string("Cache-Control", containsString("no-store")));
         }
         mvc.perform(get(ROOT + "/" + UUID.randomUUID() + "/0").with(social(ADMIN)))
                 .andExpect(status().isNotFound());
         doThrow(new DataAccessResourceFailureException("sensitive-db-detail")).when(jdbc).sql(startsWith("SELECT i.run_id"));
         mvc.perform(get(ROOT).with(social(ADMIN))).andExpect(status().isServiceUnavailable())
-                .andExpect(jsonPath("$.code").value("COLLECTION_UNAVAILABLE"))
+                .andExpect(jsonPath("$.code").value("SERVICE_UNAVAILABLE"))
                 .andExpect(content().string(not(containsString("sensitive-db-detail"))));
     }
 
@@ -210,7 +210,7 @@ class CollectionExceptionApiTest {
                 .param("at", AT.atOffset(java.time.ZoneOffset.UTC)).param("id", failed).update();
         page(3);
         var first = mvc.perform(get(ROOT + "/pages").with(social(ADMIN)).param("pageSize", "1"))
-                .andExpect(status().isOk()).andExpect(header().string("Cache-Control", "no-store"))
+                .andExpect(status().isOk()).andExpect(header().string("Cache-Control", containsString("no-store")))
                 .andExpect(jsonPath("$.items.length()").value(1)).andExpect(jsonPath("$.hasNext").value(true))
                 .andExpect(jsonPath("$.items[0].runId").value(failed.toString()))
                 .andExpect(jsonPath("$.items[0].reason").value("HTTP_ERROR"))
@@ -250,11 +250,11 @@ class CollectionExceptionApiTest {
         }
         assertThat(result.getResponse().getContentAsString()).doesNotContain("private-", "HTTP_999");
         mvc.perform(get(ROOT + "/pages").with(social(ADMIN)).param("pageSize", "51"))
-                .andExpect(status().isBadRequest()).andExpect(jsonPath("$.code").value("INVALID_COLLECTION_QUERY"));
-        mvc.perform(post(ROOT + "/pages").with(social(ADMIN)).with(csrf())).andExpect(status().isForbidden());
+                .andExpect(status().isBadRequest()).andExpect(jsonPath("$.code").value("INVALID_REQUEST"));
+        mvc.perform(post(ROOT + "/pages").with(social(ADMIN)).with(csrf())).andExpect(status().isMethodNotAllowed());
         doThrow(new DataAccessResourceFailureException("private-database-error")).when(jdbc).sql(startsWith("SELECT run_id"));
         mvc.perform(get(ROOT + "/pages").with(social(ADMIN))).andExpect(status().isServiceUnavailable())
-                .andExpect(jsonPath("$.code").value("COLLECTION_UNAVAILABLE"));
+                .andExpect(jsonPath("$.code").value("SERVICE_UNAVAILABLE"));
     }
 
     private UUID failedPage(int number, String state, String code, String raw) {

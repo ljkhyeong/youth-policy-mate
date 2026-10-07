@@ -1,5 +1,6 @@
 package kr.youthpolicymate.admin;
 
+import kr.youthpolicymate.config.ApiException;
 import kr.youthpolicymate.policy.catalog.PolicyRuleDefinition;
 import kr.youthpolicymate.policy.catalog.PolicyRuleStore;
 import org.springframework.context.annotation.Profile;
@@ -25,17 +26,17 @@ class PolicyRuleManagementService {
 
     PolicyRuleActions.Result draft(String number, PolicyRuleActions.Draft request, UUID actor) {
         var definition = parse(request.definitionJson());
-        if (!number.equals(definition.policyNumber())) throw new PolicyRuleActions.Invalid();
+        if (!number.equals(definition.policyNumber())) throw ApiException.invalid();
         var current = lock(number);
         var replay = replay(request.requestId(), number, actor, request.expectedRevision(), request.reason(), PolicyRuleActions.Action.DRAFT, null);
         if (replay.isPresent()) {
-            if (!rules.definition(replay.get().versionId()).equals(definition)) throw new PolicyRuleActions.Changed();
+            if (!rules.definition(replay.get().versionId()).equals(definition)) throw ApiException.conflict();
             return replay.get();
         }
-        if (!current.matches(request.expectedRevision(), definition.contentHash())) throw new PolicyRuleActions.Changed();
+        if (!current.matches(request.expectedRevision(), definition.contentHash())) throw ApiException.conflict();
         UUID id;
         try { id = rules.draft(definition, actor.toString(), request.reason().strip()); }
-        catch (IllegalArgumentException exception) { throw new PolicyRuleActions.Invalid(); }
+        catch (IllegalArgumentException exception) { throw ApiException.invalid(); }
         return record(request.requestId(), number, id, actor, request.expectedRevision(), request.reason(), PolicyRuleActions.Action.DRAFT, null);
     }
 
@@ -43,14 +44,14 @@ class PolicyRuleManagementService {
         var current = lock(number);
         var replay = replay(request.requestId(), number, actor, request.expectedRevision(), request.reason(), PolicyRuleActions.Action.PUBLISH, request.expectedRuleVersion());
         if (replay.isPresent()) {
-            if (!replay.get().versionId().equals(id)) throw new PolicyRuleActions.Changed();
+            if (!replay.get().versionId().equals(id)) throw ApiException.conflict();
             return replay.get();
         }
         scopedDefinition(number, id);
-        if (current.currentRevision() != request.expectedRevision()) throw new PolicyRuleActions.Changed();
+        if (current.currentRevision() != request.expectedRevision()) throw ApiException.conflict();
         try { rules.publish(id, request.expectedRuleVersion(), actor.toString()); }
-        catch (IllegalStateException exception) { throw new PolicyRuleActions.Changed(); }
-        catch (IllegalArgumentException exception) { throw new PolicyRuleActions.Invalid(); }
+        catch (IllegalStateException exception) { throw ApiException.conflict(); }
+        catch (IllegalArgumentException exception) { throw ApiException.invalid(); }
         return record(request.requestId(), number, id, actor, request.expectedRevision(), request.reason(), PolicyRuleActions.Action.PUBLISH, request.expectedRuleVersion());
     }
 
@@ -62,16 +63,16 @@ class PolicyRuleManagementService {
     private PolicyRuleDefinition scopedDefinition(String number, UUID id) {
         return jdbc.sql("SELECT definition::text FROM policy_rule_versions WHERE policy_number = :number AND id = :id")
                 .param("number", number).param("id", id).query(String.class).optional()
-                .map(json -> mapper.readValue(json, PolicyRuleDefinition.class)).orElseThrow(PolicyRuleActions.Missing::new);
+                .map(json -> mapper.readValue(json, PolicyRuleDefinition.class)).orElseThrow(ApiException::notFound);
     }
 
     private PolicyRuleDefinition parse(String json) {
         try { return rules.parseStrict(json); }
-        catch (IllegalArgumentException exception) { throw new PolicyRuleActions.Invalid(); }
+        catch (IllegalArgumentException exception) { throw ApiException.invalid(); }
     }
 
     private PolicyRuleStore.PublishedHead lock(String number) {
-        return rules.lockPublished(number).orElseThrow(PolicyRuleActions.Missing::new);
+        return rules.lockPublished(number).orElseThrow(ApiException::notFound);
     }
 
     private Optional<PolicyRuleActions.Result> replay(UUID requestId, String number, UUID actor, long revision, String reason,
@@ -83,7 +84,7 @@ class PolicyRuleManagementService {
             if (!number.equals(rs.getString("policy_number")) || !actor.equals(rs.getObject("actor_id", UUID.class))
                     || revision != rs.getLong("expected_revision") || !reason.strip().equals(rs.getString("reason"))
                     || !action.name().equals(rs.getString("action")) || !java.util.Objects.equals(expectedVersion, rs.getString("expected_rule_version")))
-                throw new PolicyRuleActions.Changed();
+                throw ApiException.conflict();
             return new PolicyRuleActions.Result(requestId, rs.getObject("version_id", UUID.class), number, rs.getString("rule_version"),
                     action, actor, revision, reason.strip(), rs.getObject("performed_at", OffsetDateTime.class).toInstant());
         }).optional();

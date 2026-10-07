@@ -24,8 +24,4 @@ public final class PolicyRuleActions {
 
     @Schema(name = "PolicyRuleFile", requiredProperties = {"definition"})
     public record File(PolicyRuleDefinition definition) {}
-
-    static class Invalid extends RuntimeException {}
-    static class Changed extends RuntimeException {}
-    static class Missing extends RuntimeException {}
 }

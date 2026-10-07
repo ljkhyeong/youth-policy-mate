@@ -49,7 +49,7 @@ class ResendLookupTransportTest {
             for (var invalid : new String[]{"{}", "{\"id\":\"" + UUID.randomUUID() + "\"}", "not-json-private-body"}) {
                 body.set(invalid);
                 assertThatThrownBy(() -> lookup.retrieve(message)).isInstanceOf(ResendEmailLookup.Unavailable.class)
-                        .hasMessage("이메일 공급자 상태를 조회할 수 없습니다.").hasNoCause();
+                        .hasMessage("Resend 상태를 불러오지 못했습니다. 잠시 후 다시 조회해주세요.").hasNoCause();
             }
             body.set("{\"message\":\"private-provider-error\"}");
             for (var failureCase : Map.of(401, ResendEmailLookup.Reason.ACCESS_DENIED, 403, ResendEmailLookup.Reason.ACCESS_DENIED,

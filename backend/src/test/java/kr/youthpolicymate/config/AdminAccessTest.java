@@ -23,8 +23,8 @@ class AdminAccessTest {
         var roles = List.of(new SimpleGrantedAuthority("ROLE_MEMBER"));
         var user = new DefaultOAuth2User(roles, Map.of("memberId", ID.toString()), "memberId");
         var social = new OAuth2AuthenticationToken(user, roles, "kakao");
-        assertThat(new AdminAccess(null).authorization().authorize(() -> social, null).isGranted()).isFalse();
-        var access = new AdminAccess(Set.of(ID)).authorization();
+        assertThat(new AdminAccess(null).authorize(() -> social, null).isGranted()).isFalse();
+        var access = new AdminAccess(Set.of(ID));
         assertThat(access.authorize(() -> social, null).isGranted()).isTrue();
         assertThat(access.authorize(() -> UsernamePasswordAuthenticationToken.authenticated(ID.toString(), "", roles), null)
                 .isGranted()).isFalse();

@@ -22,6 +22,7 @@ import java.time.ZoneOffset;
 import java.util.List;
 import java.util.UUID;
 
+import static org.hamcrest.Matchers.containsString;
 import static kr.youthpolicymate.admin.AdminTestSupport.*;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.*;
@@ -57,9 +58,9 @@ class EmailDeliveryApiTest {
         mvc.perform(get(ROOT)).andExpect(status().isUnauthorized());
         mvc.perform(get(ROOT).with(social(MEMBER.toString()))).andExpect(status().isForbidden());
         mvc.perform(get(ROOT).with(user(ADMIN).roles("ADMIN"))).andExpect(status().isForbidden());
-        mvc.perform(post(ROOT).with(social(ADMIN)).with(csrf())).andExpect(status().isForbidden());
+        mvc.perform(post(ROOT).with(social(ADMIN)).with(csrf())).andExpect(status().isMethodNotAllowed());
         mvc.perform(get(ROOT).with(social(ADMIN))).andExpect(status().isOk())
-                .andExpect(header().string("Cache-Control", "no-store"))
+                .andExpect(header().string("Cache-Control", containsString("no-store")))
                 .andExpect(jsonPath("$.items").isEmpty()).andExpect(jsonPath("$.summary.total").value(0))
                 .andExpect(jsonPath("$.sendingEnabled").value(false));
     }
@@ -103,11 +104,11 @@ class EmailDeliveryApiTest {
     void reportsFailures() throws Exception {
         for (String query : List.of("days=0", "days=91", "page=0", "pageSize=51", "page=x", "state=bad", "kind=bad")) {
             mvc.perform(get(ROOT + "?" + query).with(social(ADMIN))).andExpect(status().isBadRequest())
-                    .andExpect(jsonPath("$.code").value("INVALID_EMAIL_DELIVERY_QUERY"));
+                    .andExpect(jsonPath("$.code").value("INVALID_REQUEST"));
         }
         doThrow(new DataAccessResourceFailureException("private-database-error")).when(deliveries).list(1, 20, 7, null, null);
         var response = mvc.perform(get(ROOT).with(social(ADMIN))).andExpect(status().isServiceUnavailable())
-                .andExpect(jsonPath("$.code").value("EMAIL_DELIVERY_UNAVAILABLE")).andReturn().getResponse().getContentAsString();
+                .andExpect(jsonPath("$.code").value("SERVICE_UNAVAILABLE")).andReturn().getResponse().getContentAsString();
         assertThat(response).doesNotContain("private-database-error", "items");
     }
 
@@ -122,7 +123,7 @@ class EmailDeliveryApiTest {
         var path = ROOT + "/" + id(1) + "/provider-status";
         mvc.perform(get(path)).andExpect(status().isUnauthorized());
         mvc.perform(get(path).with(social(MEMBER.toString()))).andExpect(status().isForbidden());
-        mvc.perform(post(path).with(social(ADMIN)).with(csrf())).andExpect(status().isForbidden());
+        mvc.perform(post(path).with(social(ADMIN)).with(csrf())).andExpect(status().isMethodNotAllowed());
         verifyNoInteractions(lookup);
         String before = jdbc.sql("SELECT row_to_json(o)::text FROM member_email_outbox o").query(String.class).single();
         when(lookup.retrieve(messageId)).thenAnswer(invocation -> {
@@ -130,7 +131,7 @@ class EmailDeliveryApiTest {
             return ResendEmailLookup.Event.DELIVERED;
         });
         String response = mvc.perform(get(path).param("messageId", UUID.randomUUID().toString()).with(social(ADMIN)))
-                .andExpect(status().isOk()).andExpect(header().string("Cache-Control", "no-store"))
+                .andExpect(status().isOk()).andExpect(header().string("Cache-Control", containsString("no-store")))
                 .andExpect(jsonPath("$.event").value("DELIVERED")).andExpect(jsonPath("$.checkedAt").value(NOW.toString()))
                 .andReturn().getResponse().getContentAsString();
         assertThat(response).doesNotContain("address", "html", "subject", "memberId", messageId.toString(), MEMBER.toString());
@@ -154,7 +155,7 @@ class EmailDeliveryApiTest {
         for (var reason : ResendEmailLookup.Reason.values()) {
             doThrow(new ResendEmailLookup.Unavailable(reason)).when(lookup).retrieve(message);
             mvc.perform(get(path).with(social(ADMIN))).andExpect(status().isServiceUnavailable())
-                    .andExpect(header().string("Cache-Control", "no-store"))
+                    .andExpect(header().string("Cache-Control", containsString("no-store")))
                     .andExpect(jsonPath("$.code").value("EMAIL_PROVIDER_" + reason.name()));
         }
         assertThat(jdbc.sql("SELECT state FROM member_email_outbox WHERE id = :id").param("id", id(1)).query(String.class).single()).isEqualTo("UNKNOWN");

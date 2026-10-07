@@ -56,8 +56,8 @@ class PolicyAiRunApiTest {
         mvc.perform(get(ROOT)).andExpect(status().isUnauthorized()).andExpect(header().string("Cache-Control", containsString("no-store")));
         mvc.perform(get(ROOT).with(social(MEMBER))).andExpect(status().isForbidden());
         mvc.perform(get(ROOT).with(user(ADMIN).roles("ADMIN"))).andExpect(status().isForbidden());
-        mvc.perform(post(ROOT).with(social(ADMIN)).with(csrf())).andExpect(status().isForbidden());
-        mvc.perform(get(ROOT).with(social(ADMIN))).andExpect(status().isOk()).andExpect(header().string("Cache-Control", "no-store"))
+        mvc.perform(post(ROOT).with(social(ADMIN)).with(csrf())).andExpect(status().isMethodNotAllowed());
+        mvc.perform(get(ROOT).with(social(ADMIN))).andExpect(status().isOk()).andExpect(header().string("Cache-Control", containsString("no-store")))
                 .andExpect(jsonPath("$.items").isEmpty()).andExpect(jsonPath("$.total").value(0))
                 .andExpect(jsonPath("$.automationEnabled").value(false));
     }
@@ -108,7 +108,7 @@ class PolicyAiRunApiTest {
     void handlesInvalidAndUnavailable() throws Exception {
         for (var query : List.of("?page=0", "?pageSize=51", "?filter=WRONG", "?query=" + "a".repeat(101)))
             mvc.perform(get(ROOT + query).with(social(ADMIN))).andExpect(status().isBadRequest())
-                    .andExpect(jsonPath("$.code").value("INVALID_POLICY_AI_RUN_QUERY"));
+                    .andExpect(jsonPath("$.code").value("INVALID_REQUEST"));
         doThrow(new DataAccessResourceFailureException("private-error")).when(runs).list(1, 20, PolicyAiRuns.Filter.ALL, "");
         mvc.perform(get(ROOT).with(social(ADMIN))).andExpect(status().isServiceUnavailable())
                 .andExpect(content().string(not(containsString("private-error"))));

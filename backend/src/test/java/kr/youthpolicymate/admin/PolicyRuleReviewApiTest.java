@@ -72,7 +72,7 @@ class PolicyRuleReviewApiTest {
         mvc.perform(get(ROOT + "/" + policy.number()).with(social(ADMIN)))
                 .andExpect(jsonPath("$.contentHash").value(policy.contentHash())).andExpect(jsonPath("$.versions[0].canPublish").value(true));
         var exported = mvc.perform(get(ROOT + "/" + policy.number() + "/versions/" + id).with(social(ADMIN)))
-                .andExpect(status().isOk()).andExpect(header().string("Cache-Control", "no-store")).andReturn();
+                .andExpect(status().isOk()).andExpect(header().string("Cache-Control", containsString("no-store"))).andReturn();
         assertThat(mapper.treeToValue(mapper.readTree(exported.getResponse().getContentAsString()).path("definition"), PolicyRuleDefinition.class)).isEqualTo(payload);
 
         var publish = new PolicyRuleActions.Publish(UUID.randomUUID(), 1L, "none", "질문과 판정표 확인");
@@ -185,10 +185,10 @@ class PolicyRuleReviewApiTest {
             mvc.perform(get(path)).andExpect(status().isUnauthorized()).andExpect(header().string("Cache-Control", containsString("no-store")));
             mvc.perform(get(path).with(social(MEMBER))).andExpect(status().isForbidden());
             mvc.perform(get(path).with(user(ADMIN).roles("ADMIN"))).andExpect(status().isForbidden());
-            mvc.perform(post(path).with(social(ADMIN)).with(csrf())).andExpect(status().isForbidden());
+            mvc.perform(post(path).with(social(ADMIN)).with(csrf())).andExpect(status().isMethodNotAllowed());
         }
         mvc.perform(get(ROOT).with(social(ADMIN))).andExpect(status().isOk()).andExpect(jsonPath("$.items").isEmpty())
-                .andExpect(header().string("Cache-Control", "no-store"));
+                .andExpect(header().string("Cache-Control", containsString("no-store")));
     }
 
     @Test @DisplayName("원문 변경·만료·미등록 순서로 검색과 필터를 전체 결과에 적용한다")
@@ -227,7 +227,7 @@ class PolicyRuleReviewApiTest {
         var current = source(1, "<script>최신 제목</script>", 2);
         draft(current, NOW, NOW.plusSeconds(100), "draft");
         var result = mvc.perform(get(ROOT + "/" + original.number()).with(social(ADMIN)))
-                .andExpect(status().isOk()).andExpect(header().string("Cache-Control", "no-store"))
+                .andExpect(status().isOk()).andExpect(header().string("Cache-Control", containsString("no-store")))
                 .andExpect(jsonPath("$.item.status").value("SOURCE_CHANGED"))
                 .andExpect(jsonPath("$.currentPolicy.revision").value(3))
                 .andExpect(jsonPath("$.currentPolicy.previousRevision.revision").value(2))
@@ -252,7 +252,7 @@ class PolicyRuleReviewApiTest {
                 .andExpect(jsonPath("$.currentPolicy.previousRevision").isEmpty());
         for (var query : List.of("?page=0", "?pageSize=51", "?filter=WRONG", "?query=" + "a".repeat(101), "/invalid")) {
             mvc.perform(get(ROOT + query).with(social(ADMIN))).andExpect(status().isBadRequest())
-                    .andExpect(jsonPath("$.code").value("INVALID_POLICY_REVIEW_QUERY"));
+                    .andExpect(jsonPath("$.code").value("INVALID_REQUEST"));
         }
         mvc.perform(get(ROOT + "/123").with(social(ADMIN))).andExpect(status().isNotFound());
         doThrow(new DataAccessResourceFailureException("private-error")).when(reviews).list(1, 20, PolicyRuleReviews.Filter.REVIEW, "");

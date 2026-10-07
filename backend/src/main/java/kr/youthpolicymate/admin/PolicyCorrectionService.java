@@ -1,5 +1,6 @@
 package kr.youthpolicymate.admin;
 
+import kr.youthpolicymate.config.ApiException;
 import kr.youthpolicymate.ingestion.OntongPolicyCapture;
 import kr.youthpolicymate.policy.catalog.PolicyCatalogStore;
 import kr.youthpolicymate.policy.catalog.PolicyContent;
@@ -48,14 +49,14 @@ class PolicyCorrectionService {
             if (!previous.policyNumber().equals(request.policyNumber()) || !previous.actorId().equals(actor)
                     || previous.requestedRevision() != request.expectedRevision() || previous.field() != request.field()
                     || !previous.value().equals(request.value().strip()) || !previous.reason().equals(request.reason().strip()))
-                throw new PolicyCorrections.Changed();
+                throw ApiException.conflict();
             return previous;
         }
         if (current.revision() != request.expectedRevision() || jdbc.sql("SELECT EXISTS(SELECT 1 FROM policy_corrections WHERE policy_number = :number AND status <> 'RELEASED')")
-                .param("number", request.policyNumber()).query(Boolean.class).single()) throw new PolicyCorrections.Changed();
+                .param("number", request.policyNumber()).query(Boolean.class).single()) throw ApiException.conflict();
         var content = mapper.readValue(current.content(), PolicyContent.class);
         var shown = request.field() == Field.TITLE ? content.title() : content.organization();
-        if (shown.equals(request.value().strip())) throw new PolicyCorrections.Invalid();
+        if (shown.equals(request.value().strip())) throw ApiException.invalid();
         insert(request.requestId(), request.policyNumber(), request.field(), current.sourceId(), request.value().strip(),
                 request.reason().strip(), actor, current.revision());
         apply(request.policyNumber(), current, current.sourceId());
@@ -65,7 +66,7 @@ class PolicyCorrectionService {
     @Transactional
     public PolicyCorrections.Item resolve(UUID id, PolicyCorrections.Resolution request, UUID actor) {
         var number = jdbc.sql("SELECT policy_number FROM policy_corrections WHERE id = :id").param("id", id)
-                .query(String.class).optional().orElseThrow(PolicyCorrections.Changed::new);
+                .query(String.class).optional().orElseThrow(ApiException::conflict);
         var current = lock(number);
         var correction = item(id).orElseThrow();
         if (correction.status() == PolicyCorrections.Status.RELEASED) {
@@ -76,13 +77,13 @@ class PolicyCorrectionService {
                     """).param("id", id).param("request", request.requestId()).param("actor", actor)
                     .param("action", request.action().name()).param("reason", request.reason().strip())
                     .param("snapshot", request.reviewSnapshotId()).param("revision", request.expectedRevision()).query(Boolean.class).single();
-            if (!repeated) throw new PolicyCorrections.Changed();
+            if (!repeated) throw ApiException.conflict();
             return correction;
         }
         if (current.revision() != request.expectedRevision() || correction.reviewSnapshotId() != request.reviewSnapshotId())
-            throw new PolicyCorrections.Changed();
+            throw ApiException.conflict();
         if (request.action() == PolicyCorrections.Action.KEEP && correction.status() != PolicyCorrections.Status.CONFLICT)
-            throw new PolicyCorrections.Invalid();
+            throw ApiException.invalid();
         jdbc.sql("""
                 UPDATE policy_corrections SET status = 'RELEASED', resolved_request_id = :request, resolution = :action,
                     resolved_by = :actor, resolved_reason = :reason, resolved_snapshot_id = :snapshot,
@@ -120,20 +121,20 @@ class PolicyCorrectionService {
         var parsed = parser.item(mapper.readTree(source.raw()));
         var at = source.at().isAfter(current.collectedAt()) ? source.at() : current.collectedAt();
         var result = catalog.importPolicy(number, parsed.content(), parsed.rawPolicy(), at, source.hash(), parsed.contentHash(), current.sequence());
-        if (result != PolicyCatalogStore.ImportResult.APPLIED) throw new PolicyCorrections.Changed();
+        if (result != PolicyCatalogStore.ImportResult.APPLIED) throw ApiException.conflict();
     }
 
     private Current lock(String number) {
         // 대기 중 개정이 바뀌어도 조인한 이전 개정에 묶이지 않도록 정책을 먼저 잠근다.
         jdbc.sql("SELECT policy_number FROM policies WHERE policy_number = :number AND current_revision > 0 FOR UPDATE")
-                .param("number", number).query(String.class).optional().orElseThrow(PolicyCorrections.Changed::new);
+                .param("number", number).query(String.class).optional().orElseThrow(ApiException::conflict);
         return jdbc.sql("""
                 SELECT p.current_revision, p.last_collected_at, p.last_request_sequence, p.content::text AS content, r.source_snapshot_id
                 FROM policies p JOIN policy_revisions r ON r.policy_number = p.policy_number AND r.revision = p.current_revision
                 WHERE p.policy_number = :number
                 """).param("number", number).query((rs, row) -> new Current(rs.getLong("current_revision"),
                         rs.getObject("last_collected_at", OffsetDateTime.class).toInstant(), rs.getLong("last_request_sequence"),
-                        rs.getString("content"), rs.getLong("source_snapshot_id"))).optional().orElseThrow(PolicyCorrections.Changed::new);
+                        rs.getString("content"), rs.getLong("source_snapshot_id"))).optional().orElseThrow(ApiException::conflict);
     }
 
     private Optional<PolicyCorrections.Item> item(UUID id) {

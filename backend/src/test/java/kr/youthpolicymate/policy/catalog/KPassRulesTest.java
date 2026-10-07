@@ -1,5 +1,6 @@
 package kr.youthpolicymate.policy.catalog;
 
+import kr.youthpolicymate.config.ApiException;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import java.time.Instant;
@@ -80,7 +81,7 @@ class KPassRulesTest {
         for (var answers : List.of(List.of(new Answer("remainingUses", "ONE")), List.of(new Answer("monthlyRides", "TEN")),
                 List.of(new Answer("monthlyRides", "AT_LEAST_15"), new Answer("monthlyRides", "ZERO")))) {
             assertThatThrownBy(() -> rule(K_PASS).evaluate(1, new Request(1, rule(K_PASS).versionAt(NOW), answers), NOW))
-                    .isInstanceOf(IllegalArgumentException.class);
+                    .isInstanceOf(ApiException.class);
         }
     }
 

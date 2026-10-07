@@ -1,5 +1,6 @@
 package kr.youthpolicymate.policy.catalog;
 
+import kr.youthpolicymate.config.ApiException;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import java.time.Instant;
@@ -56,7 +57,7 @@ class ExamFeeRulesTest {
     void rejectsUnsupportedAndDuplicateAnswers() {
         for (var answers : List.of(List.of(new Answer("income", "UP_TO_9")), List.of(new Answer("remainingUses", "FOUR")),
                 List.of(new Answer("remainingUses", "ONE"), new Answer("remainingUses", "ZERO")))) {
-            assertThatThrownBy(() -> exam().evaluate(1, new Request(1, version(EXAM_FEE), answers), NOW)).isInstanceOf(IllegalArgumentException.class);
+            assertThatThrownBy(() -> exam().evaluate(1, new Request(1, version(EXAM_FEE), answers), NOW)).isInstanceOf(ApiException.class);
         }
     }
     private Evaluation evaluate(String birth, String exam, String remaining) {

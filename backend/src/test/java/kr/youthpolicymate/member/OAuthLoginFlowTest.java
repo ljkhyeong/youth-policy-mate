@@ -113,12 +113,16 @@ class OAuthLoginFlowTest {
         org.springframework.security.oauth2.client.OAuth2AuthorizedClient client = authorizedClients.loadAuthorizedClient(registration, memberId.toString());
         assertThat(client).isNull();
         assertThat(get(browser, "/api/v1/admin/policy-corrections").statusCode()).isEqualTo(registration.equals("kakao") ? 200 : 403);
+        // 관리자 경로 전체에 같은 권한 검사를 적용하고, 처리하지 못한 요청의 오류 재디스패치를 403으로 가리지 않는다.
+        assertThat(get(browser, "/api/v1/admin/missing").statusCode()).isEqualTo(registration.equals("kakao") ? 404 : 403);
         assertThat(getWithCookie(anonymousCookie, "/api/v1/me/conditions").statusCode()).isEqualTo(401);
         assertThat(jdbc.sql("SELECT count(*) FROM members").query(Long.class).single()).isEqualTo(registration.equals("kakao") ? 1 : 2);
 
         assertThat(logout(browser, before.path("csrfToken").asString()).statusCode()).isEqualTo(403);
         assertThat(session(browser).path("authenticated").asBoolean()).isTrue();
-        assertThat(logout(browser, loggedIn.path("csrfToken").asString()).statusCode()).isEqualTo(204);
+        var loggedOut = logout(browser, loggedIn.path("csrfToken").asString());
+        assertThat(loggedOut.statusCode()).isEqualTo(204);
+        assertThat(loggedOut.headers().allValues("Set-Cookie")).anyMatch(cookie -> cookie.startsWith("YPM_SESSION=") && cookie.contains("Max-Age=0"));
         assertThat(getWithCookie(authenticatedCookie, "/api/v1/admin/policy-corrections").statusCode()).isEqualTo(401);
         assertThat(sessions.findByIndexNameAndIndexValue(FindByIndexNameSessionRepository.PRINCIPAL_NAME_INDEX_NAME, memberId.toString())).isEmpty();
         assertThat(session(browser).path("authenticated").asBoolean()).isFalse();

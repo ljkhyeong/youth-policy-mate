@@ -1,5 +1,6 @@
 package kr.youthpolicymate.member;
 
+import kr.youthpolicymate.config.ApiException;
 import kr.youthpolicymate.policy.catalog.*;
 import org.springframework.context.annotation.Profile;
 import org.springframework.jdbc.core.simple.JdbcClient;
@@ -28,14 +29,10 @@ public class MemberPolicyStore {
         this.jdbc = jdbc; this.mapper = mapper; this.policies = policies; this.clock = clock;
     }
     private LocalDate today() { return LocalDate.ofInstant(clock.instant(), SEOUL); }
-    private void lock(UUID member) {
-        if (jdbc.sql("SELECT id FROM members WHERE id = :id FOR UPDATE").param("id", member).query(UUID.class).optional().isEmpty()) {
-            throw new org.springframework.security.access.AccessDeniedException("회원 확인이 필요합니다.");
-        }
-    }
+    private void lock(UUID member) { MemberIdentityStore.lock(jdbc, member); }
     private void lockPolicy(String number) {
         if (jdbc.sql("SELECT policy_number FROM policies WHERE policy_number = :number AND current_revision > 0 FOR SHARE")
-                .param("number", number).query(String.class).optional().isEmpty()) throw new PolicyNotFoundException();
+                .param("number", number).query(String.class).optional().isEmpty()) throw ApiException.notFound();
     }
 
     public MemberResponses.Conditions conditions(UUID member) {
@@ -58,7 +55,7 @@ public class MemberPolicyStore {
     @Transactional
     public void save(UUID member, String number) {
         lock(member); lockPolicy(number);
-        var policy = policies.find(number).orElseThrow(PolicyNotFoundException::new);
+        var policy = policies.find(number).orElseThrow(ApiException::notFound);
         var deadline = PolicyDeadline.from(policy.recruitment());
         var generation = UUID.randomUUID();
         // 이미 저장한 정책은 기존 저장 식별자와 예약을 그대로 둔다.
@@ -138,7 +135,7 @@ public class MemberPolicyStore {
                                 mapper.readValue(rs.getString("saved_content"), PolicyContent.class)),
                         new MemberResponses.SavedVersion(rs.getLong("current_revision"), rs.getObject("current_captured_at", OffsetDateTime.class).toInstant(),
                                 mapper.readValue(rs.getString("current_content"), PolicyContent.class))))
-                .optional().orElseThrow(PolicyNotFoundException::new);
+                .optional().orElseThrow(ApiException::notFound);
     }
     @Transactional
     public void refresh(UUID member) {
@@ -150,10 +147,10 @@ public class MemberPolicyStore {
                 WHERE s.member_id = :member ORDER BY p.policy_number FOR SHARE OF p
                 """).param("member", member).query(SavedVersion.class).list();
         for (var saved : versions) {
-            if (saved.currentRevision() <= 0) throw new PolicyNotFoundException();
+            if (saved.currentRevision() <= 0) throw ApiException.notFound();
             if (saved.savedRevision() == saved.currentRevision()) continue;
             var number = saved.policyNumber();
-            var deadline = PolicyDeadline.from(policies.find(number).orElseThrow(PolicyNotFoundException::new).recruitment());
+            var deadline = PolicyDeadline.from(policies.find(number).orElseThrow(ApiException::notFound).recruitment());
             cancel(member, number);
             jdbc.sql("UPDATE saved_policies SET current_revision = :revision, deadline_on = :date, deadline_note = :note WHERE member_id = :member AND policy_number = :number")
                     .param("member", member).param("number", number).param("revision", saved.currentRevision())

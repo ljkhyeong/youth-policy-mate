@@ -3,6 +3,7 @@ package kr.youthpolicymate.policy.catalog;
 import jakarta.validation.Valid;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.*;
+import kr.youthpolicymate.config.ApiException;
 import kr.youthpolicymate.eligibility.ConditionOutcome;
 import kr.youthpolicymate.eligibility.EligibilityStatus;
 import java.time.*;
@@ -24,10 +25,10 @@ public record PolicyRuleDefinition(
         @NotEmpty List<@NotBlank String> remainingChecks,
         @NotEmpty @Size(max = 20) List<@NotNull @Valid Question> questions,
         @NotEmpty List<@NotNull @Valid RuleCheck> checks,
-        @Valid BirthBinding birthBinding, @Valid AgeBinding ageBinding,
-        Boolean monthly, @Valid PeriodNotice periodNotice,
+        @Valid @Schema(types = {"object", "null"}) BirthBinding birthBinding, @Valid @Schema(types = {"object", "null"}) AgeBinding ageBinding,
+        Boolean monthly, @Valid @Schema(types = {"object", "null"}) PeriodNotice periodNotice,
         @Schema(types = {"string", "null"}) String ageNotice,
-        @Valid RemainingVariant remainingVariant) {
+        @Valid @Schema(types = {"object", "null"}) RemainingVariant remainingVariant) {
     public PolicyRuleDefinition { monthly = Boolean.TRUE.equals(monthly); }
 
     @Schema(name = "PolicyRuleCheck", requiredProperties = {"questionId", "label", "evidence", "cases", "unknownExplanation"})
@@ -166,7 +167,7 @@ public record PolicyRuleDefinition(
             if (answer == null || questions.stream().noneMatch(q -> q.id().equals(answer.questionId())
                     && q.options().stream().anyMatch(option -> option.value().equals(answer.value())))
                     || values.putIfAbsent(answer.questionId(), answer.value()) != null)
-                throw new IllegalArgumentException("질문과 답변을 다시 확인해주세요.");
+                throw ApiException.invalid();
         }
         return values;
     }

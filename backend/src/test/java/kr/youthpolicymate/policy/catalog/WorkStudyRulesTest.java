@@ -1,5 +1,6 @@
 package kr.youthpolicymate.policy.catalog;
 
+import kr.youthpolicymate.config.ApiException;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import java.time.Instant;
@@ -65,7 +66,7 @@ class WorkStudyRulesTest {
         for (var answers : List.of(List.of(new Answer("salary", "5000000")), List.of(new Answer("income", "salary")),
                 List.of(new Answer("income", "UP_TO_9"), new Answer("income", "ABOVE_9")))) {
             assertThatThrownBy(() -> work().evaluate(2, new Request(2, version(WORK_STUDY), answers), NOW))
-                    .isInstanceOf(IllegalArgumentException.class);
+                    .isInstanceOf(ApiException.class);
         }
     }
 

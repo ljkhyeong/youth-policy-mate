@@ -1,5 +1,6 @@
 package kr.youthpolicymate.policy.catalog;
 
+import kr.youthpolicymate.config.ApiException;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Service;
 import java.time.Clock;
@@ -17,7 +18,7 @@ public class PolicyQuestionService {
     public PolicyQuestionService(PolicyCatalogStore store, Clock clock) { this.store = store; this.clock = clock; }
 
     public PolicyQuestions.Questionnaire questions(String number) {
-        var policy = store.questionVersion(number).orElseThrow(PolicyNotFoundException::new);
+        var policy = store.questionVersion(number).orElseThrow(ApiException::notFound);
         if (policy.definition() != null) return policy.definition().questionnaire(policy.revision(), policy.contentHash(), clock.instant());
         return new PolicyQuestions.Questionnaire(number, policy.revision(), "", false, "신청 조건 확인",
                 "이 정책의 조건 확인 질문은 아직 제공하지 않아요. 공식 안내를 확인해주세요.", PolicyCatalogStore.sourceUrl(number), List.of());
@@ -34,11 +35,10 @@ public class PolicyQuestionService {
     }
     // 현재 원문·적용 기간에 질문을 제공하고 요청한 개정·규칙 버전이 같을 때만 규칙을 사용한다.
     private PolicyCatalogStore.QuestionVersion current(String number, long revision, String ruleVersion, Instant now) {
-        var policy = store.questionVersion(number).orElseThrow(PolicyNotFoundException::new);
-        if (policy.definition() == null) throw new PolicyChangedException();
+        var policy = store.questionVersion(number).orElseThrow(ApiException::notFound);
+        if (policy.definition() == null) throw ApiException.conflict();
         var questions = policy.definition().questionnaire(policy.revision(), policy.contentHash(), now);
-        if (!questions.available() || revision != questions.revision() || !ruleVersion.equals(questions.ruleVersion())) throw new PolicyChangedException();
+        if (!questions.available() || revision != questions.revision() || !ruleVersion.equals(questions.ruleVersion())) throw ApiException.conflict();
         return policy;
     }
-    public static class PolicyChangedException extends RuntimeException {}
 }

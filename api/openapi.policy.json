@@ -59,7 +59,7 @@
           },
           "401" : {
             "content" : {
-              "*/*" : {
+              "application/json" : {
                 "schema" : {
                   "$ref" : "#/components/schemas/PolicyApiError"
                 }
@@ -69,13 +69,13 @@
           },
           "403" : {
             "content" : {
-              "*/*" : {
+              "application/json" : {
                 "schema" : {
                   "$ref" : "#/components/schemas/PolicyApiError"
                 }
               }
             },
-            "description" : "관리자 권한 없음"
+            "description" : "권한 또는 CSRF 토큰 확인 필요"
           },
           "503" : {
             "content" : {
@@ -145,7 +145,7 @@
           },
           "401" : {
             "content" : {
-              "*/*" : {
+              "application/json" : {
                 "schema" : {
                   "$ref" : "#/components/schemas/PolicyApiError"
                 }
@@ -155,13 +155,13 @@
           },
           "403" : {
             "content" : {
-              "*/*" : {
+              "application/json" : {
                 "schema" : {
                   "$ref" : "#/components/schemas/PolicyApiError"
                 }
               }
             },
-            "description" : "관리자 권한 없음"
+            "description" : "권한 또는 CSRF 토큰 확인 필요"
           },
           "503" : {
             "content" : {
@@ -230,7 +230,7 @@
           },
           "401" : {
             "content" : {
-              "*/*" : {
+              "application/json" : {
                 "schema" : {
                   "$ref" : "#/components/schemas/PolicyApiError"
                 }
@@ -240,13 +240,13 @@
           },
           "403" : {
             "content" : {
-              "*/*" : {
+              "application/json" : {
                 "schema" : {
                   "$ref" : "#/components/schemas/PolicyApiError"
                 }
               }
             },
-            "description" : "관리자 권한 없음"
+            "description" : "권한 또는 CSRF 토큰 확인 필요"
           },
           "503" : {
             "content" : {
@@ -312,7 +312,7 @@
           },
           "401" : {
             "content" : {
-              "*/*" : {
+              "application/json" : {
                 "schema" : {
                   "$ref" : "#/components/schemas/PolicyApiError"
                 }
@@ -322,13 +322,13 @@
           },
           "403" : {
             "content" : {
-              "*/*" : {
+              "application/json" : {
                 "schema" : {
                   "$ref" : "#/components/schemas/PolicyApiError"
                 }
               }
             },
-            "description" : "관리자 권한 없음"
+            "description" : "권한 또는 CSRF 토큰 확인 필요"
           },
           "404" : {
             "content" : {
@@ -380,6 +380,14 @@
             "maximum" : 9,
             "minimum" : 0
           }
+        }, {
+          "description" : "GET /api/v1/session에서 받은 csrfToken",
+          "in" : "header",
+          "name" : "X-CSRF-TOKEN",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
         } ],
         "requestBody" : {
           "content" : {
@@ -414,7 +422,7 @@
           },
           "401" : {
             "content" : {
-              "*/*" : {
+              "application/json" : {
                 "schema" : {
                   "$ref" : "#/components/schemas/PolicyApiError"
                 }
@@ -424,13 +432,13 @@
           },
           "403" : {
             "content" : {
-              "*/*" : {
+              "application/json" : {
                 "schema" : {
                   "$ref" : "#/components/schemas/PolicyApiError"
                 }
               }
             },
-            "description" : "관리자 권한 없음"
+            "description" : "권한 또는 CSRF 토큰 확인 필요"
           },
           "409" : {
             "content" : {
@@ -537,7 +545,7 @@
           },
           "401" : {
             "content" : {
-              "*/*" : {
+              "application/json" : {
                 "schema" : {
                   "$ref" : "#/components/schemas/PolicyApiError"
                 }
@@ -547,13 +555,13 @@
           },
           "403" : {
             "content" : {
-              "*/*" : {
+              "application/json" : {
                 "schema" : {
                   "$ref" : "#/components/schemas/PolicyApiError"
                 }
               }
             },
-            "description" : "관리자 권한 없음"
+            "description" : "권한 또는 CSRF 토큰 확인 필요"
           },
           "503" : {
             "content" : {
@@ -625,7 +633,7 @@
                 }
               }
             },
-            "description" : "관리자 권한 없음"
+            "description" : "권한 또는 CSRF 토큰 확인 필요"
           },
           "404" : {
             "content" : {
@@ -724,7 +732,7 @@
           },
           "401" : {
             "content" : {
-              "*/*" : {
+              "application/json" : {
                 "schema" : {
                   "$ref" : "#/components/schemas/PolicyApiError"
                 }
@@ -734,13 +742,13 @@
           },
           "403" : {
             "content" : {
-              "*/*" : {
+              "application/json" : {
                 "schema" : {
                   "$ref" : "#/components/schemas/PolicyApiError"
                 }
               }
             },
-            "description" : "관리자 권한 없음"
+            "description" : "권한 또는 CSRF 토큰 확인 필요"
           },
           "503" : {
             "content" : {
@@ -809,7 +817,7 @@
           },
           "401" : {
             "content" : {
-              "*/*" : {
+              "application/json" : {
                 "schema" : {
                   "$ref" : "#/components/schemas/PolicyApiError"
                 }
@@ -819,13 +827,13 @@
           },
           "403" : {
             "content" : {
-              "*/*" : {
+              "application/json" : {
                 "schema" : {
                   "$ref" : "#/components/schemas/PolicyApiError"
                 }
               }
             },
-            "description" : "관리자 권한 없음"
+            "description" : "권한 또는 CSRF 토큰 확인 필요"
           },
           "503" : {
             "content" : {
@@ -847,6 +855,15 @@
       "post" : {
         "description" : "정책당 한 항목을 보정하며 원본을 유지한다. 같은 요청 ID·입력·작업자는 기존 결과를 반환한다.",
         "operationId" : "createPolicyCorrection",
+        "parameters" : [ {
+          "description" : "GET /api/v1/session에서 받은 csrfToken",
+          "in" : "header",
+          "name" : "X-CSRF-TOKEN",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
         "requestBody" : {
           "content" : {
             "application/json" : {
@@ -880,7 +897,7 @@
           },
           "401" : {
             "content" : {
-              "*/*" : {
+              "application/json" : {
                 "schema" : {
                   "$ref" : "#/components/schemas/PolicyApiError"
                 }
@@ -890,13 +907,13 @@
           },
           "403" : {
             "content" : {
-              "*/*" : {
+              "application/json" : {
                 "schema" : {
                   "$ref" : "#/components/schemas/PolicyApiError"
                 }
               }
             },
-            "description" : "관리자 권한 없음"
+            "description" : "권한 또는 CSRF 토큰 확인 필요"
           },
           "409" : {
             "content" : {
@@ -961,7 +978,7 @@
           },
           "401" : {
             "content" : {
-              "*/*" : {
+              "application/json" : {
                 "schema" : {
                   "$ref" : "#/components/schemas/PolicyApiError"
                 }
@@ -971,13 +988,13 @@
           },
           "403" : {
             "content" : {
-              "*/*" : {
+              "application/json" : {
                 "schema" : {
                   "$ref" : "#/components/schemas/PolicyApiError"
                 }
               }
             },
-            "description" : "관리자 권한 없음"
+            "description" : "권한 또는 CSRF 토큰 확인 필요"
           },
           "404" : {
             "content" : {
@@ -1019,6 +1036,14 @@
             "type" : "string",
             "format" : "uuid"
           }
+        }, {
+          "description" : "GET /api/v1/session에서 받은 csrfToken",
+          "in" : "header",
+          "name" : "X-CSRF-TOKEN",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
         } ],
         "requestBody" : {
           "content" : {
@@ -1053,7 +1078,7 @@
           },
           "401" : {
             "content" : {
-              "*/*" : {
+              "application/json" : {
                 "schema" : {
                   "$ref" : "#/components/schemas/PolicyApiError"
                 }
@@ -1063,13 +1088,13 @@
           },
           "403" : {
             "content" : {
-              "*/*" : {
+              "application/json" : {
                 "schema" : {
                   "$ref" : "#/components/schemas/PolicyApiError"
                 }
               }
             },
-            "description" : "관리자 권한 없음"
+            "description" : "권한 또는 CSRF 토큰 확인 필요"
           },
           "409" : {
             "content" : {
@@ -1168,7 +1193,7 @@
           },
           "401" : {
             "content" : {
-              "*/*" : {
+              "application/json" : {
                 "schema" : {
                   "$ref" : "#/components/schemas/PolicyApiError"
                 }
@@ -1178,13 +1203,13 @@
           },
           "403" : {
             "content" : {
-              "*/*" : {
+              "application/json" : {
                 "schema" : {
                   "$ref" : "#/components/schemas/PolicyApiError"
                 }
               }
             },
-            "description" : "관리자 권한 없음"
+            "description" : "권한 또는 CSRF 토큰 확인 필요"
           },
           "503" : {
             "content" : {
@@ -1240,7 +1265,7 @@
           },
           "401" : {
             "content" : {
-              "*/*" : {
+              "application/json" : {
                 "schema" : {
                   "$ref" : "#/components/schemas/PolicyApiError"
                 }
@@ -1250,13 +1275,13 @@
           },
           "403" : {
             "content" : {
-              "*/*" : {
+              "application/json" : {
                 "schema" : {
                   "$ref" : "#/components/schemas/PolicyApiError"
                 }
               }
             },
-            "description" : "관리자 권한 없음"
+            "description" : "권한 또는 CSRF 토큰 확인 필요"
           },
           "404" : {
             "content" : {
@@ -1298,6 +1323,14 @@
             "type" : "string",
             "pattern" : "[0-9]{20}"
           }
+        }, {
+          "description" : "GET /api/v1/session에서 받은 csrfToken",
+          "in" : "header",
+          "name" : "X-CSRF-TOKEN",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
         } ],
         "requestBody" : {
           "content" : {
@@ -1332,7 +1365,7 @@
           },
           "401" : {
             "content" : {
-              "*/*" : {
+              "application/json" : {
                 "schema" : {
                   "$ref" : "#/components/schemas/PolicyApiError"
                 }
@@ -1342,13 +1375,13 @@
           },
           "403" : {
             "content" : {
-              "*/*" : {
+              "application/json" : {
                 "schema" : {
                   "$ref" : "#/components/schemas/PolicyApiError"
                 }
               }
             },
-            "description" : "관리자 권한 없음"
+            "description" : "권한 또는 CSRF 토큰 확인 필요"
           },
           "404" : {
             "content" : {
@@ -1432,7 +1465,7 @@
           },
           "401" : {
             "content" : {
-              "*/*" : {
+              "application/json" : {
                 "schema" : {
                   "$ref" : "#/components/schemas/PolicyApiError"
                 }
@@ -1442,13 +1475,13 @@
           },
           "403" : {
             "content" : {
-              "*/*" : {
+              "application/json" : {
                 "schema" : {
                   "$ref" : "#/components/schemas/PolicyApiError"
                 }
               }
             },
-            "description" : "관리자 권한 없음"
+            "description" : "권한 또는 CSRF 토큰 확인 필요"
           },
           "404" : {
             "content" : {
@@ -1508,6 +1541,14 @@
             "type" : "string",
             "format" : "uuid"
           }
+        }, {
+          "description" : "GET /api/v1/session에서 받은 csrfToken",
+          "in" : "header",
+          "name" : "X-CSRF-TOKEN",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
         } ],
         "requestBody" : {
           "content" : {
@@ -1542,7 +1583,7 @@
           },
           "401" : {
             "content" : {
-              "*/*" : {
+              "application/json" : {
                 "schema" : {
                   "$ref" : "#/components/schemas/PolicyApiError"
                 }
@@ -1552,13 +1593,13 @@
           },
           "403" : {
             "content" : {
-              "*/*" : {
+              "application/json" : {
                 "schema" : {
                   "$ref" : "#/components/schemas/PolicyApiError"
                 }
               }
             },
-            "description" : "관리자 권한 없음"
+            "description" : "권한 또는 CSRF 토큰 확인 필요"
           },
           "404" : {
             "content" : {
@@ -1680,9 +1721,23 @@
             "description" : "로그아웃 완료"
           },
           "401" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PolicyApiError"
+                }
+              }
+            },
             "description" : "로그인 필요"
           },
           "403" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PolicyApiError"
+                }
+              }
+            },
             "description" : "권한 또는 CSRF 토큰 확인 필요"
           }
         },
@@ -1709,9 +1764,23 @@
             "description" : "탈퇴 완료"
           },
           "401" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PolicyApiError"
+                }
+              }
+            },
             "description" : "로그인 필요"
           },
           "403" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PolicyApiError"
+                }
+              }
+            },
             "description" : "권한 또는 CSRF 토큰 확인 필요"
           },
           "503" : {
@@ -1742,9 +1811,23 @@
             "description" : "No Content"
           },
           "401" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PolicyApiError"
+                }
+              }
+            },
             "description" : "로그인 필요"
           },
           "403" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PolicyApiError"
+                }
+              }
+            },
             "description" : "권한 또는 CSRF 토큰 확인 필요"
           }
         },
@@ -1768,9 +1851,23 @@
             "description" : "OK"
           },
           "401" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PolicyApiError"
+                }
+              }
+            },
             "description" : "로그인 필요"
           },
           "403" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PolicyApiError"
+                }
+              }
+            },
             "description" : "권한 또는 CSRF 토큰 확인 필요"
           }
         },
@@ -1806,9 +1903,23 @@
             "description" : "No Content"
           },
           "401" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PolicyApiError"
+                }
+              }
+            },
             "description" : "로그인 필요"
           },
           "403" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PolicyApiError"
+                }
+              }
+            },
             "description" : "권한 또는 CSRF 토큰 확인 필요"
           }
         },
@@ -1846,9 +1957,23 @@
             "description" : "입력 또는 확인 코드 오류"
           },
           "401" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PolicyApiError"
+                }
+              }
+            },
             "description" : "로그인 필요"
           },
           "403" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PolicyApiError"
+                }
+              }
+            },
             "description" : "권한 또는 CSRF 토큰 확인 필요"
           },
           "409" : {
@@ -1912,9 +2037,23 @@
             "description" : "입력 또는 확인 코드 오류"
           },
           "401" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PolicyApiError"
+                }
+              }
+            },
             "description" : "로그인 필요"
           },
           "403" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PolicyApiError"
+                }
+              }
+            },
             "description" : "권한 또는 CSRF 토큰 확인 필요"
           },
           "409" : {
@@ -1990,9 +2129,23 @@
             "description" : "입력 또는 확인 코드 오류"
           },
           "401" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PolicyApiError"
+                }
+              }
+            },
             "description" : "로그인 필요"
           },
           "403" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PolicyApiError"
+                }
+              }
+            },
             "description" : "권한 또는 CSRF 토큰 확인 필요"
           },
           "409" : {
@@ -2070,9 +2223,23 @@
             "description" : "입력 또는 확인 코드 오류"
           },
           "401" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PolicyApiError"
+                }
+              }
+            },
             "description" : "로그인 필요"
           },
           "403" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PolicyApiError"
+                }
+              }
+            },
             "description" : "권한 또는 CSRF 토큰 확인 필요"
           },
           "409" : {
@@ -2150,9 +2317,23 @@
             "description" : "입력 또는 확인 코드 오류"
           },
           "401" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PolicyApiError"
+                }
+              }
+            },
             "description" : "로그인 필요"
           },
           "403" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PolicyApiError"
+                }
+              }
+            },
             "description" : "권한 또는 CSRF 토큰 확인 필요"
           },
           "409" : {
@@ -2240,9 +2421,23 @@
             "description" : "OK"
           },
           "401" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PolicyApiError"
+                }
+              }
+            },
             "description" : "로그인 필요"
           },
           "403" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PolicyApiError"
+                }
+              }
+            },
             "description" : "권한 또는 CSRF 토큰 확인 필요"
           }
         },
@@ -2271,9 +2466,23 @@
             "description" : "No Content"
           },
           "401" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PolicyApiError"
+                }
+              }
+            },
             "description" : "로그인 필요"
           },
           "403" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PolicyApiError"
+                }
+              }
+            },
             "description" : "권한 또는 CSRF 토큰 확인 필요"
           }
         },
@@ -2309,9 +2518,23 @@
             "description" : "No Content"
           },
           "401" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PolicyApiError"
+                }
+              }
+            },
             "description" : "로그인 필요"
           },
           "403" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PolicyApiError"
+                }
+              }
+            },
             "description" : "권한 또는 CSRF 토큰 확인 필요"
           }
         },
@@ -2337,9 +2560,23 @@
             "description" : "OK"
           },
           "401" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PolicyApiError"
+                }
+              }
+            },
             "description" : "로그인 필요"
           },
           "403" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PolicyApiError"
+                }
+              }
+            },
             "description" : "권한 또는 CSRF 토큰 확인 필요"
           }
         },
@@ -2374,9 +2611,23 @@
             "description" : "No Content"
           },
           "401" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PolicyApiError"
+                }
+              }
+            },
             "description" : "로그인 필요"
           },
           "403" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PolicyApiError"
+                }
+              }
+            },
             "description" : "권한 또는 CSRF 토큰 확인 필요"
           }
         },
@@ -2409,9 +2660,23 @@
             "description" : "No Content"
           },
           "401" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PolicyApiError"
+                }
+              }
+            },
             "description" : "로그인 필요"
           },
           "403" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PolicyApiError"
+                }
+              }
+            },
             "description" : "권한 또는 CSRF 토큰 확인 필요"
           }
         },
@@ -2446,9 +2711,23 @@
             "description" : "OK"
           },
           "401" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PolicyApiError"
+                }
+              }
+            },
             "description" : "로그인 필요"
           },
           "403" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PolicyApiError"
+                }
+              }
+            },
             "description" : "권한 또는 CSRF 토큰 확인 필요"
           }
         },
@@ -3161,11 +3440,11 @@
           },
           "district" : {
             "type" : [ "string", "null" ],
-            "enum" : [ "강남구", "강동구", "강북구", "강서구", "관악구", "광진구", "구로구", "금천구", "노원구", "도봉구", "동대문구", "동작구", "마포구", "서대문구", "서초구", "성동구", "성북구", "송파구", "양천구", "영등포구", "용산구", "은평구", "종로구", "중구", "중랑구" ]
+            "enum" : [ "강남구", "강동구", "강북구", "강서구", "관악구", "광진구", "구로구", "금천구", "노원구", "도봉구", "동대문구", "동작구", "마포구", "서대문구", "서초구", "성동구", "성북구", "송파구", "양천구", "영등포구", "용산구", "은평구", "종로구", "중구", "중랑구", null ]
           },
           "employmentStatus" : {
             "type" : [ "string", "null" ],
-            "enum" : [ "EMPLOYED", "SELF_EMPLOYED", "NOT_EMPLOYED", "FREELANCER", "DAY_WORKER", "ENTREPRENEUR", "SHORT_TERM_WORKER", "FARMER", "OTHER" ]
+            "enum" : [ "EMPLOYED", "SELF_EMPLOYED", "NOT_EMPLOYED", "FREELANCER", "DAY_WORKER", "ENTREPRENEUR", "SHORT_TERM_WORKER", "FARMER", "OTHER", null ]
           }
         }
       },
@@ -3480,7 +3759,7 @@
           },
           "deliveryIssue" : {
             "type" : [ "string", "null" ],
-            "enum" : [ "BOUNCED", "COMPLAINED", "SUPPRESSED" ]
+            "enum" : [ "BOUNCED", "COMPLAINED", "SUPPRESSED", null ]
           },
           "enabled" : {
             "type" : "boolean"

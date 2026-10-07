@@ -1,5 +1,6 @@
 package kr.youthpolicymate.policy.catalog;
 
+import kr.youthpolicymate.config.ApiException;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import java.time.Instant;
@@ -64,7 +65,7 @@ class SeoulYouthNetworkRulesTest {
         for (var answers : List.of(List.of(new Answer("homeOwnership", "NO_HOME")), List.of(new Answer("seoulConnection", "SEOUL_CODE")),
                 List.of(new Answer("consecutiveTerms", "APPLIES"), new Answer("consecutiveTerms", "NOT_APPLICABLE")))) {
             assertThatThrownBy(() -> rule(SEOUL_YOUTH_NETWORK).evaluate(1, new Request(1, version(SEOUL_YOUTH_NETWORK), answers), NOW))
-                    .isInstanceOf(IllegalArgumentException.class);
+                    .isInstanceOf(ApiException.class);
         }
     }
 

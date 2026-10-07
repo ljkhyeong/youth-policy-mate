@@ -1,5 +1,6 @@
 package kr.youthpolicymate.policy.catalog;
 
+import kr.youthpolicymate.config.ApiException;
 import kr.youthpolicymate.policy.RecruitmentStatus;
 import org.springframework.context.annotation.Profile;
 import org.springframework.jdbc.core.simple.JdbcClient;
@@ -265,7 +266,7 @@ public class PolicyCatalogStore {
                 .params(parameters).param("limit", pageSize).param("offset", (page - 1) * pageSize)
                 .query((rs, row) -> {
                     var raw = rs.getString("raw_policy");
-                    if (raw == null) throw new PolicyNotFoundException();
+                    if (raw == null) throw ApiException.notFound();
                     var number = rs.getString("policy_number");
                     var hash = rs.getString("content_hash");
                     var comparison = comparisons.get(number);

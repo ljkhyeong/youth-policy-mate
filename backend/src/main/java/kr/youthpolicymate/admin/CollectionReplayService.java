@@ -1,5 +1,6 @@
 package kr.youthpolicymate.admin;
 
+import kr.youthpolicymate.config.ApiException;
 import kr.youthpolicymate.ingestion.OntongCollectionService;
 import org.springframework.context.annotation.Profile;
 import org.springframework.jdbc.core.RowMapper;
@@ -27,18 +28,18 @@ class CollectionReplayService {
     @Transactional
     public CollectionReplays.Result replay(UUID runId, int index, UUID actorId, CollectionReplays.Request request) {
         var item = jdbc.sql("SELECT outcome, attempts FROM ontong_collection_items WHERE run_id = :run AND item_index = :index FOR UPDATE")
-                .param("run", runId).param("index", index).query(ItemState.class).optional().orElseThrow(CollectionReplays.Changed::new);
+                .param("run", runId).param("index", index).query(ItemState.class).optional().orElseThrow(ApiException::conflict);
         var existing = jdbc.sql("SELECT * FROM admin_collection_replays WHERE request_id = :id")
                 .param("id", request.requestId()).query(RESULT).optional();
         if (existing.isPresent()) {
             var replay = existing.orElseThrow();
             if (!replay.runId().equals(runId) || replay.itemIndex() != index || !replay.actorId().equals(actorId)
                     || replay.expectedAttempts() != request.expectedAttempts() || !replay.reason().equals(request.reason().strip()))
-                throw new CollectionReplays.Changed();
+                throw ApiException.conflict();
             return replay;
         }
         if (!List.of("INVALID_ITEM", "STORE_FAILED", "CORRECTION_CONFLICT").contains(item.outcome()) || item.attempts() != request.expectedAttempts())
-            throw new CollectionReplays.Changed();
+            throw ApiException.conflict();
 
         collection.applyStoredItem(runId, index);
         // 항목 반영·처리 횟수·관리자 사유를 함께 커밋한다. 저장 실패는 전부 롤백한다.

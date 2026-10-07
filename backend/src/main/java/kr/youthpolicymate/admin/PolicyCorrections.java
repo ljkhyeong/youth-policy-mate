@@ -34,7 +34,4 @@ public final class PolicyCorrections {
                        @Schema(types = {"string", "null"}) String resolvedReason,
                        @Schema(types = {"integer", "null"}, format = "int64") Long resolvedRevision,
                        @Schema(types = {"string", "null"}, format = "date-time") Instant resolvedAt) {}
-
-    public static class Changed extends RuntimeException {}
-    public static class Invalid extends RuntimeException {}
 }

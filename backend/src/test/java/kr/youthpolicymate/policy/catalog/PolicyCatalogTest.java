@@ -36,6 +36,7 @@ import static org.assertj.core.api.Assertions.*;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+import static kr.youthpolicymate.policy.catalog.PolicyRuleFixtures.*;
 
 @Testcontainers
 @SpringBootTest(properties = {"springdoc.api-docs.enabled=true", "springdoc.api-docs.path=/contract/policy",
@@ -74,9 +75,9 @@ class PolicyCatalogTest {
 
     @Test @DisplayName("새 연도 기준을 데이터로 적용하면 서버 재시작 없이 질문·정렬·자동 답변이 함께 바뀐다")
     void publishesNextYearWithoutCodeChange() throws Exception {
-        saveReviewed(ExamFeeRules.NUMBER, "응시료 지원", ExamFeeRules.CONTENT_HASH);
-        var old = questions.questions(ExamFeeRules.NUMBER);
-        var json = (ObjectNode) mapper.readTree(mapper.writeValueAsString(PolicyRuleFixtures.exam())
+        saveReviewed(EXAM_FEE, "응시료 지원", hash(EXAM_FEE));
+        var old = questions.questions(EXAM_FEE);
+        var json = (ObjectNode) mapper.readTree(mapper.writeValueAsString(exam())
                 .replace("1991", "1992").replace("1990", "1991").replace("2026년", "2027년"));
         json.put("ruleVersion", "exam-2027-test").put("validFrom", "2026-12-31T15:00:00Z").put("validUntil", "2027-12-31T15:00:00Z");
         json.put("scope", "2027년 검증용 공고");
@@ -85,15 +86,15 @@ class PolicyCatalogTest {
         var id = rules.draft(next, "rule-test", "연도 변경 동작 검증");
         assertThatThrownBy(() -> rules.publish(id, old.ruleVersion(), "rule-test")).isInstanceOf(IllegalStateException.class).hasMessageContaining("기간");
         org.mockito.Mockito.when(clock.instant()).thenReturn(Instant.parse("2027-01-01T00:00:00Z"));
-        assertThat(questions.questions(ExamFeeRules.NUMBER).available()).isFalse();
+        assertThat(questions.questions(EXAM_FEE).available()).isFalse();
         assertThat(rules.status()).anySatisfy(state -> { assertThat(state.ruleVersion()).isEqualTo(old.ruleVersion()); assertThat(state.state()).contains("만료"); });
         rules.publish(id, old.ruleVersion(), "rule-test");
-        assertThat(questions.questions(ExamFeeRules.NUMBER).scope()).isEqualTo("2027년 검증용 공고");
-        assertThatThrownBy(() -> questions.evaluate(ExamFeeRules.NUMBER, new PolicyQuestions.Request(1, old.ruleVersion(), List.of())))
+        assertThat(questions.questions(EXAM_FEE).scope()).isEqualTo("2027년 검증용 공고");
+        assertThatThrownBy(() -> questions.evaluate(EXAM_FEE, new PolicyQuestions.Request(1, old.ruleVersion(), List.of())))
                 .isInstanceOf(PolicyQuestionService.PolicyChangedException.class);
         var birth = java.time.LocalDate.parse("1991-12-31");
-        var prefill = questions.prefill(ExamFeeRules.NUMBER, new PolicyQuestions.PrefillRequest(1, next.ruleVersion(), birth));
-        var evaluated = questions.evaluate(ExamFeeRules.NUMBER, new PolicyQuestions.Request(1, next.ruleVersion(), prefill.answers()));
+        var prefill = questions.prefill(EXAM_FEE, new PolicyQuestions.PrefillRequest(1, next.ruleVersion(), birth));
+        var evaluated = questions.evaluate(EXAM_FEE, new PolicyQuestions.Request(1, next.ruleVersion(), prefill.answers()));
         var compared = checks.check(new BasicConditions(birth, "강남구", BasicConditions.EmploymentStatus.OTHER), 1, "", PolicyCheckResponse.Sort.AGE_MATCH, null);
         assertThat(evaluated.checks().getFirst().outcome()).isEqualTo(kr.youthpolicymate.eligibility.ConditionAssessment.Outcome.NOT_MET);
         assertThat(compared.items().getFirst().checks().getFirst().outcome()).isEqualTo(evaluated.checks().getFirst().outcome());
@@ -106,8 +107,8 @@ class PolicyCatalogTest {
 
     @Test @DisplayName("같은 직전 버전을 대상으로 동시에 적용하면 하나만 성공하고 원문 변경 시 적용·제출을 차단한다")
     void protectsRulePublication() throws Exception {
-        saveReviewed(ExamFeeRules.NUMBER, "응시료 지원", ExamFeeRules.CONTENT_HASH);
-        var json = (ObjectNode) mapper.valueToTree(PolicyRuleFixtures.exam());
+        saveReviewed(EXAM_FEE, "응시료 지원", hash(EXAM_FEE));
+        var json = (ObjectNode) mapper.valueToTree(exam());
         var ids = new java.util.ArrayList<java.util.UUID>();
         for (int i = 0; i < 2; i++) {
             json.put("ruleVersion", "concurrent-" + i);
@@ -117,7 +118,7 @@ class PolicyCatalogTest {
         try (var executor = Executors.newFixedThreadPool(2)) {
             var futures = ids.stream().map(id -> executor.submit(() -> {
                 gate.await();
-                try { rules.publish(id, ExamFeeRules.VERSION, "rule-test"); return true; }
+                try { rules.publish(id, version(EXAM_FEE), "rule-test"); return true; }
                 catch (IllegalStateException changed) { return false; }
             })).toList();
             gate.countDown();
@@ -125,11 +126,11 @@ class PolicyCatalogTest {
             for (var future : futures) if (future.get(10, TimeUnit.SECONDS)) successes++;
             assertThat(successes).isOne();
         }
-        var current = questions.questions(ExamFeeRules.NUMBER);
-        jdbc.sql("UPDATE policies SET content_hash = repeat('a', 64) WHERE policy_number = :number").param("number", ExamFeeRules.NUMBER).update();
-        assertThat(questions.questions(ExamFeeRules.NUMBER).available()).isFalse();
+        var current = questions.questions(EXAM_FEE);
+        jdbc.sql("UPDATE policies SET content_hash = repeat('a', 64) WHERE policy_number = :number").param("number", EXAM_FEE).update();
+        assertThat(questions.questions(EXAM_FEE).available()).isFalse();
         assertThat(rules.status()).anySatisfy(state -> { assertThat(state.ruleVersion()).isEqualTo(current.ruleVersion()); assertThat(state.state()).contains("원문 변경"); });
-        assertThatThrownBy(() -> questions.prefill(ExamFeeRules.NUMBER, new PolicyQuestions.PrefillRequest(1, current.ruleVersion(), java.time.LocalDate.parse("2000-01-01"))))
+        assertThatThrownBy(() -> questions.prefill(EXAM_FEE, new PolicyQuestions.PrefillRequest(1, current.ruleVersion(), java.time.LocalDate.parse("2000-01-01"))))
                 .isInstanceOf(PolicyQuestionService.PolicyChangedException.class);
         assertThatThrownBy(() -> rules.publish(ids.getFirst(), current.ruleVersion(), "rule-test")).hasMessageContaining("원문이 바뀌");
         assertThat(store.list("", 1, 20, true, null, AT).total()).isZero();
@@ -137,9 +138,9 @@ class PolicyCatalogTest {
 
     @Test @DisplayName("출생일 답변 API는 로그인 없이 사용하고 미래 날짜·오래된 버전을 거부하며 저장하지 않는다")
     void prefillsBirthWithVersionGuard() throws Exception {
-        saveReviewed(ExamFeeRules.NUMBER, "응시료 지원", ExamFeeRules.CONTENT_HASH);
-        var path = "/api/v1/policies/" + ExamFeeRules.NUMBER + "/question-prefill";
-        var body = mapper.createObjectNode().put("revision", 1).put("ruleVersion", ExamFeeRules.VERSION).put("birthDate", "1991-01-01");
+        saveReviewed(EXAM_FEE, "응시료 지원", hash(EXAM_FEE));
+        var path = "/api/v1/policies/" + EXAM_FEE + "/question-prefill";
+        var body = mapper.createObjectNode().put("revision", 1).put("ruleVersion", version(EXAM_FEE)).put("birthDate", "1991-01-01");
         mvc.perform(post(path).contentType("application/json").content(mapper.writeValueAsString(body)))
                 .andExpect(status().isOk()).andExpect(header().string("Cache-Control", "no-store"))
                 .andExpect(jsonPath("$.answers[0].value").value("ON_OR_AFTER_1991_01_01"));
@@ -152,16 +153,16 @@ class PolicyCatalogTest {
     @Test
     @DisplayName("질문과 답변 평가는 각각 SELECT 한 번으로 현재 개정과 해시를 확인한다")
     void loadsQuestionVersionWithOneQuery() {
-        saveReviewed(ExamFeeRules.NUMBER, "응시료 지원", ExamFeeRules.CONTENT_HASH);
+        saveReviewed(EXAM_FEE, "응시료 지원", hash(EXAM_FEE));
 
         org.mockito.Mockito.clearInvocations(jdbc);
-        var questionnaire = questions.questions(ExamFeeRules.NUMBER);
+        var questionnaire = questions.questions(EXAM_FEE);
         org.mockito.Mockito.verify(jdbc, org.mockito.Mockito.times(1)).sql(org.mockito.ArgumentMatchers.anyString());
         assertThat(questionnaire.available()).isTrue();
         assertThat(questionnaire.revision()).isOne();
 
         org.mockito.Mockito.clearInvocations(jdbc);
-        var evaluation = questions.evaluate(ExamFeeRules.NUMBER,
+        var evaluation = questions.evaluate(EXAM_FEE,
                 new PolicyQuestions.Request(questionnaire.revision(), questionnaire.ruleVersion(), List.of()));
         org.mockito.Mockito.verify(jdbc, org.mockito.Mockito.times(1)).sql(org.mockito.ArgumentMatchers.anyString());
         assertThat(evaluation.revision()).isOne();
@@ -171,7 +172,7 @@ class PolicyCatalogTest {
     void servesAllDataRules() {
         int prefills = 0;
         var birth = java.time.LocalDate.parse("1992-02-29");
-        for (var definition : PolicyRuleFixtures.DEFINITIONS.values()) {
+        for (var definition : DEFINITIONS.values()) {
             saveReviewed(definition.policyNumber(), definition.scope(), definition.contentHash());
             var questionnaire = questions.questions(definition.policyNumber());
             assertThat(questionnaire.available()).isTrue();
@@ -180,8 +181,7 @@ class PolicyCatalogTest {
             if (!filled.answers().isEmpty()) {
                 prefills++;
                 var response = questions.evaluate(definition.policyNumber(), new PolicyQuestions.Request(1, questionnaire.ruleVersion(), filled.answers()));
-                var expected = LegacyPolicyRules.TYPES_BY_NUMBER.containsKey(definition.policyNumber())
-                        ? LegacyPolicyRules.age(definition.policyNumber(), birth, AT) : definition.compareBirth(birth, AT).age();
+                var expected = definition.compareBirth(birth, AT).age();
                 assertThat(response.checks().getFirst().outcome()).isEqualTo(expected.outcome());
             }
         }
@@ -192,8 +192,8 @@ class PolicyCatalogTest {
     @Test @org.springframework.transaction.annotation.Transactional
     @DisplayName("월별 정책의 연령 기준을 데이터로 변경하면 새 질문 버전과 연령 답변에 즉시 반영한다")
     void publishesAgeAndMonthlyRuleWithoutRestart() {
-        saveReviewed(KPassRules.NUMBER, "K-패스", KPassRules.CONTENT_HASH);
-        var original = PolicyRuleFixtures.rule(KPassRules.NUMBER);
+        saveReviewed(K_PASS, "K-패스", hash(K_PASS));
+        var original = rule(K_PASS);
         var json = (ObjectNode) mapper.valueToTree(original);
         json.put("ruleVersion", "k-pass-age-test");
         ((ObjectNode) json.get("ageBinding")).put("minimumInclusive", 20);
@@ -201,12 +201,12 @@ class PolicyCatalogTest {
         var id = rules.draft(next, "rule-test", "공통 연령 비교의 데이터 변경 검증");
         rules.publish(id, original.ruleVersion(), "rule-test");
         var birth = java.time.LocalDate.parse("2007-01-01");
-        var current = questions.questions(KPassRules.NUMBER);
+        var current = questions.questions(K_PASS);
         assertThat(current.ruleVersion()).isEqualTo("k-pass-age-test-2026-09");
-        assertThatThrownBy(() -> questions.evaluate(KPassRules.NUMBER, new PolicyQuestions.Request(1, original.versionAt(AT), List.of())))
+        assertThatThrownBy(() -> questions.evaluate(K_PASS, new PolicyQuestions.Request(1, original.versionAt(AT), List.of())))
                 .isInstanceOf(PolicyQuestionService.PolicyChangedException.class);
-        var answers = questions.prefill(KPassRules.NUMBER, new PolicyQuestions.PrefillRequest(1, current.ruleVersion(), birth)).answers();
-        assertThat(questions.evaluate(KPassRules.NUMBER, new PolicyQuestions.Request(1, current.ruleVersion(), answers)).checks().getFirst().outcome())
+        var answers = questions.prefill(K_PASS, new PolicyQuestions.PrefillRequest(1, current.ruleVersion(), birth)).answers();
+        assertThat(questions.evaluate(K_PASS, new PolicyQuestions.Request(1, current.ruleVersion(), answers)).checks().getFirst().outcome())
                 .isEqualTo(kr.youthpolicymate.eligibility.ConditionAssessment.Outcome.NOT_MET);
     }
 
@@ -290,10 +290,10 @@ class PolicyCatalogTest {
     @Test
     @DisplayName("충돌 안내는 검토한 정책 내용에만 붙이고 원문을 유지한다")
     void exposesReviewedSourceNoticeWithoutChangingOriginal() throws Exception {
-        var number = YouthTomorrowSavingsRules.NUMBER;
+        var number = YOUTH_TOMORROW_SAVINGS;
         item.put("addAplyQlfcCndCn", "가구 소득인정액 기준 중위소득 100% 이하");
         item.put("earnEtcCn", "가구 소득인정액 기준 중위소득 50% 이하");
-        saveReviewed(number, "청년내일저축계좌", YouthTomorrowSavingsRules.CONTENT_HASH);
+        saveReviewed(number, "청년내일저축계좌", hash(YOUTH_TOMORROW_SAVINGS));
         var original = store.source(number).orElseThrow();
         var content = store.find(number).orElseThrow().content();
 
@@ -314,7 +314,7 @@ class PolicyCatalogTest {
                 .andExpect(jsonPath("$.revision").value(2))
                 .andExpect(jsonPath("$.sourceNotices").isEmpty());
 
-        saveReviewed(NUMBER, "다른 정책", YouthTomorrowSavingsRules.CONTENT_HASH);
+        saveReviewed(NUMBER, "다른 정책", hash(YOUTH_TOMORROW_SAVINGS));
         mvc.perform(get("/api/v1/policies/" + NUMBER)).andExpect(status().isOk())
                 .andExpect(jsonPath("$.sourceNotices").isEmpty());
     }
@@ -322,16 +322,16 @@ class PolicyCatalogTest {
     @Test
     @DisplayName("청년내일저축계좌 질문·목록·답변을 연결하고 새해·개정·규칙·원문 변경 후 제출을 막는다")
     void providesReviewedYouthTomorrowSavingsQuestions() throws Exception {
-        var number = YouthTomorrowSavingsRules.NUMBER;
-        saveReviewed(number, "청년내일저축계좌", YouthTomorrowSavingsRules.CONTENT_HASH);
+        var number = YOUTH_TOMORROW_SAVINGS;
+        saveReviewed(number, "청년내일저축계좌", hash(YOUTH_TOMORROW_SAVINGS));
         var path = "/api/v1/policies/" + number;
         mvc.perform(get(path + "/questions")).andExpect(status().isOk())
                 .andExpect(jsonPath("$.available").value(true)).andExpect(jsonPath("$.questions.length()").value(5))
-                .andExpect(jsonPath("$.ruleVersion").value(YouthTomorrowSavingsRules.VERSION));
+                .andExpect(jsonPath("$.ruleVersion").value(version(YOUTH_TOMORROW_SAVINGS)));
         mvc.perform(get("/api/v1/policies").param("questionsOnly", "true").param("q", "청년내일저축"))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.total").value(1))
                 .andExpect(jsonPath("$.items[0].questionnaireAvailable").value(true));
-        var request = new PolicyQuestions.Request(1, YouthTomorrowSavingsRules.VERSION, List.of(
+        var request = new PolicyQuestions.Request(1, version(YOUTH_TOMORROW_SAVINGS), List.of(
                 new PolicyQuestions.Answer("birthRange", "IN_RANGE"), new PolicyQuestions.Answer("workType", "SELF_RELIANCE"),
                 new PolicyQuestions.Answer("monthlyIncome", "AT_LEAST_100K"), new PolicyQuestions.Answer("householdIncome", "UP_TO_50_CONFIRMED"),
                 new PolicyQuestions.Answer("duplicateParticipation", "ALLOWED_CONFIRMED")));
@@ -408,19 +408,19 @@ class PolicyCatalogTest {
         mvc.perform(get("/api/v1/policies/" + NUMBER + "/questions"))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.available").value(false));
         // 규칙 활성화와 DB 개정 검사를 위한 인공 자료다. 정책 내용 자체의 검토 자료가 아니다.
-        item.put("plcyNo", WorkStudyRules.NUMBER);
+        item.put("plcyNo", WORK_STUDY);
         var normalized = parser.item(item);
-        importAt(normalized.number(), normalized.content(), normalized.rawPolicy(), AT, "reviewed", WorkStudyRules.CONTENT_HASH);
-        var path = "/api/v1/policies/" + WorkStudyRules.NUMBER;
+        importAt(normalized.number(), normalized.content(), normalized.rawPolicy(), AT, "reviewed", hash(WORK_STUDY));
+        var path = "/api/v1/policies/" + WORK_STUDY;
         mvc.perform(get(path + "/questions")).andExpect(status().isOk())
                 .andExpect(header().string("Cache-Control", "no-store"))
                 .andExpect(jsonPath("$.available").value(true)).andExpect(jsonPath("$.questions.length()").value(6));
-        var request = new PolicyQuestions.Request(1, WorkStudyRules.VERSION, List.of());
+        var request = new PolicyQuestions.Request(1, version(WORK_STUDY), List.of());
         mvc.perform(post(path + "/evaluation").contentType("application/json").content(mapper.writeValueAsString(request)))
                 .andExpect(status().isOk()).andExpect(header().string("Cache-Control", "no-store"))
                 .andExpect(jsonPath("$.status").value("NEEDS_REVIEW"))
                 .andExpect(jsonPath("$.commonCriteriaStatus").value("NEEDS_REVIEW"));
-        for (var stale : List.of(new PolicyQuestions.Request(2, WorkStudyRules.VERSION, List.of()),
+        for (var stale : List.of(new PolicyQuestions.Request(2, version(WORK_STUDY), List.of()),
                 new PolicyQuestions.Request(1, "old-rules", List.of()))) {
             mvc.perform(post(path + "/evaluation").contentType("application/json").content(mapper.writeValueAsString(stale)))
                     .andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("POLICY_CHANGED"));
@@ -438,7 +438,7 @@ class PolicyCatalogTest {
     @Test
     @DisplayName("잘못된 추가 답변과 없는 정책을 안전한 오류 응답으로 구분한다")
     void rejectsInvalidEvaluation() throws Exception {
-        var path = "/api/v1/policies/" + WorkStudyRules.NUMBER;
+        var path = "/api/v1/policies/" + WORK_STUDY;
         mvc.perform(get(path + "/questions")).andExpect(status().isNotFound());
         for (String json : List.of("{}", "{\"revision\":1,\"ruleVersion\":\"v1\",\"answers\":null}",
                 "{\"revision\":1,\"ruleVersion\":\"v1\",\"answers\":[{\"questionId\":\"\",\"value\":\"YES\"}]}")) {
@@ -450,26 +450,26 @@ class PolicyCatalogTest {
     @DisplayName("응시료 규칙은 검토한 정책에만 연결하고 국가근로 질문과 다른 답변을 비교한다")
     void evaluatesReviewedExamFee() throws Exception {
         // 정책 내용은 인공 자료다. 해시 등록·개정 검사·규칙 연결만 검증한다.
-        item.put("plcyNo", ExamFeeRules.NUMBER);
+        item.put("plcyNo", EXAM_FEE);
         var normalized = parser.item(item);
-        importAt(normalized.number(), normalized.content(), normalized.rawPolicy(), AT, "exam-reviewed", ExamFeeRules.CONTENT_HASH);
-        String path = "/api/v1/policies/" + ExamFeeRules.NUMBER;
+        importAt(normalized.number(), normalized.content(), normalized.rawPolicy(), AT, "exam-reviewed", hash(EXAM_FEE));
+        String path = "/api/v1/policies/" + EXAM_FEE;
         mvc.perform(get(path + "/questions")).andExpect(status().isOk())
                 .andExpect(header().string("Cache-Control", "no-store"))
                 .andExpect(jsonPath("$.available").value(true)).andExpect(jsonPath("$.questions.length()").value(3))
                 .andExpect(jsonPath("$.questions[0].id").value("birthRange"));
-        var input = new PolicyQuestions.Request(1, ExamFeeRules.VERSION, List.of(
+        var input = new PolicyQuestions.Request(1, version(EXAM_FEE), List.of(
                 new PolicyQuestions.Answer("birthRange", "ON_OR_AFTER_1991_01_01"),
                 new PolicyQuestions.Answer("exam", "HRDK_TECHNICAL"), new PolicyQuestions.Answer("remainingUses", "ONE")));
         mvc.perform(post(path + "/evaluation").contentType("application/json").content(mapper.writeValueAsString(input)))
                 .andExpect(status().isOk()).andExpect(header().string("Cache-Control", "no-store"))
-                .andExpect(jsonPath("$.policyNumber").value(ExamFeeRules.NUMBER))
-                .andExpect(jsonPath("$.ruleVersion").value(ExamFeeRules.VERSION))
+                .andExpect(jsonPath("$.policyNumber").value(EXAM_FEE))
+                .andExpect(jsonPath("$.ruleVersion").value(version(EXAM_FEE)))
                 .andExpect(jsonPath("$.commonCriteriaStatus").value("ELIGIBLE"))
                 .andExpect(jsonPath("$.status").value("NEEDS_REVIEW"));
-        var otherRule = new PolicyQuestions.Request(1, WorkStudyRules.VERSION, input.answers());
+        var otherRule = new PolicyQuestions.Request(1, version(WORK_STUDY), input.answers());
         mvc.perform(post(path + "/evaluation").contentType("application/json").content(mapper.writeValueAsString(otherRule))).andExpect(status().isConflict());
-        var otherAnswer = new PolicyQuestions.Request(1, ExamFeeRules.VERSION, List.of(new PolicyQuestions.Answer("nationality", "YES")));
+        var otherAnswer = new PolicyQuestions.Request(1, version(EXAM_FEE), List.of(new PolicyQuestions.Answer("nationality", "YES")));
         mvc.perform(post(path + "/evaluation").contentType("application/json").content(mapper.writeValueAsString(otherAnswer))).andExpect(status().isBadRequest());
         importAt(normalized.number(), normalized.content(), normalized.rawPolicy(), AT.plusSeconds(1), "exam-updated", "changed-content");
         mvc.perform(get(path + "/questions")).andExpect(status().isOk()).andExpect(jsonPath("$.available").value(false));
@@ -479,17 +479,17 @@ class PolicyCatalogTest {
     @Test
     @DisplayName("서울 기준 새해가 되면 이전 연도의 응시료 질문과 제출을 중단한다")
     void stopsExamFeeQuestionsAcrossYearBoundary() throws Exception {
-        item.put("plcyNo", ExamFeeRules.NUMBER);
+        item.put("plcyNo", EXAM_FEE);
         var normalized = parser.item(item);
-        importAt(normalized.number(), normalized.content(), normalized.rawPolicy(), AT, "exam-reviewed", ExamFeeRules.CONTENT_HASH);
-        String path = "/api/v1/policies/" + ExamFeeRules.NUMBER;
+        importAt(normalized.number(), normalized.content(), normalized.rawPolicy(), AT, "exam-reviewed", hash(EXAM_FEE));
+        String path = "/api/v1/policies/" + EXAM_FEE;
         org.mockito.Mockito.when(clock.instant()).thenReturn(Instant.parse("2026-12-31T14:59:59Z"));
         mvc.perform(get(path + "/questions")).andExpect(status().isOk()).andExpect(jsonPath("$.available").value(true));
         mvc.perform(get("/api/v1/policies").param("questionsOnly", "true"))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.total").value(1));
         // 비교 시각을 한 번만 읽는다. 질문 검사와 결과가 자정 양쪽으로 나뉘지 않아야 한다.
         org.mockito.Mockito.when(clock.instant()).thenReturn(Instant.parse("2026-12-31T14:59:59Z"), Instant.parse("2026-12-31T15:00:00Z"));
-        String body = mapper.writeValueAsString(new PolicyQuestions.Request(1, ExamFeeRules.VERSION, List.of()));
+        String body = mapper.writeValueAsString(new PolicyQuestions.Request(1, version(EXAM_FEE), List.of()));
         mvc.perform(post(path + "/evaluation").contentType("application/json").content(body)).andExpect(status().isOk())
                 .andExpect(jsonPath("$.evaluatedAt").value("2026-12-31T14:59:59Z"));
         mvc.perform(get(path + "/questions")).andExpect(status().isOk()).andExpect(jsonPath("$.available").value(false))
@@ -505,24 +505,24 @@ class PolicyCatalogTest {
     @DisplayName("질문 필터는 검색·건수·페이지에 먼저 적용하고 전체 목록에도 제공 여부를 표시한다")
     void filtersReviewedQuestionsBeforePagination() throws Exception {
         save("unreviewed", AT.plusSeconds(5));
-        saveReviewed(WorkStudyRules.NUMBER, "국가근로 지원", WorkStudyRules.CONTENT_HASH);
-        saveReviewed(ExamFeeRules.NUMBER, "응시료 지원", ExamFeeRules.CONTENT_HASH);
+        saveReviewed(WORK_STUDY, "국가근로 지원", hash(WORK_STUDY));
+        saveReviewed(EXAM_FEE, "응시료 지원", hash(EXAM_FEE));
         mvc.perform(get("/api/v1/policies").param("pageSize", "1"))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.total").value(3))
                 .andExpect(jsonPath("$.items[0].policyNumber").value(NUMBER))
                 .andExpect(jsonPath("$.items[0].questionnaireAvailable").value(false));
         mvc.perform(get("/api/v1/policies").param("questionsOnly", "true").param("pageSize", "1"))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.total").value(2)).andExpect(jsonPath("$.hasNext").value(true))
-                .andExpect(jsonPath("$.items[0].policyNumber").value(ExamFeeRules.NUMBER))
+                .andExpect(jsonPath("$.items[0].policyNumber").value(EXAM_FEE))
                 .andExpect(jsonPath("$.items[0].questionnaireAvailable").value(true));
         mvc.perform(get("/api/v1/policies").param("questionsOnly", "true").param("pageSize", "1").param("page", "2"))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.total").value(2)).andExpect(jsonPath("$.hasNext").value(false))
-                .andExpect(jsonPath("$.items[0].policyNumber").value(WorkStudyRules.NUMBER));
+                .andExpect(jsonPath("$.items[0].policyNumber").value(WORK_STUDY));
         mvc.perform(get("/api/v1/policies").param("questionsOnly", "true").param("pageSize", "1").param("page", "3"))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.total").value(2)).andExpect(jsonPath("$.items").isEmpty());
         mvc.perform(get("/api/v1/policies").param("questionsOnly", "true").param("q", "국가근로"))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.total").value(1))
-                .andExpect(jsonPath("$.items[0].policyNumber").value(WorkStudyRules.NUMBER));
+                .andExpect(jsonPath("$.items[0].policyNumber").value(WORK_STUDY));
         mvc.perform(get("/api/v1/policies").param("questionsOnly", "true").param("q", "없는검색어"))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.total").value(0)).andExpect(jsonPath("$.items").isEmpty());
     }
@@ -596,7 +596,7 @@ class PolicyCatalogTest {
                         org.hamcrest.Matchers.containsString("만 19~34세"), org.hamcrest.Matchers.containsString("기준일과 예외"))))
                 .andExpect(jsonPath("$.items[0].checks[0].outcome").value("UNKNOWN"));
         // 검토한 연령 비교가 있으면 표기 범위 대신 그 결과를 사용한다.
-        saveReviewed(ExamFeeRules.NUMBER, "응시료 지원", ExamFeeRules.CONTENT_HASH);
+        saveReviewed(EXAM_FEE, "응시료 지원", hash(EXAM_FEE));
         mvc.perform(post("/api/v1/policies/checks").contentType("application/json").content(body).param("q", "응시료"))
                 .andExpect(jsonPath("$.items[0].ruleVersion").value(org.hamcrest.Matchers.not("")))
                 .andExpect(jsonPath("$.items[0].checks[0].explanation").value(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("온통청년 표기"))));
@@ -610,7 +610,7 @@ class PolicyCatalogTest {
     @Test
     @DisplayName("기본 조건 결과의 질문 제공 여부는 자격 상태와 분리하고 같은 비교 시각을 사용한다")
     void exposesQuestionsInConditionChecks() throws Exception {
-        saveReviewed(ExamFeeRules.NUMBER, "응시료 지원", ExamFeeRules.CONTENT_HASH);
+        saveReviewed(EXAM_FEE, "응시료 지원", hash(EXAM_FEE));
         var input = new BasicConditions(java.time.LocalDate.of(2000, 1, 2), "강남구", BasicConditions.EmploymentStatus.NOT_EMPLOYED);
         var body = mapper.writeValueAsString(input);
         org.mockito.Mockito.when(clock.instant()).thenReturn(Instant.parse("2026-12-31T14:59:59Z"), Instant.parse("2026-12-31T15:00:00Z"));
@@ -629,15 +629,15 @@ class PolicyCatalogTest {
     @Test
     @DisplayName("검토한 K-패스 원문에 질문·목록 표시를 연결하고 내용이 바뀌면 이전 답변을 중단한다")
     void providesReviewedKPassQuestions() throws Exception {
-        saveReviewed(KPassRules.NUMBER, "K-패스", KPassRules.CONTENT_HASH);
-        var path = "/api/v1/policies/" + KPassRules.NUMBER;
+        saveReviewed(K_PASS, "K-패스", hash(K_PASS));
+        var path = "/api/v1/policies/" + K_PASS;
         mvc.perform(get(path + "/questions")).andExpect(status().isOk()).andExpect(header().string("Cache-Control", "no-store"))
                 .andExpect(jsonPath("$.available").value(true)).andExpect(jsonPath("$.questions.length()").value(4))
                 .andExpect(jsonPath("$.ruleVersion").value("k-pass-2026-v1-2026-09"));
         mvc.perform(get("/api/v1/policies").param("questionsOnly", "true").param("q", "K-패스"))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.total").value(1))
                 .andExpect(jsonPath("$.items[0].questionnaireAvailable").value(true));
-        var request = new PolicyQuestions.Request(1, KPassRules.versionAt(AT), List.of(new PolicyQuestions.Answer("age", "ADULT"),
+        var request = new PolicyQuestions.Request(1, rule(K_PASS).versionAt(AT), List.of(new PolicyQuestions.Answer("age", "ADULT"),
                 new PolicyQuestions.Answer("registration", "REGISTERED"), new PolicyQuestions.Answer("residence", "CONFIRMED"),
                 new PolicyQuestions.Answer("monthlyRides", "FIRST_MONTH_1_TO_14")));
         var body = mapper.writeValueAsString(request);
@@ -649,8 +649,8 @@ class PolicyCatalogTest {
         mvc.perform(post(path + "/evaluation").contentType("application/json").content(mapper.writeValueAsString(
                 new PolicyQuestions.Request(1, request.ruleVersion(), List.of(new PolicyQuestions.Answer("monthlyRides", "TEN"))))))
                 .andExpect(status().isBadRequest());
-        var current = store.find(KPassRules.NUMBER).orElseThrow();
-        importAt(KPassRules.NUMBER, current.content(), "{}", AT.plusSeconds(1), "changed-k-pass", "changed-hash");
+        var current = store.find(K_PASS).orElseThrow();
+        importAt(K_PASS, current.content(), "{}", AT.plusSeconds(1), "changed-k-pass", "changed-hash");
         mvc.perform(get(path + "/questions")).andExpect(status().isOk()).andExpect(jsonPath("$.available").value(false));
         mvc.perform(get("/api/v1/policies").param("questionsOnly", "true"))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.total").value(0));
@@ -661,12 +661,12 @@ class PolicyCatalogTest {
     @Test
     @DisplayName("서울 월말의 한 요청은 같은 달로 비교하고 다음 요청은 이전 월 답변을 거절한다")
     void fencesKPassAnswersAtMonthBoundary() throws Exception {
-        saveReviewed(KPassRules.NUMBER, "K-패스", KPassRules.CONTENT_HASH);
-        var path = "/api/v1/policies/" + KPassRules.NUMBER;
+        saveReviewed(K_PASS, "K-패스", hash(K_PASS));
+        var path = "/api/v1/policies/" + K_PASS;
         var before = Instant.parse("2026-09-30T14:59:59Z");
         var after = Instant.parse("2026-09-30T15:00:00Z");
         org.mockito.Mockito.when(clock.instant()).thenReturn(before, after);
-        var body = mapper.writeValueAsString(new PolicyQuestions.Request(1, KPassRules.versionAt(before), List.of()));
+        var body = mapper.writeValueAsString(new PolicyQuestions.Request(1, rule(K_PASS).versionAt(before), List.of()));
         mvc.perform(post(path + "/evaluation").contentType("application/json").content(body))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.evaluatedAt").value(before.toString()))
                 .andExpect(jsonPath("$.ruleVersion").value("k-pass-2026-v1-2026-09"));
@@ -680,8 +680,8 @@ class PolicyCatalogTest {
     @Test
     @DisplayName("검토한 연도가 지나면 K-패스 질문·목록 표시와 이전 답변 제출을 중단한다")
     void stopsKPassQuestionsAfterReviewedYear() throws Exception {
-        saveReviewed(KPassRules.NUMBER, "K-패스", KPassRules.CONTENT_HASH);
-        var path = "/api/v1/policies/" + KPassRules.NUMBER;
+        saveReviewed(K_PASS, "K-패스", hash(K_PASS));
+        var path = "/api/v1/policies/" + K_PASS;
         org.mockito.Mockito.when(clock.instant()).thenReturn(Instant.parse("2026-12-31T15:00:00Z"));
         mvc.perform(get(path + "/questions")).andExpect(status().isOk()).andExpect(jsonPath("$.available").value(false))
                 .andExpect(jsonPath("$.reason").value(org.hamcrest.Matchers.containsString("적용 기간")));
@@ -690,21 +690,21 @@ class PolicyCatalogTest {
         mvc.perform(get("/api/v1/policies").param("questionsOnly", "true"))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.total").value(0));
         mvc.perform(post(path + "/evaluation").contentType("application/json").content(mapper.writeValueAsString(
-                new PolicyQuestions.Request(1, KPassRules.versionAt(AT), List.of())))).andExpect(status().isConflict());
+                new PolicyQuestions.Request(1, rule(K_PASS).versionAt(AT), List.of())))).andExpect(status().isConflict());
     }
 
     @Test
     @DisplayName("청년주택드림청약통장 질문·목록 표시를 연결하고 개정·규칙·원문 변경 시 이전 답변을 거절한다")
     void providesReviewedYouthHousingSavingsQuestions() throws Exception {
-        saveReviewed(YouthHousingSavingsRules.NUMBER, "청년주택드림청약통장", YouthHousingSavingsRules.CONTENT_HASH);
-        var path = "/api/v1/policies/" + YouthHousingSavingsRules.NUMBER;
+        saveReviewed(YOUTH_HOUSING_SAVINGS, "청년주택드림청약통장", hash(YOUTH_HOUSING_SAVINGS));
+        var path = "/api/v1/policies/" + YOUTH_HOUSING_SAVINGS;
         mvc.perform(get(path + "/questions")).andExpect(status().isOk()).andExpect(header().string("Cache-Control", "no-store"))
                 .andExpect(jsonPath("$.available").value(true)).andExpect(jsonPath("$.questions.length()").value(4))
-                .andExpect(jsonPath("$.ruleVersion").value(YouthHousingSavingsRules.VERSION));
+                .andExpect(jsonPath("$.ruleVersion").value(version(YOUTH_HOUSING_SAVINGS)));
         mvc.perform(get("/api/v1/policies").param("questionsOnly", "true").param("q", "청년주택드림"))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.total").value(1))
                 .andExpect(jsonPath("$.items[0].questionnaireAvailable").value(true));
-        var request = new PolicyQuestions.Request(1, YouthHousingSavingsRules.VERSION, List.of(new PolicyQuestions.Answer("age", "AGE_19_TO_34"),
+        var request = new PolicyQuestions.Request(1, version(YOUTH_HOUSING_SAVINGS), List.of(new PolicyQuestions.Answer("age", "AGE_19_TO_34"),
                 new PolicyQuestions.Answer("homeOwnership", "NO_HOME"), new PolicyQuestions.Answer("incomeBasis", "PREVIOUS_YEAR"),
                 new PolicyQuestions.Answer("incomeAmount", "UP_TO_50M")));
         var body = mapper.writeValueAsString(request);
@@ -719,8 +719,8 @@ class PolicyCatalogTest {
         mvc.perform(post(path + "/evaluation").contentType("application/json").content(mapper.writeValueAsString(
                 new PolicyQuestions.Request(1, request.ruleVersion(), List.of(new PolicyQuestions.Answer("incomeAmount", "ZERO"))))))
                 .andExpect(status().isBadRequest());
-        var current = store.find(YouthHousingSavingsRules.NUMBER).orElseThrow();
-        importAt(YouthHousingSavingsRules.NUMBER, current.content(), "{}", AT.plusSeconds(1), "changed-housing", "changed-hash");
+        var current = store.find(YOUTH_HOUSING_SAVINGS).orElseThrow();
+        importAt(YOUTH_HOUSING_SAVINGS, current.content(), "{}", AT.plusSeconds(1), "changed-housing", "changed-hash");
         mvc.perform(get(path + "/questions")).andExpect(status().isOk()).andExpect(jsonPath("$.available").value(false));
         mvc.perform(get("/api/v1/policies").param("questionsOnly", "true"))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.total").value(0));
@@ -731,11 +731,11 @@ class PolicyCatalogTest {
     @Test
     @DisplayName("서울 연말의 한 요청은 같은 연도로 비교하고 새해에는 가입 질문·목록 표시·제출을 중단한다")
     void stopsYouthHousingSavingsQuestionsAtYearBoundary() throws Exception {
-        saveReviewed(YouthHousingSavingsRules.NUMBER, "청년주택드림청약통장", YouthHousingSavingsRules.CONTENT_HASH);
-        var path = "/api/v1/policies/" + YouthHousingSavingsRules.NUMBER;
+        saveReviewed(YOUTH_HOUSING_SAVINGS, "청년주택드림청약통장", hash(YOUTH_HOUSING_SAVINGS));
+        var path = "/api/v1/policies/" + YOUTH_HOUSING_SAVINGS;
         var before = Instant.parse("2026-12-31T14:59:59Z");
         org.mockito.Mockito.when(clock.instant()).thenReturn(before, Instant.parse("2026-12-31T15:00:00Z"));
-        var body = mapper.writeValueAsString(new PolicyQuestions.Request(1, YouthHousingSavingsRules.VERSION, List.of()));
+        var body = mapper.writeValueAsString(new PolicyQuestions.Request(1, version(YOUTH_HOUSING_SAVINGS), List.of()));
         mvc.perform(post(path + "/evaluation").contentType("application/json").content(body))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.evaluatedAt").value(before.toString()));
         mvc.perform(post(path + "/evaluation").contentType("application/json").content(body))
@@ -751,16 +751,16 @@ class PolicyCatalogTest {
     @Test
     @DisplayName("서울청년정책네트워크 질문과 마감 안내를 제공하고 개정·규칙·원문 변경 시 이전 답변을 거절한다")
     void providesReviewedSeoulYouthNetworkQuestions() throws Exception {
-        saveReviewed(SeoulYouthNetworkRules.NUMBER, "2026년 서울청년정책네트워크 하반기 모집", SeoulYouthNetworkRules.CONTENT_HASH);
-        var path = "/api/v1/policies/" + SeoulYouthNetworkRules.NUMBER;
+        saveReviewed(SEOUL_YOUTH_NETWORK, "2026년 서울청년정책네트워크 하반기 모집", hash(SEOUL_YOUTH_NETWORK));
+        var path = "/api/v1/policies/" + SEOUL_YOUTH_NETWORK;
         mvc.perform(get(path + "/questions")).andExpect(status().isOk()).andExpect(header().string("Cache-Control", "no-store"))
                 .andExpect(jsonPath("$.available").value(true)).andExpect(jsonPath("$.questions.length()").value(4))
                 .andExpect(jsonPath("$.reason").value(org.hamcrest.Matchers.containsString("접수가 마감")))
-                .andExpect(jsonPath("$.ruleVersion").value(SeoulYouthNetworkRules.VERSION));
+                .andExpect(jsonPath("$.ruleVersion").value(version(SEOUL_YOUTH_NETWORK)));
         mvc.perform(get("/api/v1/policies").param("questionsOnly", "true").param("q", "서울청년정책네트워크"))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.total").value(1))
                 .andExpect(jsonPath("$.items[0].questionnaireAvailable").value(true));
-        var request = new PolicyQuestions.Request(1, SeoulYouthNetworkRules.VERSION, List.of(new PolicyQuestions.Answer("birthRange", "BASE_RANGE"),
+        var request = new PolicyQuestions.Request(1, version(SEOUL_YOUTH_NETWORK), List.of(new PolicyQuestions.Answer("birthRange", "BASE_RANGE"),
                 new PolicyQuestions.Answer("seoulConnection", "UNIVERSITY"), new PolicyQuestions.Answer("consecutiveTerms", "NOT_APPLICABLE"),
                 new PolicyQuestions.Answer("priorDisqualification", "NONE")));
         var body = mapper.writeValueAsString(request);
@@ -776,8 +776,8 @@ class PolicyCatalogTest {
         mvc.perform(post(path + "/evaluation").contentType("application/json").content(mapper.writeValueAsString(
                 new PolicyQuestions.Request(1, request.ruleVersion(), List.of(new PolicyQuestions.Answer("birthRange", "ADULT"))))))
                 .andExpect(status().isBadRequest());
-        var current = store.find(SeoulYouthNetworkRules.NUMBER).orElseThrow();
-        importAt(SeoulYouthNetworkRules.NUMBER, current.content(), "{}", AT.plusSeconds(1), "changed-network", "changed-hash");
+        var current = store.find(SEOUL_YOUTH_NETWORK).orElseThrow();
+        importAt(SEOUL_YOUTH_NETWORK, current.content(), "{}", AT.plusSeconds(1), "changed-network", "changed-hash");
         mvc.perform(get(path + "/questions")).andExpect(status().isOk()).andExpect(jsonPath("$.available").value(false));
         mvc.perform(get("/api/v1/policies").param("questionsOnly", "true"))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.total").value(0));
@@ -788,11 +788,11 @@ class PolicyCatalogTest {
     @Test
     @DisplayName("서울 연말의 한 요청은 같은 연도로 비교하고 새해에는 이전 모집의 질문·목록 표시·제출을 중단한다")
     void stopsSeoulYouthNetworkQuestionsAtYearBoundary() throws Exception {
-        saveReviewed(SeoulYouthNetworkRules.NUMBER, "서울청년정책네트워크", SeoulYouthNetworkRules.CONTENT_HASH);
-        var path = "/api/v1/policies/" + SeoulYouthNetworkRules.NUMBER;
+        saveReviewed(SEOUL_YOUTH_NETWORK, "서울청년정책네트워크", hash(SEOUL_YOUTH_NETWORK));
+        var path = "/api/v1/policies/" + SEOUL_YOUTH_NETWORK;
         var before = Instant.parse("2026-12-31T14:59:59Z");
         org.mockito.Mockito.when(clock.instant()).thenReturn(before, Instant.parse("2026-12-31T15:00:00Z"));
-        var body = mapper.writeValueAsString(new PolicyQuestions.Request(1, SeoulYouthNetworkRules.VERSION, List.of()));
+        var body = mapper.writeValueAsString(new PolicyQuestions.Request(1, version(SEOUL_YOUTH_NETWORK), List.of()));
         mvc.perform(post(path + "/evaluation").contentType("application/json").content(body))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.evaluatedAt").value(before.toString()));
         mvc.perform(post(path + "/evaluation").contentType("application/json").content(body))
@@ -808,8 +808,8 @@ class PolicyCatalogTest {
     @Test
     @DisplayName("조건 없이 탐색하고 생년월일만 추가해 연령을 비교한다")
     void progressivelyComparesOptionalConditions() throws Exception {
-        saveReviewed(ExamFeeRules.NUMBER, "응시료 지원", ExamFeeRules.CONTENT_HASH);
-        saveReviewed(KPassRules.NUMBER, "K-패스", KPassRules.CONTENT_HASH);
+        saveReviewed(EXAM_FEE, "응시료 지원", hash(EXAM_FEE));
+        saveReviewed(K_PASS, "K-패스", hash(K_PASS));
         for (String body : List.of("{}", "{\"birthDate\":null,\"district\":null,\"employmentStatus\":null}")) {
             mvc.perform(post("/api/v1/policies/checks").contentType("application/json").content(body))
                     .andExpect(status().isOk()).andExpect(header().string("Cache-Control", "no-store"))
@@ -819,7 +819,7 @@ class PolicyCatalogTest {
         }
         mvc.perform(post("/api/v1/policies/checks").contentType("application/json").content("{\"birthDate\":\"1990-12-31\"}"))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.total").value(2))
-                .andExpect(jsonPath("$.items[0].policyNumber").value(KPassRules.NUMBER))
+                .andExpect(jsonPath("$.items[0].policyNumber").value(K_PASS))
                 .andExpect(jsonPath("$.items[0].checks[0].outcome").value("MET"))
                 .andExpect(jsonPath("$.items[1].checks[0].outcome").value("NOT_MET"));
         for (String body : List.of("{\"birthDate\":\"9999-01-01\"}", "{\"district\":\"부산\"}", "{\"employmentStatus\":\"UNKNOWN\"}")) {
@@ -829,8 +829,8 @@ class PolicyCatalogTest {
 
     @Test @DisplayName("전체 정책을 연령 충족·미확인·불충족 순으로 정렬한 뒤 검색과 페이지를 적용한다")
     void ranksConditionResultsBeforePagination() throws Exception {
-        saveReviewed(ExamFeeRules.NUMBER, "응시료 지원", ExamFeeRules.CONTENT_HASH);
-        saveReviewed(KPassRules.NUMBER, "K-패스", KPassRules.CONTENT_HASH);
+        saveReviewed(EXAM_FEE, "응시료 지원", hash(EXAM_FEE));
+        saveReviewed(K_PASS, "K-패스", hash(K_PASS));
         for (int index = 1; index <= 21; index++) {
             item.put("plcyNo", "900000000000000000%02d".formatted(index)).put("plcyNm", "미검토 정책 " + index);
             save("condition-order-" + index, AT.plusSeconds(1));
@@ -840,17 +840,17 @@ class PolicyCatalogTest {
         var first = checks.check(input, 1, "", PolicyCheckResponse.Sort.AGE_MATCH, null);
         org.mockito.Mockito.verify(jdbc, org.mockito.Mockito.times(3)).sql(org.mockito.ArgumentMatchers.anyString());
         assertThat(first.total()).isEqualTo(23);
-        assertThat(first.items().getFirst().policyNumber()).isEqualTo(KPassRules.NUMBER);
+        assertThat(first.items().getFirst().policyNumber()).isEqualTo(K_PASS);
         assertThat(first.items().getFirst().checks().getFirst().outcome()).isEqualTo(kr.youthpolicymate.eligibility.ConditionAssessment.Outcome.MET);
-        assertThat(first.items().getFirst().ruleVersion()).isEqualTo(KPassRules.versionAt(AT));
+        assertThat(first.items().getFirst().ruleVersion()).isEqualTo(rule(K_PASS).versionAt(AT));
         var second = checks.check(input, 2, "", PolicyCheckResponse.Sort.AGE_MATCH, null);
         assertThat(second.items()).hasSize(3);
-        assertThat(second.items().getLast().policyNumber()).isEqualTo(ExamFeeRules.NUMBER);
+        assertThat(second.items().getLast().policyNumber()).isEqualTo(EXAM_FEE);
         assertThat(second.items().getLast().checks().getFirst().outcome()).isEqualTo(kr.youthpolicymate.eligibility.ConditionAssessment.Outcome.NOT_MET);
         assertThat(first.items()).noneMatch(value -> second.items().stream().anyMatch(next -> value.policyNumber().equals(next.policyNumber())));
         var search = checks.check(input, 1, "응시료", PolicyCheckResponse.Sort.AGE_MATCH, null);
         assertThat(search.total()).isEqualTo(1);
-        assertThat(search.items().getFirst().policyNumber()).isEqualTo(ExamFeeRules.NUMBER);
+        assertThat(search.items().getFirst().policyNumber()).isEqualTo(EXAM_FEE);
         assertThat(checks.check(input, 1, "%_", PolicyCheckResponse.Sort.AGE_MATCH, null).items()).isEmpty();
         assertThat(checks.check(input, 1, "", PolicyCheckResponse.Sort.RECENT, null).items().getFirst().title()).isEqualTo("미검토 정책 1");
         var body = mapper.writeValueAsString(input);
@@ -859,8 +859,8 @@ class PolicyCatalogTest {
                 .andExpect(jsonPath("$.total").value(1)).andExpect(jsonPath("$.items[0].checks[0].outcome").value("NOT_MET"));
         mvc.perform(post("/api/v1/policies/checks").param("q", "가".repeat(81)).contentType("application/json").content(body)).andExpect(status().isBadRequest());
         mvc.perform(post("/api/v1/policies/checks").param("sort", "SCORE").contentType("application/json").content(body)).andExpect(status().isBadRequest());
-        var current = store.find(KPassRules.NUMBER).orElseThrow();
-        importAt(KPassRules.NUMBER, current.content(), "{}", AT.plusSeconds(2), "changed-basic", "changed-basic-hash");
+        var current = store.find(K_PASS).orElseThrow();
+        importAt(K_PASS, current.content(), "{}", AT.plusSeconds(2), "changed-basic", "changed-basic-hash");
         var changed = checks.check(input, 1, "K-패스", PolicyCheckResponse.Sort.AGE_MATCH, null).items().getFirst();
         assertThat(changed.checks().getFirst().outcome()).isEqualTo(kr.youthpolicymate.eligibility.ConditionAssessment.Outcome.UNKNOWN);
         assertThat(changed.ruleVersion()).isEmpty();
@@ -869,14 +869,14 @@ class PolicyCatalogTest {
 
     @Test @DisplayName("상반기 이사비 질문을 공개 목록에 연결하고 원문·개정·규칙·연도가 바뀌면 비교를 중단한다")
     void providesMovingFeeQuestionsWithVersionGuards() throws Exception {
-        saveReviewed(MovingFeeRules.NUMBER, "이사비 지원", MovingFeeRules.CONTENT_HASH);
-        var path = "/api/v1/policies/" + MovingFeeRules.NUMBER;
+        saveReviewed(MOVING_FEE, "이사비 지원", hash(MOVING_FEE));
+        var path = "/api/v1/policies/" + MOVING_FEE;
         mvc.perform(get(path + "/questions")).andExpect(status().isOk()).andExpect(jsonPath("$.available").value(true))
                 .andExpect(jsonPath("$.questions.length()").value(12)).andExpect(jsonPath("$.questions[11].id").value("excludedResidency"))
                 .andExpect(jsonPath("$.reason").value(org.hamcrest.Matchers.containsString("상반기 접수는")));
         mvc.perform(get("/api/v1/policies").param("questionsOnly", "true").param("q", "이사비"))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.total").value(1));
-        var request = new PolicyQuestions.Request(1, MovingFeeRules.VERSION, List.of(new PolicyQuestions.Answer("birthRange", "IN_RANGE"),
+        var request = new PolicyQuestions.Request(1, version(MOVING_FEE), List.of(new PolicyQuestions.Answer("birthRange", "IN_RANGE"),
                 new PolicyQuestions.Answer("move", "COMPLETED"), new PolicyQuestions.Answer("contract", "ALL"),
                 new PolicyQuestions.Answer("homeOwnership", "NO_HOME"), new PolicyQuestions.Answer("housingCost", "WITHIN_LIMIT"),
                 new PolicyQuestions.Answer("income", "WITHIN_LIMIT"), new PolicyQuestions.Answer("seoulSupport", "NONE"),
@@ -904,8 +904,8 @@ class PolicyCatalogTest {
         mvc.perform(get(path + "/questions")).andExpect(status().isOk()).andExpect(jsonPath("$.available").value(false));
         mvc.perform(post(path + "/evaluation").contentType("application/json").content(body)).andExpect(status().isConflict());
         org.mockito.Mockito.when(clock.instant()).thenReturn(AT);
-        var current = store.find(MovingFeeRules.NUMBER).orElseThrow();
-        importAt(MovingFeeRules.NUMBER, current.content(), "{}", AT.plusSeconds(1), "moving-change", "moving-new-hash");
+        var current = store.find(MOVING_FEE).orElseThrow();
+        importAt(MOVING_FEE, current.content(), "{}", AT.plusSeconds(1), "moving-change", "moving-new-hash");
         mvc.perform(get(path + "/questions")).andExpect(status().isOk()).andExpect(jsonPath("$.available").value(false));
         mvc.perform(post(path + "/evaluation").contentType("application/json").content(body)).andExpect(status().isConflict());
         mvc.perform(get("/api/v1/policies").param("questionsOnly", "true")).andExpect(status().isOk()).andExpect(jsonPath("$.total").value(0));
@@ -946,7 +946,7 @@ class PolicyCatalogTest {
             item.put("plcyNo", "90" + i).put("plcyNm", "필터 지원 " + i);
             save("open-" + i, AT.plusSeconds(i));
         }
-        saveReviewed(WorkStudyRules.NUMBER, "필터 지원 장학금", WorkStudyRules.CONTENT_HASH);
+        saveReviewed(WORK_STUDY, "필터 지원 장학금", hash(WORK_STUDY));
         item.put("plcyNo", "991").put("aplyYmd", "20260801 ~ 20260831"); save("closed", AT.plusSeconds(30));
         item.put("plcyNo", "992").put("aplyPrdSeCd", "0057002").put("aplyYmd", ""); save("rolling", AT.plusSeconds(31));
         item.put("plcyNo", "993").put("aplyYmd", "20260901 ~ 20260912"); save("unknown", AT.plusSeconds(32));
@@ -966,7 +966,7 @@ class PolicyCatalogTest {
         }
         mvc.perform(get("/api/v1/policies").param("recruitmentStatus", "OPEN").param("q", "장학금").param("questionsOnly", "true"))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.total").value(1))
-                .andExpect(jsonPath("$.items[0].policyNumber").value(WorkStudyRules.NUMBER));
+                .andExpect(jsonPath("$.items[0].policyNumber").value(WORK_STUDY));
         for (var state : List.of("CLOSED", "ROLLING", "UNKNOWN", "BEFORE_OPENING")) {
             mvc.perform(get("/api/v1/policies").param("recruitmentStatus", state)).andExpect(status().isOk())
                     .andExpect(jsonPath("$.total").value(1)).andExpect(jsonPath("$.items[0].recruitment.status").value(state));
@@ -995,15 +995,15 @@ class PolicyCatalogTest {
             assertThat(store.list("", 1, 20, false, expected, now).items()).singleElement()
                     .satisfies(policy -> assertThat(policy.recruitment().status()).isEqualTo(expected));
         }
-        saveReviewed(MovingFeeRules.NUMBER, "이사비", MovingFeeRules.CONTENT_HASH);
-        for (var now : List.of(MovingFeeRules.OPEN_AT.minusNanos(1000), MovingFeeRules.OPEN_AT,
-                MovingFeeRules.CLOSE_AT.minusNanos(1000), MovingFeeRules.CLOSE_AT)) {
-            var expected = PolicyRecruitment.from(MovingFeeRules.NUMBER, 1, MovingFeeRules.CONTENT_HASH, item, now).status();
+        saveReviewed(MOVING_FEE, "이사비", hash(MOVING_FEE));
+        for (var now : List.of(rule(MOVING_FEE).periodNotice().opensAt().minusNanos(1000), rule(MOVING_FEE).periodNotice().opensAt(),
+                rule(MOVING_FEE).periodNotice().closesAt().minusNanos(1000), rule(MOVING_FEE).periodNotice().closesAt())) {
+            var expected = PolicyRecruitment.from(MOVING_FEE, 1, hash(MOVING_FEE), item, now).status();
             assertThat(store.list("이사비", 1, 20, true, expected, now).items()).singleElement()
                     .satisfies(policy -> assertThat(policy.recruitment().status()).isEqualTo(expected));
         }
-        var current = store.find(MovingFeeRules.NUMBER).orElseThrow();
-        importAt(MovingFeeRules.NUMBER, current.content(), "{}", AT.plusSeconds(1), "changed-window", "changed-window");
+        var current = store.find(MOVING_FEE).orElseThrow();
+        importAt(MOVING_FEE, current.content(), "{}", AT.plusSeconds(1), "changed-window", "changed-window");
         assertThat(store.list("이사비", 1, 20, false, kr.youthpolicymate.policy.RecruitmentStatus.UNKNOWN, AT).total()).isOne();
         assertThat(store.list("이사비", 1, 20, false, kr.youthpolicymate.policy.RecruitmentStatus.CLOSED, AT).total()).isZero();
     }
@@ -1069,7 +1069,7 @@ class PolicyCatalogTest {
     @Test @DisplayName("청약통장 연령을 검색·정렬·접수 필터에 연결하고 원문·검토 연도 변경 시 중단한다")
     void comparesHousingAgeInBasicConditions() throws Exception {
         item.put("aplyPrdSeCd", "0057002").put("aplyYmd", "");
-        saveReviewed(YouthHousingSavingsRules.NUMBER, "청년주택드림청약통장", YouthHousingSavingsRules.CONTENT_HASH);
+        saveReviewed(YOUTH_HOUSING_SAVINGS, "청년주택드림청약통장", hash(YOUTH_HOUSING_SAVINGS));
         item.put("plcyNo", "99881").put("plcyNm", "연령 미검토 정책");
         save("housing-age-order", AT.plusSeconds(1));
         var input = new BasicConditions(java.time.LocalDate.parse("2000-01-01"), "강남구", BasicConditions.EmploymentStatus.NOT_EMPLOYED);
@@ -1077,9 +1077,9 @@ class PolicyCatalogTest {
         var result = checks.check(input, 1, "", PolicyCheckResponse.Sort.AGE_MATCH, kr.youthpolicymate.policy.RecruitmentStatus.ROLLING);
         org.mockito.Mockito.verify(jdbc, org.mockito.Mockito.times(3)).sql(org.mockito.ArgumentMatchers.anyString());
         var housing = result.items().getFirst();
-        assertThat(housing.policyNumber()).isEqualTo(YouthHousingSavingsRules.NUMBER);
-        assertThat(housing.ruleVersion()).isEqualTo(YouthHousingSavingsRules.VERSION);
-        assertThat(housing.sourceUrl()).isEqualTo(YouthHousingSavingsRules.SOURCE);
+        assertThat(housing.policyNumber()).isEqualTo(YOUTH_HOUSING_SAVINGS);
+        assertThat(housing.ruleVersion()).isEqualTo(version(YOUTH_HOUSING_SAVINGS));
+        assertThat(housing.sourceUrl()).isEqualTo(rule(YOUTH_HOUSING_SAVINGS).sourceUrl());
         assertThat(housing.explanation()).contains("오늘(서울 기준) 가입", "가입일이 달라지면");
         assertThat(housing.checks()).extracting(PolicyCheckResponse.Check::outcome).containsExactly(
                 kr.youthpolicymate.eligibility.ConditionAssessment.Outcome.MET,
@@ -1100,8 +1100,8 @@ class PolicyCatalogTest {
         assertThat(expired.ruleVersion()).isEmpty();
         assertThat(expired.checks().getFirst().outcome()).isEqualTo(kr.youthpolicymate.eligibility.ConditionAssessment.Outcome.UNKNOWN);
         org.mockito.Mockito.when(clock.instant()).thenReturn(AT);
-        var current = store.find(YouthHousingSavingsRules.NUMBER).orElseThrow();
-        importAt(YouthHousingSavingsRules.NUMBER, current.content(), "{}", AT.plusSeconds(2), "housing-age-changed", "changed-housing-age");
+        var current = store.find(YOUTH_HOUSING_SAVINGS).orElseThrow();
+        importAt(YOUTH_HOUSING_SAVINGS, current.content(), "{}", AT.plusSeconds(2), "housing-age-changed", "changed-housing-age");
         var changed = checks.check(input, 1, "청약", PolicyCheckResponse.Sort.AGE_MATCH, null).items().getFirst();
         assertThat(changed.ruleVersion()).isEmpty();
         assertThat(changed.checks().getFirst().outcome()).isEqualTo(kr.youthpolicymate.eligibility.ConditionAssessment.Outcome.UNKNOWN);
@@ -1112,16 +1112,16 @@ class PolicyCatalogTest {
     void comparesTomorrowSavingsAgeInBasicConditions() throws Exception {
         for (var field : List.of("plcySprtCn", "plcyAplyMthdCn", "etcMttrCn", "addAplyQlfcCndCn", "srngMthdCn", "plcyExplnCn")) item.put(field, "안내");
         item.put("aplyPrdSeCd", "0057001").put("aplyYmd", "20260504 ~ 20260520");
-        var number = YouthTomorrowSavingsRules.NUMBER;
-        saveReviewed(number, "청년내일저축계좌", YouthTomorrowSavingsRules.CONTENT_HASH);
+        var number = YOUTH_TOMORROW_SAVINGS;
+        saveReviewed(number, "청년내일저축계좌", hash(YOUTH_TOMORROW_SAVINGS));
         item.put("plcyNo", "99882").put("plcyNm", "연령 미검토 정책");
         save("tomorrow-age-order", AT.plusSeconds(1));
         var input = new BasicConditions(java.time.LocalDate.parse("2011-05-31"), "강남구", BasicConditions.EmploymentStatus.NOT_EMPLOYED);
         var result = checks.check(input, 1, "", PolicyCheckResponse.Sort.AGE_MATCH, kr.youthpolicymate.policy.RecruitmentStatus.CLOSED);
         assertThat(result.items()).extracting(PolicyCheckResponse.Item::policyNumber).containsExactly(number, "99882");
         var savings = result.items().getFirst();
-        assertThat(savings.ruleVersion()).isEqualTo(YouthTomorrowSavingsRules.VERSION);
-        assertThat(savings.sourceUrl()).isEqualTo(YouthTomorrowSavingsRules.SOURCE);
+        assertThat(savings.ruleVersion()).isEqualTo(version(YOUTH_TOMORROW_SAVINGS));
+        assertThat(savings.sourceUrl()).isEqualTo(rule(YOUTH_TOMORROW_SAVINGS).sourceUrl());
         assertThat(savings.explanation()).contains("접수가 마감", "소득·출생일 기준이 달라", "2026년 사업 지침");
         assertThat(savings.checks()).extracting(PolicyCheckResponse.Check::outcome).containsExactly(
                 kr.youthpolicymate.eligibility.ConditionAssessment.Outcome.MET,
@@ -1158,12 +1158,12 @@ class PolicyCatalogTest {
     @Test
     @DisplayName("보증료 질문을 목록·내 조건에 연결하고 새해·개정·규칙·원문 변경 후 제출을 막는다")
     void providesReviewedGuaranteeFeeQuestions() throws Exception {
-        var number = GuaranteeFeeRules.NUMBER;
-        saveReviewed(number, "전세보증금반환보증 보증료 지원", GuaranteeFeeRules.CONTENT_HASH);
+        var number = GUARANTEE_FEE;
+        saveReviewed(number, "전세보증금반환보증 보증료 지원", hash(GUARANTEE_FEE));
         var path = "/api/v1/policies/" + number;
         mvc.perform(get(path + "/questions")).andExpect(status().isOk())
                 .andExpect(jsonPath("$.available").value(true)).andExpect(jsonPath("$.questions.length()").value(6))
-                .andExpect(jsonPath("$.ruleVersion").value(GuaranteeFeeRules.VERSION));
+                .andExpect(jsonPath("$.ruleVersion").value(version(GUARANTEE_FEE)));
         mvc.perform(get("/api/v1/policies").param("questionsOnly", "true").param("q", "보증료"))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.total").value(1))
                 .andExpect(jsonPath("$.items[0].questionnaireAvailable").value(true));
@@ -1174,7 +1174,7 @@ class PolicyCatalogTest {
                 .andExpect(status().isOk()).andExpect(header().string("Cache-Control", "no-store"))
                 .andExpect(jsonPath("$.items[0].questionnaireAvailable").value(true))
                 .andExpect(jsonPath("$.items[0].checks[0].outcome").value("UNKNOWN"));
-        var request = new PolicyQuestions.Request(1, GuaranteeFeeRules.VERSION, List.of(
+        var request = new PolicyQuestions.Request(1, version(GUARANTEE_FEE), List.of(
                 new PolicyQuestions.Answer("guarantee", "VALID_PAID"), new PolicyQuestions.Answer("deposit", "UP_TO_300M"),
                 new PolicyQuestions.Answer("homeOwnership", "NO_HOME"), new PolicyQuestions.Answer("applicantType", "NEWLYWED"),
                 new PolicyQuestions.Answer("incomeBasis", "CONFIRMED"), new PolicyQuestions.Answer("annualIncome", "OVER_60_TO_75M")));
@@ -1205,16 +1205,16 @@ class PolicyCatalogTest {
 
     @Test @DisplayName("햇살론유스 질문·내 조건 정렬을 연결하고 개정·원문·연도 변경 시 모두 중단한다")
     void providesReviewedHaetsalronYouthQuestionsAndAge() throws Exception {
-        var number = HaetsalronYouthRules.NUMBER;
-        saveReviewed(number, "햇살론유스", HaetsalronYouthRules.CONTENT_HASH);
+        var number = HAETSALRON_YOUTH;
+        saveReviewed(number, "햇살론유스", hash(HAETSALRON_YOUTH));
         var path = "/api/v1/policies/" + number;
         mvc.perform(get(path + "/questions")).andExpect(status().isOk())
                 .andExpect(jsonPath("$.available").value(true)).andExpect(jsonPath("$.questions.length()").value(5))
-                .andExpect(jsonPath("$.ruleVersion").value(HaetsalronYouthRules.VERSION));
+                .andExpect(jsonPath("$.ruleVersion").value(version(HAETSALRON_YOUTH)));
         mvc.perform(get("/api/v1/policies").param("questionsOnly", "true").param("q", "햇살론"))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.total").value(1))
                 .andExpect(jsonPath("$.items[0].questionnaireAvailable").value(true));
-        var request = new PolicyQuestions.Request(1, HaetsalronYouthRules.VERSION, List.of(
+        var request = new PolicyQuestions.Request(1, version(HAETSALRON_YOUTH), List.of(
                 new PolicyQuestions.Answer("age", "AGE_19_TO_34"), new PolicyQuestions.Answer("applicantType", "YOUNG_BUSINESS"),
                 new PolicyQuestions.Answer("incomeBasis", "CONFIRMED"), new PolicyQuestions.Answer("annualIncome", "UP_TO_35M"),
                 new PolicyQuestions.Answer("lifetimeLimit", "REMAINING_CONFIRMED")));
@@ -1240,7 +1240,7 @@ class PolicyCatalogTest {
         mvc.perform(post("/api/v1/policies/checks").param("q", "햇살론").contentType("application/json")
                         .content(mapper.writeValueAsString(input)))
                 .andExpect(status().isOk()).andExpect(header().string("Cache-Control", "no-store"))
-                .andExpect(jsonPath("$.items[0].ruleVersion").value(HaetsalronYouthRules.VERSION))
+                .andExpect(jsonPath("$.items[0].ruleVersion").value(version(HAETSALRON_YOUTH)))
                 .andExpect(jsonPath("$.items[0].explanation").value(org.hamcrest.Matchers.containsString("오늘(서울 기준) 보증")))
                 .andExpect(jsonPath("$.items[0].checks[0].outcome").value("MET"))
                 .andExpect(jsonPath("$.items[0].checks[1].outcome").value("UNKNOWN"))
@@ -1272,15 +1272,15 @@ class PolicyCatalogTest {
 
     @Test @DisplayName("청년 미래이음 대출을 질문·연령 검색에 연결하고 원문·적용 기간 변경 시 중단한다")
     void providesReviewedMisoYouthQuestionsAndAge() throws Exception {
-        var number = MisoYouthFutureRules.NUMBER;
-        saveReviewed(number, "청년 미래이음 대출", MisoYouthFutureRules.CONTENT_HASH);
+        var number = MISO_YOUTH_FUTURE;
+        saveReviewed(number, "청년 미래이음 대출", hash(MISO_YOUTH_FUTURE));
         var path = "/api/v1/policies/" + number;
         mvc.perform(get(path + "/questions")).andExpect(status().isOk())
                 .andExpect(jsonPath("$.available").value(true)).andExpect(jsonPath("$.questions.length()").value(5))
-                .andExpect(jsonPath("$.ruleVersion").value(MisoYouthFutureRules.VERSION));
+                .andExpect(jsonPath("$.ruleVersion").value(version(MISO_YOUTH_FUTURE)));
         mvc.perform(get("/api/v1/policies").param("questionsOnly", "true").param("q", "미래이음"))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.total").value(1));
-        var request = new PolicyQuestions.Request(1, MisoYouthFutureRules.VERSION, List.of(
+        var request = new PolicyQuestions.Request(1, version(MISO_YOUTH_FUTURE), List.of(
                 new PolicyQuestions.Answer("age", "AGE_19_TO_34"), new PolicyQuestions.Answer("employment", "EARLY_BUSINESS"),
                 new PolicyQuestions.Answer("welfare", "YES")));
         var body = mapper.writeValueAsString(request);
@@ -1293,7 +1293,7 @@ class PolicyCatalogTest {
         var input = new BasicConditions(java.time.LocalDate.parse("2000-01-01"), "강남구", BasicConditions.EmploymentStatus.NOT_EMPLOYED);
         mvc.perform(post("/api/v1/policies/checks").param("q", "미래이음").contentType("application/json").content(mapper.writeValueAsString(input)))
                 .andExpect(status().isOk()).andExpect(header().string("Cache-Control", "no-store"))
-                .andExpect(jsonPath("$.items[0].ruleVersion").value(MisoYouthFutureRules.VERSION))
+                .andExpect(jsonPath("$.items[0].ruleVersion").value(version(MISO_YOUTH_FUTURE)))
                 .andExpect(jsonPath("$.items[0].checks[0].outcome").value("MET"))
                 .andExpect(jsonPath("$.items[0].checks[1].outcome").value("UNKNOWN"))
                 .andExpect(jsonPath("$.items[0].questionnaireAvailable").value(true));
@@ -1317,20 +1317,20 @@ class PolicyCatalogTest {
 
     @Test @DisplayName("미래 청년 일자리의 질문·연령·원문 차이를 연결하고 원문·규칙·개정·적용 기간을 확인한다")
     void providesFutureYouthJobsQuestionsAndAge() throws Exception {
-        var number = FutureYouthJobsRules.NUMBER;
-        saveReviewed(number, "미래 청년 일자리", FutureYouthJobsRules.CONTENT_HASH);
+        var number = FUTURE_YOUTH_JOBS;
+        saveReviewed(number, "미래 청년 일자리", hash(FUTURE_YOUTH_JOBS));
         var path = "/api/v1/policies/" + number;
         mvc.perform(get(path + "/questions")).andExpect(status().isOk())
                 .andExpect(jsonPath("$.available").value(true)).andExpect(jsonPath("$.questions.length()").value(6))
-                .andExpect(jsonPath("$.ruleVersion").value(FutureYouthJobsRules.VERSION))
+                .andExpect(jsonPath("$.ruleVersion").value(version(FUTURE_YOUTH_JOBS)))
                 .andExpect(jsonPath("$.reason").value(org.hamcrest.Matchers.containsString("5월 모집")));
         mvc.perform(get(path)).andExpect(status().isOk())
                 .andExpect(jsonPath("$.sourceNotices.length()").value(3))
-                .andExpect(jsonPath("$.sourceNotices[0].sourceUrl").value(FutureYouthJobsRules.SOURCE));
+                .andExpect(jsonPath("$.sourceNotices[0].sourceUrl").value(rule(FUTURE_YOUTH_JOBS).sourceUrl()));
         mvc.perform(get("/api/v1/policies").param("questionsOnly", "true").param("q", "미래 청년 일자리"))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.total").value(1))
                 .andExpect(jsonPath("$.items[0].questionnaireAvailable").value(true));
-        var request = new PolicyQuestions.Request(1, FutureYouthJobsRules.VERSION, List.of(
+        var request = new PolicyQuestions.Request(1, version(FUTURE_YOUTH_JOBS), List.of(
                 new PolicyQuestions.Answer("birthRange", "BASE_RANGE"), new PolicyQuestions.Answer("residence", "SEOUL"),
                 new PolicyQuestions.Answer("employment", "UP_TO_30_HOURS"), new PolicyQuestions.Answer("education", "EXCEPTION_CONFIRMED"),
                 new PolicyQuestions.Answer("business", "INACTIVE_CONFIRMED"), new PolicyQuestions.Answer("publicJob", "NO")));
@@ -1346,7 +1346,7 @@ class PolicyCatalogTest {
         }
         var input = new BasicConditions(java.time.LocalDate.parse("2000-01-01"), "강남구", BasicConditions.EmploymentStatus.NOT_EMPLOYED);
         mvc.perform(post("/api/v1/policies/checks").param("q", "미래 청년 일자리").contentType("application/json").content(mapper.writeValueAsString(input)))
-                .andExpect(status().isOk()).andExpect(jsonPath("$.items[0].ruleVersion").value(FutureYouthJobsRules.VERSION))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.items[0].ruleVersion").value(version(FUTURE_YOUTH_JOBS)))
                 .andExpect(jsonPath("$.items[0].checks[0].outcome").value("MET"))
                 .andExpect(jsonPath("$.items[0].checks[1].outcome").value("UNKNOWN"));
         for (var time : List.of("2026-05-03T14:59:59Z", "2026-12-31T15:00:00Z")) {

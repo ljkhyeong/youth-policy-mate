@@ -8,6 +8,7 @@ import static kr.youthpolicymate.policy.catalog.PolicyQuestions.*;
 import static kr.youthpolicymate.eligibility.EligibilityStatus.*;
 import static kr.youthpolicymate.eligibility.ConditionAssessment.Outcome.*;
 import static org.assertj.core.api.Assertions.*;
+import static kr.youthpolicymate.policy.catalog.PolicyRuleFixtures.*;
 
 class SeoulYouthNetworkRulesTest {
     private static final Instant NOW = Instant.parse("2026-09-05T01:00:00Z");
@@ -57,12 +58,12 @@ class SeoulYouthNetworkRulesTest {
 
     @Test @DisplayName("미응답을 그대로 표시하고 다른 정책 질문·임의 값·중복 답변을 거절한다")
     void handlesMissingAndInvalidAnswers() {
-        var result = PolicyRuleFixtures.rule(SeoulYouthNetworkRules.NUMBER).evaluate(1, new Request(1, SeoulYouthNetworkRules.VERSION, List.of()), NOW);
+        var result = rule(SEOUL_YOUTH_NETWORK).evaluate(1, new Request(1, version(SEOUL_YOUTH_NETWORK), List.of()), NOW);
         assertThat(result.checks()).extracting(Check::outcome).containsOnly(UNKNOWN);
         assertThat(result.checks()).extracting(Check::providedValue).containsOnly("미응답");
         for (var answers : List.of(List.of(new Answer("homeOwnership", "NO_HOME")), List.of(new Answer("seoulConnection", "SEOUL_CODE")),
                 List.of(new Answer("consecutiveTerms", "APPLIES"), new Answer("consecutiveTerms", "NOT_APPLICABLE")))) {
-            assertThatThrownBy(() -> PolicyRuleFixtures.rule(SeoulYouthNetworkRules.NUMBER).evaluate(1, new Request(1, SeoulYouthNetworkRules.VERSION, answers), NOW))
+            assertThatThrownBy(() -> rule(SEOUL_YOUTH_NETWORK).evaluate(1, new Request(1, version(SEOUL_YOUTH_NETWORK), answers), NOW))
                     .isInstanceOf(IllegalArgumentException.class);
         }
     }
@@ -73,12 +74,12 @@ class SeoulYouthNetworkRulesTest {
         var open = Instant.parse("2026-05-20T00:00:00Z");
         var beforeClose = Instant.parse("2026-05-29T07:59:59Z");
         var close = Instant.parse("2026-05-29T08:00:00Z");
-        assertThat(PolicyRuleFixtures.questions(SeoulYouthNetworkRules.NUMBER, 1, before).reason()).contains("접수 전");
-        assertThat(PolicyRuleFixtures.questions(SeoulYouthNetworkRules.NUMBER, 1, open).reason()).doesNotContain("접수 전", "접수가 마감");
-        assertThat(PolicyRuleFixtures.questions(SeoulYouthNetworkRules.NUMBER, 1, beforeClose).reason()).doesNotContain("접수가 마감");
-        assertThat(PolicyRuleFixtures.questions(SeoulYouthNetworkRules.NUMBER, 1, close).reason()).contains("접수가 마감", "17:00(서울)");
+        assertThat(questions(SEOUL_YOUTH_NETWORK, 1, before).reason()).contains("접수 전");
+        assertThat(questions(SEOUL_YOUTH_NETWORK, 1, open).reason()).doesNotContain("접수 전", "접수가 마감");
+        assertThat(questions(SEOUL_YOUTH_NETWORK, 1, beforeClose).reason()).doesNotContain("접수가 마감");
+        assertThat(questions(SEOUL_YOUTH_NETWORK, 1, close).reason()).contains("접수가 마감", "17:00(서울)");
         for (var now : List.of(before, open, beforeClose, close)) {
-            var result = PolicyRuleFixtures.rule(SeoulYouthNetworkRules.NUMBER).evaluate(1, request("BASE_RANGE", "RESIDENT", "NOT_APPLICABLE", "NONE"), now);
+            var result = rule(SEOUL_YOUTH_NETWORK).evaluate(1, request("BASE_RANGE", "RESIDENT", "NOT_APPLICABLE", "NONE"), now);
             assertThat(result.commonCriteriaStatus()).isEqualTo(ELIGIBLE);
             assertThat(result.status()).isEqualTo(NEEDS_REVIEW);
             assertThat(result.evaluatedAt()).isEqualTo(now);
@@ -87,19 +88,19 @@ class SeoulYouthNetworkRulesTest {
 
     @Test @DisplayName("검토 연도를 서울 자정으로 구분하고 다음 해 모집 기준으로 재사용하지 않는다")
     void boundsReviewedYearInSeoul() {
-        assertThat(PolicyRuleFixtures.rule(SeoulYouthNetworkRules.NUMBER).appliesAt(Instant.parse("2025-12-31T14:59:59Z"))).isFalse();
-        assertThat(PolicyRuleFixtures.rule(SeoulYouthNetworkRules.NUMBER).appliesAt(Instant.parse("2025-12-31T15:00:00Z"))).isTrue();
-        assertThat(PolicyRuleFixtures.rule(SeoulYouthNetworkRules.NUMBER).appliesAt(Instant.parse("2026-12-31T14:59:59Z"))).isTrue();
-        assertThat(PolicyRuleFixtures.rule(SeoulYouthNetworkRules.NUMBER).appliesAt(Instant.parse("2026-12-31T15:00:00Z"))).isFalse();
-        assertThatThrownBy(() -> PolicyRuleFixtures.rule(SeoulYouthNetworkRules.NUMBER).evaluate(1, new Request(1, SeoulYouthNetworkRules.VERSION, List.of()),
+        assertThat(rule(SEOUL_YOUTH_NETWORK).appliesAt(Instant.parse("2025-12-31T14:59:59Z"))).isFalse();
+        assertThat(rule(SEOUL_YOUTH_NETWORK).appliesAt(Instant.parse("2025-12-31T15:00:00Z"))).isTrue();
+        assertThat(rule(SEOUL_YOUTH_NETWORK).appliesAt(Instant.parse("2026-12-31T14:59:59Z"))).isTrue();
+        assertThat(rule(SEOUL_YOUTH_NETWORK).appliesAt(Instant.parse("2026-12-31T15:00:00Z"))).isFalse();
+        assertThatThrownBy(() -> rule(SEOUL_YOUTH_NETWORK).evaluate(1, new Request(1, version(SEOUL_YOUTH_NETWORK), List.of()),
                 Instant.parse("2026-12-31T15:00:00Z"))).isInstanceOf(IllegalArgumentException.class);
     }
 
     private Request request(String age, String connection, String terms, String restriction) {
-        return new Request(1, SeoulYouthNetworkRules.VERSION, List.of(new Answer("birthRange", age), new Answer("seoulConnection", connection),
+        return new Request(1, version(SEOUL_YOUTH_NETWORK), List.of(new Answer("birthRange", age), new Answer("seoulConnection", connection),
                 new Answer("consecutiveTerms", terms), new Answer("priorDisqualification", restriction)));
     }
     private Evaluation evaluate(String age, String connection, String terms, String restriction) {
-        return PolicyRuleFixtures.rule(SeoulYouthNetworkRules.NUMBER).evaluate(1, request(age, connection, terms, restriction), NOW);
+        return rule(SEOUL_YOUTH_NETWORK).evaluate(1, request(age, connection, terms, restriction), NOW);
     }
 }

@@ -7,6 +7,7 @@ import tools.jackson.databind.json.JsonMapper;
 import tools.jackson.databind.node.ObjectNode;
 import static kr.youthpolicymate.policy.RecruitmentStatus.*;
 import static org.assertj.core.api.Assertions.assertThat;
+import static kr.youthpolicymate.policy.catalog.PolicyRuleFixtures.*;
 
 class PolicyRecruitmentTest {
     private final ObjectNode raw = JsonMapper.builder().build().createObjectNode();
@@ -56,11 +57,11 @@ class PolicyRecruitmentTest {
     void guardsReviewedClosingTimes() {
         var beforeClose = Instant.parse("2026-04-14T08:59:59Z");
         var close = Instant.parse("2026-04-14T09:00:00Z");
-        assertThat(PolicyRecruitment.from(MovingFeeRules.NUMBER, 1, MovingFeeRules.CONTENT_HASH, raw, beforeClose).status()).isEqualTo(OPEN);
-        assertThat(PolicyRecruitment.from(MovingFeeRules.NUMBER, 1, MovingFeeRules.CONTENT_HASH, raw, close).status()).isEqualTo(CLOSED);
-        assertThat(PolicyRecruitment.from(MovingFeeRules.NUMBER, 2, "changed", raw, close).status()).isEqualTo(UNKNOWN);
-        assertThat(PolicyRecruitment.from(SeoulYouthNetworkRules.NUMBER, 1, SeoulYouthNetworkRules.CONTENT_HASH, raw, Instant.parse("2026-05-29T07:59:59Z")).status()).isEqualTo(OPEN);
-        assertThat(PolicyRecruitment.from(SeoulYouthNetworkRules.NUMBER, 1, SeoulYouthNetworkRules.CONTENT_HASH, raw, Instant.parse("2026-05-29T08:00:00Z")).status()).isEqualTo(CLOSED);
+        assertThat(PolicyRecruitment.from(MOVING_FEE, 1, hash(MOVING_FEE), raw, beforeClose).status()).isEqualTo(OPEN);
+        assertThat(PolicyRecruitment.from(MOVING_FEE, 1, hash(MOVING_FEE), raw, close).status()).isEqualTo(CLOSED);
+        assertThat(PolicyRecruitment.from(MOVING_FEE, 2, "changed", raw, close).status()).isEqualTo(UNKNOWN);
+        assertThat(PolicyRecruitment.from(SEOUL_YOUTH_NETWORK, 1, hash(SEOUL_YOUTH_NETWORK), raw, Instant.parse("2026-05-29T07:59:59Z")).status()).isEqualTo(OPEN);
+        assertThat(PolicyRecruitment.from(SEOUL_YOUTH_NETWORK, 1, hash(SEOUL_YOUTH_NETWORK), raw, Instant.parse("2026-05-29T08:00:00Z")).status()).isEqualTo(CLOSED);
     }
     @Test @DisplayName("마감 알림과 같은 마감일과 서울 날짜 기준 남은 일수를 제공하고 마감일이 없으면 비운다")
     void providesDeadlineAndDaysLeft() {
@@ -69,7 +70,7 @@ class PolicyRecruitmentTest {
         assertThat(at("2026-09-05T15:00:00Z").daysUntilDeadline()).isOne();
         assertThat(at("2026-09-07T14:59:59Z").daysUntilDeadline()).isZero();
         assertThat(at("2026-09-07T15:00:00Z").daysUntilDeadline()).isEqualTo(-1);
-        assertThat(PolicyRecruitment.from(MovingFeeRules.NUMBER, 1, MovingFeeRules.CONTENT_HASH, raw, Instant.parse("2026-04-13T15:00:00Z")))
+        assertThat(PolicyRecruitment.from(MOVING_FEE, 1, hash(MOVING_FEE), raw, Instant.parse("2026-04-13T15:00:00Z")))
                 .satisfies(moving -> {
                     assertThat(moving.deadlineOnSeoul()).hasToString("2026-04-14");
                     assertThat(moving.daysUntilDeadline()).isZero();

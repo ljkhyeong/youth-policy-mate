@@ -11,6 +11,7 @@ import static kr.youthpolicymate.policy.catalog.PolicyQuestions.*;
 import static kr.youthpolicymate.eligibility.EligibilityStatus.*;
 import static kr.youthpolicymate.eligibility.ConditionAssessment.Outcome.*;
 import static org.assertj.core.api.Assertions.*;
+import static kr.youthpolicymate.policy.catalog.PolicyRuleFixtures.*;
 
 class MisoYouthFutureRulesTest {
     private static final Instant NOW = Instant.parse("2026-09-11T03:00:00Z");
@@ -38,7 +39,7 @@ class MisoYouthFutureRulesTest {
             assertThat(evaluate(Map.of(criterion, "UNKNOWN")).commonCriteriaStatus()).isEqualTo(NEEDS_REVIEW);
         }
         assertThat(evaluate(Map.of()).commonCriteriaStatus()).isEqualTo(INELIGIBLE);
-        var result = PolicyRuleFixtures.rule(MisoYouthFutureRules.NUMBER).evaluate(1, new Request(1, MisoYouthFutureRules.VERSION,
+        var result = rule(MISO_YOUTH_FUTURE).evaluate(1, new Request(1, version(MISO_YOUTH_FUTURE),
                 List.of(new Answer("age", "AGE_19_TO_34"), new Answer("employment", "UNEMPLOYED"))), NOW);
         assertThat(result.checks().getLast().outcome()).isEqualTo(UNKNOWN);
         assertThat(result.checks().getLast().providedValue()).contains("미응답");
@@ -56,34 +57,34 @@ class MisoYouthFutureRulesTest {
     @Test @DisplayName("서울 날짜의 만 19세·35세 생일에 기본 연령과 질문을 같은 기준으로 비교한다")
     void ageBoundariesUseSeoulDate() {
         Map.of("2007-09-12", NOT_MET, "2007-09-11", MET, "1991-09-12", MET, "1991-09-11", NOT_MET)
-                .forEach((birth, outcome) -> assertThat(PolicyRuleFixtures.age(MisoYouthFutureRules.NUMBER, LocalDate.parse(birth), NOW).outcome()).as(birth).isEqualTo(outcome));
+                .forEach((birth, outcome) -> assertThat(age(MISO_YOUTH_FUTURE, LocalDate.parse(birth), NOW).outcome()).as(birth).isEqualTo(outcome));
         for (var answer : List.of("UNDER_19", "OVER_34")) {
             assertThat(evaluate(Map.of("age", answer)).checks().getFirst().outcome()).isEqualTo(NOT_MET);
         }
         var birthday = LocalDate.parse("2007-09-11");
-        assertThat(PolicyRuleFixtures.age(MisoYouthFutureRules.NUMBER, birthday, Instant.parse("2026-09-10T14:59:59Z")).outcome()).isEqualTo(NOT_MET);
-        var afterMidnight = PolicyRuleFixtures.age(MisoYouthFutureRules.NUMBER, birthday, Instant.parse("2026-09-10T15:00:00Z"));
+        assertThat(age(MISO_YOUTH_FUTURE, birthday, Instant.parse("2026-09-10T14:59:59Z")).outcome()).isEqualTo(NOT_MET);
+        var afterMidnight = age(MISO_YOUTH_FUTURE, birthday, Instant.parse("2026-09-10T15:00:00Z"));
         assertThat(afterMidnight.outcome()).isEqualTo(MET);
         assertThat(afterMidnight.providedValue()).contains("2026-09-11", "서울");
     }
 
     @Test @DisplayName("출시 전과 검토 연도 종료 뒤에는 질문을 재사용하지 않고 미응답은 미확인으로 남긴다")
     void restrictsReviewedPeriod() {
-        var request = new Request(1, MisoYouthFutureRules.VERSION, List.of());
-        assertThat(PolicyRuleFixtures.rule(MisoYouthFutureRules.NUMBER).evaluate(1, request, NOW).checks()).extracting(Check::outcome).containsOnly(UNKNOWN);
-        assertThat(PolicyRuleFixtures.rule(MisoYouthFutureRules.NUMBER).appliesAt(Instant.parse("2026-03-30T15:00:00Z"))).isTrue();
-        assertThat(PolicyRuleFixtures.rule(MisoYouthFutureRules.NUMBER).appliesAt(Instant.parse("2026-12-31T14:59:59Z"))).isTrue();
+        var request = new Request(1, version(MISO_YOUTH_FUTURE), List.of());
+        assertThat(rule(MISO_YOUTH_FUTURE).evaluate(1, request, NOW).checks()).extracting(Check::outcome).containsOnly(UNKNOWN);
+        assertThat(rule(MISO_YOUTH_FUTURE).appliesAt(Instant.parse("2026-03-30T15:00:00Z"))).isTrue();
+        assertThat(rule(MISO_YOUTH_FUTURE).appliesAt(Instant.parse("2026-12-31T14:59:59Z"))).isTrue();
         for (var outside : List.of("2026-03-30T14:59:59Z", "2026-12-31T15:00:00Z")) {
             var now = Instant.parse(outside);
-            assertThat(PolicyRuleFixtures.rule(MisoYouthFutureRules.NUMBER).appliesAt(now)).isFalse();
-            assertThatThrownBy(() -> PolicyRuleFixtures.rule(MisoYouthFutureRules.NUMBER).evaluate(1, request, now)).isInstanceOf(IllegalArgumentException.class);
+            assertThat(rule(MISO_YOUTH_FUTURE).appliesAt(now)).isFalse();
+            assertThatThrownBy(() -> rule(MISO_YOUTH_FUTURE).evaluate(1, request, now)).isInstanceOf(IllegalArgumentException.class);
         }
     }
 
     private Evaluation evaluate(Map<String, String> changes) {
         var answers = new HashMap<>(ANSWERS);
         answers.putAll(changes);
-        return PolicyRuleFixtures.rule(MisoYouthFutureRules.NUMBER).evaluate(1, new Request(1, MisoYouthFutureRules.VERSION,
+        return rule(MISO_YOUTH_FUTURE).evaluate(1, new Request(1, version(MISO_YOUTH_FUTURE),
                 answers.entrySet().stream().map(e -> new Answer(e.getKey(), e.getValue())).toList()), NOW);
     }
 }

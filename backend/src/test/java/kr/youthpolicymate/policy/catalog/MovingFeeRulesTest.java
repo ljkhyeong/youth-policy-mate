@@ -12,6 +12,7 @@ import static kr.youthpolicymate.policy.catalog.PolicyQuestions.*;
 import static kr.youthpolicymate.eligibility.ConditionAssessment.Outcome.*;
 import static kr.youthpolicymate.eligibility.EligibilityStatus.*;
 import static org.assertj.core.api.Assertions.*;
+import static kr.youthpolicymate.policy.catalog.PolicyRuleFixtures.*;
 
 class MovingFeeRulesTest {
     private static final Instant NOW = Instant.parse("2026-09-06T00:00:00Z");
@@ -33,8 +34,8 @@ class MovingFeeRulesTest {
         assertThat(evaluate("EXCEPTION_PENDING").checks().get(3).outcome()).isEqualTo(UNKNOWN);
         assertThat(evaluate("EXCEPTION_PENDING").commonCriteriaStatus()).isEqualTo(NEEDS_REVIEW);
         assertThat(evaluate("OWNS_NO_EXCEPTION").checks().get(3).outcome()).isEqualTo(NOT_MET);
-        var request = new Request(1, MovingFeeRules.VERSION, List.of(new Answer("homeOwnership", "EXCEPTION_PENDING"), new Answer("move", "OUTSIDE")));
-        var result = PolicyRuleFixtures.rule(MovingFeeRules.NUMBER).evaluate(1, request, NOW);
+        var request = new Request(1, version(MOVING_FEE), List.of(new Answer("homeOwnership", "EXCEPTION_PENDING"), new Answer("move", "OUTSIDE")));
+        var result = rule(MOVING_FEE).evaluate(1, request, NOW);
         assertThat(result.checks()).extracting(Check::outcome).containsExactly(UNKNOWN, NOT_MET, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN);
         assertThat(result.status()).isEqualTo(NEEDS_REVIEW);
     }
@@ -116,7 +117,7 @@ class MovingFeeRulesTest {
     })
     @DisplayName("참여 제한을 항목별로 비교하고 다른 미응답 요건을 면제하지 않는다")
     void comparesParticipationRestrictions(String questionId, int index, String value, Outcome outcome) {
-        var result = PolicyRuleFixtures.rule(MovingFeeRules.NUMBER).evaluate(1, new Request(1, MovingFeeRules.VERSION, List.of(new Answer(questionId, value))), NOW);
+        var result = rule(MOVING_FEE).evaluate(1, new Request(1, version(MOVING_FEE), List.of(new Answer(questionId, value))), NOW);
         assertThat(result.checks().get(index).outcome()).isEqualTo(outcome);
         assertThat(result.checks().subList(0, 7)).extracting(Check::outcome).containsOnly(UNKNOWN);
         assertThat(result.status()).isEqualTo(NEEDS_REVIEW);
@@ -136,26 +137,26 @@ class MovingFeeRulesTest {
 
     @Test @DisplayName("미응답을 미확인으로 남기며 공통 답변 검증을 적용한다")
     void handlesUnknownAndInvalidAnswers() {
-        var result = PolicyRuleFixtures.rule(MovingFeeRules.NUMBER).evaluate(1, new Request(1, MovingFeeRules.VERSION, List.of()), NOW);
+        var result = rule(MOVING_FEE).evaluate(1, new Request(1, version(MOVING_FEE), List.of()), NOW);
         assertThat(result.checks()).extracting(Check::outcome).containsOnly(UNKNOWN);
         assertThat(result.checks().subList(0, 6)).extracting(Check::providedValue).containsOnly("미응답");
         assertThat(result.checks().get(6).providedValue()).isEqualTo("서울시 사업: 미응답 / 타 기관: 미응답 / 신청할 비용: 미응답");
         assertThat(result.checks().subList(7, 10)).extracting(Check::providedValue).containsOnly("미응답");
         for (var answers : List.of(List.of(new Answer("income", "LOW")), List.of(new Answer("move", "SEOUL")),
                 List.of(new Answer("move", "COMPLETED"), new Answer("move", "OUTSIDE")))) {
-            assertThatThrownBy(() -> PolicyRuleFixtures.rule(MovingFeeRules.NUMBER).evaluate(1, new Request(1, MovingFeeRules.VERSION, answers), NOW)).isInstanceOf(IllegalArgumentException.class);
+            assertThatThrownBy(() -> rule(MOVING_FEE).evaluate(1, new Request(1, version(MOVING_FEE), answers), NOW)).isInstanceOf(IllegalArgumentException.class);
         }
     }
 
     @Test @DisplayName("접수 시작·마감 시각과 다음 해 질문 만료를 구분한다")
     void boundsApplicationAndReviewedYear() {
-        assertThat(PolicyRuleFixtures.questions(MovingFeeRules.NUMBER, 1, Instant.parse("2026-04-01T00:59:59Z")).reason()).contains("접수 전");
-        assertThat(PolicyRuleFixtures.questions(MovingFeeRules.NUMBER, 1, Instant.parse("2026-04-01T01:00:00Z")).reason()).doesNotContain("접수 전", "마감됐어요");
-        assertThat(PolicyRuleFixtures.questions(MovingFeeRules.NUMBER, 1, Instant.parse("2026-04-14T08:59:59Z")).reason()).doesNotContain("마감됐어요");
-        assertThat(PolicyRuleFixtures.questions(MovingFeeRules.NUMBER, 1, Instant.parse("2026-04-14T09:00:00Z")).reason()).contains("마감됐어요");
-        assertThat(PolicyRuleFixtures.rule(MovingFeeRules.NUMBER).appliesAt(Instant.parse("2026-12-31T14:59:59Z"))).isTrue();
-        assertThat(PolicyRuleFixtures.rule(MovingFeeRules.NUMBER).appliesAt(Instant.parse("2026-12-31T15:00:00Z"))).isFalse();
-        assertThatThrownBy(() -> PolicyRuleFixtures.rule(MovingFeeRules.NUMBER).evaluate(1, new Request(1, MovingFeeRules.VERSION, List.of()), Instant.parse("2026-12-31T15:00:00Z")))
+        assertThat(questions(MOVING_FEE, 1, Instant.parse("2026-04-01T00:59:59Z")).reason()).contains("접수 전");
+        assertThat(questions(MOVING_FEE, 1, Instant.parse("2026-04-01T01:00:00Z")).reason()).doesNotContain("접수 전", "마감됐어요");
+        assertThat(questions(MOVING_FEE, 1, Instant.parse("2026-04-14T08:59:59Z")).reason()).doesNotContain("마감됐어요");
+        assertThat(questions(MOVING_FEE, 1, Instant.parse("2026-04-14T09:00:00Z")).reason()).contains("마감됐어요");
+        assertThat(rule(MOVING_FEE).appliesAt(Instant.parse("2026-12-31T14:59:59Z"))).isTrue();
+        assertThat(rule(MOVING_FEE).appliesAt(Instant.parse("2026-12-31T15:00:00Z"))).isFalse();
+        assertThatThrownBy(() -> rule(MOVING_FEE).evaluate(1, new Request(1, version(MOVING_FEE), List.of()), Instant.parse("2026-12-31T15:00:00Z")))
                 .isInstanceOf(IllegalArgumentException.class);
     }
     private Evaluation evaluate(String home) {
@@ -170,6 +171,6 @@ class MovingFeeRulesTest {
                 new Answer("housingCost", "WITHIN_LIMIT"), new Answer("income", income), new Answer("seoulSupport", seoul),
                 new Answer("otherSupport", other), new Answer("requestedCost", requested),
                 new Answer("parentRental", "CLEAR"), new Answer("benefitReceipt", "CLEAR"), new Answer("excludedResidency", "CLEAR")).filter(answer -> answer.value() != null).toList();
-        return PolicyRuleFixtures.rule(MovingFeeRules.NUMBER).evaluate(1, new Request(1, MovingFeeRules.VERSION, answers), NOW);
+        return rule(MOVING_FEE).evaluate(1, new Request(1, version(MOVING_FEE), answers), NOW);
     }
 }

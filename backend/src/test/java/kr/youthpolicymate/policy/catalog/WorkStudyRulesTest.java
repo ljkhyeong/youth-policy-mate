@@ -8,6 +8,7 @@ import static kr.youthpolicymate.policy.catalog.PolicyQuestions.*;
 import static kr.youthpolicymate.eligibility.EligibilityStatus.*;
 import static kr.youthpolicymate.eligibility.ConditionAssessment.Outcome.*;
 import static org.assertj.core.api.Assertions.*;
+import static kr.youthpolicymate.policy.catalog.PolicyRuleFixtures.*;
 
 class WorkStudyRulesTest {
     private static final Instant NOW = Instant.parse("2026-09-05T01:00:00Z");
@@ -20,7 +21,7 @@ class WorkStudyRulesTest {
         assertThat(result.checks()).extracting(Check::outcome).containsOnly(MET);
         assertThat(result.remainingChecks()).isNotEmpty();
         assertThat(result.revision()).isEqualTo(2);
-        assertThat(result.ruleVersion()).isEqualTo(WorkStudyRules.VERSION);
+        assertThat(result.ruleVersion()).isEqualTo(version(WORK_STUDY));
         assertThat(result.evaluatedAt()).isEqualTo(NOW);
     }
 
@@ -47,7 +48,7 @@ class WorkStudyRulesTest {
         assertThat(result.commonCriteriaStatus()).isEqualTo(NEEDS_REVIEW);
         assertThat(result.checks().get(2).outcome()).isEqualTo(UNKNOWN);
         assertThat(result.checks().get(3).outcome()).isEqualTo(UNKNOWN);
-        var empty = PolicyRuleFixtures.work().evaluate(2, new Request(2, WorkStudyRules.VERSION, List.of()), NOW);
+        var empty = work().evaluate(2, new Request(2, version(WORK_STUDY), List.of()), NOW);
         assertThat(empty.checks()).extracting(Check::outcome).containsOnly(UNKNOWN);
     }
 
@@ -63,13 +64,13 @@ class WorkStudyRulesTest {
     void rejectsInvalidAnswers() {
         for (var answers : List.of(List.of(new Answer("salary", "5000000")), List.of(new Answer("income", "salary")),
                 List.of(new Answer("income", "UP_TO_9"), new Answer("income", "ABOVE_9")))) {
-            assertThatThrownBy(() -> PolicyRuleFixtures.work().evaluate(2, new Request(2, WorkStudyRules.VERSION, answers), NOW))
+            assertThatThrownBy(() -> work().evaluate(2, new Request(2, version(WORK_STUDY), answers), NOW))
                     .isInstanceOf(IllegalArgumentException.class);
         }
     }
 
     private Evaluation evaluate(String nationality, String grade, String gradeException, String income, String incomeException) {
-        return PolicyRuleFixtures.work().evaluate(2, new Request(2, WorkStudyRules.VERSION, List.of(new Answer("nationality", nationality),
+        return work().evaluate(2, new Request(2, version(WORK_STUDY), List.of(new Answer("nationality", nationality),
                 new Answer("enrollment", "YES"), new Answer("grade", grade), new Answer("gradeException", gradeException),
                 new Answer("income", income), new Answer("incomeException", incomeException))), NOW);
     }

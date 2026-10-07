@@ -86,7 +86,7 @@ PostgreSQL은 기존 볼륨이 있으면 초기 계정·DB를 다시 만들지 �
 
 ### 데이터와 종료
 
-DB 볼륨은 `youth-policy-mate_postgres_data`이다. PostgreSQL 18의 데이터 경로에 맞춰 컨테이너의 `/var/lib/postgresql`에 마운트했다. Flyway V1은 AI 월 예산(`ai_budgets`)을 만들고, AI 호출별 예약·정산은 V27의 호출 기록에 저장한다. 이전 예약 테이블과 V2–V9 복구 테이블은 삭제했다([결정 기록](backend-api-review.md#ai-예약실행-계층-통합--2026-10-07-적용)). V10은 정책 원본·현재 내용·개정을 저장한다. Hibernate는 스키마를 자동 생성·수정하지 않는다.
+DB 볼륨은 `youth-policy-mate_postgres_data`이다. PostgreSQL 18의 데이터 경로에 맞춰 컨테이너의 `/var/lib/postgresql`에 마운트했다. 스키마는 서버나 수집 같은 운영 명령이 시작될 때 Flyway가 적용한다. 운영 DB를 만들기 전이라 이전 마이그레이션을 `V1__baseline_schema.sql`(정책·수집·회원·이메일·조건 규칙·AI 기록의 기준 스키마)과 `V2__seed_reviewed_policy_rules.sql`(검토한 공고별 조건 규칙 12건)로 합쳤고, 이후 변경은 다음 번호의 새 파일로 추가한다. Hibernate는 스키마를 자동 생성·수정하지 않는다.
 
 웹과 서버는 실행 터미널에서 `Ctrl+C`로 종료한다. DB 컨테이너는 아래 명령으로 종료·제거하되 볼륨은 보존한다.
 
@@ -94,7 +94,17 @@ DB 볼륨은 `youth-policy-mate_postgres_data`이다. PostgreSQL 18의 데이터
 npm run db:down
 ```
 
-`down --volumes`는 사용하지 않는다. 이 옵션은 DB 데이터를 삭제한다. 예외로 운영 DB를 만들기 전에는 기존 마이그레이션을 제자리 수정하므로, 그런 변경을 받은 뒤 서버 기동 시 Flyway 검증(checksum·누락 파일)이 실패하면 로컬 데이터를 버려도 되는지 확인하고 `docker compose down --volumes`와 `npm run db:up`으로 볼륨을 다시 만든다. 정책 데이터는 수집 명령으로 다시 채운다.
+`down --volumes`(`-v`)는 평소에 사용하지 않는다. 이 옵션은 DB 데이터를 삭제한다. 예외로 기준 스키마로 합치기 전에 만든 볼륨은 서버·명령 기동 시 Flyway 검증(checksum·누락 파일)이 실패한다. 로컬 데이터를 버려도 되는지 확인한 뒤 볼륨을 다시 만들고 정책을 다시 수집한다.
+
+```sh
+npm run db:down -- -v
+npm run db:up
+npm run collect:policy -- --args='fetch 1'
+```
+
+- `npm run db:down -- -v`는 `docker compose down -v`와 같다. 컨테이너를 이미 내렸다면 `docker volume rm youth-policy-mate_postgres_data`로 볼륨만 지운다.
+- 새 볼륨에는 검토 규칙 12건만 들어 있다. 회원·관심 정책·관리자 보정·운영 명령으로 등록한 규칙 버전 등 로컬에서 만든 데이터는 다시 만들어야 한다.
+- 수집에는 `.env`의 `ONTONG_API_KEY`가 필요하다. `fetch`는 한 페이지(최대 10건)만 가져오므로 페이지 번호를 바꿔 반복하거나 [범위 수집](policy-range-collection.md#설정과-실행)을 사용한다. 검토 규칙은 수집한 원문의 내용 해시가 검토 당시와 같을 때만 질문을 제공한다.
 
 ## 4. 검증 명령과 실제 확인 범위
 

@@ -61,11 +61,11 @@ npm run collect:policy -- --args='range-abandon <범위 UUID>'
 
 ## 저장과 완료 의미
 
-요청 배정·발송 시작·범위 상태 변경은 PostgreSQL advisory 잠금 하나로 직렬화하며 외부 대기 중에는 잠금을 잡지 않는다. 다음 허용 시각은 `ontong_collection_pages`의 마지막 요청 예약·발송 시작 시각에 최소 간격을 더해 계산한다. 더 큰 요청 순번이 이미 있으면 늦은 이전 요청의 발송을 거절한다. 별도 제어 행은 두지 않는다. Flyway V15는 다음 테이블을 추가한다.
+요청 배정·발송 시작·범위 상태 변경은 PostgreSQL advisory 잠금 하나로 직렬화하며 외부 대기 중에는 잠금을 잡지 않는다. 다음 허용 시각은 `ontong_collection_pages`의 마지막 요청 예약·발송 시작 시각에 최소 간격을 더해 계산한다. 더 큰 요청 순번이 이미 있으면 늦은 이전 요청의 발송을 거절한다. 별도 제어 행은 두지 않는다. 범위 수집은 다음 테이블과 열을 사용한다.
 
 - `ontong_collection_sweeps`: 시작·마지막·다음 페이지, 상태, 마지막 정상 처리와 종료 시각.
 - `ontong_collection_sweep_pages`: 범위의 페이지와 기존 원본 실행 ID, 처리 결과·오류.
-- 기존 `ontong_collection_pages.dispatch_started_at`: 원천 요청의 한 번뿐인 발송 시작 기록. 마이그레이션 이전 행은 이미 시도한 것으로 보존한다.
+- `ontong_collection_pages.dispatch_started_at`: 원천 요청의 한 번뿐인 발송 시작 기록.
 
 페이지별 결과와 다음 위치는 함께 커밋한다. 결과 저장 전에 종료돼도 항목별 기존 멱등 처리가 중복 개정을 막는다. 항목 오류는 해당 페이지를 `PARTIAL`로 남기고 다음 페이지를 진행한다. 원본 형식·HTTP·수집 실행 오류는 범위를 `PAUSED`로 남긴다. 예상 항목 수와 응답 수가 다르면 `UNEXPECTED_ITEM_COUNT`로 남기며, 빈 목록을 보고 전체 종료를 추정하지 않는다.
 

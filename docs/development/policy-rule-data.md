@@ -5,7 +5,7 @@
 ## 적용 범위
 
 - `PolicyRuleDefinition`: 질문·선택지·판정표·근거·적용 기간·모집 안내와 출생일·만 나이 연결.
-- `PolicyRuleStore`: 변경 불가 버전과 현재 적용 버전. Flyway V22는 테이블·변경 방지, V23은 기존 검토 데이터 2건, V24는 나머지 9건, V33은 [K-뉴딜 아카데미](k-newdeal-academy-questions.md)를 추가한다. V33은 운영자가 이미 그 정책에 적용한 규칙이 있으면 바꾸지 않는다.
+- `PolicyRuleStore`: 변경 불가 버전과 현재 적용 버전. 테이블과 변경 방지 트리거는 기준 스키마(`V1__baseline_schema.sql`), [K-뉴딜 아카데미](k-newdeal-academy-questions.md)를 포함한 검토 규칙 12건은 `V2__seed_reviewed_policy_rules.sql`이 넣는다. 새 규칙은 다음 번호의 새 Flyway 파일이나 `rules:policy` 명령으로 추가한다.
 - `PolicyQuestionService`: 현재 원문 해시와 기간을 확인하고 같은 데이터로 질문·판정·출생일 답변을 만든다.
 - [관리자 조건 검토·적용](policy-rule-review.md): 원문 변경·기간 만료·미등록 정책을 검색하고 직전 개정·질문·근거를 확인한다. 기존 규칙 편집·파일 등록과 검토 후 적용을 화면에서 처리하며 아래 운영 명령도 사용할 수 있다.
 - `PolicyCatalogStore`: 목록의 질문 표시·필터와 기본 연령 정렬에도 같은 규칙을 적용한다. 질문·답변 제출은 SELECT 한 번, 목록·기본 비교는 규칙 조회 한 번과 건수·페이지 조회 두 번이다. 정책 수만큼 조회하지 않는다.

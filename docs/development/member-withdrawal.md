@@ -5,7 +5,7 @@
 ## 동작과 삭제 범위
 
 - `DELETE /api/v1/me/account`: 로그인한 본인만 탈퇴한다. 대상 회원 ID를 입력받지 않고 기존 세션·CSRF 검사를 사용한다. 완료는 204, 비회원은 401, CSRF 오류는 403, 저장소 장애는 503이다. Next 중계도 같은 출처의 DELETE만 허용하고 쿠키 삭제 응답을 전달한다.
-- 현재 서비스 DB의 회원 프로필·소셜 식별자·저장 조건·관심 정책·마감 예약·알림·이메일 설정·확인 코드·발송 이력을 삭제한다. V31은 기존 회원 외래 키 3개에 `ON DELETE CASCADE`를 적용한다. 기존 이메일 외래 키와 함께 삭제를 한 트랜잭션으로 처리하며 마이그레이션 자체는 회원 데이터를 지우지 않는다.
+- 현재 서비스 DB의 회원 프로필·소셜 식별자·저장 조건·관심 정책·마감 예약·알림·이메일 설정·확인 코드·발송 이력을 삭제한다. 회원을 참조하는 외래 키는 모두 `ON DELETE CASCADE`이므로 회원 행 삭제 한 번으로 연결 데이터를 한 트랜잭션에서 지운다.
 - 회원 삭제의 행 잠금은 기존 조건 저장·알림 배정과 충돌하는 변경을 순서대로 처리한다. 이미 외부 공급자 호출을 시작한 이메일은 회수하지 못한다. 삭제된 Outbox의 뒤늦은 웹훅은 대상 없음으로 처리한다.
 - Spring Session의 회원별 조회·삭제 API로 다른 기기의 세션까지 정리하고, Spring Security 로그아웃 처리로 현재 인증과 쿠키를 지운다. 세션 저장소는 별도 트랜잭션을 사용하므로 실패 시 일부 기기는 로그아웃될 수 있지만 회원 데이터 삭제는 롤백한다. [Spring Session 트랜잭션](https://docs.spring.io/spring-session/reference/configuration/jdbc.html)·[Spring Security 로그아웃](https://docs.spring.io/spring-security/reference/servlet/authentication/logout.html)
 - 탈퇴 전에 시작된 OAuth 콜백이 늦게 세션을 저장해도 세션 조회·회원·관리자 API에서 회원 존재 여부를 확인해 인증을 해제한다. DB 장애는 비회원 상태로 숨기지 않고 503으로 응답한다.

@@ -260,7 +260,7 @@ AI 예약 복구 작업과 후보 상태 모델(`AiReservationRecovery*`, `Polic
 
 - main: `ingestion/AiBudgetReservationStore`, `AiBudgetReservationLifecycleStore`, `AiBudgetReservationState`, `AiRequestBudget`, `AiDatabaseTime`, `PolicyAiExecutionCoordinator`, `PolicyAiExecutionPort`, `PolicyAiResult`, `policy/PolicyObservation`
 - 테스트·문서: `AiBudgetReservationStoreTest`, `PolicyAiExecutionCoordinatorTest`, `docs/development/policy-ai-execution.md`
-- 마이그레이션: V1의 `ai_request_reservations`와 보조 인덱스, V2, V3–V9 복구 테이블
+- 마이그레이션: 당시 V1의 `ai_request_reservations`와 보조 인덱스, V2, V3–V9 복구 테이블
 
 V27을 제자리 수정했으므로 기존 로컬 DB는 Flyway 검증이 실패한다. [볼륨을 다시 만든다](local-development.md#데이터와-종료).
 

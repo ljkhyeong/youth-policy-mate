@@ -39,7 +39,7 @@
 - `POST /api/v1/admin/policy-rule-reviews/{number}/drafts`: 요청 ID·조회한 개정·규칙 파일 내용·사유를 받는다. 규칙 파일은 운영 명령·AI 추출과 같은 `PolicyRuleStore.parseStrict`로 읽어 알 수 없는 필드·이어 붙인 JSON·UTF-8 128KB 초과를 거절하고 `PolicyRuleDefinition` 검증까지 마친다. 형식·의미 오류는 정책 잠금·요청 기록 확인 전에 400으로 응답한다. 저장도 `PolicyRuleStore`를 재사용한다.
 - `POST /api/v1/admin/policy-rule-reviews/{number}/versions/{id}/publish`: 요청 ID·조회한 개정·현재 적용 버전·사유를 받는다. 첫 적용의 현재 버전은 `none`이다. 공개 질문의 월별 접미사가 아닌 저장된 버전명을 사용한다.
 - `GET /api/v1/admin/policy-rule-reviews/{number}/versions/{id}`: `PolicyRuleDefinition` 객체를 `definition`에 반환한다. 편집 타입은 이 서버 계약에서 생성하고 파일은 브라우저에서 JSON으로 내려받는다. 이전 `definitionJson` 응답 필드는 사용하지 않는다. 웹과 서버를 함께 반영해야 한다. 다른 정책의 버전은 반환하지 않는다.
-- Flyway V25의 `admin_policy_rule_actions`에 요청·작업자·사유·대상 버전·조회한 개정·처리 시각을 저장한다. 규칙 변경과 이력 저장은 같은 트랜잭션이며 이력 실패 시 모두 취소한다. 상세의 등록·적용 이력에서 작업자와 사유를 확인한다. 이전 운영 명령 적용에 별도 사유가 없으면 기록 없음으로 표시한다.
+- `admin_policy_rule_actions`에 요청·작업자·사유·대상 버전·조회한 개정·처리 시각을 저장한다. 규칙 변경과 이력 저장은 같은 트랜잭션이며 이력 실패 시 모두 취소한다. 상세의 등록·적용 이력에서 작업자와 사유를 확인한다. 이전 운영 명령 적용에 별도 사유가 없으면 기록 없음으로 표시한다.
 - AI 추출과 같은 `PolicyRuleStore.lockPublished`로 공개 정책 행을 잠근 뒤 요청 기록과 개정을 확인한다. 같은 요청·입력·작업자는 기존 결과를 반환한다. 재시도 사이에 원문이나 적용 버전이 바뀌어도 이전 성공 결과만 반환하며 재적용하지 않는다. 입력·작업자·대상 버전이 다른 요청 ID 재사용은 거절한다.
 - 응답을 확인하지 못하면 화면은 입력을 잠그고 같은 요청으로 재확인한다. 409 이후에는 적용을 막고 최신 내용으로 이동하게 한다. 파일과 요청은 화면 메모리에만 보관한다.
 - Next.js는 지정된 관리자 경로·메서드만 중계한다. 일반 요청의 16KB 한도를 유지하고 규칙 파일 등록 요청만 JSON 전송을 위한 512KB 한도를 사용한다. 서버의 규칙 파일 한도는 UTF-8 128KB다.

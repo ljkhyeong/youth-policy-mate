@@ -74,9 +74,9 @@ npm run ai:policy-rules -- --args='no-charge <요청UUID> <무과금확인ID> <�
 
 ## 저장 구조
 
-- Flyway V26의 `policy_ai_rule_requests`: 요청 UUID·순번·정책/개정·원문 해시·생성 방식·요청자·준비 시각. 기존 `policy_revisions`를 참조한다.
+- `policy_ai_rule_requests`: 요청 UUID·순번·정책/개정·원문 해시·생성 방식·요청자·준비 시각. 기존 `policy_revisions`를 참조한다.
 - `policy_ai_rule_candidates`: 요청별 본문·SHA-256·처리 상태·초안 ID·기록 시각. 요청과 결과는 수정할 수 없으며 같은 요청에 후보 하나만 둔다.
-- V27의 `policy_ai_rule_calls`: 요청별 실제 전송 내용·입력 토큰 수·단가·가격 버전·최대 예약액·요금 유효기간, 예약 단계·발송/결과 미확인/완료 시각·확인 ID·실제 청구액, HTTP 상태·원 응답을 한 행에 보관한다. 월 예산은 V1의 `ai_budgets`다. 전송 내용과 비용 예약은 변경할 수 없고 응답은 한 번만 기록한다. 원 응답 한도는 1MB이며 초과 시 결과 미확인으로 남긴다. 128KB를 넘는 추출·미완료·거절·오류는 짧은 실패 사유를 후보로 기록하고 원 응답은 호출 기록에 남긴다.
+- `policy_ai_rule_calls`: 요청별 실제 전송 내용·입력 토큰 수·단가·가격 버전·최대 예약액·요금 유효기간, 예약 단계·발송/결과 미확인/완료 시각·확인 ID·실제 청구액, HTTP 상태·원 응답을 한 행에 보관한다. 월 예산은 `ai_budgets`다. 전송 내용과 비용 예약은 변경할 수 없고 응답은 한 번만 기록한다. 원 응답 한도는 1MB이며 초과 시 결과 미확인으로 남긴다. 128KB를 넘는 추출·미완료·거절·오류는 짧은 실패 사유를 후보로 기록하고 원 응답은 호출 기록에 남긴다.
 - `PolicyAiRuleGenerationService`가 예약 → 발송 기록 → 외부 호출 → 원 응답 저장 → 초안 저장을 순서대로 실행한다([호출 순서](../design/policy-ai-execution.md)). 공고 잠금과 발송 기록은 짧은 트랜잭션으로 처리하고 외부 API는 그 밖에서 호출한다. 원 응답 저장 후 초안 저장에 실패하면 `generate`로 보관한 응답만 다시 처리한다. 예약·정산 규칙은 [예약·정산 구현](ai-budget-reservation-lifecycle.md)을 따른다.
 - 규칙 정의와 판정 검사는 기존 `PolicyRuleDefinition`·`PolicyRuleStore`를 사용한다. 형식 검사 로직을 새로 복제하지 않는다.
 

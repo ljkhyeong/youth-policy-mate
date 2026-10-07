@@ -40,7 +40,7 @@ allowed-tools:
 | `policy/catalog/` 목록·상세·저장소(`PolicyCatalogStore`, `*Response`) | `test:policy-catalog` | 응답 형식이 바뀌면 API 계약 행 |
 | `policy/ApplicationPeriod`, `catalog/PolicyRecruitment*`·`PolicyApplicationPeriod`·`PolicyDeadline` | `test:recruitment` | 검토 공고의 기간 보정·`PolicyRecruitmentWindow`(목록 필터 기간)가 바뀌면 `test:policy-catalog`와 `FutureYouthJobsRulesTest`, 저장 정책 마감·알림 예약이 바뀌면 `test:member-flow` |
 | `ingestion/Ontong*` | `test:policy-collection` | |
-| `ingestion/PolicyAiRuleCallStore`(예약·정산), V27 마이그레이션 | `test:ai-reservation-db` | 생성 서비스와 함께 바뀌면 `test:ai-rule-generation`도 |
+| `ingestion/PolicyAiRuleCallStore`(예약·정산), `policy_ai_rule_calls`·`ai_budgets` 스키마 | `test:ai-reservation-db` | 생성 서비스와 함께 바뀌면 `test:ai-rule-generation`도 |
 | `ingestion/PolicyAiRule*`, `OpenAiRuleClient`, `AiProperties` | `test:ai-rule-generation` | 스케줄러는 `test:ai-rule-auto`, 초안 저장소만이면 `test:ai-rule-drafts`, 설정 바인딩은 `test:runtime`도 |
 | `ingestion/OpenAiCosts*` | `test:ai-costs` | |
 | `member/SocialMemberService`, 세션·로그인 | `test:member-login` | 보안 설정이 바뀌면 `check:backend` |
@@ -52,7 +52,7 @@ allowed-tools:
 | `admin/EmailDelivery*` | `test:admin-email` | |
 | `config/SecurityConfiguration`, `AdminAccess`, `ApiException*`, `member/MemberSessionFilter` | `test:admin-ai`(AdminAccessTest 포함) | 오류 응답·공통 보안 영향이 넓으면 `check:backend` |
 | `application-prod.yaml`, 운영 프로필 구성 | `test:runtime` | |
-| Flyway SQL·Java 마이그레이션 | 해당 기능의 DB 테스트 | 여러 기능 테이블에 영향이 있으면 `check:backend` |
+| Flyway 마이그레이션(`db/migration/*.sql`) | 해당 기능의 DB 테스트 | 여러 기능 테이블에 영향이 있으면 `check:backend`, 규칙 시드(`V2__seed_reviewed_policy_rules.sql`)는 `PolicyRuleFixtures`가 읽으므로 `test:policy-questions`와 `PolicyRuleDefinitionTest` |
 | `backend/build.gradle`, 공통 `application.yaml` | `check:backend` | |
 | 컴파일 확인만 필요 | `compile:backend` | 실행 파일만 필요하면 `package:backend` |
 | `frontend/src/**` 동작 | `test:web -- <frontend 기준 테스트 경로...>` + `check:web` | 라우팅·서버 렌더링·메타데이터·의존성은 `build:web` |

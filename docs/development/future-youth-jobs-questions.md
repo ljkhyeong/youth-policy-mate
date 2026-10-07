@@ -29,7 +29,7 @@
 - ‘대학생 참여 불가’에는 위 재학 예외가 생략되어 있다.
 - 수집된 ‘추가 참고 안내’는 다른 정책으로 연결된다. 별도 안내에서 확인한 모집 공고로 이동할 수 있다.
 
-`PolicyRecruitment`가 검토 해시가 일치하는 경우 실제 접수 기간을 사용한다. 목록 필터와 상세의 기준을 맞추기 위해 V21에서 같은 정책번호·해시의 검색용 기간만 수정한다. 원본·본문·개정·회원 데이터는 변경하지 않는다. 이후 다른 원문은 기존 기간 해석 경로를 따른다. 마감 날짜는 기존과 같은 5월 31일이므로 마감 알림의 날짜는 바뀌지 않는다.
+`PolicyRecruitment`가 검토 해시가 일치하는 경우 실제 접수 기간을 사용한다. 목록 필터도 같은 기준을 쓰도록 정책을 반영할 때 `PolicyRecruitmentWindow`가 이 보정 결과로 검색용 기간을 계산한다. 원본·본문·개정은 바꾸지 않는다. 이후 다른 원문은 기존 기간 해석 경로를 따른다. 마감 날짜는 기존과 같은 5월 31일이므로 마감 알림의 날짜는 바뀌지 않는다.
 
 ## 연결과 검증
 
@@ -56,4 +56,4 @@ npm run verify -- check:web
 
 `JAVA_HOME`은 `/Users/lim/.gradle/jdks/eclipse_adoptium-25-aarch64-os_x.2/jdk-25.0.3+9/Contents/Home`이다. 로컬 서버는 생성한 JAR를 `--spring.profiles.active=local`로 실행하며 `REMINDERS_ENABLED=false EMAIL_ENABLED=false ONTONG_COLLECTION_SCHEDULE_ENABLED=false`를 적용했다. 서버 로그는 `/tmp/youth-future-jobs-backend.log`, 웹은 기존 `npm run dev:web` 프로세스를 사용한다.
 
-로컬 PostgreSQL에 V21을 적용했다. 대상 정책의 개정 2·내용 해시·마감일은 같고 접수 시작일만 5월 18일로 바뀐 것을 확인했다. 실제 회원 로그인·외부 신청·이메일 발송은 이번 검증 범위에 포함하지 않는다. 원격에는 반영하지 않았다.
+당시 로컬 PostgreSQL에 V21(이후 기준 스키마로 합치며 삭제)을 적용했다. 대상 정책의 개정 2·내용 해시·마감일은 같고 접수 시작일만 5월 18일로 바뀐 것을 확인했다. 실제 회원 로그인·외부 신청·이메일 발송은 이번 검증 범위에 포함하지 않는다. 원격에는 반영하지 않았다.

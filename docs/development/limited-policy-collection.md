@@ -31,7 +31,7 @@ npm run collect:policy -- --args='replay <실행 UUID>'
 
 | 저장소 | 보존하는 내용 |
 |---|---|
-| V12 `ontong_collection_pages` | 요청 전 발급한 순번, UUID, 페이지 번호, 요청·수신 시각, 응답 본문, 목록 형식 오류·HTTP 실패 코드, 원천 전체 건수 |
+| `ontong_collection_pages` | 요청 전 발급한 순번, UUID, 페이지 번호, 요청·수신 시각, 응답 본문, 목록 형식 오류·HTTP 실패 코드, 원천 전체 건수 |
 | `ontong_collection_items` | 원본 안의 항목 위치, 원본 정책, 마지막 처리 결과와 시도 횟수 |
 | 기존 정책 테이블 | 원본 스냅샷·현재 내용·적용 개정과 마지막 적용 요청 순번 |
 

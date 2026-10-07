@@ -20,7 +20,7 @@
 - 필터: `ALL`, `RUNNING`, `COMPLETED`, `RETRY_PENDING`, `INTERRUPTED`, `REVIEW_REQUIRED`, `SUPERSEDED`, `LEASE_EXPIRED`.
 - 서버 DTO `PolicyAiRuns`에서 OpenAPI와 TypeScript를 생성한다. 관리자 소셜 세션의 회원 ID를 기존 설정으로 확인하며 응답과 Next.js 조회를 캐시하지 않는다.
 - 응답에는 정책·요청·시도와 처리 상태만 포함한다. AI 요청·응답·후보 본문, 작업자, 인증키는 제공하지 않는다.
-- 새 테이블·마이그레이션 없이 V26~V28의 기존 기록을 읽는다. 조회로 AI 호출·규칙 적용·비용 변경을 실행하지 않는다.
+- 새 테이블 없이 기존 AI 추출 기록(`policy_ai_rule_requests`·`policy_ai_rule_candidates`·`policy_ai_rule_calls`·`policy_ai_rule_auto_runs`)을 읽는다. 조회로 AI 호출·규칙 적용·비용 변경을 실행하지 않는다.
 
 ## 검증
 

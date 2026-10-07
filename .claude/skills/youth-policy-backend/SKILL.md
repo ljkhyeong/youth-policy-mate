@@ -23,10 +23,10 @@ when_to_use: backend/ 아래 Java·설정·마이그레이션을 수정하거나
 
 ### 마이그레이션 번호
 
-SQL은 `backend/src/main/resources/db/migration`, Java 마이그레이션은 `backend/src/main/java/db/migration`에 있다. 다음 번호는 두 위치를 함께 확인한다.
+마이그레이션은 `backend/src/main/resources/db/migration`의 SQL 파일뿐이다. 다음 번호는 이 위치에서 확인한다.
 
 ```bash
-ls backend/src/main/resources/db/migration backend/src/main/java/db/migration | sed -nE 's/^V([0-9]+)__.*/\1/p' | sort -n | tail -1
+ls backend/src/main/resources/db/migration 2>/dev/null | sed -nE 's/^V([0-9]+)__.*/\1/p' | sort -n | tail -1
 ```
 
 출력한 최댓값에 1을 더한다. 브랜치를 병합할 때 같은 번호가 생기지 않았는지 다시 확인한다.

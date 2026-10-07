@@ -178,7 +178,7 @@ Temurin 25.0.3에서 `npm run verify -- check:backend`로 서버 전체 테스�
 
 | 대상 | 변경 |
 |---|---|
-| 서버 | `PolicyRecruitment`에서 결과에 쓰이지 않는 공고별 출처·위치 덮어쓰기를 삭제했다. `PolicyQuestionService`의 중계 메서드와 실행되지 않던 분기를 확인 함수 하나로 합쳤다. 관리자 컨트롤러 6개의 no-store 오류 응답을 `PolicyApiError.noStore`로 모았다. 수집 저장소의 일일 요청 수 쿼리와 AI 월 예산 ID 형식을 한 곳에서 만든다. 테스트에서만 쓰던 `AiBudgetReservationLifecycleStore.unresolved`와 읽지 않는 `Call` 구성요소를 삭제했다. |
+| 서버 | `PolicyRecruitment`에서 결과에 쓰이지 않는 공고별 출처·위치 덮어쓰기를 삭제했다. `PolicyQuestionService`의 중계 메서드와 실행되지 않던 분기를 확인 함수 하나로 합쳤다. 관리자 컨트롤러 6개의 no-store 오류 응답을 `PolicyApiError.noStore`로 모았다(2026-10-07에 [공통 오류 처리기](#웹-계층보안-설정-정리--2026-10-07-적용)로 대체). 수집 저장소의 일일 요청 수 쿼리와 AI 월 예산 ID 형식을 한 곳에서 만든다. 테스트에서만 쓰던 `AiBudgetReservationLifecycleStore.unresolved`와 읽지 않는 `Call` 구성요소를 삭제했다. |
 | 서버 테스트 | 8개 클래스에 복사된 `dbTime`을 `AiDatabaseTime.dbTime`으로 바꿨다. |
 | 빌드·스크립트 | `build.gradle`의 운영 명령 6개와 계약 생성 2개를 표에서 등록한다. 작업 이름·설명·main 클래스는 같다. `test:ai-reservations` 별칭을 삭제했고 같은 검사는 `test:ai-reservation-db`로 실행한다. |
 | 웹 관리자 | 페이지 이동 7곳, 검색 폼·필터 해석 2곳, 목록 오류 화면 2곳을 `collection-exception-view.tsx`의 공통 컴포넌트로 합쳤다. |
@@ -190,8 +190,8 @@ Temurin 25.0.3에서 `npm run verify -- check:backend`로 서버 전체 테스�
 ### 유지한 것
 
 - 조건 입력 화면의 진행 중인 변경으로 사용처가 없어진 `globals.css`의 진행 표시·확인 요약 스타일 약 120줄은 그 변경과 함께 정리한다.
-- 관리자 저장소의 null 허용 시각 변환(약 5줄)과 회원 행 잠금 중복(약 4줄)은 공통 헬퍼·생성자 의존성을 늘리는 비용이 더 커서 유지했다. 2026-10-07에 이메일 쪽 잠금은 `MemberIdentityStore.lock` 정적 메서드로 옮겼다. 두 새로고침 버튼은 문구·스타일이 달라 합치지 않았다.
-- 컨트롤러별 `CacheControl.noStore()`, 목적이 다른 크기·잠금 검사, 보안 경로 목록, 의존성·환경변수 예시는 모두 사용 중이거나 동작이 달라져 유지했다.
+- 관리자 저장소의 null 허용 시각 변환(약 5줄)과 회원 행 잠금 중복(약 4줄)은 공통 헬퍼·생성자 의존성을 늘리는 비용이 더 커서 유지했다. 2026-10-07에 이메일·관심 정책 쪽 잠금을 모두 `MemberIdentityStore.lock` 정적 메서드로 옮겼다. 두 새로고침 버튼은 문구·스타일이 달라 합치지 않았다.
+- 목적이 다른 크기·잠금 검사, 의존성·환경변수 예시는 모두 사용 중이거나 동작이 달라져 유지했다. 컨트롤러별 `CacheControl.noStore()`와 관리자 보안 경로 목록은 2026-10-07에 Spring Security 기본 캐시 금지 헤더와 `/api/v1/admin/**` 단일 규칙으로 바꿨다.
 
 ### 결정이 필요한 코드
 
@@ -278,4 +278,33 @@ Temurin 25.0.3·PostgreSQL 18.6 Testcontainers에서 실행했다. 실제 OpenAI
 | `npm run verify -- test:ai-costs` | 비용 조회 명령 회귀 | `.local/verification/1791332639922-922111db.log` |
 
 파일 삭제 뒤 `compile:backend`와 AI 관련 테스트를 다시 실행했다. 전체 서버 검사는 마지막 통합 단계에서 실행한다.
+
+## 웹 계층·보안 설정 정리 — 2026-10-07 적용
+
+운영 전이라 보존할 응답 형식 소비자가 화면뿐이다. 컨트롤러마다 반복하던 오류 변환·캐시 헤더·회원 ID 변환·보안 경로 목록을 Spring MVC·Security 기본 기능으로 줄였다. 화면이 코드로 분기하는 이메일 오류(`EMAIL_*`, `EMAIL_PROVIDER_*`)와 보안 오류(`LOGIN_REQUIRED`·`ACCESS_DENIED`·`MEMBER_UNAVAILABLE`), 상태 코드, `{code,message}` 본문은 그대로다.
+
+| 대상 | 변경 |
+|---|---|
+| 오류 응답 | 정책·회원 처리기 2개와 관리자 컨트롤러 6곳의 `@ExceptionHandler` 약 30개를 `config/ApiExceptionHandler` 하나로 합쳤다. 요청 오류는 `ApiException`으로 던진다. 영역별 코드는 `INVALID_REQUEST`(400)·`NOT_FOUND`(404)·`CONFLICT`(409)·`SERVICE_UNAVAILABLE`(503) 공통 값이 됐다. 흐름 제어용 빈 예외 클래스 7개(`PolicyNotFoundException`, `PolicyChangedException`, `CollectionReplays.Changed`, `PolicyCorrections.Changed`·`Invalid`, `PolicyRuleActions.Invalid`·`Changed`·`Missing`)와 `MemberEmailStore.EmailException`을 없앴다. |
+| 내부 오류 | `IllegalArgumentException`을 통째로 400으로 바꾸던 처리를 없앴다. 생년월일·질문 답변 검사는 `ApiException.invalid()`를 던지고, 나머지 내부 오류는 500이 된다. 오류 재디스패치(`DispatcherType.ERROR`)를 허용해 처리하지 못한 예외가 403으로 가려지지 않는다. 트랜잭션 시작 실패(`CannotCreateTransactionException`)도 503으로 응답해 정책 목록·조건 비교의 DB 연결 실패가 질문 API와 같아졌다. |
+| 캐시 헤더 | 직접 붙이던 `Cache-Control: no-store`를 지웠다. Spring Security 기본 헤더가 모든 응답에 `no-cache, no-store, max-age=0, must-revalidate`와 `Pragma`·`Expires`를 붙인다. 세션 확인 필터를 `HeaderWriterFilter` 뒤로 옮겨 503 응답도 같은 헤더를 받는다. 성공 응답은 본문 타입을 직접 반환하고, 상세 조회의 404는 `orElseThrow(ApiException::notFound)`로 바꿨다. |
+| 보안 설정 | 관리자 경로 17개 나열을 `/api/v1/admin/**` 한 줄과 `AuthorizationManager`를 구현한 `AdminAccess`로 바꿨다. 관리자가 GET 전용 경로에 POST하면 403 대신 405다. 진입점·거부 처리기·세션 확인 필터는 JSON 문자열 대신 `PolicyApiError.writeTo`로 쓴다. 로그아웃은 `HttpStatusReturningLogoutSuccessHandler`, 로그인 리다이렉트는 `AppUrls`를 쓰고, 기본값과 같던 세션 무효화·쿠키 삭제 설정과 사용자 없는 `UserDetailsService`를 지웠다. |
+| 회원 ID | `MemberController.member(OAuth2User)`와 관리자 `UUID.fromString(principal.getName())`을 `@CurrentMember UUID` 메타 애너테이션으로 바꿨다. `/api/v1/session`은 비로그인도 받으므로 `OAuth2User`를 유지한다. 관심 정책 저장소의 회원 행 잠금은 `MemberIdentityStore.lock`을 쓴다. |
+| OpenAPI | 관리자 컨트롤러의 `@SecurityRequirement`·401·403 선언을 지우고 `MemberApiConfiguration`이 회원·관리자·로그아웃 경로에 세션·401·403·CSRF 헤더를 한 규칙으로 붙인다. 관리자 POST 5개에 빠져 있던 `X-CSRF-TOKEN`이 계약에 추가됐다. 필드별 nullable 보정 3곳은 `config/OpenApiContractConfiguration`의 규칙 하나(`@Schema(types = {..., "null"})` 표시 필드를 `anyOf`·enum null로 변환)로 바꿨고, 그 결과 nullable enum 3개(`district`·`employmentStatus`·`deliveryIssue`)에 null이 더해졌다. 생성 TypeScript 타입은 오류 응답 미디어 타입과 관리자 POST의 CSRF 헤더만 바뀌었다. |
+
+클래스에 오류 `@ApiResponse`를 둔 컨트롤러는 `@ApiResponse(responseCode = "200")`도 함께 선언한다. 그렇지 않으면 springdoc이 반환 타입에서 200 응답을 추론하지 않는다. 내용은 반환 타입에서 추론하므로 `AdminSlice<T>`의 제네릭 스키마 이름도 유지된다.
+
+삭제한 파일: `policy/catalog/PolicyApiExceptionHandler`, `PolicyNotFoundException`, `member/MemberApiExceptionHandler`, `admin/AdminApiConfiguration`.
+
+유지한 성질: 회원 데이터 소유권 검사, CSRF, 외부 호출을 DB 트랜잭션 밖에서 수행, 이메일 주소 AAD 암호화, 요청마다 하는 관리자 판정, 확인 코드 실패 횟수 커밋 뒤 오류 응답, OAuth 성공 시 인가 정보 제거.
+
+### 검증
+
+Temurin 25.0.3·PostgreSQL 18.6 Testcontainers에서 실행했다. 실제 OAuth 제공자·외부 API 호출과 로컬 DB 조작은 하지 않았다.
+
+| 명령 | 확인 범위 | 로그 |
+|---|---|---|
+| `npm run verify -- check:backend` | 서버 전체 테스트 330건(실패·건너뜀 없음)과 빌드. 생성 계약 비교, 실서버 로그인·로그아웃 쿠키 삭제·관리자 없는 경로 404, 저장소 장애 503과 내부 오류 비변환 포함 | `.local/verification/1791356930180-8648a158.log` |
+| `npm run verify -- test:runtime` | 운영 프로필의 `AppUrls`·로그인 실패 리다이렉트 | `.local/verification/1791356688833-5a3d06a3.log` |
+| `npm run generate:api` 후 `npm run verify -- check:api-types`, `check:web` | 생성 계약·TypeScript 타입과 웹 타입 검사 | `.local/verification/1791356578312-0f599659.log`, `.local/verification/1791356579342-47b25bf2.log` |
 

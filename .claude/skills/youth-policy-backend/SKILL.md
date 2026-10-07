@@ -16,8 +16,9 @@ when_to_use: backend/ 아래 Java·설정·마이그레이션을 수정하거나
 
 ### 코드 위치
 
-- `backend/src/main/java/kr/youthpolicymate/` 아래 기능 패키지: `member`(회원·OAuth·세션·이메일 Outbox), `policy`(모집·개정)와 `policy/catalog`(조회·질문·규칙 데이터와 판정표·연령 비교), `eligibility`(조건 결과·상태 값과 자치구 enum), `ingestion`(수집·AI·예산 예약), `admin`(관리자 API), `config`(보안·시간).
+- `backend/src/main/java/kr/youthpolicymate/` 아래 기능 패키지: `member`(회원·OAuth·세션·이메일 Outbox), `policy`(모집·개정)와 `policy/catalog`(조회·질문·규칙 데이터와 판정표·연령 비교), `eligibility`(조건 결과·상태 값과 자치구 enum), `ingestion`(수집·AI·예산 예약), `admin`(관리자 API), `config`(보안·공통 오류 응답·OpenAPI 공통 규칙·시간).
 - DB 접근은 `JdbcClient`·`JdbcTemplate`과 `@Transactional`이다. 저장소 클래스 이름은 `*Store`가 많다. 새 계층을 만들기 전에 같은 패키지의 `*Store`·`*Service` 구성을 따른다.
+- 요청 오류는 `config/ApiException`(`invalid()`·`notFound()`·`conflict()` 또는 상태·코드 지정)을 던지고 `config/ApiExceptionHandler`가 응답한다. 회원·관리자 API의 로그인 회원 ID는 `member/CurrentMember`(`@CurrentMember UUID`)로 받는다. 비로그인도 받는 경로에는 쓰지 않는다.
 - 현재 시각은 `config/TimeConfiguration`의 `Clock` 빈(UTC)을 주입받는다. 서울 날짜가 필요하면 `policy/SeoulTime.SEOUL`로 명시 변환한다(Clock 빈의 시간대에 의존하지 않는다). `LocalDate.now()`·`Instant.now()`를 직접 호출하지 않는다.
 
 ### 마이그레이션 번호

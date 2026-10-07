@@ -26,7 +26,7 @@
 
 ## 제안 설계
 
-- **API**: `GET /api/v1/policies?district=GANGNAM`. 값은 `SeoulDistrict` 이름이고, 잘못된 값은 `category`처럼 400 `INVALID_SEARCH`다. 기존 검색어·분야·접수 상태·질문 필터와 AND로 묶는다.
+- **API**: `GET /api/v1/policies?district=GANGNAM`. 값은 `SeoulDistrict` 이름이고, 잘못된 값은 `category`처럼 400 `INVALID_REQUEST`다. 기존 검색어·분야·접수 상태·질문 필터와 AND로 묶는다.
 - **매핑**: `policy/catalog`에 원천 코드 매핑을 따로 둔다. 자격 판정의 `SeoulDistrict`는 원천 코드와 분리된 상태를 유지하고, 코드표 출처와 확인일을 기록한다.
 - **포함 규칙**:
   1. 선택한 구의 코드가 있으면 포함한다(전국 코드·서울 25개·해당 구 포함 정책).

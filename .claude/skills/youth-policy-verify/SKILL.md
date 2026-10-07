@@ -50,13 +50,13 @@ allowed-tools:
 | `admin/Collection*`, `PolicyCorrection*`, `PolicyRule*` | `test:admin-collection` | |
 | `admin/PolicyAiRun*` | `test:admin-ai` | |
 | `admin/EmailDelivery*` | `test:admin-email` | |
-| `config/SecurityConfiguration`, `AdminAccess` | `test:admin-ai`(AdminAccessTest 포함) | 공통 보안 영향이 넓으면 `check:backend` |
+| `config/SecurityConfiguration`, `AdminAccess`, `ApiException*`, `member/MemberSessionFilter` | `test:admin-ai`(AdminAccessTest 포함) | 오류 응답·공통 보안 영향이 넓으면 `check:backend` |
 | `application-prod.yaml`, 운영 프로필 구성 | `test:runtime` | |
 | Flyway SQL·Java 마이그레이션 | 해당 기능의 DB 테스트 | 여러 기능 테이블에 영향이 있으면 `check:backend` |
 | `backend/build.gradle`, 공통 `application.yaml` | `check:backend` | |
 | 컴파일 확인만 필요 | `compile:backend` | 실행 파일만 필요하면 `package:backend` |
 | `frontend/src/**` 동작 | `test:web -- <frontend 기준 테스트 경로...>` + `check:web` | 라우팅·서버 렌더링·메타데이터·의존성은 `build:web` |
-| 서버 DTO·`api/*.json`·`frontend/src/generated/**` | `npm run generate:api`(직접 실행) 후 `check:api-types` + `check:web` | |
+| 서버 DTO·OpenAPI 규칙(`config/OpenApiContractConfiguration`, `member/MemberApiConfiguration`)·`api/*.json`·`frontend/src/generated/**` | `npm run generate:api`(직접 실행) 후 `check:api-types` + `check:web` | |
 | `scripts/*.mjs` | `check:tools` | |
 | `package.json`·잠금 파일 | 영향받는 앱의 전체 검사 | |
 | 문서·스킬만 | 앱 검사 없음 | `youth-policy-docs` 스킬의 링크 검사, 수정한 스킬 형식 |

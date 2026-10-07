@@ -9,7 +9,8 @@
 - 기존 카카오·네이버 로그인으로 생성된 `members.id`를 `ADMIN_MEMBER_IDS`에 쉼표로 구분해 설정하고 서버를 재시작한다. `.env.example`의 기본값은 비어 있다.
 - 회원을 식별한 뒤 해당 UUID만 지정한다. 이메일·닉네임·소셜 제공자의 원래 사용자 번호를 넣지 않는다. 별도 관리자 생성·자동 승격·개발용 우회 로그인은 없다.
 - Spring Security는 요청마다 OAuth2 인증, `ROLE_MEMBER`, 설정의 회원 ID를 모두 확인한다. 관리자 설정이 비어 있으면 회원도 접근할 수 없다. UUID 형식이 잘못된 설정은 시작 시 바인딩 오류가 난다.
-- 비회원은 `401 LOGIN_REQUIRED`, 권한 없는 회원은 `403 ACCESS_DENIED`를 받는다. 성공·오류 응답에 `Cache-Control: no-store`를 적용한다.
+- 관리자 API(`/api/v1/admin/**`) 전체에 같은 권한 검사를 적용한다. 새 관리자 API도 별도 등록 없이 이 검사를 받는다.
+- 비회원은 `401 LOGIN_REQUIRED`, 권한 없는 회원은 `403 ACCESS_DENIED`를 받는다. 성공·오류 응답에는 Spring Security 기본 캐시 금지 헤더(`no-store` 포함)가 붙는다.
 - 관리 화면은 Next.js 서버에서 Spring API를 호출한다. 실제 소셜 로그인·관리자 계정 연결은 미검증이다.
 
 ## 관리 화면
@@ -36,10 +37,10 @@
 | `GET /api/v1/admin/collection-exceptions/pages?page=1&pageSize=20` | 페이지 수집 실패, 페이지, 페이지 크기, 다음 페이지 여부 |
 | `GET /api/v1/admin/collection-exceptions/replays?page=1&pageSize=20` | 관리자 재처리 이력, 페이지, 페이지 크기, 다음 페이지 여부 |
 
-- 페이지는 1~1000, 페이지 크기는 1~50이다. 수집 실행 ID는 UUID, 항목 위치는 0~9다. 입력 오류는 `400 INVALID_COLLECTION_QUERY`다.
+- 페이지는 1~1000, 페이지 크기는 1~50이다. 수집 실행 ID는 UUID, 항목 위치는 0~9다. 입력 오류는 `400 INVALID_REQUEST`다.
 - 대상은 현재 `INVALID_ITEM`(항목 검증 실패), `STORE_FAILED`(저장 실패), `CORRECTION_CONFLICT`(보정 충돌)인 항목이다. 구체적인 오류 원인은 저장되어 있지 않아 임의로 추정하지 않는다.
 - 최근 처리 시각 역순, 같은 시각에는 수집 요청 순번 역순·항목 위치 순으로 정렬한다. 페이지 크기보다 한 건 더 조회해 다음 페이지 여부를 구한다. 조회 사이에 재처리가 진행되면 목록도 달라질 수 있다.
-- 재처리에 성공한 항목은 제외한다. 없는 항목이나 더 이상 실패 상태가 아닌 항목의 상세는 `404 COLLECTION_EXCEPTION_NOT_FOUND`다. DB 조회 장애는 세부 오류를 숨긴 `503 COLLECTION_UNAVAILABLE`로 응답한다.
+- 재처리에 성공한 항목은 제외한다. 없는 항목이나 더 이상 실패 상태가 아닌 항목의 상세는 `404 NOT_FOUND`다. DB 조회 장애는 세부 오류를 숨긴 `503 SERVICE_UNAVAILABLE`로 응답한다.
 - 원본의 `plcyNo`가 문자열이고 공백 제거 후 1~100자리 숫자인 경우에만 현재 공개 정책과 연결한다. 제목이 같아도 연결하지 않는다. 정책번호를 확인할 수 없으면 `policyNumber`는 null, 공개 내용이 없으면 `currentPolicy`는 null이다.
 - `rawPolicyJson`은 JSONB에 저장된 항목의 JSON 문자열이다. 수신 당시의 공백·키 순서까지 보존한 바이트 원문은 아니다. 외부 텍스트로 취급하며 화면에서는 HTML이나 스크립트로 실행하지 않아야 한다.
 - 현재 정책은 조회 시점의 공개 내용이다. 실패 당시의 이전 개정과 동일하다고 보장하지 않는다. 원본·공개 개정·처리 횟수는 조회로 바뀌지 않는다.
@@ -50,10 +51,10 @@
 ## 항목 재처리
 
 - `POST /api/v1/admin/collection-exceptions/{runId}/{itemIndex}/replays`에 `requestId`(UUID), `expectedAttempts`(조회한 처리 횟수), `reason`(공백 제외 필수·최대 500자)을 보낸다. 관리자 소셜 세션과 Spring CSRF 토큰이 필요하다. 작업자는 요청 본문 대신 인증 세션에서 정한다.
-- 항목을 잠근 뒤 현재 실패 상태와 처리 횟수를 확인한다. 같은 요청 ID·항목·작업자·사유·처리 횟수의 재전송은 저장된 결과를 반환한다. 다른 내용으로 ID를 재사용하거나 조회 후 상태가 바뀌면 `409 COLLECTION_REPLAY_CHANGED`다.
+- 항목을 잠근 뒤 현재 실패 상태와 처리 횟수를 확인한다. 같은 요청 ID·항목·작업자·사유·처리 횟수의 재전송은 저장된 결과를 반환한다. 다른 내용으로 ID를 재사용하거나 조회 후 상태가 바뀌면 `409 CONFLICT`다.
 - 저장된 페이지 원본을 기존 파서로 읽고 선택한 항목만 기존 반영 경로로 처리한다. 다른 실패 항목은 건드리지 않는다. 중복 정책번호·이전 수집의 덮어쓰기 차단 규칙도 그대로 적용한다. 외부 HTTP·AI·이메일 요청은 실행하지 않는다.
-- 항목 처리 결과·처리 횟수·관리자 기록을 하나의 트랜잭션으로 저장한다. 기록은 V19의 `admin_collection_replays`에 남고 수집 항목을 참조한다. DB 장애는 모두 롤백하고 `503 COLLECTION_UNAVAILABLE`로 응답한다. 롤백된 요청은 완료 이력에 없으며 같은 ID로 재시도할 수 있다.
-- 결과는 `APPLIED`·`UNCHANGED`·`REPLAYED`·`STALE`·`INVALID_ITEM`·`CORRECTION_CONFLICT`다. `policyRevision`은 처리 후 개정이며, `STALE`·`INVALID_ITEM`·`CORRECTION_CONFLICT`는 null이다. 원본을 읽거나 해당 항목을 처리할 수 없으면 `409 COLLECTION_REPLAY_UNAVAILABLE`이다. 입력 오류는 400으로 반환한다.
+- 항목 처리 결과·처리 횟수·관리자 기록을 하나의 트랜잭션으로 저장한다. 기록은 V19의 `admin_collection_replays`에 남고 수집 항목을 참조한다. DB 장애는 모두 롤백하고 `503 SERVICE_UNAVAILABLE`로 응답한다. 롤백된 요청은 완료 이력에 없으며 같은 ID로 재시도할 수 있다.
+- 결과는 `APPLIED`·`UNCHANGED`·`REPLAYED`·`STALE`·`INVALID_ITEM`·`CORRECTION_CONFLICT`다. `policyRevision`은 처리 후 개정이며, `STALE`·`INVALID_ITEM`·`CORRECTION_CONFLICT`는 null이다. 원본을 읽거나 해당 항목을 처리할 수 없으면 `409 CONFLICT`다. 입력 오류는 400으로 반환한다.
 - 웹은 기존 개인 API 중계를 사용해 지정한 관리자 경로로 POST·세션 쿠키·CSRF만 전달한다. 다른 출처의 요청은 중계 전에 차단한다. 응답을 못 받으면 사유를 잠그고 같은 요청으로 재확인한다. 상태 충돌·권한 오류는 버튼을 막고 최신 목록 확인을 안내한다. 사유·요청을 브라우저 저장소에 보관하지 않는다.
 - 웹의 재처리·보정·규칙 등록/적용은 `useAdminMutation`으로 로그인 확인부터 응답까지 중복 전송을 막는다. 화면 이동·컴포넌트 정리 후에는 후속 변경을 보내거나 이전 결과를 표시하지 않는다. 이미 보낸 요청을 취소해도 서버 작업이 되돌아간 것으로 안내하지 않는다.
 - 이력은 기록 시각 역순·같은 시각에는 요청 ID 순으로 조회한다. 완료된 실패 항목이 목록에서 사라진 뒤에도 이력은 남는다. 원본 값 수정·보정 적용·페이지 전체 재처리는 이 API의 범위가 아니다.

@@ -23,7 +23,8 @@ repositories {
 }
 
 dependencies {
-    implementation 'com.svix:svix:2.5.0'
+    // Resend 웹훅 서명 검증(com.svix.Webhook)만 쓴다. 이 클래스는 JDK 암호화 API만 참조하므로 API 클라이언트용 OkHttp·Kotlin·Jackson 2 모듈은 받지 않는다.
+    implementation('com.svix:svix:2.5.0') { transitive = false }
     implementation 'org.springframework.boot:spring-boot-starter-mail'
     implementation 'org.springframework.boot:spring-boot-starter-security-oauth2-client'
     implementation 'org.springframework.boot:spring-boot-starter-session-jdbc'

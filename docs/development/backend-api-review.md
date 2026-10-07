@@ -104,11 +104,11 @@ npm run verify -- test:ingestion -- \
 | 대상 | 적용 내용 |
 |---|---|
 | [수집 페이지 조회](../../backend/src/main/java/kr/youthpolicymate/ingestion/OntongCollectionStore.java) | 상태 확인은 내부 `PageStatus`로 페이지 번호·상태·원문 존재 여부·오류·건수만 읽는다. 원문 조회의 `Page`에서도 사용하지 않는 상태 필드를 제거했다. 정상 재처리에서 원문은 실제 해석 단계인 `applyStored`만 읽어 3회에서 1회로 줄었다. |
-| 발송 시작 | `startDispatch`의 첫 `FOR UPDATE` 조회에서 예약 실행 ID를 읽는다. `JdbcClient`의 `singleRow`로 행 존재를 확인하고 예약 ID가 없는 상태도 처리한다. 한도 설정 경로에서 해당 SELECT는 2회에서 1회로 줄었다. |
+| 발송 시작 | 당시 `startDispatch`의 첫 제어 행 `FOR UPDATE` 조회에서 예약 실행 ID를 읽는다. `JdbcClient`의 `singleRow`로 행 존재를 확인하고 예약 ID가 없는 상태도 처리한다. 한도 설정 경로에서 해당 SELECT는 2회에서 1회로 줄었다. |
 
 저장 원본 재처리·부분 실패·현재 상태 확인과 예약 교체 거절·발송 시작 중복 차단·호출 간격 갱신은 유지했다. 첫 항목은 원문을 가져오는 횟수의 개선이며 전체 SELECT 수를 3회에서 1회로 줄인다는 뜻은 아니다. 실행 시간·전송량 개선율은 측정하지 않았다.
 
-Temurin 25.0.3을 사용해 `npm run verify -- test:policy-collection`을 실행했다. 수집 HTTP 클라이언트·원문 변환·페이지 수집·범위 재처리·스케줄러·정책 조회와 API 계약 검사 46건이 실패·오류·건너뜀 없이 통과했다. 기존 `OntongSweepTest`에서 원문 조회 함수 1회와 제어 행 SELECT 1회를 확인했다. 별도 테스트 사례를 추가하지 않고 기존 재처리·예약 교체 사례를 보완했다.
+Temurin 25.0.3을 사용해 `npm run verify -- test:policy-collection`을 실행했다. 수집 HTTP 클라이언트·원문 변환·페이지 수집·범위 재처리·스케줄러·정책 조회와 API 계약 검사 46건이 실패·오류·건너뜀 없이 통과했다. 기존 `OntongSweepTest`에서 원문 조회 함수 1회와 당시 제어 행 SELECT 1회를 확인했다. 제어 행은 이후 advisory 잠금과 페이지 기록 조회로 바뀌어 지금은 발송 시작의 잠금·순번 확인 SELECT 2회를 확인한다. 별도 테스트 사례를 추가하지 않고 기존 재처리·예약 교체 사례를 보완했다.
 
 로그는 `.local/verification/1788658608359-66a5a149.log`다. 검증한 앱 코드는 `22a8120`이며 이후 변경은 문서뿐이다. 수집 내부 조회만 변경해 전체 서버 빌드·웹 검사·실제 온통청년 호출은 실행하지 않았다.
 

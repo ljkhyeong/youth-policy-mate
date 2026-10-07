@@ -1,5 +1,6 @@
 package kr.youthpolicymate.ingestion;
 
+import kr.youthpolicymate.ingestion.OntongSweepStore.Step;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -49,26 +50,24 @@ class OntongSweepTest {
     @BeforeEach
     void prepare() {
         jdbc.sql("TRUNCATE ontong_collection_sweeps, ontong_collection_sweep_pages, ontong_collection_pages, policies CASCADE").update();
-        jdbc.sql("UPDATE ontong_collection_request_gate SET next_request_at = '-infinity' WHERE id = 1").update();
         now.set(Instant.parse("2026-09-05T14:57:30Z"));
         when(clock.instant()).thenAnswer(call -> now.get()); when(clock.getZone()).thenReturn(ZoneOffset.UTC);
     }
 
-    @Test @DisplayName("지정 범위를 호출 간격에 맞춰 배치로 처리하고 정기 실행은 기본적으로 꺼져 있다")
-    void collectsBoundedPagesWithBatchHistory() throws Exception {
+    @Test @DisplayName("지정 범위를 호출 간격에 맞춰 처리하고 정기 실행은 기본적으로 꺼져 있다")
+    void collectsBoundedPagesAtConfiguredInterval() throws Exception {
         assertThat(context.getBeansOfType(OntongSweepScheduler.class)).isEmpty();
         when(client.fetch(anyString(), anyInt())).thenAnswer(call -> {
             assertThat(TransactionSynchronizationManager.isActualTransactionActive()).isFalse();
             int page = call.getArgument(1); return response(page, page == 1 ? 10 : 2, 12, false);
         });
         var id = sweeps.create(1, 2);
-        assertThat(runner.tick(id)).isEqualTo("PROGRESSED");
-        assertThat(runner.tick(id)).isEqualTo("LOCAL_REQUEST_INTERVAL");
-        advance(30); assertThat(runner.tick(id)).isEqualTo("PROGRESSED");
-        assertThat(runner.tick(id)).isEqualTo("COMPLETED");
+        assertThat(runner.tick(id)).isEqualTo(Step.PROGRESSED);
+        assertThat(runner.tick(id)).isEqualTo(Step.LOCAL_REQUEST_INTERVAL);
+        advance(30); assertThat(runner.tick(id)).isEqualTo(Step.PROGRESSED);
+        assertThat(runner.tick(id)).isEqualTo(Step.COMPLETED);
         assertThat(sweeps.status(id).getFirst()).contains("완료 페이지 2", "확인 필요 0");
         assertThat(jdbc.sql("SELECT count(*) FROM policies").query(Long.class).single()).isEqualTo(12);
-        assertThat(jdbc.sql("SELECT count(*) FROM batch_job_execution WHERE status = 'COMPLETED'").query(Long.class).single()).isPositive();
         verify(client, times(2)).fetch(anyString(), anyInt());
     }
 
@@ -81,16 +80,16 @@ class OntongSweepTest {
             var second = executor.submit(() -> { start.await(); return sweeps.claim(id); });
             start.countDown(); works = List.of(first.get(10, TimeUnit.SECONDS), second.get(10, TimeUnit.SECONDS));
         }
-        assertThat(works).extracting(OntongSweepStore.Work::kind).containsExactlyInAnyOrder("FETCH", "WAITING_RESPONSE");
-        var request = works.stream().filter(work -> work.kind().equals("FETCH")).findFirst().orElseThrow();
-        assertThat(runner.tick(id)).isEqualTo("WAITING_RESPONSE");
+        assertThat(works).extracting(OntongSweepStore.Work::kind).containsExactlyInAnyOrder(Step.FETCH, Step.WAITING_RESPONSE);
+        var request = works.stream().filter(work -> work.kind() == Step.FETCH).findFirst().orElseThrow();
+        assertThat(runner.tick(id)).isEqualTo(Step.WAITING_RESPONSE);
         advance(25); pages.startDispatch(request.runId());
         assertThatThrownBy(() -> pages.startDispatch(request.runId())).hasMessage("REQUEST_ALREADY_ATTEMPTED");
         advance(5);
         assertThatThrownBy(() -> pages.begin(UUID.randomUUID(), 2)).hasMessage("LOCAL_REQUEST_INTERVAL");
         pages.received(request.runId(), response(1, 2, 2, false));
         clearInvocations(pages);
-        assertThat(runner.tick(id)).isEqualTo("PROGRESSED");
+        assertThat(runner.tick(id)).isEqualTo(Step.PROGRESSED);
         verify(pages, times(1)).page(request.runId());
         assertThat(sweeps.find(id).state()).isEqualTo("COMPLETED");
         verifyNoInteractions(client);
@@ -103,7 +102,7 @@ class OntongSweepTest {
         assertThatThrownBy(() -> pages.startDispatch(earlier)).hasMessage("REQUEST_RESERVATION_CHANGED");
         clearInvocations(jdbc);
         pages.startDispatch(later);
-        verify(jdbc, times(1)).sql(startsWith("SELECT"));
+        verify(jdbc, times(2)).sql(startsWith("SELECT"));
         verifyNoInteractions(client);
     }
 
@@ -119,7 +118,7 @@ class OntongSweepTest {
             jdbc.sql("DROP TRIGGER reject_sweep_assignment ON ontong_collection_sweep_pages").update();
             jdbc.sql("DROP FUNCTION reject_sweep_assignment()").update();
         }
-        assertThat(sweeps.claim(id).kind()).isEqualTo("FETCH");
+        assertThat(sweeps.claim(id).kind()).isEqualTo(Step.FETCH);
         verifyNoInteractions(client);
     }
 
@@ -128,8 +127,8 @@ class OntongSweepTest {
         when(client.fetch(anyString(), eq(1))).thenReturn(response(1, 10, 12, true));
         when(client.fetch(anyString(), eq(2))).thenReturn(response(2, 2, 12, false));
         var id = sweeps.create(1, 2);
-        assertThat(runner.tick(id)).isEqualTo("PROGRESSED"); advance(30);
-        assertThat(runner.tick(id)).isEqualTo("PROGRESSED");
+        assertThat(runner.tick(id)).isEqualTo(Step.PROGRESSED); advance(30);
+        assertThat(runner.tick(id)).isEqualTo(Step.PROGRESSED);
         assertThat(sweeps.find(id).state()).isEqualTo("PARTIAL");
         assertThat(jdbc.sql("SELECT count(*) FROM policies").query(Long.class).single()).isEqualTo(11);
         sweeps.resume(id); runner.tick(id); runner.tick(id);
@@ -143,8 +142,8 @@ class OntongSweepTest {
     void pausesRateLimitedRequestWithoutAutomaticRetry() {
         when(client.fetch(anyString(), anyInt())).thenThrow(new OntongApiClient.Failure("HTTP_429"));
         var id = sweeps.create(1, 2);
-        assertThat(runner.tick(id)).isEqualTo("PAUSED"); advance(60);
-        assertThat(runner.tick(id)).isEqualTo("PAUSED");
+        assertThat(runner.tick(id)).isEqualTo(Step.PAUSED); advance(60);
+        assertThat(runner.tick(id)).isEqualTo(Step.PAUSED);
         assertThatThrownBy(() -> sweeps.resume(id)).hasMessage("RESPONSE_UNKNOWN_REQUIRES_REVIEW");
         assertThat(sweeps.status(id).getFirst()).contains("HTTP_429");
         sweeps.abandon(id); assertThat(sweeps.find(id).state()).isEqualTo("ABANDONED");
@@ -155,12 +154,12 @@ class OntongSweepTest {
     void defersAtDailyLimitAndContinuesAfterSeoulMidnight() throws Exception {
         when(client.fetch(anyString(), anyInt())).thenAnswer(call -> response(call.getArgument(1), 10, 40, false));
         var id = sweeps.create(1, 4);
-        for (int i = 0; i < 3; i++) { assertThat(runner.tick(id)).isEqualTo("PROGRESSED"); advance(30); }
-        assertThat(runner.tick(id)).isEqualTo("LOCAL_DAILY_LIMIT");
+        for (int i = 0; i < 3; i++) { assertThat(runner.tick(id)).isEqualTo(Step.PROGRESSED); advance(30); }
+        assertThat(runner.tick(id)).isEqualTo(Step.LOCAL_DAILY_LIMIT);
         assertThat(sweeps.find(id).nextPage()).isEqualTo(4);
         assertThatThrownBy(() -> pages.begin(UUID.randomUUID(), 5)).hasMessage("LOCAL_DAILY_LIMIT");
         now.set(Instant.parse("2026-09-05T15:00:00Z"));
-        assertThat(runner.tick(id)).isEqualTo("PROGRESSED");
+        assertThat(runner.tick(id)).isEqualTo(Step.PROGRESSED);
         assertThat(sweeps.find(id).state()).isEqualTo("COMPLETED");
         verify(client, times(4)).fetch(anyString(), anyInt());
     }

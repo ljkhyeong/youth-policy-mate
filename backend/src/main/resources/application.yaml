@@ -14,11 +14,6 @@ spring:
       mail.smtp.connectiontimeout: 5000
       mail.smtp.timeout: 5000
       mail.smtp.writetimeout: 5000
-  batch:
-    job:
-      enabled: false
-    jdbc:
-      initialize-schema: never
   session:
     timeout: 12h
     jdbc:
@@ -55,8 +50,14 @@ app:
       read-api-key: ${RESEND_READ_API_KEY:}
       webhook-secret: ${RESEND_WEBHOOK_SECRET:}
   ontong:
+    api-key: ${ONTONG_API_KEY:}
+    daily-limit: ${ONTONG_COLLECTION_DAILY_LIMIT:0}
+    interval: ${ONTONG_COLLECTION_INTERVAL_SECONDS:0}
     schedule:
       enabled: ${ONTONG_COLLECTION_SCHEDULE_ENABLED:false}
+      first-page: ${ONTONG_COLLECTION_FIRST_PAGE:0}
+      last-page: ${ONTONG_COLLECTION_LAST_PAGE:0}
+      cycle: ${ONTONG_COLLECTION_CYCLE_SECONDS:0}
   reminders:
     enabled: ${REMINDERS_ENABLED:false}
     delivery-time: ${REMINDER_DELIVERY_TIME:09:00}

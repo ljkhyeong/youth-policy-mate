@@ -1,10 +1,6 @@
 package kr.youthpolicymate.ingestion;
 
-import org.springframework.batch.core.BatchStatus;
-import org.springframework.batch.core.job.Job;
-import org.springframework.batch.core.job.parameters.JobParametersBuilder;
-import org.springframework.batch.core.launch.JobOperator;
-import org.springframework.beans.factory.annotation.Qualifier;
+import kr.youthpolicymate.ingestion.OntongSweepStore.Step;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Service;
 import java.util.UUID;
@@ -14,41 +10,45 @@ import java.util.UUID;
 public class OntongSweepRunner {
     private final OntongSweepStore sweeps;
     private final OntongCollectionStore pages;
-    private final JobOperator operator;
-    private final Job job;
-    public OntongSweepRunner(OntongSweepStore sweeps, OntongCollectionStore pages, JobOperator operator,
-                             @Qualifier("limitedOntongCollection") Job job) {
-        this.sweeps = sweeps; this.pages = pages; this.operator = operator; this.job = job;
+    private final OntongCollectionService collection;
+    OntongSweepRunner(OntongSweepStore sweeps, OntongCollectionStore pages, OntongCollectionService collection) {
+        this.sweeps = sweeps; this.pages = pages; this.collection = collection;
     }
 
-    public String tick(UUID id) {
+    /** 배정한 페이지 하나를 트랜잭션 밖에서 처리하고 결과를 범위 진행 위치에 기록한다. */
+    public Step tick(UUID id) {
         OntongSweepStore.Work work;
         try { work = sweeps.claim(id); }
         catch (OntongApiClient.Failure failure) {
-            if (failure.getMessage().equals("LOCAL_REQUEST_INTERVAL") || failure.getMessage().equals("LOCAL_DAILY_LIMIT")) return failure.getMessage();
-            throw failure;
+            return switch (failure.getMessage()) {
+                case "LOCAL_REQUEST_INTERVAL" -> Step.LOCAL_REQUEST_INTERVAL;
+                case "LOCAL_DAILY_LIMIT" -> Step.LOCAL_DAILY_LIMIT;
+                default -> throw failure;
+            };
         }
-        if (work.kind().equals("SKIP")) { sweeps.finish(work, "COMPLETED", null); return "PROGRESSED"; }
-        if (!work.kind().equals("FETCH") && !work.kind().equals("REPLAY")) return work.kind();
+        if (work.kind() == Step.SKIP) { sweeps.finish(work, null); return Step.PROGRESSED; }
+        if (work.kind() != Step.FETCH && work.kind() != Step.REPLAY) return work.kind();
         try {
-            var execution = operator.start(job, new JobParametersBuilder().addString("runId", work.runId().toString())
-                    .addString("mode", work.kind().equals("FETCH") ? "receive" : "replay").addLong("page", (long) work.page())
-                    .addString("invocation", UUID.randomUUID().toString()).toJobParameters());
+            boolean completed;
+            try {
+                if (work.kind() == Step.FETCH) collection.receive(work.runId());
+                collection.applyStored(work.runId());
+                completed = true;
+            } catch (RuntimeException exception) { completed = false; }
             var page = pages.pageStatus(work.runId());
-            if (execution.getStatus() == BatchStatus.COMPLETED) {
+            if (completed) {
                 long expected = Math.min(10, Math.max(0, page.totalCount() - (page.number() - 1L) * 10));
-                boolean complete = page.itemCount() == expected;
-                sweeps.finish(work, complete ? "COMPLETED" : "PARTIAL", complete ? null : "UNEXPECTED_ITEM_COUNT");
+                sweeps.finish(work, page.itemCount() == expected ? null : "UNEXPECTED_ITEM_COUNT");
             } else if (page.state().equals("READY") && !pages.pending(work.runId()).isEmpty()) {
-                sweeps.finish(work, "PARTIAL", "ITEMS_REQUIRE_REPROCESSING");
+                sweeps.finish(work, "ITEMS_REQUIRE_REPROCESSING");
             } else {
-                sweeps.pause(work, page.failureCode() == null ? "BATCH_EXECUTION_FAILED" : page.failureCode());
-                return "PAUSED";
+                sweeps.pause(work, page.failureCode() == null ? "COLLECTION_FAILED" : page.failureCode());
+                return Step.PAUSED;
             }
-            return "PROGRESSED";
-        } catch (Exception exception) {
-            // 공급자 예외나 배치 인자 전체를 로그에 전파하지 않는다.
-            sweeps.pause(work, "SWEEP_EXECUTION_FAILED"); return "PAUSED";
+            return Step.PROGRESSED;
+        } catch (RuntimeException exception) {
+            // 공급자 예외 내용을 로그에 전파하지 않는다.
+            sweeps.pause(work, "SWEEP_EXECUTION_FAILED"); return Step.PAUSED;
         }
     }
 }

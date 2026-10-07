@@ -17,23 +17,22 @@ import java.util.UUID;
 public class OntongSweepStore {
     private final JdbcClient jdbc;
     private final OntongCollectionStore pages;
-    private final OntongRequestLimits limits;
+    private final OntongProperties properties;
     private final Clock clock;
-    public OntongSweepStore(JdbcClient jdbc, OntongCollectionStore pages, OntongRequestLimits limits, Clock clock) {
-        this.jdbc = jdbc; this.pages = pages; this.limits = limits; this.clock = clock;
+    OntongSweepStore(JdbcClient jdbc, OntongCollectionStore pages, OntongProperties properties, Clock clock) {
+        this.jdbc = jdbc; this.pages = pages; this.properties = properties; this.clock = clock;
     }
 
     @Transactional
     public UUID create(int first, int last) {
-        limits.requireConfigured(); validateRange(first, last); lockGate();
+        properties.requireLimits(); validateRange(first, last); lockGate();
         if (open().isPresent()) throw new OntongApiClient.Failure("SWEEP_ALREADY_OPEN");
         return insert(first, last, "MANUAL");
     }
 
+    /** 범위·주기·한도는 기동 시 설정 바인딩에서 검증한다. */
     @Transactional
     public Optional<UUID> scheduled(int first, int last, Duration interval) {
-        limits.requireConfigured(); validateRange(first, last);
-        if (interval.isZero() || interval.isNegative()) throw new IllegalArgumentException("정기 수집 간격을 설정해주세요.");
         lockGate();
         var current = open();
         if (current.isPresent()) return current.filter(value -> value.origin().equals("SCHEDULED")).map(Sweep::id);
@@ -48,35 +47,36 @@ public class OntongSweepStore {
     public Work claim(UUID id) {
         lockGate();
         var sweep = find(id);
-        if (!sweep.state().equals("ACTIVE")) return new Work(sweep.state(), id, null, sweep.nextPage());
-        var existing = jdbc.sql("SELECT run_id, outcome FROM ontong_collection_sweep_pages WHERE sweep_id = :id AND page_number = :page")
-                .param("id", id).param("page", sweep.nextPage())
-                .query((rs, row) -> new Work(rs.getString("outcome"), id, rs.getObject("run_id", UUID.class), sweep.nextPage())).optional();
-        if (existing.isPresent()) {
-            var work = existing.get();
-            if (work.kind().equals("COMPLETED")) return new Work("SKIP", id, work.runId(), work.page());
-            var page = pages.pageStatus(work.runId());
-            if (page.responseStored()) return new Work("REPLAY", id, work.runId(), work.page());
+        // DB CHECK가 상태를 다섯 값으로 제한하고 ACTIVE는 여기서 걸러진다.
+        if (!sweep.state().equals("ACTIVE")) return new Work(Step.valueOf(sweep.state()), id, null, sweep.nextPage());
+        var assigned = jdbc.sql("SELECT run_id, outcome FROM ontong_collection_sweep_pages WHERE sweep_id = :id AND page_number = :page")
+                .param("id", id).param("page", sweep.nextPage()).query(Assignment.class).optional();
+        if (assigned.isPresent()) {
+            var runId = assigned.get().runId();
+            if (assigned.get().outcome().equals("COMPLETED")) return new Work(Step.SKIP, id, runId, sweep.nextPage());
+            var page = pages.pageStatus(runId);
+            if (page.responseStored()) return new Work(Step.REPLAY, id, runId, sweep.nextPage());
             if (page.state().equals("FETCH_FAILED")) {
-                pause(work, page.failureCode()); return new Work("PAUSED", id, work.runId(), work.page());
+                var paused = new Work(Step.PAUSED, id, runId, sweep.nextPage());
+                pause(paused, page.failureCode()); return paused;
             }
-            return new Work("WAITING_RESPONSE", id, work.runId(), work.page());
+            return new Work(Step.WAITING_RESPONSE, id, runId, sweep.nextPage());
         }
-        limits.requireConfigured();
+        properties.requireLimits();
         var run = UUID.randomUUID();
         pages.begin(run, sweep.nextPage());
         jdbc.sql("INSERT INTO ontong_collection_sweep_pages(sweep_id, page_number, run_id, outcome) VALUES (:id, :page, :run, 'REQUESTED')")
                 .param("id", id).param("page", sweep.nextPage()).param("run", run).update();
-        return new Work("FETCH", id, run, sweep.nextPage());
+        return new Work(Step.FETCH, id, run, sweep.nextPage());
     }
 
+    /** 실패 코드가 없으면 페이지를 COMPLETED, 있으면 PARTIAL로 기록한다. */
     @Transactional
-    public void finish(Work work, String outcome, String failureCode) {
-        if (!List.of("COMPLETED", "PARTIAL").contains(outcome)) throw new IllegalArgumentException();
+    public void finish(Work work, String failureCode) {
         lockGate();
         var sweep = find(work.sweepId());
         if (!current(sweep, work)) return;
-        updatePage(work, outcome, failureCode);
+        updatePage(work, failureCode == null ? "COMPLETED" : "PARTIAL", failureCode);
         boolean last = work.page() == sweep.lastPage();
         boolean partial = jdbc.sql("SELECT EXISTS(SELECT 1 FROM ontong_collection_sweep_pages WHERE sweep_id = :id AND outcome <> 'COMPLETED')")
                 .param("id", work.sweepId()).query(Boolean.class).single();
@@ -87,7 +87,7 @@ public class OntongSweepStore {
                 """).param("id", work.sweepId()).param("next", work.page() + 1)
                 .param("state", last ? partial ? "PARTIAL" : "COMPLETED" : "ACTIVE")
                 .param("now", now()).param("completed", last ? now() : null)
-                .param("code", last && partial ? "PAGES_REQUIRE_REVIEW" : null).param("success", outcome.equals("COMPLETED")).update();
+                .param("code", last && partial ? "PAGES_REQUIRE_REVIEW" : null).param("success", failureCode == null).update();
     }
 
     @Transactional
@@ -126,9 +126,8 @@ public class OntongSweepStore {
     }
 
     public Sweep find(UUID id) {
-        return jdbc.sql("SELECT * FROM ontong_collection_sweeps WHERE id = :id").param("id", id)
-                .query((rs, row) -> new Sweep(id, rs.getString("origin"), rs.getInt("first_page"), rs.getInt("last_page"),
-                        rs.getInt("next_page"), rs.getString("state"), rs.getString("failure_code"))).optional()
+        return jdbc.sql("SELECT id, origin, first_page, last_page, next_page, state, failure_code FROM ontong_collection_sweeps WHERE id = :id")
+                .param("id", id).query(Sweep.class).optional()
                 .orElseThrow(() -> new OntongApiClient.Failure("SWEEP_NOT_FOUND"));
     }
     public List<String> status(UUID id) {
@@ -163,9 +162,13 @@ public class OntongSweepStore {
         if (updated != 1) throw new OntongApiClient.Failure("SWEEP_WORK_CHANGED");
     }
     private boolean current(Sweep sweep, Work work) { return sweep.state().equals("ACTIVE") && sweep.nextPage() == work.page(); }
-    private void lockGate() { jdbc.sql("SELECT id FROM ontong_collection_request_gate WHERE id = 1 FOR UPDATE").query(Integer.class).single(); }
+    /** 요청 배정·발송 시작과 같은 잠금으로 범위 상태 변경을 직렬화한다. */
+    private void lockGate() { OntongCollectionStore.lockRequests(jdbc); }
     private OffsetDateTime now() { return clock.instant().atOffset(ZoneOffset.UTC); }
     static void validateRange(int first, int last) { if (first < 1 || last < first || last > 1000) throw new IllegalArgumentException("수집 페이지 범위는 1~1000 안에서 지정해주세요."); }
     public record Sweep(UUID id, String origin, int firstPage, int lastPage, int nextPage, String state, String failureCode) {}
-    public record Work(String kind, UUID sweepId, UUID runId, int page) {}
+    /** claim이 지시한 처리와 tick 결과. 이름을 CLI·로그 출력에 그대로 쓴다. */
+    public enum Step { FETCH, REPLAY, SKIP, WAITING_RESPONSE, PAUSED, COMPLETED, PARTIAL, ABANDONED, PROGRESSED, LOCAL_REQUEST_INTERVAL, LOCAL_DAILY_LIMIT }
+    public record Work(Step kind, UUID sweepId, UUID runId, int page) {}
+    private record Assignment(UUID runId, String outcome) {}
 }

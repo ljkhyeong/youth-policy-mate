@@ -74,7 +74,7 @@ class CollectionReplayApiTest {
         assertThat(store.pending(run)).containsExactly(1);
         assertThat(store.page(run).rawBody()).isEqualTo(raw);
         assertThat(jdbc.sql("SELECT count(*) FROM policy_revisions").query(Long.class).single()).isOne();
-        assertThat(jdbc.sql("SELECT count(*) FROM ontong_collection_item_attempts").query(Long.class).single()).isEqualTo(3);
+        assertThat(jdbc.sql("SELECT sum(attempts) FROM ontong_collection_items").query(Long.class).single()).isEqualTo(3);
         mvc.perform(post(path(run)).with(social(ADMIN)).with(csrf()).contentType(MediaType.APPLICATION_JSON)
                         .content(request(UUID.randomUUID(), "새 요청")))
                 .andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("COLLECTION_REPLAY_CHANGED"));
@@ -108,7 +108,7 @@ class CollectionReplayApiTest {
     }
 
     @Test
-    @DisplayName("관리자 기록 저장에 실패하면 정책·시도도 롤백하고 같은 요청을 재시도할 수 있다")
+    @DisplayName("관리자 기록 저장에 실패하면 정책·처리 결과도 롤백하고 같은 요청을 재시도할 수 있다")
     void rollsBackTogether() throws Exception {
         var run = prepared("정책 제목");
         var body = request(UUID.randomUUID(), "롤백 검증");
@@ -117,7 +117,8 @@ class CollectionReplayApiTest {
             mvc.perform(post(path(run)).with(social(ADMIN)).with(csrf()).contentType(MediaType.APPLICATION_JSON).content(body))
                     .andExpect(status().isServiceUnavailable()).andExpect(jsonPath("$.code").value("COLLECTION_UNAVAILABLE"));
             assertThat(jdbc.sql("SELECT count(*) FROM policies").query(Long.class).single()).isZero();
-            assertThat(jdbc.sql("SELECT count(*) FROM ontong_collection_item_attempts").query(Long.class).single()).isEqualTo(2);
+            assertThat(jdbc.sql("SELECT outcome || ' ' || attempts FROM ontong_collection_items WHERE run_id = :run AND item_index = 0")
+                    .param("run", run).query(String.class).single()).isEqualTo("STORE_FAILED 1");
         } finally { jdbc.sql("ALTER TABLE admin_collection_replays DROP CONSTRAINT reject_replay").update(); }
         mvc.perform(post(path(run)).with(social(ADMIN)).with(csrf()).contentType(MediaType.APPLICATION_JSON).content(body))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.attempt").value(2));

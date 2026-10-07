@@ -4,16 +4,10 @@ import kr.youthpolicymate.policy.catalog.PolicyCatalogStore;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.springframework.batch.core.BatchStatus;
-import org.springframework.batch.core.job.Job;
-import org.springframework.batch.core.job.JobExecution;
-import org.springframework.batch.core.job.parameters.JobParametersBuilder;
-import org.springframework.batch.core.launch.JobOperator;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.springframework.jdbc.core.simple.JdbcClient;
-import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.testcontainers.junit.jupiter.Container;
@@ -33,7 +27,6 @@ import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
 @Testcontainers
-@ActiveProfiles("collection")
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.NONE, properties = "ONTONG_API_KEY=collection-test-key")
 class OntongCollectionTest {
     @Container @ServiceConnection
@@ -43,20 +36,18 @@ class OntongCollectionTest {
     @Autowired PolicyCatalogStore catalog;
     @Autowired JdbcClient jdbc;
     @Autowired ObjectMapper mapper;
-    @Autowired Job limitedOntongCollection;
-    @Autowired JobOperator operator;
     @MockitoBean OntongApiClient client;
     private static final Instant AT = Instant.parse("2026-09-05T04:00:00Z");
     private static final String NUMBER = "20260903005400113371";
 
     @BeforeEach
     void prepare() {
-        jdbc.sql("TRUNCATE ontong_collection_pages, ontong_collection_items, ontong_collection_item_attempts, policies, policy_source_snapshots, policy_revisions CASCADE").update();
+        jdbc.sql("TRUNCATE ontong_collection_pages, ontong_collection_items, policies, policy_source_snapshots, policy_revisions CASCADE").update();
     }
 
     @Test
-    @DisplayName("호출 전에 실행을 저장하고 트랜잭션 밖에서 가져온 정책을 배치 이력과 함께 반영한다")
-    void runsJobWithDurableHistory() throws Exception {
+    @DisplayName("호출 전에 실행을 저장하고 트랜잭션 밖에서 가져온 정책을 실행 이력과 함께 반영한다")
+    void fetchesOutsideTransactionWithDurableHistory() throws Exception {
         var run = UUID.randomUUID();
         var original = body("첫 정책", "두 번째 정책");
         when(client.fetch(anyString(), eq(1))).thenAnswer(call -> {
@@ -64,19 +55,18 @@ class OntongCollectionTest {
             assertThat(store.pageStatus(run).state()).isEqualTo("FETCHING");
             return new OntongApiClient.Response(AT, original);
         });
-        assertThat(job("fetch", run).getStatus()).isEqualTo(BatchStatus.COMPLETED);
+        service.fetch(run, 1);
+        verify(client).fetch("collection-test-key", 1);
         assertThat(catalog.list("", 1, 20, false, null, java.util.Set.of(), AT).total()).isEqualTo(2);
         assertThat(store.status(run).getFirst()).contains("처리 2/2", "실패 0");
-        assertThat(jdbc.sql("SELECT count(*) FROM batch_job_execution WHERE status = 'COMPLETED'").query(Long.class).single()).isPositive();
-        assertThat(jdbc.sql("SELECT count(*) FROM batch_job_execution_params WHERE parameter_value LIKE '%collection-test-key%'").query(Long.class).single()).isZero();
         assertThatThrownBy(() -> store.received(run,
                 new OntongApiClient.Response(AT.plusSeconds(1), body("덮어쓸 정책"))))
                 .hasMessage("RESPONSE_ALREADY_RECORDED");
         assertThat(store.page(run).rawBody()).isEqualTo(original);
-        assertThat(job("replay", run).getStatus()).isEqualTo(BatchStatus.COMPLETED);
+        service.applyStored(run);
         verify(client, times(1)).fetch(anyString(), eq(1));
         assertThat(jdbc.sql("SELECT count(*) FROM policy_revisions").query(Long.class).single()).isEqualTo(2);
-        assertThat(jdbc.sql("SELECT count(*) FROM ontong_collection_item_attempts").query(Long.class).single()).isEqualTo(2);
+        assertThat(jdbc.sql("SELECT sum(attempts) FROM ontong_collection_items").query(Long.class).single()).isEqualTo(2);
     }
 
     @Test
@@ -109,10 +99,10 @@ class OntongCollectionTest {
     void preservesPartialFailure() throws Exception {
         var run = UUID.randomUUID();
         when(client.fetch(anyString(), eq(1))).thenReturn(new OntongApiClient.Response(AT, body("정상 정책", "")));
-        assertThat(job("fetch", run).getStatus()).isEqualTo(BatchStatus.FAILED);
+        assertThatThrownBy(() -> service.fetch(run, 1)).hasMessage("ITEMS_REQUIRE_REPROCESSING");
         assertThat(catalog.list("", 1, 20, false, null, java.util.Set.of(), AT).total()).isOne();
         assertThat(store.pending(run)).containsExactly(1);
-        assertThat(job("replay", run).getStatus()).isEqualTo(BatchStatus.FAILED);
+        assertThatThrownBy(() -> service.applyStored(run)).hasMessage("ITEMS_REQUIRE_REPROCESSING");
         assertThat(store.itemStatus(run)).anyMatch(value -> value.contains("INVALID_ITEM") && value.contains("시도 2"));
         assertThat(jdbc.sql("SELECT attempts FROM ontong_collection_items WHERE item_index = 0").query(Integer.class).single()).isOne();
         verify(client, times(1)).fetch(anyString(), eq(1));
@@ -148,20 +138,20 @@ class OntongCollectionTest {
                     RETURN NEW;
                 END $$
                 """).update();
-        jdbc.sql("CREATE TRIGGER reject_item_success BEFORE INSERT ON ontong_collection_item_attempts FOR EACH ROW EXECUTE FUNCTION reject_item_success()").update();
+        jdbc.sql("CREATE TRIGGER reject_item_success BEFORE UPDATE ON ontong_collection_items FOR EACH ROW EXECUTE FUNCTION reject_item_success()").update();
         try {
-            assertThat(job("fetch", run).getStatus()).isEqualTo(BatchStatus.FAILED);
+            assertThatThrownBy(() -> service.fetch(run, 1)).hasMessage("ITEMS_REQUIRE_REPROCESSING");
             assertThat(catalog.list("", 1, 20, false, null, java.util.Set.of(), AT).total()).isEqualTo(2);
             assertThat(store.pending(run)).containsExactly(1);
+            assertThat(itemOutcome(run, 1)).isEqualTo("STORE_FAILED 1");
         } finally {
-            jdbc.sql("DROP TRIGGER reject_item_success ON ontong_collection_item_attempts").update();
+            jdbc.sql("DROP TRIGGER reject_item_success ON ontong_collection_items").update();
             jdbc.sql("DROP FUNCTION reject_item_success()").update();
         }
-        assertThat(job("replay", run).getStatus()).isEqualTo(BatchStatus.COMPLETED);
+        service.applyStored(run);
         assertThat(catalog.list("", 1, 20, false, null, java.util.Set.of(), AT).total()).isEqualTo(3);
         assertThat(jdbc.sql("SELECT count(*) FROM policy_revisions").query(Long.class).single()).isEqualTo(3);
-        assertThat(jdbc.sql("SELECT outcome FROM ontong_collection_item_attempts WHERE item_index = 1 ORDER BY attempt").query(String.class).list())
-                .containsExactly("STORE_FAILED", "APPLIED");
+        assertThat(itemOutcome(run, 1)).isEqualTo("APPLIED 2");
         verify(client, times(1)).fetch(anyString(), eq(1));
     }
 
@@ -172,10 +162,10 @@ class OntongCollectionTest {
         service.applyStored(success);
         var failed = UUID.randomUUID();
         when(client.fetch(anyString(), eq(1))).thenThrow(new OntongApiClient.Failure("HTTP_429"));
-        assertThat(job("fetch", failed).getStatus()).isEqualTo(BatchStatus.FAILED);
+        assertThatThrownBy(() -> service.fetch(failed, 1)).hasMessage("HTTP_429");
         assertThat(store.status(failed).getFirst()).contains("FETCH_FAILED", "HTTP_429");
-        assertThat(job("fetch", failed).getStatus()).isEqualTo(BatchStatus.FAILED);
-        assertThat(job("replay", failed).getStatus()).isEqualTo(BatchStatus.FAILED);
+        assertThatThrownBy(() -> service.fetch(failed, 1)).hasMessage("REQUEST_ALREADY_ATTEMPTED");
+        assertThatThrownBy(() -> service.applyStored(failed)).hasMessage("RESPONSE_NOT_STORED");
         verify(client, times(1)).fetch(anyString(), eq(1));
         var wrongPage = stored(body("다른 페이지 정책").replace("\"pageNum\":1", "\"pageNum\":2"), AT.plusSeconds(1));
         assertThatThrownBy(() -> service.applyStored(wrongPage)).hasMessage("INVALID_LIST_RESPONSE");
@@ -199,7 +189,7 @@ class OntongCollectionTest {
     }
 
     @Test
-    @DisplayName("같은 원본을 두 작업자가 재처리해도 항목 반영과 완료 이력은 한 번만 저장한다")
+    @DisplayName("같은 원본을 두 작업자가 재처리해도 항목 반영과 처리 횟수는 한 번만 저장한다")
     void serializesConcurrentReprocessing() throws Exception {
         var run = stored(body("동시 처리 정책"), AT);
         var start = new CountDownLatch(1);
@@ -211,13 +201,12 @@ class OntongCollectionTest {
             assertThat(second.get(10, TimeUnit.SECONDS)).isTrue();
         }
         assertThat(jdbc.sql("SELECT count(*) FROM policy_revisions").query(Long.class).single()).isOne();
-        assertThat(jdbc.sql("SELECT count(*) FROM ontong_collection_item_attempts").query(Long.class).single()).isOne();
+        assertThat(jdbc.sql("SELECT sum(attempts) FROM ontong_collection_items").query(Long.class).single()).isOne();
     }
 
-    private JobExecution job(String mode, UUID runId) throws Exception {
-        return operator.start(limitedOntongCollection, new JobParametersBuilder().addString("mode", mode)
-                .addString("runId", runId.toString()).addLong("page", 1L)
-                .addString("invocation", UUID.randomUUID().toString()).toJobParameters());
+    private String itemOutcome(UUID run, int index) {
+        return jdbc.sql("SELECT outcome || ' ' || attempts FROM ontong_collection_items WHERE run_id = :run AND item_index = :index")
+                .param("run", run).param("index", index).query(String.class).single();
     }
 
     private UUID stored(String raw, Instant at) {

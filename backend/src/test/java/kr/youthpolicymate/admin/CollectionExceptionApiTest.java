@@ -47,7 +47,6 @@ class CollectionExceptionApiTest {
     void clear() {
         insertMembers(jdbc);
         jdbc.sql("DELETE FROM admin_collection_replays").update();
-        jdbc.sql("DELETE FROM ontong_collection_item_attempts").update();
         jdbc.sql("DELETE FROM ontong_collection_items").update();
         jdbc.sql("DELETE FROM ontong_collection_pages").update();
         jdbc.sql("DELETE FROM policy_revisions").update();
@@ -139,7 +138,6 @@ class CollectionExceptionApiTest {
         }
         assertThat(jdbc.sql("SELECT count(*) FROM policy_revisions").query(Long.class).single()).isOne();
         assertThat(jdbc.sql("SELECT sum(attempts) FROM ontong_collection_items").query(Long.class).single()).isEqualTo(index);
-        assertThat(jdbc.sql("SELECT count(*) FROM ontong_collection_item_attempts").query(Long.class).single()).isZero();
         assertThat(mapper.readTree(jdbc.sql("SELECT raw_policy::text FROM ontong_collection_items WHERE item_index=0")
                 .query(String.class).single())).isEqualTo(source);
         assertThat(policies.find(policy.number()).orElseThrow().content()).isEqualTo(policy.content());
@@ -175,7 +173,7 @@ class CollectionExceptionApiTest {
                 .andExpect(jsonPath("$.currentPolicy.previousRevision.sourceCapturedAt").value(AT.plusSeconds(2).toString()));
         assertThat(jdbc.sql("SELECT count(*) FROM policy_revisions").query(Long.class).single()).isEqualTo(3);
         assertThat(jdbc.sql("SELECT count(*) FROM policy_source_snapshots").query(Long.class).single()).isEqualTo(4);
-        assertThat(jdbc.sql("SELECT count(*) FROM ontong_collection_item_attempts").query(Long.class).single()).isZero();
+        assertThat(jdbc.sql("SELECT sum(attempts) FROM ontong_collection_items").query(Long.class).single()).isOne();
         assertThat(policies.find(number).orElseThrow().content()).isEqualTo(current.content());
     }
 
@@ -230,7 +228,7 @@ class CollectionExceptionApiTest {
         assertThat(second.getResponse().getContentAsString()).doesNotContain("private-response-body", "rawBody", "failureCode");
         assertThat(jdbc.sql("SELECT raw_body FROM ontong_collection_pages WHERE run_id = :id").param("id", invalid)
                 .query(String.class).single()).isEqualTo("private-response-body");
-        assertThat(jdbc.sql("SELECT count(*) FROM ontong_collection_item_attempts").query(Long.class).single()).isZero();
+        assertThat(jdbc.sql("SELECT count(*) FROM ontong_collection_items").query(Long.class).single()).isZero();
         jdbc.sql("UPDATE ontong_collection_pages SET state = 'READY', failure_code = NULL WHERE run_id = :id")
                 .param("id", invalid).update();
         mvc.perform(get(ROOT + "/pages").with(social(ADMIN))).andExpect(jsonPath("$.items.length()").value(1));

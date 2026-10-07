@@ -256,13 +256,13 @@ AI 예약 복구 작업과 후보 상태 모델(`AiReservationRecovery*`, `Polic
 
 유지한 성질: 외부 호출을 DB 트랜잭션 밖에서 수행, `HELD`→`DISPATCHED` 전환에 성공한 실행만 호출, 응답 우선 커밋, 결과 미확인 예약액 유지, 예약·해제와 예산 합계의 원자성, 월 예산 덮어쓰기 금지, 관리자 API 계약과 화면.
 
-다음 파일은 운영·현재 테스트 경로에서 쓰지 않으며 삭제한다. 이번 변경에는 파일 삭제를 포함하지 않았다.
+운영·현재 테스트 경로에서 쓰지 않게 된 다음 파일을 삭제했다.
 
 - main: `ingestion/AiBudgetReservationStore`, `AiBudgetReservationLifecycleStore`, `AiBudgetReservationState`, `AiRequestBudget`, `AiDatabaseTime`, `PolicyAiExecutionCoordinator`, `PolicyAiExecutionPort`, `PolicyAiResult`, `policy/PolicyObservation`
 - 테스트·문서: `AiBudgetReservationStoreTest`, `PolicyAiExecutionCoordinatorTest`, `docs/development/policy-ai-execution.md`
 - 마이그레이션: V1의 `ai_request_reservations`와 보조 인덱스, V2, V3–V9 복구 테이블
 
-V27을 제자리 수정했으므로 기존 로컬 DB는 Flyway 검증이 실패한다. [볼륨을 다시 만든다](local-development.md#데이터와-종료). 위 마이그레이션을 지울 때도 같다.
+V27을 제자리 수정했으므로 기존 로컬 DB는 Flyway 검증이 실패한다. [볼륨을 다시 만든다](local-development.md#데이터와-종료).
 
 ### 검증
 
@@ -277,5 +277,5 @@ Temurin 25.0.3·PostgreSQL 18.6 Testcontainers에서 실행했다. 실제 OpenAI
 | `npm run verify -- test:runtime`, `test:email-key-rotation` | `app.ai` 바인딩을 포함한 서버·운영 명령 기동 | `.local/verification/1791333874746-4aa7add2.log`, `.local/verification/1791333883535-5363b222.log` |
 | `npm run verify -- test:ai-costs` | 비용 조회 명령 회귀 | `.local/verification/1791332639922-922111db.log` |
 
-삭제 대상 파일의 기존 테스트(`AiBudgetReservationStoreTest`, `PolicyAiExecutionCoordinatorTest`)도 남은 V1·V2 테이블로 계속 통과하는 것을 확인했다. 전체 서버 검사(`check:backend`)는 실행하지 않았다.
+파일 삭제 뒤 `compile:backend`와 AI 관련 테스트를 다시 실행했다. 전체 서버 검사는 마지막 통합 단계에서 실행한다.
 

@@ -86,7 +86,7 @@ PostgreSQL은 기존 볼륨이 있으면 초기 계정·DB를 다시 만들지 �
 
 ### 데이터와 종료
 
-DB 볼륨은 `youth-policy-mate_postgres_data`이다. PostgreSQL 18의 데이터 경로에 맞춰 컨테이너의 `/var/lib/postgresql`에 마운트했다. Flyway V1은 AI 월 예산(`ai_budgets`)을 만들고, AI 호출별 예약·정산은 V27의 호출 기록에 저장한다. V1의 `ai_request_reservations`, V2의 수명주기 열, V3–V9 복구 테이블은 코드에서 쓰지 않으며 삭제 대상이다([결정 기록](backend-api-review.md#ai-예약실행-계층-통합--2026-10-07-적용)). V10은 정책 원본·현재 내용·개정을 저장한다. Hibernate는 스키마를 자동 생성·수정하지 않는다.
+DB 볼륨은 `youth-policy-mate_postgres_data`이다. PostgreSQL 18의 데이터 경로에 맞춰 컨테이너의 `/var/lib/postgresql`에 마운트했다. Flyway V1은 AI 월 예산(`ai_budgets`)을 만들고, AI 호출별 예약·정산은 V27의 호출 기록에 저장한다. 이전 예약 테이블과 V2–V9 복구 테이블은 삭제했다([결정 기록](backend-api-review.md#ai-예약실행-계층-통합--2026-10-07-적용)). V10은 정책 원본·현재 내용·개정을 저장한다. Hibernate는 스키마를 자동 생성·수정하지 않는다.
 
 웹과 서버는 실행 터미널에서 `Ctrl+C`로 종료한다. DB 컨테이너는 아래 명령으로 종료·제거하되 볼륨은 보존한다.
 

@@ -39,7 +39,7 @@ class ResendLookupTransportTest {
             var sendOnly = new EmailProperties(false, null, null, new EmailProperties.Resend("send-only-key", null, null, base));
             assertThatThrownBy(() -> new ResendEmailLookup(sendOnly, RestClient.builder()).retrieve(message))
                     .isInstanceOfSatisfying(ResendEmailLookup.Unavailable.class,
-                            failure -> assertThat(failure.reason()).isEqualTo(ResendEmailLookup.Reason.NOT_CONFIGURED));
+                            failure -> assertThat(failure.code()).isEqualTo("EMAIL_PROVIDER_NOT_CONFIGURED"));
             assertThat(requests).isEmpty();
             var lookup = new ResendEmailLookup(new EmailProperties(false, null, null,
                     new EmailProperties.Resend("send-only-key", "lookup-key", null, base)), RestClient.builder());
@@ -57,7 +57,7 @@ class ResendLookupTransportTest {
                 status.set(failureCase.getKey());
                 int before = requests.size();
                 assertThatThrownBy(() -> lookup.retrieve(message)).isInstanceOfSatisfying(ResendEmailLookup.Unavailable.class,
-                        failure -> assertThat(failure.reason()).isEqualTo(failureCase.getValue()))
+                        failure -> assertThat(failure.code()).isEqualTo("EMAIL_PROVIDER_" + failureCase.getValue().name()))
                         .hasMessageNotContaining("private-provider-error").hasNoCause();
                 assertThat(requests).hasSize(before + 1);
             }

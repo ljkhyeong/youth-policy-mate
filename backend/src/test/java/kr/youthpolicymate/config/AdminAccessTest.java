@@ -30,5 +30,6 @@ class AdminAccessTest {
                 .isGranted()).isFalse();
         var nonMember = new OAuth2AuthenticationToken(user, List.of(new SimpleGrantedAuthority("ROLE_ADMIN")), "kakao");
         assertThat(access.authorize(() -> nonMember, null).isGranted()).isFalse();
+        assertThat(access).hasToString("AdminAccess[관리자 1명]");
     }
 }

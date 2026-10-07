@@ -23,7 +23,6 @@ public class ResendEmailLookup {
     public enum Reason { NOT_CONFIGURED, ACCESS_DENIED, NOT_FOUND, RATE_LIMITED, UNAVAILABLE }
     /** 화면이 사유별 안내를 고르도록 503과 `EMAIL_PROVIDER_<사유>` 코드로 응답한다. */
     public static class Unavailable extends ApiException {
-        private final Reason reason;
         public Unavailable(Reason reason) {
             super(HttpStatus.SERVICE_UNAVAILABLE, "EMAIL_PROVIDER_" + reason.name(), switch (reason) {
                 case NOT_CONFIGURED -> "Resend 조회용 API 키가 설정되지 않았습니다.";
@@ -32,9 +31,7 @@ public class ResendEmailLookup {
                 case RATE_LIMITED -> "Resend 조회 한도에 도달했습니다. 잠시 후 다시 조회해주세요.";
                 case UNAVAILABLE -> "Resend 상태를 불러오지 못했습니다. 잠시 후 다시 조회해주세요.";
             });
-            this.reason = reason;
         }
-        public Reason reason() { return reason; }
     }
     private final RestClient client;
     private final boolean configured;

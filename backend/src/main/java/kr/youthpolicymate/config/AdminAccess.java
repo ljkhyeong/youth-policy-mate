@@ -27,4 +27,8 @@ record AdminAccess(Set<UUID> memberIds) implements AuthorizationManager<RequestA
                 && principal.getAuthorities().stream().anyMatch(role -> role.getAuthority().equals("ROLE_MEMBER"))
                 && memberIds.stream().anyMatch(id -> id.toString().equals(principal.getName())));
     }
+
+    // Spring Security가 TRACE 로그에 관리자를 출력하므로 회원 ID를 남기지 않는다.
+    @Override
+    public String toString() { return "AdminAccess[관리자 " + memberIds.size() + "명]"; }
 }

@@ -2,14 +2,14 @@ package kr.youthpolicymate.admin;
 
 import kr.youthpolicymate.policy.catalog.PolicyRuleDefinition;
 import org.springframework.context.annotation.Profile;
+import org.springframework.jdbc.core.RowMapper;
+import org.springframework.jdbc.core.SimplePropertyRowMapper;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
 import tools.jackson.databind.ObjectMapper;
 
-import java.sql.ResultSet;
-import java.sql.SQLException;
 import java.time.Clock;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
@@ -21,9 +21,11 @@ import java.util.UUID;
 @Transactional(readOnly = true, isolation = Isolation.REPEATABLE_READ)
 class PolicyRuleReviewStore {
     // 상태 계산을 공통 쿼리로 두어 필터·전체 건수·페이지 순서가 같은 기준을 사용한다.
+    // 열 별칭은 PolicyRuleReviews.Item 구성요소 이름과 맞춘다.
     private static final String REVIEW = """
             WITH review AS (
-                SELECT p.policy_number, p.current_revision, p.content_hash, p.content->>'title' AS title, p.last_collected_at,
+                SELECT p.policy_number, p.current_revision AS revision, p.content_hash, p.content->>'title' AS title,
+                    p.last_collected_at AS collected_at,
                     CASE WHEN v.id IS NULL THEN 'MISSING'
                          WHEN v.definition->>'contentHash' <> p.content_hash THEN 'SOURCE_CHANGED'
                          WHEN CAST(v.definition->>'validUntil' AS timestamptz) <= :now THEN 'EXPIRED'
@@ -35,6 +37,7 @@ class PolicyRuleReviewStore {
                 LEFT JOIN policy_rule_versions v ON v.id = h.version_id WHERE p.current_revision > 0
             )
             """;
+    private static final RowMapper<PolicyRuleReviews.Item> ITEM = new SimplePropertyRowMapper<>(PolicyRuleReviews.Item.class);
     private final JdbcClient jdbc;
     private final ObjectMapper mapper;
     private final Clock clock;
@@ -54,10 +57,10 @@ class PolicyRuleReviewStore {
         var total = jdbc.sql(REVIEW + "SELECT count(*) " + where).params(parameters).query(Long.class).single();
         var items = jdbc.sql(REVIEW + "SELECT * " + where + """
                 ORDER BY CASE status WHEN 'SOURCE_CHANGED' THEN 0 WHEN 'EXPIRED' THEN 1 WHEN 'MISSING' THEN 2
-                         WHEN 'SCHEDULED' THEN 3 ELSE 4 END, last_collected_at DESC, policy_number
+                         WHEN 'SCHEDULED' THEN 3 ELSE 4 END, collected_at DESC, policy_number
                 LIMIT :limit OFFSET :offset
                 """).params(parameters).param("limit", pageSize).param("offset", (page - 1) * pageSize)
-                .query((rs, row) -> item(rs)).list();
+                .query(ITEM).list();
         return new PolicyRuleReviews.Page(items, page, pageSize, total, (long) page * pageSize < total, now);
     }
 
@@ -65,7 +68,7 @@ class PolicyRuleReviewStore {
         var now = clock.instant();
         return jdbc.sql(REVIEW + "SELECT * FROM review WHERE policy_number = :number")
                 .param("now", now.atOffset(ZoneOffset.UTC)).param("number", number)
-                .query((rs, row) -> new ReviewSource(item(rs), rs.getString("content_hash"))).optional()
+                .query((rs, row) -> new ReviewSource(ITEM.mapRow(rs, row), rs.getString("content_hash"))).optional()
                 .map(source -> {
                     var item = source.item();
                     var policy = sources.currentPolicy(number).orElseThrow();
@@ -97,10 +100,5 @@ class PolicyRuleReviewStore {
                 });
     }
 
-    private static PolicyRuleReviews.Item item(ResultSet rs) throws SQLException {
-        return new PolicyRuleReviews.Item(rs.getString("policy_number"), rs.getString("title"), rs.getLong("current_revision"),
-                PolicyRuleReviews.Status.valueOf(rs.getString("status")), rs.getObject("last_collected_at", OffsetDateTime.class).toInstant(),
-                rs.getLong("draft_count"));
-    }
     private record ReviewSource(PolicyRuleReviews.Item item, String hash) {}
 }

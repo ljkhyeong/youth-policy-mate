@@ -39,7 +39,7 @@ class PolicyRuleDefinitionTest {
         assertThat(result.checks()).extracting(Check::outcome, Check::explanation, Check::evidence)
                 .containsExactlyElementsOf(legacy.checks().stream().map(c -> org.assertj.core.groups.Tuple.tuple(c.outcome(), c.explanation(), c.evidence())).toList());
     }
-    @Test @DisplayName("없는 선택지와 다른 질문에 의존하는 출생일 규칙은 등록할 수 없다")
+    @Test @DisplayName("없는 선택지·다른 질문에 의존하는 출생일 규칙·이름이 같은 판정 항목은 등록할 수 없다")
     void rejectsInvalidReferences() {
         var mapper = JsonMapper.builder().build();
         try (var factory = Validation.buildDefaultValidatorFactory()) {
@@ -49,6 +49,10 @@ class PolicyRuleDefinitionTest {
             var other = mapper.valueToTree(PolicyRuleFixtures.exam());
             ((tools.jackson.databind.node.ObjectNode) other.at("/checks/0/cases/0/when")).putArray("exam").add("HRDK_TECHNICAL");
             assertThatThrownBy(() -> mapper.treeToValue(other, PolicyRuleDefinition.class).validate(factory.getValidator())).isInstanceOf(IllegalArgumentException.class);
+            var sameLabel = mapper.valueToTree(PolicyRuleFixtures.exam());
+            ((tools.jackson.databind.node.ObjectNode) sameLabel.at("/checks/1")).put("label", sameLabel.at("/checks/0/label").asString());
+            assertThatThrownBy(() -> mapper.treeToValue(sameLabel, PolicyRuleDefinition.class).validate(factory.getValidator()))
+                    .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("판정 항목 이름");
         }
     }
     @Test @DisplayName("양쪽 출생일 경계를 포함하고 학적·소득 답변은 생년월일에서 추정하지 않는다")

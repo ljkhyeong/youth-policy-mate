@@ -3,12 +3,13 @@ package kr.youthpolicymate.policy.catalog;
 import jakarta.validation.Valid;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.*;
-import kr.youthpolicymate.eligibility.*;
+import kr.youthpolicymate.eligibility.ConditionAssessment;
+import kr.youthpolicymate.eligibility.EligibilityStatus;
 import java.time.*;
 import java.util.*;
 import static kr.youthpolicymate.policy.SeoulTime.SEOUL;
 import static kr.youthpolicymate.policy.catalog.PolicyQuestions.*;
-import static kr.youthpolicymate.eligibility.ConditionAssessment.Outcome.UNKNOWN;
+import static kr.youthpolicymate.eligibility.ConditionAssessment.Outcome.*;
 
 /** 공고의 선택지 판정표. 첫 일치 행을 적용하고 미일치는 추가 확인으로 남긴다. */
 @Schema(name = "PolicyRuleDefinition", requiredProperties = {"policyNumber", "ruleVersion", "contentHash", "validFrom", "validUntil",
@@ -50,15 +51,15 @@ public record PolicyRuleDefinition(
                              @Schema(types = {"string", "null"}, format = "date") LocalDate referenceDate,
                              @NotBlank String below, @NotBlank String within, @Schema(types = {"string", "null"}) String above, boolean showCalculatedAge) {
         LocalDate referenceAt(Instant now) { return referenceDate == null ? LocalDate.ofInstant(now, SEOUL) : referenceDate; }
-        ConditionAssessment assessment(LocalDate birth, Instant now, SourceEvidence evidence) {
-            return AgeConditionEvaluator.evaluate(new AgeCondition.CompletedYears(questionId, minimumInclusive,
-                    maximumInclusive == null ? Integer.MAX_VALUE : maximumInclusive, referenceAt(now), evidence), Optional.of(birth));
+        // 출생일이 기준일보다 늦으면 나이를 계산하지 않고 미응답으로 남긴다.
+        Integer completedYears(LocalDate birth, Instant now) {
+            var reference = referenceAt(now);
+            return birth.isAfter(reference) ? null : PolicySourceConditions.completedYears(birth, reference);
         }
-        String answer(LocalDate birth, Instant now, SourceEvidence evidence) {
-            var result = assessment(birth, now, evidence);
-            if (result.outcome() == UNKNOWN) return null;
-            return result.outcome() == ConditionAssessment.Outcome.MET ? within
-                    : birth.isAfter(referenceAt(now).minusYears(minimumInclusive)) ? below : above;
+        String answer(LocalDate birth, Instant now) {
+            var age = completedYears(birth, now);
+            if (age == null) return null;
+            return age < minimumInclusive ? below : maximumInclusive != null && age > maximumInclusive ? above : within;
         }
     }
     @Schema(name = "PolicyRuleCase", requiredProperties = {"when", "outcome", "explanation"})
@@ -82,6 +83,8 @@ public record PolicyRuleDefinition(
         if (!violations.isEmpty()) throw new IllegalArgumentException("규칙 형식 오류: " + violations.stream()
                 .map(v -> v.getPropertyPath().toString()).sorted().toList());
         if (!validFrom.isBefore(validUntil)) throw new IllegalArgumentException("적용 종료는 시작 이후여야 합니다.");
+        if (checks.stream().map(RuleCheck::label).distinct().count() != checks.size())
+            throw new IllegalArgumentException("판정 항목 이름이 중복됐습니다.");
         var options = new HashMap<String, Set<String>>();
         for (var question : questions) {
             if (question.id() == null || !question.id().matches("[a-zA-Z][a-zA-Z0-9_]{0,59}")
@@ -148,18 +151,19 @@ public record PolicyRuleDefinition(
         if (!versionAt(now).equals(input.ruleVersion())) throw new IllegalArgumentException("질문 기준 시점이 바뀌었습니다.");
         var values = validatedAnswers(questions, input.answers());
         var results = checks.stream().map(c -> evaluateCheck(c, values)).toList();
-        var source = evidence(now);
         var remaining = new ArrayList<>(remainingChecks);
         if (remainingVariant != null) remaining.set(remainingVariant.index(), remainingVariant.byValue()
                 .getOrDefault(values.getOrDefault(remainingVariant.questionId(), ""), remaining.get(remainingVariant.index())));
-        var assessments = results.stream().map(c -> new ConditionAssessment(c.label(), c.label(), Optional.of(c.providedValue()),
-                Optional.empty(), c.outcome(), c.outcome() == UNKNOWN ? Optional.of(ConditionAssessment.Uncertainty.MISSING_USER_INPUT) : Optional.empty(),
-                c.explanation(), source)).toList();
-        var basis = new EvaluationBasis(policyNumber, Long.toString(revision), versionAt(now), now);
-        var common = new EligibilityDecision(basis, PolicyReview.complete(), assessments).status();
-        var whole = new EligibilityDecision(basis, PolicyReview.incomplete(remaining.stream()
-                .map(message -> new PolicyReview.PendingIssue(message, source)).toList()), assessments).status();
-        return new Evaluation(policyNumber, revision, versionAt(now), whole, common, scopeAt(now), noticeAt(now) + explanation, remaining, sourceUrl, now, results);
+        // remainingChecks(@NotEmpty)가 항상 남아 최종 자격은 추가 확인이다.
+        return new Evaluation(policyNumber, revision, versionAt(now), EligibilityStatus.NEEDS_REVIEW, commonStatus(results),
+                scopeAt(now), noticeAt(now) + explanation, remaining, sourceUrl, now, results);
+    }
+    /** 공통요건 상태. 불충족이 있으면 불충족, 미확인이 있으면 추가 확인이며 미확인을 충족으로 바꾸지 않는다. 항목이 없으면 추가 확인으로 남긴다. */
+    static EligibilityStatus commonStatus(List<Check> results) {
+        if (results.isEmpty()) return EligibilityStatus.NEEDS_REVIEW;
+        if (results.stream().anyMatch(c -> c.outcome() == NOT_MET)) return EligibilityStatus.INELIGIBLE;
+        if (results.stream().anyMatch(c -> c.outcome() == UNKNOWN)) return EligibilityStatus.NEEDS_REVIEW;
+        return EligibilityStatus.ELIGIBLE;
     }
     private Check evaluateCheck(RuleCheck check, Map<String, String> values) {
         var row = check.cases().stream().filter(c -> c.when().entrySet().stream()
@@ -180,11 +184,10 @@ public record PolicyRuleDefinition(
         return monthly ? date.getYear() + "년 " + date.getMonthValue() + "월 " + scope : scope;
     }
     private String noticeAt(Instant now) { return periodNotice == null ? "" : periodNotice.at(now) + " "; }
-    private SourceEvidence evidence(Instant now) { return new SourceEvidence(sourceUrl, scopeAt(now), Optional.empty()); }
     public List<Answer> prefill(LocalDate birth, Instant now) {
         if (birthBinding != null) return List.of(new Answer(birthBinding.questionId(), birthBinding.answer(birth)));
         if (ageBinding == null) return List.of();
-        var value = ageBinding.answer(birth, now, evidence(now));
+        var value = ageBinding.answer(birth, now);
         return value == null ? List.of() : List.of(new Answer(ageBinding.questionId(), value));
     }
     PolicyAgeComparison compareBirth(LocalDate birth, Instant now) {
@@ -194,8 +197,7 @@ public record PolicyRuleDefinition(
         var definition = checks.stream().filter(c -> c.questionId().equals(answer.questionId())).findFirst().orElseThrow();
         var check = evaluateCheck(definition, Map.of(answer.questionId(), answer.value()));
         if (ageBinding != null && ageBinding.showCalculatedAge()) {
-            var provided = ageBinding.assessment(birth, now, evidence(now)).comparedValue().orElseThrow()
-                    + " (" + ageBinding.referenceAt(now) + " · 서울)";
+            var provided = "만 " + ageBinding.completedYears(birth, now) + "세 (" + ageBinding.referenceAt(now) + " · 서울)";
             check = new Check(check.label(), provided, check.outcome(), check.explanation(), check.evidence());
         }
         return new PolicyAgeComparison(contentHash, versionAt(now), sourceUrl, check,

@@ -46,8 +46,8 @@
 |---|---|
 | [조건 확인 조회](../../backend/src/main/java/kr/youthpolicymate/policy/catalog/PolicyCatalogStore.java) | `listForCheck`에서 정책·현재 개정·원문을 JOIN한다. 20건에 SELECT 42회를 호출하던 흐름을 개수·페이지 조회 2회로 줄였다. 페이지 계산은 Spring Data의 `Page`·`PageRequest`를 사용한다. |
 | [고정 상태용 객체](../../backend/src/main/java/kr/youthpolicymate/policy/catalog/PolicyCheckService.java) | 항상 같은 값을 얻던 판정 객체 생성을 제거하고 `NEEDS_REVIEW`를 직접 반환한다. 응답의 원문·설명·정책 개정과 실제 정책별 판정 규칙은 유지한다. |
-| [AI 종료 상태](../../backend/src/main/java/kr/youthpolicymate/ingestion/AiBudgetReservationState.java) | 6개 클래스의 같은 상태 비교를 `Phase.isTerminal()`로 모았다. 종료 상태의 종류와 상태 전이 조건은 그대로다. |
-| [DB 시각 처리](../../backend/src/main/java/kr/youthpolicymate/ingestion/AiDatabaseTime.java) | 7곳의 변환과 6곳의 비교 함수를 수집 패키지 내부의 `AiDatabaseTime`으로 모았다. 마이크로초 절삭·UTC 변환·시각 비교 방식은 그대로다. |
+| AI 종료 상태(`AiBudgetReservationState`) | 6개 클래스의 같은 상태 비교를 `Phase.isTerminal()`로 모았다. 종료 상태의 종류와 상태 전이 조건은 그대로다. |
+| DB 시각 처리(`AiDatabaseTime`) | 7곳의 변환과 6곳의 비교 함수를 수집 패키지 내부의 `AiDatabaseTime`으로 모았다. 마이크로초 절삭·UTC 변환·시각 비교 방식은 그대로다. |
 
 정책 목록의 정렬·페이지·질문 제공 여부와 읽기 일관성을 유지했다. LEFT JOIN 결과에서 현재 개정의 원문이 없으면 기존처럼 오류로 처리하며 정책을 조용히 제외하지 않는다. JSON 본문을 목록과 상세에서 두 번 읽던 처리도 한 번으로 줄었다. 변경 전 42회는 호출 코드로 계산했고, 변경 후 2회는 PostgreSQL 통합 테스트에서 `JdbcClient.sql` 호출 횟수로 확인했다. 응답 시간 개선율을 측정한 것은 아니다.
 
@@ -71,7 +71,7 @@ npm run verify -- test:ai-recovery-policy -- \
 |---|---|
 | [관심 정책 목록](../../backend/src/main/java/kr/youthpolicymate/member/MemberPolicyStore.java) | 회원 잠금 뒤 저장 개정·현재 개정·알림 제목을 JOIN하고 정책 번호순으로 `FOR SHARE OF p` 잠금을 잡는다. 변경된 정책만 원문을 읽어 일정·알림을 갱신한다. 최종 목록은 제목·신청 기간만 추출해 본문 전체를 Java 객체로 변환하지 않는다. |
 | [질문 조회·평가](../../backend/src/main/java/kr/youthpolicymate/policy/catalog/PolicyQuestionService.java) | 내부 `QuestionVersion`으로 개정·해시를 한 번에 조회한다. 본문·수집 시각 변환을 제거했다. 출처 주소, 미존재·미공개 정책 거절, 기간·해시·답변 버전 검사는 유지한다. |
-| [AI 예약 상태](../../backend/src/main/java/kr/youthpolicymate/ingestion/AiBudgetReservationState.java) | 테스트에서만 실행하던 예약 목록·상태 엔진을 제거하고 `Phase`·이벤트 값 타입을 유지했다. [설계](../design/ai-budget-reservation-lifecycle.md)를 DB 저장소 기준으로 정리했다. 순수 모델에만 있던 시간 경계·잘못된 호출 순서 검사를 DB 테스트로 옮기고 종료 결과 충돌 검사를 보완했다. |
+| AI 예약 상태(`AiBudgetReservationState`) | 테스트에서만 실행하던 예약 목록·상태 엔진을 제거하고 `Phase`·이벤트 값 타입을 유지했다. [설계](../design/ai-budget-reservation-lifecycle.md)를 DB 저장소 기준으로 정리했다. 순수 모델에만 있던 시간 경계·잘못된 호출 순서 검사를 DB 테스트로 옮기고 종료 결과 충돌 검사를 보완했다. |
 
 변경이 없는 관심 정책 N건의 SELECT는 기존 `3N + 3`회에서 3회로 줄었다. PostgreSQL 통합 테스트에서 20건과 빈 목록 모두 3회, 목록 정렬·표시 필드·회원 분리를 확인했다. 별도 트랜잭션의 정책 갱신이 조회 트랜잭션이 끝날 때까지 차단되는 것도 확인했다. 기존 마감 변경·알림 취소·중복 발송·Outbox 검사는 그대로 통과했다.
 
@@ -238,3 +238,44 @@ AI 예약 복구 작업과 후보 상태 모델(`AiReservationRecovery*`, `Polic
 
 - 변경 검토에서 검증 스킬의 함께 볼 검사, 설계 문서의 현재형 서술, 과거 기록의 삭제된 명령 안내를 찾아 고쳤다.
 - 배포된 DB의 V3–V9 테이블에 행이 남았는지는 확인하지 않았다. 코드가 운영 경로에 연결된 적이 없어 비어 있을 것으로 본다.
+
+## AI 예약·실행 계층 통합 — 2026-10-07 적용
+
+운영 DB를 만들기 전이라 보존할 AI 예약 데이터가 없다. 규칙 추출 한 경로만 쓰던 예약·실행 계층을 Spring·PostgreSQL 기본 기능으로 줄였다. 운영 DB 생성 전 기존 마이그레이션을 제자리 수정하는 기준은 [백엔드 스킬](../../skills/youth-policy-backend/SKILL.md)을 따른다.
+
+| 대상 | 변경 |
+|---|---|
+| 스키마 | V27의 `policy_ai_rule_calls`를 제자리 수정해 예산 ID·가격 버전·최대 비용·요금 유효기간·단계·발송/결과 미확인/완료 시각·확인 ID·실제 비용을 호출 행에 두었다. 단계별 필수 열·시간 순서는 CHECK, 전송 내용·비용 예약·저장한 응답의 변경 금지는 트리거로 막는다. 요청 근거 13개 열을 다시 저장하던 `ai_request_reservations`와 `reservation_id` 형 변환 조인을 쓰지 않는다. |
+| 예약 | `PolicyAiRuleCallStore.reserve`가 정책 행 잠금 뒤 예산 행의 조건부 `UPDATE` 한 번으로 최신 잔액을 검사한다. 미리 읽은 잔액과 비교하던 방식은 다른 공고의 예약이 먼저 커밋되면 잔액이 충분해도 `STALE_BALANCE`로 실패했다. 한도 불일치·요금 만료·한도 부족 문구는 같다. |
+| 수명주기 | 발송·결과 미확인·정산·취소·무과금 해제를 단계 조건이 있는 `UPDATE`와 CTE 한 문장으로 바꿨다. 항상 상수였던 호출·미확인 식별자와 사유 열을 없앴고, 재생 판정은 운영자가 입력한 확인 ID·시각·금액에만 둔다. `settle`·`no-charge` 명령은 `APPLIED`·`OVER_RESERVATION`·`REPLAYED`·`CONFLICT`를 출력한다. 역전된 시각·음수 예약액은 DB 제약 위반으로 거절한다. |
+| 실행 | 구현이 하나뿐인 실행 포트·조정자와 만든 뒤 버리던 결과 타입 대신 `PolicyAiRuleGenerationService`에 예약 → 발송 기록 → 트랜잭션 밖 호출 → 응답 커밋 → 초안 저장을 직선으로 적었다. 요청마다 하던 예산 행 재잠금·16개 항목 재비교·JVM/DB 시각 혼합 비교가 없어졌다. |
+| 설정 | `OpenAiRuleClient`·자동 실행기·관리자 조회가 환경 변수를 직접 읽고 파싱하던 코드를 `app.ai` 설정 레코드(`AiProperties`)로 바꿨다. 환경 변수 이름은 같다. 빈 값은 설정하지 않은 것으로 보고 기본값을 쓴다. 숫자·시각 형식 오류는 서버·운영 명령 기동 실패, 누락·범위 밖·요금 만료는 호출 직전 보류다. API 키는 `toString`에서 가린다. |
+| 조회 | 자동 실행 선택·만료·최근 목록과 관리자 AI 추출 조회가 호출 행의 `phase`를 직접 읽는다. 관리자 목록과 자동 실행 최근 목록은 명시 열과 `JdbcClient.query(레코드)`로 매핑한다. API 계약은 같다. |
+| 프롬프트 | 판정 항목 라벨이 서로 달라야 한다는 지시를 추가했다. |
+| 테스트·스크립트 | `test:ai-reservation-db`를 새 `PolicyAiRuleCallStoreTest`로 바꾸고 `test:ai-execution`을 삭제했다. 조정자 테스트가 보던 트랜잭션 밖 실행·결과 미확인·재호출 차단·예산 거절은 `PolicyAiRuleGenerationTest`가 확인하며, 예상하지 못한 호출 예외에서 `DISPATCHED`를 유지하는 검사를 추가했다. |
+
+유지한 성질: 외부 호출을 DB 트랜잭션 밖에서 수행, `HELD`→`DISPATCHED` 전환에 성공한 실행만 호출, 응답 우선 커밋, 결과 미확인 예약액 유지, 예약·해제와 예산 합계의 원자성, 월 예산 덮어쓰기 금지, 관리자 API 계약과 화면.
+
+다음 파일은 운영·현재 테스트 경로에서 쓰지 않으며 삭제한다. 이번 변경에는 파일 삭제를 포함하지 않았다.
+
+- main: `ingestion/AiBudgetReservationStore`, `AiBudgetReservationLifecycleStore`, `AiBudgetReservationState`, `AiRequestBudget`, `AiDatabaseTime`, `PolicyAiExecutionCoordinator`, `PolicyAiExecutionPort`, `PolicyAiResult`, `policy/PolicyObservation`
+- 테스트·문서: `AiBudgetReservationStoreTest`, `PolicyAiExecutionCoordinatorTest`, `docs/development/policy-ai-execution.md`
+- 마이그레이션: V1의 `ai_request_reservations`와 보조 인덱스, V2, V3–V9 복구 테이블
+
+V27을 제자리 수정했으므로 기존 로컬 DB는 Flyway 검증이 실패한다. [볼륨을 다시 만든다](local-development.md#데이터와-종료). 위 마이그레이션을 지울 때도 같다.
+
+### 검증
+
+Temurin 25.0.3·PostgreSQL 18.6 Testcontainers에서 실행했다. 실제 OpenAI 호출과 로컬 DB 볼륨 재생성은 하지 않았다.
+
+| 명령 | 확인 범위 | 로그 |
+|---|---|---|
+| `npm run verify -- test:ai-reservation-db` | 예약·발송·정산·취소·무과금, 동시 예약·종료, DB 제약 | `.local/verification/1791333846594-c298eb9e.log` |
+| `npm run verify -- test:ai-rule-generation` | 생성 서비스·초안 저장·트리거·설정 바인딩 | `.local/verification/1791333801296-722fa664.log` |
+| `npm run verify -- test:ai-rule-auto` | 자동 선택·재개·스케줄러 등록 | `.local/verification/1791333855663-df660c04.log` |
+| `npm run verify -- test:admin-ai` | 관리자 AI 추출 조회 매핑·권한 | `.local/verification/1791333865766-9725caa1.log` |
+| `npm run verify -- test:runtime`, `test:email-key-rotation` | `app.ai` 바인딩을 포함한 서버·운영 명령 기동 | `.local/verification/1791333874746-4aa7add2.log`, `.local/verification/1791333883535-5363b222.log` |
+| `npm run verify -- test:ai-costs` | 비용 조회 명령 회귀 | `.local/verification/1791332639922-922111db.log` |
+
+삭제 대상 파일의 기존 테스트(`AiBudgetReservationStoreTest`, `PolicyAiExecutionCoordinatorTest`)도 남은 V1·V2 테이블로 계속 통과하는 것을 확인했다. 전체 서버 검사(`check:backend`)는 실행하지 않았다.
+

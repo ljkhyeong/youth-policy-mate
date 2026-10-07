@@ -82,9 +82,11 @@ GitHub Actions에 웹·서버 병렬 CI를 구성했습니다. 인증키 없이 
 
 Flyway V1·V2와 PostgreSQL 예약 저장소도 추가했습니다. 최초 예약은 최신 잔액을 잠가 확인하고, 호출 식별자·결과 미확인·정산·호출 전 취소·확인된 무과금 해제까지 멱등하게 저장합니다. 정산과 해제는 예약 상태와 예산 합계를 한 트랜잭션에서 바꾸며, 미완료 상태는 재시작 후 조회할 수 있습니다. PostgreSQL 전용 12건과 전체 서버 254건·빌드가 통과했습니다. 실제 OpenAI 호출은 AI 규칙 추출 경로에 연결했습니다. 공급자 청구 자동 조회·외부 비용 상한 검증은 남아 있습니다.
 
-[AI 요청 실행 포트와 인공 실행기](docs/development/policy-ai-execution.md)도 추가했습니다. 예약과 호출 식별 정보를 저장한 뒤 DB 트랜잭션 밖에서 공급자 독립 포트를 실행하고, 결과 미확인·청구 대기·확인된 비용·무과금을 기존 상태에 반영합니다. 인공 실행 7건과 전체 서버 261건·빌드가 통과했습니다. OpenAI 규칙 추출을 이 실행기에 연결했으며 원 응답과 초안은 V26·V27에 보관합니다.
+AI 요청 실행 포트와 인공 실행기도 추가했습니다. 예약과 호출 식별 정보를 저장한 뒤 DB 트랜잭션 밖에서 공급자 독립 포트를 실행하고, 결과 미확인·청구 대기·확인된 비용·무과금을 기존 상태에 반영합니다. 인공 실행 7건과 전체 서버 261건·빌드가 통과했습니다. OpenAI 규칙 추출을 이 실행기에 연결했으며 원 응답과 초안은 V26·V27에 보관합니다.
 
 AI 예약 복구 작업자·후보 상태·요청 전 판단·개정 적용 순수 모델은 운영 경로에 연결되지 않아 2026-10-05 제거했습니다. 결과가 미확인인 예약은 관리 명령으로 정산·해제합니다. [결정 기록](docs/development/backend-api-review.md#ai-예약-복구-코드-제거--2026-10-05-적용)
+
+규칙 추출 한 경로만 쓰던 별도 예약 테이블·예약 저장소·실행 포트와 조정자는 2026-10-07 AI 호출 기록 한 행의 예약·정산 단계와 생성 서비스의 직선 흐름으로 합쳤습니다. AI 설정은 `app.ai` 설정 레코드로 읽습니다. [결정 기록](docs/development/backend-api-review.md#ai-예약실행-계층-통합--2026-10-07-적용)
 
 온통청년 인증키와 목록·상세 성공 응답 확보 이후 실제 정책 조회·지정 페이지 수집·회원 저장·서비스 내 알림·국가근로장학금 공통요건 비교로 확장했습니다. 현재 범위와 외부 설정 제약은 문서 상단을 따릅니다.
 
@@ -118,9 +120,8 @@ AI 예약 복구 작업자·후보 상태·요청 전 판단·개정 적용 순�
 - [정책 개정·생성 버전과 AI 후보 재사용 설계](docs/design/policy-ai-candidates.md)
 - [AI 요청 전 재사용·비용 확인 설계](docs/design/ai-request-admission.md)
 - [AI 요청별 예산 예약·결과 미확인·정산 설계](docs/design/ai-budget-reservation-lifecycle.md)
-- [AI 예약·정산 상태 모델과 실제 DB 경계](docs/development/ai-budget-reservation-lifecycle.md)
-- [AI 실행 순서와 공급자 분리 설계](docs/design/policy-ai-execution.md)
-- [AI 실행 포트와 인공 실행기 검증](docs/development/policy-ai-execution.md)
+- [AI 예약·정산 저장과 DB 검사](docs/development/ai-budget-reservation-lifecycle.md)
+- [AI 규칙 추출 호출 순서](docs/design/policy-ai-execution.md)
 - [취업 조건 비교 범위와 추가 확인 설계](docs/design/employment-condition.md)
 - [소득 입력 의미와 구간 비교 설계](docs/design/income-condition.md)
 - [현재 작업 인계](HANDOFF.md)

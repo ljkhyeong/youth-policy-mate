@@ -40,9 +40,8 @@ allowed-tools:
 | `policy/catalog/` 목록·상세·저장소(`PolicyCatalogStore`, `*Response`) | `test:policy-catalog` | 응답 형식이 바뀌면 API 계약 행 |
 | `policy/Recruitment*`, `ApplicationPeriod` | `test:recruitment` | `catalog/PolicyRecruitment*`·`PolicyDeadline*`은 해당 테스트 클래스 |
 | `ingestion/Ontong*` | `test:policy-collection` | |
-| `ingestion/AiBudgetReservation*`, `AiRequestBudget`, `PolicyAiResult`, `policy/PolicyObservation` | `test:ai-reservation-db` | 요청·결과 타입이 바뀌면 운영 규칙 추출 경로를 포함한 `test:ai-rule-generation`도 |
-| `ingestion/PolicyAiExecutionCoordinator` | `test:ai-execution` | |
-| `ingestion/PolicyAiRule*`, `OpenAiRuleClient` | `test:ai-rule-generation` | 스케줄러는 `test:ai-rule-auto`, 초안 저장소만이면 `test:ai-rule-drafts` |
+| `ingestion/PolicyAiRuleCallStore`(예약·정산), V27 마이그레이션 | `test:ai-reservation-db` | 생성 서비스와 함께 바뀌면 `test:ai-rule-generation`도 |
+| `ingestion/PolicyAiRule*`, `OpenAiRuleClient`, `AiProperties` | `test:ai-rule-generation` | 스케줄러는 `test:ai-rule-auto`, 초안 저장소만이면 `test:ai-rule-drafts`, 설정 바인딩은 `test:runtime`도 |
 | `ingestion/OpenAiCosts*` | `test:ai-costs` | |
 | `member/SocialMemberService`, 세션·로그인 | `test:member-login` | 보안 설정이 바뀌면 `check:backend` |
 | `member/MemberEmail*`, `Resend*` | `test:email` | |

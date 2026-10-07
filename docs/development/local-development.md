@@ -86,7 +86,7 @@ PostgreSQL은 기존 볼륨이 있으면 초기 계정·DB를 다시 만들지 �
 
 ### 데이터와 종료
 
-DB 볼륨은 `youth-policy-mate_postgres_data`이다. PostgreSQL 18의 데이터 경로에 맞춰 컨테이너의 `/var/lib/postgresql`에 마운트했다. Flyway V1·V2는 AI 예산·요청 예약과 호출 이후 상태를, V3은 복구 시도를, V4·V5는 작업 실행과 운영 중단 정보를, V6는 작업 실행과 복구 시도 연결을, V7은 수동 검토 재개 감사를, V8은 활성 임대 갱신 감사를 만들고 V9는 작업 실행의 heartbeat 중단 집계를 추가한다. V3–V9를 쓰던 예약 복구 코드는 운영 경로에 연결되지 않아 제거했고 테이블은 유지한다([결정 기록](backend-api-review.md#ai-예약-복구-코드-제거--2026-10-05-적용)). V10은 정책 원본·현재 내용·개정을 저장한다. 회원·알림 테이블은 아직 없다. Hibernate는 스키마를 자동 생성·수정하지 않는다.
+DB 볼륨은 `youth-policy-mate_postgres_data`이다. PostgreSQL 18의 데이터 경로에 맞춰 컨테이너의 `/var/lib/postgresql`에 마운트했다. Flyway V1은 AI 월 예산(`ai_budgets`)을 만들고, AI 호출별 예약·정산은 V27의 호출 기록에 저장한다. V1의 `ai_request_reservations`, V2의 수명주기 열, V3–V9 복구 테이블은 코드에서 쓰지 않으며 삭제 대상이다([결정 기록](backend-api-review.md#ai-예약실행-계층-통합--2026-10-07-적용)). V10은 정책 원본·현재 내용·개정을 저장한다. Hibernate는 스키마를 자동 생성·수정하지 않는다.
 
 웹과 서버는 실행 터미널에서 `Ctrl+C`로 종료한다. DB 컨테이너는 아래 명령으로 종료·제거하되 볼륨은 보존한다.
 
@@ -94,7 +94,7 @@ DB 볼륨은 `youth-policy-mate_postgres_data`이다. PostgreSQL 18의 데이터
 npm run db:down
 ```
 
-`down --volumes`는 사용하지 않는다. 이 옵션은 DB 데이터를 삭제한다.
+`down --volumes`는 사용하지 않는다. 이 옵션은 DB 데이터를 삭제한다. 예외로 운영 DB를 만들기 전에는 기존 마이그레이션을 제자리 수정하므로, 그런 변경을 받은 뒤 서버 기동 시 Flyway 검증(checksum·누락 파일)이 실패하면 로컬 데이터를 버려도 되는지 확인하고 `docker compose down --volumes`와 `npm run db:up`으로 볼륨을 다시 만든다. 정책 데이터는 수집 명령으로 다시 채운다.
 
 ## 4. 검증 명령과 실제 확인 범위
 
@@ -103,7 +103,6 @@ npm run test:web
 npm run test:eligibility
 npm run test:recruitment
 npm run test:ai-reservation-db
-npm run test:ai-execution
 npm run check:api-types
 npm run check:web
 npm run build:web
@@ -116,7 +115,7 @@ npm audit
 
 `test:recruitment`는 순수 Java 모집 상태 23건과 마감 날짜 제공 8건, 총 31건을 실행한다. 서울 날짜 경계·명시적 접수 종료 시각·상시·소진 시 종료·미확인 이유·근거 보존을 검사하며 API 인증키·DB·Docker가 필요하지 않다. [모집 기간 구현](recruitment-period.md)에 입력 범위와 실제 원문 해석이 아닌 점을 정리했다.
 
-`test:ai-reservation-db`는 PostgreSQL 18.6에서 예약·잔액 동시 갱신, 재전달·충돌, 시간·한도 경계, 호출·결과 미확인·정산·취소·무과금 해제, 동시 요청과 DB 제약을 검사한다. Docker가 필요하며 외부 AI나 공급자 청구는 사용하지 않는다. [AI 예약·정산 구현](ai-budget-reservation-lifecycle.md)을 따른다.
+`test:ai-reservation-db`는 PostgreSQL 18.6에서 AI 호출 기록의 예약·잔액 동시 갱신, 요금·기간·한도 경계, 발송·결과 미확인·정산·취소·무과금 해제와 재생·충돌, 동시 종료와 DB 제약을 검사한다. Docker가 필요하며 외부 AI나 공급자 청구는 사용하지 않는다. [AI 예약·정산 구현](ai-budget-reservation-lifecycle.md)을 따른다.
 
 `check:backend`에 포함된 백엔드 통합 테스트는 Compose DB를 사용하지 않고 Testcontainers가 별도 PostgreSQL을 생성한다. 테스트가 끝나면 테스트용 컨테이너를 정리한다. Docker가 없으면 통합 테스트를 건너뛰지 않고 실패한다.
 

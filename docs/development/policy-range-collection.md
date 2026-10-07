@@ -61,7 +61,7 @@ npm run collect:policy -- --args='range-abandon <범위 UUID>'
 
 ## 저장과 완료 의미
 
-요청 배정·발송 시작·범위 상태 변경은 PostgreSQL advisory 잠금 하나로 직렬화하며 외부 대기 중에는 잠금을 잡지 않는다. 다음 허용 시각은 `ontong_collection_pages`의 마지막 요청 예약·발송 시작 시각에 최소 간격을 더해 계산한다. 더 큰 요청 순번이 이미 있으면 늦은 이전 요청의 발송을 거절한다. Flyway V15의 `ontong_collection_request_gate`는 더 이상 사용하지 않으며 스키마 정리 때 삭제한다. V15는 다음 테이블도 추가한다.
+요청 배정·발송 시작·범위 상태 변경은 PostgreSQL advisory 잠금 하나로 직렬화하며 외부 대기 중에는 잠금을 잡지 않는다. 다음 허용 시각은 `ontong_collection_pages`의 마지막 요청 예약·발송 시작 시각에 최소 간격을 더해 계산한다. 더 큰 요청 순번이 이미 있으면 늦은 이전 요청의 발송을 거절한다. 별도 제어 행은 두지 않는다. Flyway V15는 다음 테이블을 추가한다.
 
 - `ontong_collection_sweeps`: 시작·마지막·다음 페이지, 상태, 마지막 정상 처리와 종료 시각.
 - `ontong_collection_sweep_pages`: 범위의 페이지와 기존 원본 실행 ID, 처리 결과·오류.

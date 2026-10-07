@@ -81,7 +81,7 @@ public class OntongSweepStore {
         boolean partial = jdbc.sql("SELECT EXISTS(SELECT 1 FROM ontong_collection_sweep_pages WHERE sweep_id = :id AND outcome <> 'COMPLETED')")
                 .param("id", work.sweepId()).query(Boolean.class).single();
         jdbc.sql("""
-                UPDATE ontong_collection_sweeps SET next_page = :next, state = :state, updated_at = :now,
+                UPDATE ontong_collection_sweeps SET next_page = :next, state = :state,
                     completed_at = :completed, failure_code = :code,
                     last_successful_at = CASE WHEN :success THEN :now ELSE last_successful_at END WHERE id = :id
                 """).param("id", work.sweepId()).param("next", work.page() + 1)
@@ -96,8 +96,8 @@ public class OntongSweepStore {
         var sweep = find(work.sweepId());
         if (!current(sweep, work)) return;
         updatePage(work, "FAILED", code);
-        jdbc.sql("UPDATE ontong_collection_sweeps SET state = 'PAUSED', failure_code = :code, updated_at = :now WHERE id = :id")
-                .param("id", work.sweepId()).param("code", code).param("now", now()).update();
+        jdbc.sql("UPDATE ontong_collection_sweeps SET state = 'PAUSED', failure_code = :code WHERE id = :id")
+                .param("id", work.sweepId()).param("code", code).update();
     }
 
     @Transactional
@@ -114,14 +114,14 @@ public class OntongSweepStore {
                 JOIN ontong_collection_pages p ON p.run_id = s.run_id WHERE s.sweep_id = :id AND s.page_number = :page
                 """).param("id", id).param("page", page).query(Boolean.class).single();
         if (!stored) throw new OntongApiClient.Failure("RESPONSE_UNKNOWN_REQUIRES_REVIEW");
-        jdbc.sql("UPDATE ontong_collection_sweeps SET state = 'ACTIVE', next_page = :page, completed_at = NULL, failure_code = NULL, updated_at = :now WHERE id = :id")
-                .param("id", id).param("page", page).param("now", now()).update();
+        jdbc.sql("UPDATE ontong_collection_sweeps SET state = 'ACTIVE', next_page = :page, completed_at = NULL, failure_code = NULL WHERE id = :id")
+                .param("id", id).param("page", page).update();
     }
 
     @Transactional
     public void abandon(UUID id) {
         lockGate(); find(id);
-        jdbc.sql("UPDATE ontong_collection_sweeps SET state = 'ABANDONED', completed_at = :now, updated_at = :now, failure_code = 'OPERATOR_ABANDONED' WHERE id = :id AND state IN ('ACTIVE','PAUSED','PARTIAL')")
+        jdbc.sql("UPDATE ontong_collection_sweeps SET state = 'ABANDONED', completed_at = :now, failure_code = 'OPERATOR_ABANDONED' WHERE id = :id AND state IN ('ACTIVE','PAUSED','PARTIAL')")
                 .param("id", id).param("now", now()).update();
     }
 
@@ -152,7 +152,7 @@ public class OntongSweepStore {
     }
     private UUID insert(int first, int last, String origin) {
         var id = UUID.randomUUID();
-        jdbc.sql("INSERT INTO ontong_collection_sweeps(id, origin, first_page, last_page, next_page, state, started_at, updated_at) VALUES (:id, :origin, :first, :last, :first, 'ACTIVE', :now, :now)")
+        jdbc.sql("INSERT INTO ontong_collection_sweeps(id, origin, first_page, last_page, next_page, state, started_at) VALUES (:id, :origin, :first, :last, :first, 'ACTIVE', :now)")
                 .param("id", id).param("origin", origin).param("first", first).param("last", last).param("now", now()).update();
         return id;
     }

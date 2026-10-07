@@ -198,16 +198,11 @@ public class OntongCollectionStore {
     private boolean retryable(String outcome) { return List.of("PENDING", "INVALID_ITEM", "STORE_FAILED", "CORRECTION_CONFLICT").contains(outcome); }
 
     private void finishItem(UUID runId, int index, String number, String outcome) {
-        int attempt = jdbc.sql("""
+        jdbc.sql("""
                 UPDATE ontong_collection_items SET policy_number = :number, outcome = :outcome,
                     attempts = attempts + 1, updated_at = CURRENT_TIMESTAMP
-                WHERE run_id = :id AND item_index = :index RETURNING attempts
-                """).param("id", runId).param("index", index).param("number", number).param("outcome", outcome)
-                .query(Integer.class).single();
-        jdbc.sql("""
-                INSERT INTO ontong_collection_item_attempts(run_id, item_index, attempt, outcome)
-                VALUES (:id, :index, :attempt, :outcome)
-                """).param("id", runId).param("index", index).param("attempt", attempt).param("outcome", outcome).update();
+                WHERE run_id = :id AND item_index = :index
+                """).param("id", runId).param("index", index).param("number", number).param("outcome", outcome).update();
     }
 
     public List<String> status(UUID runId) {

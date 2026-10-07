@@ -27,7 +27,5 @@ ALTER TABLE policy_revisions ADD COLUMN correction_id uuid REFERENCES policy_cor
 
 ALTER TABLE ontong_collection_items DROP CONSTRAINT ontong_collection_items_outcome_check;
 ALTER TABLE ontong_collection_items ADD CHECK (outcome IN ('PENDING','APPLIED','UNCHANGED','REPLAYED','STALE','INVALID_ITEM','STORE_FAILED','CORRECTION_CONFLICT'));
-ALTER TABLE ontong_collection_item_attempts DROP CONSTRAINT ontong_collection_item_attempts_outcome_check;
-ALTER TABLE ontong_collection_item_attempts ADD CHECK (outcome IN ('APPLIED','UNCHANGED','REPLAYED','STALE','INVALID_ITEM','STORE_FAILED','CORRECTION_CONFLICT'));
 ALTER TABLE admin_collection_replays DROP CONSTRAINT admin_collection_replays_outcome_check;
 ALTER TABLE admin_collection_replays ADD CHECK (outcome IN ('APPLIED','UNCHANGED','REPLAYED','STALE','INVALID_ITEM','CORRECTION_CONFLICT'));

@@ -10,7 +10,7 @@ CREATE TABLE admin_collection_replays (
     policy_number text,
     policy_revision bigint CHECK (policy_revision > 0),
     processed_at timestamptz NOT NULL DEFAULT statement_timestamp(),
-    FOREIGN KEY (run_id, item_index, attempt) REFERENCES ontong_collection_item_attempts(run_id, item_index, attempt),
+    FOREIGN KEY (run_id, item_index) REFERENCES ontong_collection_items(run_id, item_index),
     UNIQUE (run_id, item_index, attempt)
 );
 

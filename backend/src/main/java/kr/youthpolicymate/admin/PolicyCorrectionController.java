@@ -43,7 +43,7 @@ public class PolicyCorrectionController {
 
     @GetMapping
     @Operation(operationId = "listPolicyCorrections", summary = "관리자 정책 보정·충돌·해제 이력")
-    public ResponseEntity<PolicyCorrections.Page> list(@RequestParam(defaultValue = "1") @Min(1) @Max(1000) int page,
+    public ResponseEntity<AdminSlice<PolicyCorrections.Item>> list(@RequestParam(defaultValue = "1") @Min(1) @Max(1000) int page,
             @RequestParam(defaultValue = "20") @Min(1) @Max(50) int pageSize) {
         return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(service.list(page, pageSize));
     }

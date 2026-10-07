@@ -7,7 +7,6 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 
 import java.time.Instant;
-import java.util.List;
 import java.util.UUID;
 
 public final class CollectionReplays {
@@ -26,9 +25,6 @@ public final class CollectionReplays {
                          @Schema(types = {"string", "null"}) String policyNumber,
                          @Schema(types = {"integer", "null"}, format = "int64", description = "처리 후 개정. 반영하지 않은 결과는 null") Long policyRevision,
                          Instant processedAt) {}
-
-    @Schema(name = "CollectionReplayPage", requiredProperties = {"items", "page", "pageSize", "hasNext"})
-    public record Page(List<Result> items, int page, int pageSize, boolean hasNext) {}
 
     public static class Changed extends RuntimeException {}
 }

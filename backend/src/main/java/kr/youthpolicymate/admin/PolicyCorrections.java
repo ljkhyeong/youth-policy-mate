@@ -6,7 +6,6 @@ import kr.youthpolicymate.policy.catalog.PolicyContent;
 import kr.youthpolicymate.policy.catalog.PolicyCorrectionStore.Field;
 
 import java.time.Instant;
-import java.util.List;
 import java.util.UUID;
 
 public final class PolicyCorrections {
@@ -35,9 +34,6 @@ public final class PolicyCorrections {
                        @Schema(types = {"string", "null"}) String resolvedReason,
                        @Schema(types = {"integer", "null"}, format = "int64") Long resolvedRevision,
                        @Schema(types = {"string", "null"}, format = "date-time") Instant resolvedAt) {}
-
-    @Schema(name = "PolicyCorrectionPage", requiredProperties = {"items", "page", "pageSize", "hasNext"})
-    public record Page(List<Item> items, int page, int pageSize, boolean hasNext) {}
 
     public static class Changed extends RuntimeException {}
     public static class Invalid extends RuntimeException {}

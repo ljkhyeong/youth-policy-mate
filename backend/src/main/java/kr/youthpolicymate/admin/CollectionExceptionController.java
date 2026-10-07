@@ -61,8 +61,7 @@ public class CollectionExceptionController {
 
     @GetMapping("/replays")
     @Operation(operationId = "listCollectionReplays", summary = "관리자 수집 항목 재처리 이력")
-    @ApiResponse(responseCode = "200", content = @Content(schema = @Schema(implementation = CollectionReplays.Page.class)))
-    public ResponseEntity<CollectionReplays.Page> replays(@RequestParam(defaultValue = "1") @Min(1) @Max(1000) int page,
+    public ResponseEntity<AdminSlice<CollectionReplays.Result>> replays(@RequestParam(defaultValue = "1") @Min(1) @Max(1000) int page,
             @RequestParam(defaultValue = "20") @Min(1) @Max(50) int pageSize) {
         return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(replays.list(page, pageSize));
     }
@@ -70,8 +69,7 @@ public class CollectionExceptionController {
     @GetMapping
     @Operation(operationId = "listCollectionExceptions", summary = "관리자 전용 수집 항목 검증·저장 실패 목록",
             description = "최근 처리 시각 순. 재처리에 성공한 항목은 제외하며, 같은 시각에는 수집 요청 순번 역순·항목 위치 순으로 정렬한다.")
-    @ApiResponse(responseCode = "200", content = @Content(schema = @Schema(implementation = CollectionExceptions.Page.class)))
-    public ResponseEntity<CollectionExceptions.Page> list(
+    public ResponseEntity<AdminSlice<CollectionExceptions.Item>> list(
             @RequestParam(defaultValue = "1") @Min(1) @Max(1000) int page,
             @RequestParam(defaultValue = "20") @Min(1) @Max(50) int pageSize) {
         return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(store.list(page, pageSize));
@@ -80,8 +78,7 @@ public class CollectionExceptionController {
     @GetMapping("/pages")
     @Operation(operationId = "listCollectionPageFailures", summary = "관리자 전용 페이지 수집 실패 목록",
             description = "수집 요청 순번 역순. 정상 처리된 페이지는 제외한다. 원본 응답과 임의 오류 문자열을 노출하지 않으며 재처리를 실행하지 않는다.")
-    @ApiResponse(responseCode = "200", content = @Content(schema = @Schema(implementation = CollectionExceptions.PageFailureList.class)))
-    public ResponseEntity<CollectionExceptions.PageFailureList> pageFailures(
+    public ResponseEntity<AdminSlice<CollectionExceptions.PageFailure>> pageFailures(
             @RequestParam(defaultValue = "1") @Min(1) @Max(1000) int page,
             @RequestParam(defaultValue = "20") @Min(1) @Max(50) int pageSize) {
         return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(store.pageFailures(page, pageSize));

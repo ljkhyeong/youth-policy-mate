@@ -41,7 +41,7 @@
             "content" : {
               "*/*" : {
                 "schema" : {
-                  "$ref" : "#/components/schemas/CollectionExceptionPage"
+                  "$ref" : "#/components/schemas/AdminSliceCollectionExceptionItem"
                 }
               }
             },
@@ -127,7 +127,7 @@
             "content" : {
               "*/*" : {
                 "schema" : {
-                  "$ref" : "#/components/schemas/CollectionPageFailureList"
+                  "$ref" : "#/components/schemas/AdminSliceCollectionPageFailure"
                 }
               }
             },
@@ -212,7 +212,7 @@
             "content" : {
               "*/*" : {
                 "schema" : {
-                  "$ref" : "#/components/schemas/CollectionReplayPage"
+                  "$ref" : "#/components/schemas/AdminSliceCollectionReplayResult"
                 }
               }
             },
@@ -791,7 +791,7 @@
             "content" : {
               "*/*" : {
                 "schema" : {
-                  "$ref" : "#/components/schemas/PolicyCorrectionPage"
+                  "$ref" : "#/components/schemas/AdminSlicePolicyCorrectionItem"
                 }
               }
             },
@@ -3056,6 +3056,102 @@
         },
         "required" : [ "checkedAt", "event" ]
       },
+      "AdminSliceCollectionExceptionItem" : {
+        "type" : "object",
+        "properties" : {
+          "hasNext" : {
+            "type" : "boolean"
+          },
+          "items" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/CollectionExceptionItem"
+            }
+          },
+          "page" : {
+            "type" : "integer",
+            "format" : "int32",
+            "description" : "1부터 시작하는 페이지"
+          },
+          "pageSize" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        },
+        "required" : [ "hasNext", "items", "page", "pageSize" ]
+      },
+      "AdminSliceCollectionPageFailure" : {
+        "type" : "object",
+        "properties" : {
+          "hasNext" : {
+            "type" : "boolean"
+          },
+          "items" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/CollectionPageFailure"
+            }
+          },
+          "page" : {
+            "type" : "integer",
+            "format" : "int32",
+            "description" : "1부터 시작하는 페이지"
+          },
+          "pageSize" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        },
+        "required" : [ "hasNext", "items", "page", "pageSize" ]
+      },
+      "AdminSliceCollectionReplayResult" : {
+        "type" : "object",
+        "properties" : {
+          "hasNext" : {
+            "type" : "boolean"
+          },
+          "items" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/CollectionReplayResult"
+            }
+          },
+          "page" : {
+            "type" : "integer",
+            "format" : "int32",
+            "description" : "1부터 시작하는 페이지"
+          },
+          "pageSize" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        },
+        "required" : [ "hasNext", "items", "page", "pageSize" ]
+      },
+      "AdminSlicePolicyCorrectionItem" : {
+        "type" : "object",
+        "properties" : {
+          "hasNext" : {
+            "type" : "boolean"
+          },
+          "items" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/PolicyCorrectionItem"
+            }
+          },
+          "page" : {
+            "type" : "integer",
+            "format" : "int32",
+            "description" : "1부터 시작하는 페이지"
+          },
+          "pageSize" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        },
+        "required" : [ "hasNext", "items", "page", "pageSize" ]
+      },
       "BasicConditions" : {
         "type" : "object",
         "properties" : {
@@ -3167,29 +3263,6 @@
         },
         "required" : [ "attempts", "itemIndex", "lastAttemptAt", "outcome", "pageNumber", "policyNumber", "runId" ]
       },
-      "CollectionExceptionPage" : {
-        "type" : "object",
-        "properties" : {
-          "hasNext" : {
-            "type" : "boolean"
-          },
-          "items" : {
-            "type" : "array",
-            "items" : {
-              "$ref" : "#/components/schemas/CollectionExceptionItem"
-            }
-          },
-          "page" : {
-            "type" : "integer",
-            "format" : "int32"
-          },
-          "pageSize" : {
-            "type" : "integer",
-            "format" : "int32"
-          }
-        },
-        "required" : [ "hasNext", "items", "page", "pageSize" ]
-      },
       "CollectionExceptionRevision" : {
         "type" : "object",
         "properties" : {
@@ -3253,52 +3326,6 @@
           }
         },
         "required" : [ "dispatchedAt", "httpStatus", "pageNumber", "reason", "receivedAt", "responseStored", "runId", "startedAt", "state" ]
-      },
-      "CollectionPageFailureList" : {
-        "type" : "object",
-        "properties" : {
-          "hasNext" : {
-            "type" : "boolean"
-          },
-          "items" : {
-            "type" : "array",
-            "items" : {
-              "$ref" : "#/components/schemas/CollectionPageFailure"
-            }
-          },
-          "page" : {
-            "type" : "integer",
-            "format" : "int32"
-          },
-          "pageSize" : {
-            "type" : "integer",
-            "format" : "int32"
-          }
-        },
-        "required" : [ "hasNext", "items", "page", "pageSize" ]
-      },
-      "CollectionReplayPage" : {
-        "type" : "object",
-        "properties" : {
-          "hasNext" : {
-            "type" : "boolean"
-          },
-          "items" : {
-            "type" : "array",
-            "items" : {
-              "$ref" : "#/components/schemas/CollectionReplayResult"
-            }
-          },
-          "page" : {
-            "type" : "integer",
-            "format" : "int32"
-          },
-          "pageSize" : {
-            "type" : "integer",
-            "format" : "int32"
-          }
-        },
-        "required" : [ "hasNext", "items", "page", "pageSize" ]
       },
       "CollectionReplayRequest" : {
         "type" : "object",
@@ -3941,29 +3968,6 @@
           }
         },
         "required" : [ "actorId", "appliedRevision", "createdAt", "currentRevision", "field", "id", "policyNumber", "reason", "requestedRevision", "resolution", "resolvedAt", "resolvedBy", "resolvedReason", "resolvedRevision", "reviewContent", "reviewSnapshotId", "reviewValue", "sourceValue", "status", "value" ]
-      },
-      "PolicyCorrectionPage" : {
-        "type" : "object",
-        "properties" : {
-          "hasNext" : {
-            "type" : "boolean"
-          },
-          "items" : {
-            "type" : "array",
-            "items" : {
-              "$ref" : "#/components/schemas/PolicyCorrectionItem"
-            }
-          },
-          "page" : {
-            "type" : "integer",
-            "format" : "int32"
-          },
-          "pageSize" : {
-            "type" : "integer",
-            "format" : "int32"
-          }
-        },
-        "required" : [ "hasNext", "items", "page", "pageSize" ]
       },
       "PolicyCorrectionRequest" : {
         "type" : "object",

@@ -100,11 +100,8 @@ class PolicyCorrectionService {
     }
 
     @Transactional(readOnly = true)
-    public PolicyCorrections.Page list(int page, int pageSize) {
-        var items = jdbc.sql(ITEMS + " ORDER BY c.created_at DESC, c.id LIMIT :limit OFFSET :offset")
-                .param("limit", pageSize + 1).param("offset", (page - 1) * pageSize).query((rs, row) -> map(rs)).list();
-        boolean hasNext = items.size() > pageSize;
-        return new PolicyCorrections.Page(hasNext ? items.subList(0, pageSize) : items, page, pageSize, hasNext);
+    public AdminSlice<PolicyCorrections.Item> list(int page, int pageSize) {
+        return AdminSlice.fetch(jdbc.sql(ITEMS + " ORDER BY c.created_at DESC, c.id LIMIT :limit OFFSET :offset"), page, pageSize, (rs, row) -> map(rs));
     }
 
     private void insert(UUID id, String number, Field field, long source, String value, String reason, UUID actor, long revision) {

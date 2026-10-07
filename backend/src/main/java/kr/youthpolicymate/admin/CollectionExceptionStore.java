@@ -34,15 +34,11 @@ class CollectionExceptionStore {
         this.mapper = mapper;
     }
 
-    CollectionExceptions.Page list(int page, int pageSize) {
-        var items = jdbc.sql("SELECT " + FIELDS + FAILURES + """
+    AdminSlice<CollectionExceptions.Item> list(int page, int pageSize) {
+        return AdminSlice.fetch(jdbc.sql("SELECT " + FIELDS + FAILURES + """
                 ORDER BY i.updated_at DESC NULLS LAST, p.request_sequence DESC, i.item_index
                 LIMIT :limit OFFSET :offset
-                """)
-                .param("limit", pageSize + 1).param("offset", (page - 1) * pageSize)
-                .query((rs, row) -> item(rs)).list();
-        var hasNext = items.size() > pageSize;
-        return new CollectionExceptions.Page(hasNext ? items.subList(0, pageSize) : items, page, pageSize, hasNext);
+                """), page, pageSize, (rs, row) -> item(rs));
     }
 
     Optional<CollectionExceptions.Detail> detail(UUID runId, int itemIndex) {
@@ -54,14 +50,13 @@ class CollectionExceptionStore {
                         currentPolicy(detail.item().policyNumber()).orElse(null)));
     }
 
-    CollectionExceptions.PageFailureList pageFailures(int page, int pageSize) {
-        var items = jdbc.sql("""
+    AdminSlice<CollectionExceptions.PageFailure> pageFailures(int page, int pageSize) {
+        return AdminSlice.fetch(jdbc.sql("""
                 SELECT run_id, page_number, state, failure_code, started_at, dispatch_started_at, received_at,
                        raw_body IS NOT NULL AS response_stored
                 FROM ontong_collection_pages WHERE state IN ('FETCH_FAILED', 'INVALID_RESPONSE')
                 ORDER BY request_sequence DESC LIMIT :limit OFFSET :offset
-                """).param("limit", pageSize + 1).param("offset", (page - 1) * pageSize)
-                .query((rs, row) -> {
+                """), page, pageSize, (rs, row) -> {
                     var code = rs.getString("failure_code");
                     Integer httpStatus = code != null && code.matches("HTTP_[1-5][0-9]{2}") ? Integer.valueOf(code.substring(5)) : null;
                     var reason = httpStatus != null ? CollectionExceptions.PageFailureReason.HTTP_ERROR : switch (code) {
@@ -76,9 +71,7 @@ class CollectionExceptionStore {
                             rs.getObject("started_at", OffsetDateTime.class).toInstant(),
                             dispatched == null ? null : dispatched.toInstant(), received == null ? null : received.toInstant(),
                             rs.getBoolean("response_stored"));
-                }).list();
-        var hasNext = items.size() > pageSize;
-        return new CollectionExceptions.PageFailureList(hasNext ? items.subList(0, pageSize) : items, page, pageSize, hasNext);
+                });
     }
 
     Optional<CollectionExceptions.CurrentPolicy> currentPolicy(String number) {

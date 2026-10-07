@@ -56,11 +56,9 @@ class CollectionReplayService {
     }
 
     @Transactional(readOnly = true)
-    public CollectionReplays.Page list(int page, int pageSize) {
-        var items = jdbc.sql("SELECT * FROM admin_collection_replays ORDER BY processed_at DESC, request_id LIMIT :limit OFFSET :offset")
-                .param("limit", pageSize + 1).param("offset", (page - 1) * pageSize).query(RESULT).list();
-        var hasNext = items.size() > pageSize;
-        return new CollectionReplays.Page(hasNext ? items.subList(0, pageSize) : items, page, pageSize, hasNext);
+    public AdminSlice<CollectionReplays.Result> list(int page, int pageSize) {
+        return AdminSlice.fetch(jdbc.sql("SELECT * FROM admin_collection_replays ORDER BY processed_at DESC, request_id LIMIT :limit OFFSET :offset"),
+                page, pageSize, RESULT);
     }
 
     private record ItemState(String outcome, int attempts) {}

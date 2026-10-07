@@ -746,6 +746,50 @@ export interface components {
             /** @enum {string} */
             readonly event: "SENT" | "DELIVERED" | "DELIVERY_DELAYED" | "BOUNCED" | "COMPLAINED" | "SUPPRESSED" | "FAILED" | "OPENED" | "CLICKED" | "SCHEDULED" | "CANCELED" | "QUEUED" | "UNKNOWN";
         };
+        readonly AdminSliceCollectionExceptionItem: {
+            readonly hasNext: boolean;
+            readonly items: readonly components["schemas"]["CollectionExceptionItem"][];
+            /**
+             * Format: int32
+             * @description 1부터 시작하는 페이지
+             */
+            readonly page: number;
+            /** Format: int32 */
+            readonly pageSize: number;
+        };
+        readonly AdminSliceCollectionPageFailure: {
+            readonly hasNext: boolean;
+            readonly items: readonly components["schemas"]["CollectionPageFailure"][];
+            /**
+             * Format: int32
+             * @description 1부터 시작하는 페이지
+             */
+            readonly page: number;
+            /** Format: int32 */
+            readonly pageSize: number;
+        };
+        readonly AdminSliceCollectionReplayResult: {
+            readonly hasNext: boolean;
+            readonly items: readonly components["schemas"]["CollectionReplayResult"][];
+            /**
+             * Format: int32
+             * @description 1부터 시작하는 페이지
+             */
+            readonly page: number;
+            /** Format: int32 */
+            readonly pageSize: number;
+        };
+        readonly AdminSlicePolicyCorrectionItem: {
+            readonly hasNext: boolean;
+            readonly items: readonly components["schemas"]["PolicyCorrectionItem"][];
+            /**
+             * Format: int32
+             * @description 1부터 시작하는 페이지
+             */
+            readonly page: number;
+            /** Format: int32 */
+            readonly pageSize: number;
+        };
         readonly BasicConditions: {
             /** Format: date */
             readonly birthDate?: string | null;
@@ -796,14 +840,6 @@ export interface components {
             /** Format: uuid */
             readonly runId: string;
         };
-        readonly CollectionExceptionPage: {
-            readonly hasNext: boolean;
-            readonly items: readonly components["schemas"]["CollectionExceptionItem"][];
-            /** Format: int32 */
-            readonly page: number;
-            /** Format: int32 */
-            readonly pageSize: number;
-        };
         readonly CollectionExceptionRevision: {
             readonly content: components["schemas"]["PolicyContent"];
             /** Format: uuid */
@@ -837,22 +873,6 @@ export interface components {
             readonly startedAt: string;
             /** @enum {string} */
             readonly state: "FETCH_FAILED" | "INVALID_RESPONSE";
-        };
-        readonly CollectionPageFailureList: {
-            readonly hasNext: boolean;
-            readonly items: readonly components["schemas"]["CollectionPageFailure"][];
-            /** Format: int32 */
-            readonly page: number;
-            /** Format: int32 */
-            readonly pageSize: number;
-        };
-        readonly CollectionReplayPage: {
-            readonly hasNext: boolean;
-            readonly items: readonly components["schemas"]["CollectionReplayResult"][];
-            /** Format: int32 */
-            readonly page: number;
-            /** Format: int32 */
-            readonly pageSize: number;
         };
         readonly CollectionReplayRequest: {
             /** Format: int32 */
@@ -1102,14 +1122,6 @@ export interface components {
             /** @enum {string} */
             readonly status: "ACTIVE" | "CONFLICT" | "RELEASED";
             readonly value: string;
-        };
-        readonly PolicyCorrectionPage: {
-            readonly hasNext: boolean;
-            readonly items: readonly components["schemas"]["PolicyCorrectionItem"][];
-            /** Format: int32 */
-            readonly page: number;
-            /** Format: int32 */
-            readonly pageSize: number;
         };
         readonly PolicyCorrectionRequest: {
             /** Format: int64 */
@@ -1512,7 +1524,7 @@ export interface operations {
                     readonly [name: string]: unknown;
                 };
                 content: {
-                    readonly "*/*": components["schemas"]["CollectionExceptionPage"];
+                    readonly "*/*": components["schemas"]["AdminSliceCollectionExceptionItem"];
                 };
             };
             /** @description 조회 조건 오류 */
@@ -1571,7 +1583,7 @@ export interface operations {
                     readonly [name: string]: unknown;
                 };
                 content: {
-                    readonly "*/*": components["schemas"]["CollectionPageFailureList"];
+                    readonly "*/*": components["schemas"]["AdminSliceCollectionPageFailure"];
                 };
             };
             /** @description 조회 조건 오류 */
@@ -1630,7 +1642,7 @@ export interface operations {
                     readonly [name: string]: unknown;
                 };
                 content: {
-                    readonly "*/*": components["schemas"]["CollectionReplayPage"];
+                    readonly "*/*": components["schemas"]["AdminSliceCollectionReplayResult"];
                 };
             };
             /** @description 조회 조건 오류 */
@@ -2019,7 +2031,7 @@ export interface operations {
                     readonly [name: string]: unknown;
                 };
                 content: {
-                    readonly "*/*": components["schemas"]["PolicyCorrectionPage"];
+                    readonly "*/*": components["schemas"]["AdminSlicePolicyCorrectionItem"];
                 };
             };
             /** @description 입력 오류 */

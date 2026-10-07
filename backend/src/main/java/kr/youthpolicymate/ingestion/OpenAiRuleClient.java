@@ -21,7 +21,7 @@ import java.util.Map;
 @Component
 @Profile("!preview")
 public class OpenAiRuleClient {
-    static final String PROMPT_VERSION = "openai-rule-v1";
+    static final String PROMPT_VERSION = "openai-rule-v2";
     private final AiProperties properties;
     private final ObjectMapper mapper;
     private final RestClient client;

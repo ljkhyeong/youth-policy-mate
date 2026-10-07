@@ -82,7 +82,7 @@ npm run dev:backend
 
 PostgreSQL은 기존 볼륨이 있으면 초기 계정·DB를 다시 만들지 않는다. 따라서 `.env`만 바꿔도 저장된 DB 비밀번호가 변경되는 것은 아니다. 기존 데이터가 있으면 볼륨을 삭제해서 해결하지 말고 계정 설정을 확인한다.
 
-앱 기동에는 API 인증키가 필요하지 않다. 발급 후 별도 개발 명령 `npm run probe:ontong`에서만 `ONTONG_API_KEY`를 읽어 외부 응답을 점검한다. 현재는 승인 대기 상태이며 실제 API 응답은 아직 확인하지 않았다. [인증키 설정·점검 방법](ontong-api-probe.md)을 따르고, 발급된 키는 채팅·저장소·URL 로그에 남기지 않는다.
+앱 기동에는 API 인증키가 필요하지 않다(정기 수집을 켠 경우 제외). `.env`의 `ONTONG_API_KEY`는 `app.ontong.api-key`로 바인딩되어 `npm run collect:policy`·범위 수집·정기 수집에서 쓰고, 점검 명령 `npm run probe:ontong`도 같은 값을 읽는다. [인증키 설정·점검 방법](ontong-api-probe.md)을 따르고, 키는 채팅·저장소·URL 로그에 남기지 않는다.
 
 ### 데이터와 종료
 

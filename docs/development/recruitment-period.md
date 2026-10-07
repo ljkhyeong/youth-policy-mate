@@ -33,13 +33,7 @@
 npm run test:recruitment
 ```
 
-기존 자격 판정과 함께 검사하고 서버를 빌드한다.
-
-```sh
-./backend/gradlew -p backend test --tests 'kr.youthpolicymate.policy.*' --tests 'kr.youthpolicymate.eligibility.*' assemble --no-daemon
-```
-
-2026-08-31에 두 명령을 실행했다. 모집 기간 23건, 기존 자격 판정 117건, 총 140건이 실패·건너뛰기 없이 통과했고 `assemble`도 통과했다.
+2026-08-31에는 당시 자격 판정 테스트와 함께 `./backend/gradlew -p backend test --tests 'kr.youthpolicymate.policy.*' --tests 'kr.youthpolicymate.eligibility.*' assemble --no-daemon`도 실행했다(당시 자격 판정 단위 테스트는 2026-10-07 판정 집계 모델과 함께 삭제했다). 두 명령을 실행한 결과다. 모집 기간 23건, 기존 자격 판정 117건, 총 140건이 실패·건너뛰기 없이 통과했고 `assemble`도 통과했다.
 
 - 날짜형 서울 자정 직전·정각, 시작일·종료일 포함, 같은 날 시작·종료
 - 시각형 시작·마감 직전·정각·직후와 원문 시간대 보존
@@ -55,4 +49,4 @@ npm run test:recruitment
 
 ## 다음 연결
 
-마감 날짜 제공 테스트 8건을 더해 당시 `test:recruitment`는 31건을 실행했다. 함께 만든 알림 후보 날짜 모델은 회원 저장 예약과 규칙이 중복되어 2026-10-07 제거했다. 같은 날 운영 경로에서 쓰지 않는 메타데이터(정책 ID·개정·출처·발췌)만 감싸던 `RecruitmentSchedule`·`RecruitmentAssessment`도 삭제하고 계산을 `PolicyRecruitment.of`로 옮겼다. 위 검증 목록 중 메타데이터 보존·시계 한 번 읽기·시계 시간대 검사는 이때 삭제했다. 원천 기간 문자열 파서는 인증키 발급 후 성공 응답과 본문을 확인한 뒤 작성한다.
+마감 날짜 제공 테스트 8건을 더해 당시 `test:recruitment`는 31건을 실행했다. 함께 만든 알림 후보 날짜 모델은 회원 저장 예약과 규칙이 중복되어 2026-10-07 제거했다. 같은 날 운영 경로에서 쓰지 않는 메타데이터(정책 ID·개정·출처·발췌)만 감싸던 `RecruitmentSchedule`·`RecruitmentAssessment`도 삭제하고 계산을 `PolicyRecruitment.of`로 옮겼다. 위 검증 목록 중 메타데이터 보존·시계 한 번 읽기·시계 시간대 검사는 이때 삭제했다. 원문 기간은 `PolicyApplicationPeriod.parse`가 `aplyYmd`의 단일 `yyyyMMdd ~ yyyyMMdd` 범위로 해석하고, 검토한 공고는 `PolicyRecruitment.period`가 내용 해시를 고정해 보정한다. 선착순·소진·회차, 여러 날짜 언급, 형식 불일치는 `Unresolved`로 남긴다.

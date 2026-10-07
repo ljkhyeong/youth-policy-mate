@@ -30,7 +30,7 @@ public class OntongSweepStore {
         return insert(first, last, "MANUAL");
     }
 
-    /** 범위·주기·한도는 기동 시 설정 바인딩에서 검증한다. */
+    /** 범위·주기·한도는 OntongSweepScheduler 생성 시 검증한다. */
     @Transactional
     public Optional<UUID> scheduled(int first, int last, Duration interval) {
         lockGate();

@@ -20,7 +20,7 @@ class OntongSweepSchedulerTest {
                 .withBean(OntongSweepStore.class, () -> mock(OntongSweepStore.class))
                 .withBean(OntongSweepRunner.class, () -> mock(OntongSweepRunner.class));
     }
-    @Test @DisplayName("웹 서버에서 명시적으로 켜고 호출 한도·간격·범위·주기·키를 설정한 경우에만 정기 수집기를 만든다")
+    @Test @DisplayName("웹 서버에서 명시적으로 켜고 호출 한도·간격·범위·주기·키를 설정한 경우에만 정기 수집기를 만들고, 운영 명령은 정기 설정 누락과 관계없이 시작한다")
     void requiresCompleteConfiguration() {
         context(new WebApplicationContextRunner()).run(value -> assertThat(value).doesNotHaveBean(OntongSweepScheduler.class));
         context(new WebApplicationContextRunner()).withPropertyValues("app.ontong.schedule.enabled=true")
@@ -34,5 +34,7 @@ class OntongSweepSchedulerTest {
         });
         context(new ApplicationContextRunner()).withPropertyValues(COMPLETE)
                 .run(value -> assertThat(value).doesNotHaveBean(OntongSweepScheduler.class));
+        context(new ApplicationContextRunner()).withPropertyValues("app.ontong.schedule.enabled=true")
+                .run(value -> assertThat(value).hasNotFailed().doesNotHaveBean(OntongSweepScheduler.class));
     }
 }

@@ -20,9 +20,14 @@ public class OntongSweepScheduler {
     private final OntongSweepRunner runner;
     private final OntongProperties.Schedule schedule;
     private String previous = "";
-    // 정기 실행에 필요한 한도·간격·범위·주기·키는 OntongProperties 바인딩에서 검증한다.
+    // 정기 실행에만 필요한 값은 웹 서버에서 이 빈을 만들 때 검증해 운영 명령 시작에는 영향을 주지 않는다.
     OntongSweepScheduler(OntongSweepStore sweeps, OntongSweepRunner runner, OntongProperties properties) {
-        this.sweeps = sweeps; this.runner = runner; this.schedule = properties.schedule();
+        properties.requireLimits();
+        schedule = properties.schedule();
+        OntongSweepStore.validateRange(schedule.firstPage(), schedule.lastPage());
+        if (!schedule.cycle().isPositive()) throw new IllegalArgumentException("정기 수집 주기를 설정해주세요.");
+        if (properties.apiKey().isBlank()) throw new IllegalArgumentException("온통청년 인증키를 설정해주세요.");
+        this.sweeps = sweeps; this.runner = runner;
     }
     @Scheduled(fixedDelayString = "${ONTONG_COLLECTION_POLL_MS:5000}", initialDelayString = "${ONTONG_COLLECTION_POLL_MS:5000}")
     public void poll() {

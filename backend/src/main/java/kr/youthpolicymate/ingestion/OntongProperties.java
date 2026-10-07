@@ -17,13 +17,6 @@ record OntongProperties(String apiKey, int dailyLimit,
         schedule = Objects.requireNonNullElse(schedule, new Schedule(false, 0, 0, null));
         if (dailyLimit < 0 || interval.isNegative() || (dailyLimit == 0) != interval.isZero())
             throw new IllegalArgumentException("일일 수집 한도와 호출 간격을 함께 설정해주세요.");
-        // compact 생성자에서는 필드 대입 전이라 limited()를 부르지 않는다.
-        if (schedule.enabled()) {
-            if (dailyLimit == 0) throw new OntongApiClient.Failure("COLLECTION_LIMITS_REQUIRED");
-            OntongSweepStore.validateRange(schedule.firstPage(), schedule.lastPage());
-            if (!schedule.cycle().isPositive()) throw new IllegalArgumentException("정기 수집 주기를 설정해주세요.");
-            if (apiKey.isBlank()) throw new IllegalArgumentException("온통청년 인증키를 설정해주세요.");
-        }
     }
 
     record Schedule(boolean enabled, int firstPage, int lastPage, @DurationUnit(ChronoUnit.SECONDS) Duration cycle) {

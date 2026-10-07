@@ -1,6 +1,6 @@
 import type { BasicConditions } from "@/features/member/member-api";
 
-// 서버 SeoulDistrict의 REST 값(표시 이름)과 같다. 생성 계약과 어긋나면 타입 검사에서 실패한다.
+// 서버 SeoulDistrict의 REST 값(표시 이름)과 같다. 생성 계약에 없는 값이 있으면 타입 검사에서 실패하지만 빠진 값은 잡지 않는다.
 export const SEOUL_DISTRICTS = [
   "강남구", "강동구", "강북구", "강서구", "관악구", "광진구", "구로구", "금천구", "노원구",
   "도봉구", "동대문구", "동작구", "마포구", "서대문구", "서초구", "성동구", "성북구", "송파구",

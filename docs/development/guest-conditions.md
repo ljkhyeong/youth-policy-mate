@@ -23,7 +23,7 @@
 - 오늘 날짜는 서울 기준이며 페이지를 열 때 계산한다. 계속 열어둔 화면은 새로고침해야 날짜가 갱신된다.
 - 서울 자치구 선택은 정책 기준일의 거주 사실을 증명하지 않는다. 주된 취업상태 하나를 골랐다고 다른 취업 형태·겸업·재학 여부를 비해당으로 추정하지 않는다. [취업 조건](../design/employment-condition.md)
 - 입력 검사는 프런트엔드에서, 정책별 기준일·연령 범위·예외 비교는 서버에서 처리한다. [연령 조건](age-condition.md)
-- 서버 계약의 `BasicConditions.district`는 `SeoulDistrict`의 표시 이름(`강남구` 등 25개) 또는 `null`이다. 목록 밖 값·enum 이름·순번 숫자는 400이며, 화면 선택지 `SEOUL_DISTRICTS`는 생성 타입과 `satisfies`로 맞춘다. 생년월일의 미래·1년 이전 검사는 서버의 `BasicConditions.checkBirthDate`가 조건 확인·조건 저장·출생일 답변에서 함께 쓴다.
+- 서버 계약의 `BasicConditions.district`는 `SeoulDistrict`의 표시 이름(`강남구` 등 25개) 또는 `null`이다. 목록 밖 값·enum 이름·순번 숫자는 400이며, 화면 선택지 `SEOUL_DISTRICTS`는 `satisfies`로 생성 타입에 없는 값이 들어가면 타입 검사에서 실패한다. 서버 enum에 추가된 값이 화면 목록에서 빠진 경우는 잡지 않는다. 생년월일의 미래 날짜·서기 1년 이전(연도 0 이하) 검사는 서버의 `BasicConditions.checkBirthDate`가 조건 확인·조건 저장·출생일 답변에서 함께 쓴다.
 
 ## 코드와 검증
 

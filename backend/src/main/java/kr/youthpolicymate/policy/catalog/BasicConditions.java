@@ -13,7 +13,7 @@ public record BasicConditions(@Schema(types = {"string", "null"}, format = "date
         ENTREPRENEUR, SHORT_TERM_WORKER, FARMER, OTHER
     }
 
-    // 서울 날짜 기준 미래이거나 1년 이전인 생년월일을 거절한다. 시각은 호출부가 한 번만 읽어 넘긴다.
+    // 서울 날짜 기준 미래이거나 연도가 1보다 작은(서기 1년 이전) 생년월일을 거절한다. 시각은 호출부가 한 번만 읽어 넘긴다.
     public static void checkBirthDate(LocalDate birthDate, LocalDate today) {
         if (birthDate != null && (birthDate.getYear() < 1 || birthDate.isAfter(today))) throw new IllegalArgumentException("생년월일을 확인해주세요.");
     }

@@ -308,3 +308,30 @@ Temurin 25.0.3·PostgreSQL 18.6 Testcontainers에서 실행했다. 실제 OAuth 
 | `npm run verify -- test:runtime` | 운영 프로필의 `AppUrls`·로그인 실패 리다이렉트 | `.local/verification/1791356688833-5a3d06a3.log` |
 | `npm run generate:api` 후 `npm run verify -- check:api-types`, `check:web` | 생성 계약·TypeScript 타입과 웹 타입 검사 | `.local/verification/1791356578312-0f599659.log`, `.local/verification/1791356579342-47b25bf2.log` |
 
+
+## Spring·JDK 표준 기능 정리 전체 — 2026-10-07 적용
+
+운영 DB를 만들기 전이라 보존할 데이터가 없다는 전제로, Java·Spring이 제공하는 기능을 직접 다시 구현한 코드와 쓰지 않는 코드·스키마를 함께 정리했다. 영역별로 감사·반박 검증을 거친 뒤 묶음별로 구현·독립 검토하고 병합 후 통합 검토를 한 번 더 했다. 메인 Java는 153개 파일 약 9,900줄에서 107개 파일 약 6,400줄로, Flyway는 SQL 33개와 Java 1개에서 2개로 줄었다.
+
+| 영역 | 변경 | 기록 |
+|---|---|---|
+| 개발 미리보기 | preview 프로필·`devpreview`·`/dev` 화면·preview 계약과, 미리보기에서만 쓰던 거주·취업·소득 비교기·`schedule` 패키지·판정 집계 모델을 삭제했다. 공개 계약은 `api/openapi.policy.json` 하나다. | [ADR-0002](../ADR/0002_서버_DTO_기반_API_계약_생성.md), [자격 판정](eligibility-decision.md) |
+| 수집 | Spring Batch·`BATCH_*` 스키마, 로컬 캡처 반입(`import:policy`), 시도 이력 테이블·요청 제어 행·고정 요청 열을 지웠다. 온통청년 호출은 `RestClient`, 요청 간격은 이력 기반 계산과 PostgreSQL advisory 잠금, 설정은 `OntongProperties`로 바꿨다. | [ADR-0001](../ADR/0001_기술스택과_책임_분리.md), [범위 수집](policy-range-collection.md), [한 페이지 수집](limited-policy-collection.md) |
+| 이메일 | SMTP 어댑터를 지우고 Resend로 단일화했다. 설정은 `EmailProperties`, 수신 해제 저장소는 `MemberEmailStore`로 합쳤다. Svix는 서명 검증 클래스만 쓰도록 전이 의존성을 끊었다. | [이메일](member-email-reminders.md) |
+| AI | 예약·수명주기 저장소와 실행 포트·조정자를 지우고 `policy_ai_rule_calls` 한 행의 조건부 `UPDATE`로 바꿨다. 설정은 `AiProperties`다. | [AI 예약·실행 계층 통합](#ai-예약실행-계층-통합--2026-10-07-적용) |
+| 정책 조회·자격 | 동적 SQL을 튜플 `IN`·공통 조건으로 줄이고 `spring-data-commons`를 뺐다. 모집 기간 래퍼를 지우고 저장 정책 마감일을 화면 계산과 맞췄다. 자치구는 `SeoulDistrict` enum, 규칙 형식 검사는 Bean Validation이다. 레거시 규칙 고정 자료 약 1,500줄을 지웠다. | [조회](policy-catalog.md), [모집 기간](recruitment-period.md) |
+| 웹 계층 | 오류 처리기를 `@RestControllerAdvice` 하나로 모으고 캐시 헤더는 Spring Security 기본값, 회원 ID는 `@CurrentMember`, 관리자 경로는 `AuthorizationManager` 한 줄로 바꿨다. | [웹 계층·보안 설정 정리](#웹-계층보안-설정-정리--2026-10-07-적용) |
+| 설정·실행 | 흩어진 `Environment.getProperty`를 `@ConfigurationProperties`(`AppUrls` 포함)로 모으고, 세션 쿠키는 `server.servlet.session.cookie.*`, 정기 작업은 웹 서버 전용·Boot 기본 스케줄러, 운영 명령은 `startCommand` 하나로 시작한다. Boot 기본값과 같은 설정은 지웠다. | [로컬 개발](local-development.md), [외부 연동 실행](external-api-runtime.md) |
+| 스키마 | V1~V33과 Java 마이그레이션을 `V1__baseline_schema.sql`·`V2__seed_reviewed_policy_rules.sql`로 합쳤다. 이전 최종 스키마와 `pg_dump --schema-only`가 같고(쓰기만 하던 `members.conditions_updated_at`·`policy_reminders.delivered_at` 제외), 규칙 12건의 정의가 같음을 확인했다. | [데이터와 종료](local-development.md#데이터와-종료), [백엔드 스킬](../../skills/youth-policy-backend/SKILL.md) |
+
+유지한 직접 구현: 이메일 주소 AES-GCM의 AAD 문맥 결합(Spring Security `BytesEncryptor`는 AAD를 받지 않음), 요청마다 하는 관리자 판정(세션에 권한을 직렬화하지 않음), 키가 있는 제공자만 등록하는 OAuth 등록 빈, 탈퇴 후 늦은 OAuth 콜백을 막는 세션 확인 필터, 타입을 엄격히 검사하는 온통청년 JSON 트리 파싱, 자동 재시도 없음(PRD상 재발송 금지).
+
+기각한 후보: `ProblemDetail` 전환(전역 처리기가 먼저 끼어들고 코드가 줄지 않음), Resend 웹훅 DTO 바인딩(검증 성질 감소), 테스트 컨테이너 공유(테스트 도중 컨테이너 정지·설정 증가), OpenAI 비용 조회 명령 삭제(PRD 요구).
+
+동작 변화: 오류 `code`는 공통 값(`INVALID_REQUEST`·`NOT_FOUND`·`CONFLICT`·`SERVICE_UNAVAILABLE`)이고 화면이 쓰는 `EMAIL_*`·`EMAIL_PROVIDER_*`와 보안 코드는 그대로다. 공개·질문 API의 DB 장애는 503이다. 범위 수집 중단 코드는 `COLLECTION_FAILED`다. AI 생성 방식 버전은 `openai-rule-v2`다. 회원 닉네임을 `members`에 저장하지 않는다. `EMAIL_FROM` 형식과 운영 `PUBLIC_APP_URL`(http(s) 절대 주소) 누락은 기동을 막는다.
+
+남은 후보: 항상 `NEEDS_REVIEW`인 조건 비교 `status` 응답 필드, 쓰이지 않는 `UNTIL_EXHAUSTED` 상태, 저장 정책 마감 관련 중복 필드, 공고 3건의 하드코딩 신청 기간 보정(수집 원문으로 `Dates` 해석 여부를 확인한 뒤 삭제), 수집 파서 단일 인스턴스 주입.
+
+### 검증
+
+최종 커밋 기준으로 `npm run verify -- check:backend`(서버 전체 테스트와 빌드), `test:web`, `check:web`, `build:web`, `check:api-types`, `check:tools`, `test:runtime`과 문서 링크 검사를 통과했다. 실행 기록은 `npm run verify -- status`에 있다. 실제 OAuth·Resend·OpenAI·온통청년 호출과 로컬 DB 볼륨 재생성은 하지 않았다.

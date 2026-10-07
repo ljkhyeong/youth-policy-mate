@@ -1042,7 +1042,7 @@ export interface components {
         };
         readonly PolicyCheckItem: {
             readonly applicationPeriod: string;
-            readonly checks: readonly components["schemas"]["PolicyConditionCheck"][];
+            readonly checks: readonly components["schemas"]["PolicyEvaluatedCheck"][];
             /** Format: date-time */
             readonly collectedAt: string;
             readonly explanation: string;
@@ -1068,14 +1068,6 @@ export interface components {
             readonly page: number;
             /** Format: int64 */
             readonly total: number;
-        };
-        readonly PolicyConditionCheck: {
-            readonly evidence: string;
-            readonly explanation: string;
-            readonly label: string;
-            /** @enum {string} */
-            readonly outcome: "MET" | "NOT_MET" | "UNKNOWN";
-            readonly providedValue: string;
         };
         readonly PolicyContent: {
             readonly applicationPeriod: string;

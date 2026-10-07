@@ -3761,7 +3761,7 @@
           "checks" : {
             "type" : "array",
             "items" : {
-              "$ref" : "#/components/schemas/PolicyConditionCheck"
+              "$ref" : "#/components/schemas/PolicyEvaluatedCheck"
             }
           },
           "collectedAt" : {
@@ -3828,28 +3828,6 @@
           }
         },
         "required" : [ "evaluatedAt", "hasNext", "items", "page", "total" ]
-      },
-      "PolicyConditionCheck" : {
-        "type" : "object",
-        "properties" : {
-          "evidence" : {
-            "type" : "string"
-          },
-          "explanation" : {
-            "type" : "string"
-          },
-          "label" : {
-            "type" : "string"
-          },
-          "outcome" : {
-            "type" : "string",
-            "enum" : [ "MET", "NOT_MET", "UNKNOWN" ]
-          },
-          "providedValue" : {
-            "type" : "string"
-          }
-        },
-        "required" : [ "evidence", "explanation", "label", "outcome", "providedValue" ]
       },
       "PolicyContent" : {
         "type" : "object",

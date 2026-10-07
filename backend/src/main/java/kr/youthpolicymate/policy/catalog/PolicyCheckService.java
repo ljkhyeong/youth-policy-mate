@@ -36,18 +36,19 @@ public class PolicyCheckService {
             var comparison = source.comparison();
             var age = comparison == null ? null : comparison.age();
             var stated = PolicySourceConditions.from(raw);
+            // 연령 항목 이름은 규칙마다 다르므로 목록에서는 "연령"으로 통일한다.
             var checks = List.of(
                     age == null ? statedAge(input, stated, today, text(raw, "addAplyQlfcCndCn", "plcySprtCn"))
-                            : new PolicyCheckResponse.Check("연령", age.providedValue(), age.explanation(), age.evidence(), age.outcome()),
-                    new PolicyCheckResponse.Check("거주", input.district() == null ? "미입력" : "서울특별시 " + input.district(),
+                            : new PolicyQuestions.Check("연령", age.providedValue(), age.outcome(), age.explanation(), age.evidence()),
+                    new PolicyQuestions.Check("거주", input.district() == null ? "미입력" : "서울특별시 " + input.district(), UNKNOWN,
                             "신청 가능한 거주지와 거주 기간·전입 조건은 공식 안내를 확인해주세요.",
-                            text(raw, "addAplyQlfcCndCn", "plcyExplnCn"), UNKNOWN),
-                    new PolicyCheckResponse.Check("취업·학력·소득", input.employmentStatus() == null ? "미입력" : "기본 취업상태 입력됨",
+                            text(raw, "addAplyQlfcCndCn", "plcyExplnCn")),
+                    new PolicyQuestions.Check("취업·학력·소득", input.employmentStatus() == null ? "미입력" : "기본 취업상태 입력됨", UNKNOWN,
                             "주된 취업상태 하나만으로 고용보험·재학·사업자등록·소득 요건을 확인할 수 없어요." + statedOthers(stated),
-                            text(raw, "earnEtcCn", "addAplyQlfcCndCn", "plcySprtCn"), UNKNOWN),
-                    new PolicyCheckResponse.Check("추가 조건과 참여 제한", "추가 확인 필요",
+                            text(raw, "earnEtcCn", "addAplyQlfcCndCn", "plcySprtCn")),
+                    new PolicyQuestions.Check("추가 조건과 참여 제한", "추가 확인 필요", UNKNOWN,
                             "공식 공고에서 필수 조건과 예외를 확인해주세요. 이 화면에 없는 제한이 있을 수 있어요.",
-                            text(raw, "ptcpPrpTrgtCn", "addAplyQlfcCndCn", "plcySprtCn"), UNKNOWN));
+                            text(raw, "ptcpPrpTrgtCn", "addAplyQlfcCndCn", "plcySprtCn")));
             items.add(new PolicyCheckResponse.Item(policy.policyNumber(), policy.revision(), policy.content().title(), EligibilityStatus.NEEDS_REVIEW,
                     (input.birthDate() == null ? "지원 내용을 살펴보고 필요한 조건을 추가해보세요." : explanation(comparison, stated, input.birthDate(), today)), policy.content().applicationPeriod(), comparison == null ? policy.sourceUrl() : comparison.sourceUrl(),
                     policy.collectedAt(), checks, source.questionnaireAvailable(), comparison == null ? "" : comparison.ruleVersion(), policy.recruitment()));
@@ -56,14 +57,14 @@ public class PolicyCheckService {
     }
 
     // 검토된 연령 비교가 없으면(생년월일 미입력 포함) 온통청년 표기 범위와 입력한 생년월일의 만 나이를 함께 보여주되 판정하지 않는다.
-    private PolicyCheckResponse.Check statedAge(BasicConditions input, PolicySourceConditions stated, LocalDate today, String evidence) {
+    private PolicyQuestions.Check statedAge(BasicConditions input, PolicySourceConditions stated, LocalDate today, String evidence) {
         var range = stated.ageText();
-        if (input.birthDate() == null) return new PolicyCheckResponse.Check("연령", "미입력", range
+        if (input.birthDate() == null) return new PolicyQuestions.Check("연령", "미입력", UNKNOWN, range
                 .map(text -> "온통청년 표기 연령은 " + text + "예요. 기준일과 예외는 공고에서 확인해주세요. 생년월일을 추가하면 만 나이를 함께 보여드려요.")
-                .orElse("생년월일을 추가하면 확인된 연령 조건을 비교할 수 있어요."), evidence, UNKNOWN);
-        if (range.isEmpty()) return new PolicyCheckResponse.Check("연령", "생년월일 입력됨", "연령 기준일과 제한·예외를 아직 확인하지 못했어요.", evidence, UNKNOWN);
-        return new PolicyCheckResponse.Check("연령", "만 " + PolicySourceConditions.completedYears(input.birthDate(), today) + "세 (" + today + " · 서울)",
-                "온통청년 표기 연령은 " + range.orElseThrow() + "예요. 기준일과 예외를 확인하지 못해 추가 확인으로 남겨요.", evidence, UNKNOWN);
+                .orElse("생년월일을 추가하면 확인된 연령 조건을 비교할 수 있어요."), evidence);
+        if (range.isEmpty()) return new PolicyQuestions.Check("연령", "생년월일 입력됨", UNKNOWN, "연령 기준일과 제한·예외를 아직 확인하지 못했어요.", evidence);
+        return new PolicyQuestions.Check("연령", "만 " + PolicySourceConditions.completedYears(input.birthDate(), today) + "세 (" + today + " · 서울)", UNKNOWN,
+                "온통청년 표기 연령은 " + range.orElseThrow() + "예요. 기준일과 예외를 확인하지 못해 추가 확인으로 남겨요.", evidence);
     }
 
     private String statedOthers(PolicySourceConditions stated) {

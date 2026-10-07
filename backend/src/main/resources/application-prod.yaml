@@ -18,3 +18,6 @@ app:
   url:
     frontend: ${PUBLIC_APP_URL}
     backend: ${PUBLIC_APP_URL}
+
+# SecurityConfiguration의 로그인 성공·실패 리다이렉트가 아직 이 키를 직접 읽는다. app.url.frontend(AppUrls)로 옮기면 함께 지운다.
+APP_FRONTEND_URL: ${PUBLIC_APP_URL}

@@ -281,18 +281,18 @@ Temurin 25.0.3·PostgreSQL 18.6 Testcontainers에서 실행했다. 실제 OpenAI
 
 ## 웹 계층·보안 설정 정리 — 2026-10-07 적용
 
-운영 전이라 보존할 응답 형식 소비자가 화면뿐이다. 컨트롤러마다 반복하던 오류 변환·캐시 헤더·회원 ID 변환·보안 경로 목록을 Spring MVC·Security 기본 기능으로 줄였다. 화면이 코드로 분기하는 이메일 오류(`EMAIL_*`, `EMAIL_PROVIDER_*`)와 보안 오류(`LOGIN_REQUIRED`·`ACCESS_DENIED`·`MEMBER_UNAVAILABLE`), 상태 코드, `{code,message}` 본문은 그대로다.
+운영 전이라 보존할 응답 형식 소비자가 화면뿐이다. 컨트롤러마다 반복하던 오류 변환·캐시 헤더·회원 ID 변환·보안 경로 목록을 Spring MVC·Security 기본 기능으로 줄였다. 화면이 코드로 분기하는 이메일 오류(`EMAIL_*`, `EMAIL_PROVIDER_*`), 보안 오류(`LOGIN_REQUIRED`·`ACCESS_DENIED`, 세션 확인 필터의 `MEMBER_UNAVAILABLE`), `{code,message}` 본문은 그대로다. 상태 코드는 아래 표에 적은 경로만 바뀌었다.
 
 | 대상 | 변경 |
 |---|---|
-| 오류 응답 | 정책·회원 처리기 2개와 관리자 컨트롤러 6곳의 `@ExceptionHandler` 약 30개를 `config/ApiExceptionHandler` 하나로 합쳤다. 요청 오류는 `ApiException`으로 던진다. 영역별 코드는 `INVALID_REQUEST`(400)·`NOT_FOUND`(404)·`CONFLICT`(409)·`SERVICE_UNAVAILABLE`(503) 공통 값이 됐다. 흐름 제어용 빈 예외 클래스 7개(`PolicyNotFoundException`, `PolicyChangedException`, `CollectionReplays.Changed`, `PolicyCorrections.Changed`·`Invalid`, `PolicyRuleActions.Invalid`·`Changed`·`Missing`)와 `MemberEmailStore.EmailException`을 없앴다. |
-| 내부 오류 | `IllegalArgumentException`을 통째로 400으로 바꾸던 처리를 없앴다. 생년월일·질문 답변 검사는 `ApiException.invalid()`를 던지고, 나머지 내부 오류는 500이 된다. 오류 재디스패치(`DispatcherType.ERROR`)를 허용해 처리하지 못한 예외가 403으로 가려지지 않는다. 트랜잭션 시작 실패(`CannotCreateTransactionException`)도 503으로 응답해 정책 목록·조건 비교의 DB 연결 실패가 질문 API와 같아졌다. |
+| 오류 응답 | 정책·회원 처리기 2개와 관리자 컨트롤러 6곳의 `@ExceptionHandler` 약 30개를 `config/ApiExceptionHandler` 하나로 합쳤다. 요청 오류는 `ApiException`으로 던진다. 영역별 코드는 `INVALID_REQUEST`(400)·`NOT_FOUND`(404)·`CONFLICT`(409)·`SERVICE_UNAVAILABLE`(503) 공통 값이 됐다. 회원 API 처리 중 저장소 장애도 `MEMBER_UNAVAILABLE` 대신 `SERVICE_UNAVAILABLE`이다. 공통 처리기가 모든 컨트롤러에 적용돼 회원·정책 API의 `DuplicateKeyException`은 503에서 409로, 처리기가 없던 Resend 웹훅의 DB 장애는 500에서 503 JSON으로 바뀌었다. 흐름 제어용 빈 예외 클래스 7개(`PolicyNotFoundException`, `PolicyChangedException`, `CollectionReplays.Changed`, `PolicyCorrections.Changed`·`Invalid`, `PolicyRuleActions.Invalid`·`Changed`·`Missing`)와 `MemberEmailStore.EmailException`을 없앴다. |
+| 내부 오류 | `IllegalArgumentException`을 통째로 400으로 바꾸던 처리를 없앴다. 생년월일·질문 답변 검사는 `ApiException.invalid()`를 던지고, 나머지 내부 오류는 500이 된다. 오류 재디스패치(`DispatcherType.ERROR`)를 허용해 처리하지 못한 예외가 403으로 가려지지 않는다. 실서버에서 `sendError`로 끝나는 응답(예: 조건 비교의 415, 관리자 경로의 404·405)도 403 대신 해당 상태의 Boot 기본 오류 JSON이 된다. 트랜잭션 시작 실패(`CannotCreateTransactionException`)도 503으로 응답해 정책 목록·조건 비교의 DB 연결 실패가 질문 API와 같아졌다. |
 | 캐시 헤더 | 직접 붙이던 `Cache-Control: no-store`를 지웠다. Spring Security 기본 헤더가 모든 응답에 `no-cache, no-store, max-age=0, must-revalidate`와 `Pragma`·`Expires`를 붙인다. 세션 확인 필터를 `HeaderWriterFilter` 뒤로 옮겨 503 응답도 같은 헤더를 받는다. 성공 응답은 본문 타입을 직접 반환하고, 상세 조회의 404는 `orElseThrow(ApiException::notFound)`로 바꿨다. |
 | 보안 설정 | 관리자 경로 17개 나열을 `/api/v1/admin/**` 한 줄과 `AuthorizationManager`를 구현한 `AdminAccess`로 바꿨다. 관리자가 GET 전용 경로에 POST하면 403 대신 405다. 진입점·거부 처리기·세션 확인 필터는 JSON 문자열 대신 `PolicyApiError.writeTo`로 쓴다. 로그아웃은 `HttpStatusReturningLogoutSuccessHandler`, 로그인 리다이렉트는 `AppUrls`를 쓰고, 기본값과 같던 세션 무효화·쿠키 삭제 설정과 사용자 없는 `UserDetailsService`를 지웠다. |
 | 회원 ID | `MemberController.member(OAuth2User)`와 관리자 `UUID.fromString(principal.getName())`을 `@CurrentMember UUID` 메타 애너테이션으로 바꿨다. `/api/v1/session`은 비로그인도 받으므로 `OAuth2User`를 유지한다. 관심 정책 저장소의 회원 행 잠금은 `MemberIdentityStore.lock`을 쓴다. |
 | OpenAPI | 관리자 컨트롤러의 `@SecurityRequirement`·401·403 선언을 지우고 `MemberApiConfiguration`이 회원·관리자·로그아웃 경로에 세션·401·403·CSRF 헤더를 한 규칙으로 붙인다. 관리자 POST 5개에 빠져 있던 `X-CSRF-TOKEN`이 계약에 추가됐다. 필드별 nullable 보정 3곳은 `config/OpenApiContractConfiguration`의 규칙 하나(`@Schema(types = {..., "null"})` 표시 필드를 `anyOf`·enum null로 변환)로 바꿨고, 그 결과 nullable enum 3개(`district`·`employmentStatus`·`deliveryIssue`)에 null이 더해졌다. 생성 TypeScript 타입은 오류 응답 미디어 타입과 관리자 POST의 CSRF 헤더만 바뀌었다. |
 
-클래스에 오류 `@ApiResponse`를 둔 컨트롤러는 `@ApiResponse(responseCode = "200")`도 함께 선언한다. 그렇지 않으면 springdoc이 반환 타입에서 200 응답을 추론하지 않는다. 내용은 반환 타입에서 추론하므로 `AdminSlice<T>`의 제네릭 스키마 이름도 유지된다.
+클래스나 메서드에 `@ApiResponse`를 하나라도 두면 `@ApiResponse(responseCode = "200")`(본문 없는 응답은 해당 코드)도 함께 선언한다. 그렇지 않으면 springdoc이 선언한 코드만 문서에 넣고 반환 타입에서 200 응답을 추론하지 않는다. 내용은 반환 타입에서 추론하므로 `AdminSlice<T>`의 제네릭 스키마 이름도 유지된다.
 
 삭제한 파일: `policy/catalog/PolicyApiExceptionHandler`, `PolicyNotFoundException`, `member/MemberApiExceptionHandler`, `admin/AdminApiConfiguration`.
 

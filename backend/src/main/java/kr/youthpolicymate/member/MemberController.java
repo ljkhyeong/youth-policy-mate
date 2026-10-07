@@ -1,19 +1,23 @@
 package kr.youthpolicymate.member;
 
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.Max;
+import kr.youthpolicymate.config.AppUrls;
 import kr.youthpolicymate.policy.catalog.BasicConditions;
-import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplication;
 import org.springframework.context.annotation.Profile;
-import org.springframework.core.env.Environment;
 import org.springframework.http.CacheControl;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.security.oauth2.client.registration.InMemoryClientRegistrationRepository;
+import org.springframework.security.web.authentication.logout.SecurityContextLogoutHandler;
 import org.springframework.security.web.csrf.CsrfToken;
 import org.springframework.web.bind.annotation.*;
 
@@ -26,20 +30,21 @@ import java.util.UUID;
 @RequestMapping("/api/v1")
 public class MemberController {
     private final MemberPolicyStore store;
-    private final ObjectProvider<InMemoryClientRegistrationRepository> registrations;
-    private final Environment environment;
-    public MemberController(MemberPolicyStore store, ObjectProvider<InMemoryClientRegistrationRepository> registrations, Environment environment) {
-        this.store = store; this.registrations = registrations; this.environment = environment;
+    private final MemberIdentityStore identities;
+    private final InMemoryClientRegistrationRepository registrations;
+    private final AppUrls urls;
+    private final SecurityContextLogoutHandler logout = new SecurityContextLogoutHandler();
+    public MemberController(MemberPolicyStore store, MemberIdentityStore identities,
+                            InMemoryClientRegistrationRepository registrations, AppUrls urls) {
+        this.store = store; this.identities = identities; this.registrations = registrations; this.urls = urls;
     }
 
     @GetMapping("/session")
     @Operation(operationId = "getMemberSession", summary = "로그인 상태·설정된 로그인 제공자·CSRF 토큰 조회")
     public ResponseEntity<MemberResponses.Session> session(@AuthenticationPrincipal OAuth2User user, @io.swagger.v3.oas.annotations.Parameter(hidden = true) CsrfToken csrf) {
         var providers = new ArrayList<MemberResponses.Provider>();
-        var configured = registrations.getIfAvailable();
-        var base = environment.getProperty("APP_BACKEND_URL", "http://127.0.0.1:8080");
-        if (configured != null) configured.forEach(value -> providers.add(new MemberResponses.Provider(
-                value.getRegistrationId(), value.getClientName(), base + "/oauth2/authorization/" + value.getRegistrationId())));
+        registrations.forEach(value -> providers.add(new MemberResponses.Provider(
+                value.getRegistrationId(), value.getClientName(), urls.backend() + "/oauth2/authorization/" + value.getRegistrationId())));
         return privateResponse(new MemberResponses.Session(user != null, user == null ? "" : user.getAttribute("displayName"),
                 user == null ? "" : user.getAttribute("suggestedBirthDate"), csrf.getToken(), providers));
     }
@@ -90,6 +95,16 @@ public class MemberController {
     @Operation(operationId = "readAllMemberNotifications", summary = "내 알림 모두 읽음 처리",
             description = "페이지·필터와 관계없이 본인의 미읽음 알림 전체를 처리한다. 갱신 쿼리 시작 후 도착한 알림과 기존 읽은 시각은 유지한다.")
     public void readAll(@AuthenticationPrincipal OAuth2User user) { store.readAll(member(user)); }
+    @DeleteMapping("/me/account")
+    @Operation(operationId = "withdrawMember", summary = "회원 탈퇴와 개인 데이터·모든 로그인 세션 삭제")
+    @ApiResponse(responseCode = "204", description = "탈퇴 완료")
+    @ApiResponse(responseCode = "503", description = "저장소 오류로 탈퇴 미완료")
+    public ResponseEntity<Void> withdraw(@AuthenticationPrincipal OAuth2User user, Authentication authentication,
+            HttpServletRequest request, HttpServletResponse response) {
+        identities.withdraw(member(user));
+        logout.logout(request, response, authentication);
+        return ResponseEntity.noContent().cacheControl(CacheControl.noStore()).build();
+    }
 
     static UUID member(OAuth2User user) {
         if (user == null) throw new org.springframework.security.access.AccessDeniedException("로그인이 필요합니다.");

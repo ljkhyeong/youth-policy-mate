@@ -1,15 +1,13 @@
 package kr.youthpolicymate.member;
 
 import com.sun.net.httpserver.HttpServer;
-import jakarta.validation.Validation;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.springframework.mail.MailPreparationException;
-import org.springframework.mock.env.MockEnvironment;
 import org.springframework.web.client.RestClient;
 import tools.jackson.databind.json.JsonMapper;
 
 import java.net.InetSocketAddress;
+import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.UUID;
@@ -39,13 +37,11 @@ class ResendTransportTest {
             exchange.getResponseBody().write(response); exchange.close();
         });
         server.start();
-        try (var validators = Validation.buildDefaultValidatorFactory()) {
-            var env = new MockEnvironment().withProperty("app.email.enabled", "true")
-                    .withProperty("app.email.encryption-key", "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=")
-                    .withProperty("app.email.from", "sender@example.test").withProperty("app.email.resend.api-key", "test-api-key")
-                    .withProperty("app.email.resend.base-url", "http://127.0.0.1:" + server.getAddress().getPort());
-            var sender = new ResendMemberEmailSender(env, new EmailCrypto(env), validators.getValidator(), RestClient.builder());
-            assertThat(sender.send(outbox, "recipient@example.test", "인증", "확인 코드: 12345678", java.util.Map.of())).isEqualTo(message.toString());
+        try {
+            var properties = new EmailProperties(true, "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=", "sender@example.test",
+                    new EmailProperties.Resend("test-api-key", null, null, URI.create("http://127.0.0.1:" + server.getAddress().getPort())));
+            var sender = new ResendMemberEmailSender(properties, RestClient.builder());
+            assertThat(sender.send(outbox, "recipient@example.test", "인증", "확인 코드: 12345678", java.util.Map.of())).isEqualTo(message);
             var request = mapper.readTree(requests.getFirst());
             assertThat(request.path("to").get(0).asString()).isEqualTo("recipient@example.test");
             assertThat(request.path("text").asString()).contains("12345678");
@@ -60,7 +56,7 @@ class ResendTransportTest {
             assertThat(policyHeaders.path("List-Unsubscribe-Post").asString()).isEqualTo("List-Unsubscribe=One-Click");
             status.set(422);
             assertThatThrownBy(() -> sender.send(outbox, "recipient@example.test", "인증", "본문", java.util.Map.of()))
-                    .isInstanceOf(MailPreparationException.class).hasMessageNotContaining("private-provider-error");
+                    .isInstanceOf(ResendMemberEmailSender.Rejected.class).hasMessageNotContaining("private-provider-error");
             status.set(503);
             assertThatThrownBy(() -> sender.send(outbox, "recipient@example.test", "인증", "본문", java.util.Map.of()))
                     .isInstanceOf(IllegalStateException.class).hasMessageNotContaining("private-provider-error");

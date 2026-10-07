@@ -28,7 +28,6 @@ export function EmailDeliveryList({ data, filters }: { data: EmailDeliveryPage; 
   return <>
     <section className="member-panel" aria-label="이메일 발송 설정과 건수">
       <h2>이메일 발송 {data.sendingEnabled ? "켜짐" : "꺼짐"}</h2>
-      <p>현재 공급자: {data.provider === "resend" ? "Resend" : "SMTP"}</p>
       {!data.sendingEnabled && <p className="field-help">대기 중인 이메일은 발송하지 않습니다. 이미 발송한 내역은 확인할 수 있습니다.</p>}
       <dl className="exception-facts">
         <dt>기간 내 전체 요청</dt><dd>{data.summary.total}건</dd>
@@ -41,7 +40,7 @@ export function EmailDeliveryList({ data, filters }: { data: EmailDeliveryPage; 
       <a className="text-link" href={emailDeliveryHref(data.page, filters)}>새로고침</a></div>
     {data.items.length ? <ul className="policy-list email-delivery-list" aria-label="이메일 발송 목록">
       {data.items.map(item => <li className="policy-card" key={item.id}>
-        <p className="policy-eyebrow"><span>{states[item.state]}</span><span>{item.provider === "resend" ? "Resend" : item.provider === "smtp" ? "SMTP" : "공급자 기록 없음"}</span></p>
+        <p className="policy-eyebrow"><span>{states[item.state]}</span></p>
         <h2>{deliveryKinds[item.kind]}</h2>
         <p className="policy-period">요청 {collectionTime(item.createdAt)} (서울)</p>
         {item.state === "UNKNOWN" && <p className="field-help">실제 접수 여부를 확인해야 합니다. 공급자 기록을 확인하기 전에는 다시 보내지 마세요.</p>}
@@ -56,7 +55,7 @@ export function EmailDeliveryList({ data, filters }: { data: EmailDeliveryPage; 
           <dt>처리 완료</dt><dd>{collectionTime(item.finishedAt)}</dd>
           <dt>공급자 이벤트 발생</dt><dd>{collectionTime(item.providerEventAt)}</dd>
         </dl><p className="field-help">모든 시각은 서울 기준입니다. 기록이 없으면 접수·전달 여부를 추정하지 않습니다.</p>
-          {item.provider === "resend" && (item.providerMessageId ? <EmailProviderStatus id={item.id} />
+          {item.startedAt !== null && (item.providerMessageId ? <EmailProviderStatus id={item.id} />
             : <p className="field-help">발송 ID가 없어 Resend 상태를 조회할 수 없습니다.</p>)}
         </details>
       </li>)}

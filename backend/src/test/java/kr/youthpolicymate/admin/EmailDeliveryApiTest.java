@@ -1,7 +1,7 @@
 package kr.youthpolicymate.admin;
 
-import kr.youthpolicymate.member.MemberEmailSender;
 import kr.youthpolicymate.member.ResendEmailLookup;
+import kr.youthpolicymate.member.ResendMemberEmailSender;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -40,15 +40,14 @@ class EmailDeliveryApiTest {
     @Autowired MockMvc mvc;
     @Autowired JdbcClient jdbc;
     @MockitoBean Clock clock;
-    @MockitoBean MemberEmailSender sender;
+    @MockitoBean ResendMemberEmailSender sender;
     @MockitoBean ResendEmailLookup lookup;
     @MockitoSpyBean EmailDeliveryStore deliveries;
 
     @BeforeEach void prepare() {
         when(clock.instant()).thenReturn(NOW);
-        when(sender.provider()).thenReturn("resend");
         jdbc.sql("DELETE FROM members").update();
-        jdbc.sql("INSERT INTO members(id, provider, provider_subject, display_name) VALUES (:id, 'kakao', 'private-subject', '비공개 회원')")
+        jdbc.sql("INSERT INTO members(id, provider, provider_subject) VALUES (:id, 'kakao', 'private-subject')")
                 .param("id", MEMBER).update();
         insertMembers(jdbc);
     }
@@ -62,7 +61,7 @@ class EmailDeliveryApiTest {
         mvc.perform(get(ROOT).with(social(ADMIN))).andExpect(status().isOk())
                 .andExpect(header().string("Cache-Control", "no-store"))
                 .andExpect(jsonPath("$.items").isEmpty()).andExpect(jsonPath("$.summary.total").value(0))
-                .andExpect(jsonPath("$.sendingEnabled").value(false)).andExpect(jsonPath("$.provider").value("resend"));
+                .andExpect(jsonPath("$.sendingEnabled").value(false));
     }
 
     @Test @DisplayName("기간 경계와 상태·종류를 적용하고 같은 요청 시각은 ID 역순으로 페이지를 나눈다")
@@ -95,7 +94,7 @@ class EmailDeliveryApiTest {
         var response = mvc.perform(get(ROOT).with(social(ADMIN))).andExpect(status().isOk())
                 .andExpect(jsonPath("$.items[0].state").value("SENDING"))
                 .andExpect(jsonPath("$.items[0].finishedAt").isEmpty()).andReturn().getResponse().getContentAsString();
-        assertThat(response).doesNotContain("private-encrypted-code", "private-subject", "비공개 회원", MEMBER.toString(), "memberId", "settingsVersion", "address", "codeCipher");
+        assertThat(response).doesNotContain("private-encrypted-code", "private-subject", MEMBER.toString(), "memberId", "settingsVersion", "address", "codeCipher");
         assertThat(jdbc.sql("SELECT row_to_json(o)::text FROM member_email_outbox o").query(String.class).single()).isEqualTo(before);
         verify(sender, never()).send(any(), any(), any(), any(), any());
     }
@@ -140,7 +139,7 @@ class EmailDeliveryApiTest {
         verify(sender, never()).send(any(), any(), any(), any(), any());
     }
 
-    @Test @DisplayName("발송 ID 없음·SMTP·잘못된 요청·공급자 조회 실패를 전달 실패와 구분한다")
+    @Test @DisplayName("발송 ID 없음·잘못된 요청·공급자 조회 실패를 전달 실패와 구분한다")
     void rejectsUnsupportedLookupsAndReportsProviderFailures() throws Exception {
         row(1, "UNKNOWN", NOW);
         var path = ROOT + "/" + id(1) + "/provider-status";
@@ -148,12 +147,10 @@ class EmailDeliveryApiTest {
                 .andExpect(jsonPath("$.code").value("EMAIL_PROVIDER_ID_MISSING"));
         mvc.perform(get(ROOT + "/" + id(2) + "/provider-status").with(social(ADMIN))).andExpect(status().isNotFound());
         mvc.perform(get(ROOT + "/invalid/provider-status").with(social(ADMIN))).andExpect(status().isBadRequest());
-        UUID message = UUID.randomUUID();
-        jdbc.sql("UPDATE member_email_outbox SET provider = 'smtp', provider_message_id = :message WHERE id = :id")
-                .param("message", message).param("id", id(1)).update();
-        mvc.perform(get(path).with(social(ADMIN))).andExpect(status().isNotFound());
         verifyNoInteractions(lookup);
-        jdbc.sql("UPDATE member_email_outbox SET provider = 'resend' WHERE id = :id").param("id", id(1)).update();
+        UUID message = UUID.randomUUID();
+        jdbc.sql("UPDATE member_email_outbox SET provider_message_id = :message WHERE id = :id")
+                .param("message", message).param("id", id(1)).update();
         for (var reason : ResendEmailLookup.Reason.values()) {
             doThrow(new ResendEmailLookup.Unavailable(reason)).when(lookup).retrieve(message);
             mvc.perform(get(path).with(social(ADMIN))).andExpect(status().isServiceUnavailable())
@@ -164,8 +161,8 @@ class EmailDeliveryApiTest {
     }
     private void row(int value, String state, Instant created) {
         jdbc.sql("""
-                INSERT INTO member_email_outbox(id, member_id, settings_version, kind, state, created_at, provider)
-                VALUES (:id, :member, :version, 'VERIFICATION', :state, :created, 'resend')
+                INSERT INTO member_email_outbox(id, member_id, settings_version, kind, state, created_at)
+                VALUES (:id, :member, :version, 'VERIFICATION', :state, :created)
                 """).param("id", id(value)).param("member", MEMBER).param("version", UUID.randomUUID())
                 .param("state", state).param("created", created.atOffset(ZoneOffset.UTC)).update();
     }

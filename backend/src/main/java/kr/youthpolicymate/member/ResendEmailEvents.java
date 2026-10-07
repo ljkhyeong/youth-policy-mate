@@ -18,23 +18,22 @@ public class ResendEmailEvents {
             "email.failed", "FAILED", "email.bounced", "BOUNCED", "email.complained", "COMPLAINED", "email.suppressed", "SUPPRESSED");
     private static final Set<String> BLOCKED = Set.of("BOUNCED", "COMPLAINED", "SUPPRESSED");
     private final JdbcClient jdbc;
-    private final MemberEmailStore emails;
 
-    public ResendEmailEvents(JdbcClient jdbc, MemberEmailStore emails) { this.jdbc = jdbc; this.emails = emails; }
+    public ResendEmailEvents(JdbcClient jdbc) { this.jdbc = jdbc; }
 
     @Transactional
     public void receive(String type, Instant occurredAt, UUID outbox, UUID messageId) {
         String state = STATES.get(type);
         if (state == null) return;
-        var owner = jdbc.sql("SELECT member_id FROM member_email_outbox WHERE id = :id AND provider = 'resend'")
+        var owner = jdbc.sql("SELECT member_id FROM member_email_outbox WHERE id = :id")
                 .param("id", outbox).query(UUID.class).optional();
         if (owner.isEmpty()) return;
-        emails.lock(owner.get());
+        MemberIdentityStore.lock(jdbc, owner.get());
         // 중복·순서 역전과 API 응답보다 먼저 도착한 웹훅을 같은 Outbox 상태로 처리한다.
         int changed = jdbc.sql("""
                 UPDATE member_email_outbox SET state = :state, provider_message_id = :message,
                     provider_event_at = :occurred, finished_at = :occurred, code_cipher = NULL
-                WHERE id = :id AND provider = 'resend' AND state NOT IN ('PENDING','CANCELED')
+                WHERE id = :id AND state NOT IN ('PENDING','CANCELED')
                     AND (provider_message_id IS NULL OR provider_message_id = :message)
                     AND (provider_event_at IS NULL OR provider_event_at < :occurred
                         OR (:blocked AND state NOT IN ('BOUNCED','COMPLAINED','SUPPRESSED')))

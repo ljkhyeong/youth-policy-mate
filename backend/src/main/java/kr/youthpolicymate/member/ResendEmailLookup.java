@@ -2,9 +2,9 @@ package kr.youthpolicymate.member;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import org.springframework.context.annotation.Profile;
-import org.springframework.core.env.Environment;
 import org.springframework.http.client.JdkClientHttpRequestFactory;
 import org.springframework.stereotype.Component;
+import org.springframework.util.StringUtils;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestClientResponseException;
@@ -27,13 +27,13 @@ public class ResendEmailLookup {
     private final RestClient client;
     private final boolean configured;
 
-    public ResendEmailLookup(Environment env, RestClient.Builder builder) {
-        String key = env.getProperty("app.email.resend.read-api-key", "");
-        configured = !key.isBlank();
+    ResendEmailLookup(EmailProperties properties, RestClient.Builder builder) {
+        String key = properties.resend().readApiKey();
+        configured = StringUtils.hasText(key);
         var factory = new JdkClientHttpRequestFactory(HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(2)).build());
         factory.setReadTimeout(Duration.ofSeconds(5));
         client = builder.requestFactory(factory)
-                .baseUrl(env.getProperty("app.email.resend.base-url", "https://api.resend.com"))
+                .baseUrl(properties.resend().baseUrl())
                 .defaultHeader("Authorization", "Bearer " + key)
                 .defaultHeader("User-Agent", "youth-policy-mate/1.0").build();
     }

@@ -1,19 +1,6 @@
 spring:
   application:
     name: youth-policy-mate
-  mail:
-    host: ${app.email.host:${EMAIL_SMTP_HOST:}}
-    port: ${app.email.port:${EMAIL_SMTP_PORT:587}}
-    username: ${app.email.username:${EMAIL_SMTP_USERNAME:}}
-    password: ${app.email.password:${EMAIL_SMTP_PASSWORD:}}
-    default-encoding: UTF-8
-    properties:
-      mail.smtp.starttls.enable: true
-      mail.smtp.starttls.required: true
-      mail.smtp.ssl.checkserveridentity: true
-      mail.smtp.connectiontimeout: 5000
-      mail.smtp.timeout: 5000
-      mail.smtp.writetimeout: 5000
   session:
     timeout: 12h
     jdbc:
@@ -25,10 +12,15 @@ spring:
         # 한 작업의 외부 응답 대기(AI 최대 90초)가 다른 작업을 막지 않도록, 작업을 추가하면 함께 늘린다.
         size: 4
 
-management:
-  health:
-    mail:
-      enabled: false
+server:
+  servlet:
+    session:
+      cookie:
+        # Spring Session이 이 값으로 세션 쿠키를 만든다. HttpOnly·SameSite는 기본값과 같지만 보안 정책으로 명시한다.
+        name: YPM_SESSION
+        http-only: true
+        same-site: lax
+        secure: true
 
 springdoc:
   api-docs:
@@ -40,11 +32,13 @@ app:
       enabled: ${AI_AUTO_ENABLED:false}
   admin:
     member-ids: ${ADMIN_MEMBER_IDS:}
+  url:
+    frontend: ${APP_FRONTEND_URL:http://127.0.0.1:3000}
+    backend: ${APP_BACKEND_URL:http://127.0.0.1:8080}
   email:
     enabled: ${EMAIL_ENABLED:false}
     encryption-key: ${EMAIL_ENCRYPTION_KEY:}
     from: ${EMAIL_FROM:}
-    provider: ${EMAIL_PROVIDER:smtp}
     resend:
       api-key: ${RESEND_API_KEY:}
       read-api-key: ${RESEND_READ_API_KEY:}

@@ -2,7 +2,6 @@ CREATE TABLE members (
     id uuid PRIMARY KEY,
     provider text NOT NULL CHECK (provider IN ('kakao', 'naver')),
     provider_subject text NOT NULL,
-    display_name text NOT NULL,
     conditions jsonb,
     conditions_updated_at timestamptz,
     created_at timestamptz NOT NULL DEFAULT CURRENT_TIMESTAMP,

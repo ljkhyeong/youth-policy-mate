@@ -45,7 +45,7 @@ public class SocialMemberService implements OAuth2UserService<OAuth2UserRequest,
         } else throw invalid();
         if (subject.isBlank() || subject.length() > 255) throw invalid();
         name = name.isBlank() ? "회원" : name.substring(0, Math.min(name.length(), 80));
-        var memberId = identities.login(provider, subject, name);
+        var memberId = identities.login(provider, subject);
         var safe = new LinkedHashMap<String, Object>();
         safe.put("memberId", memberId.toString());
         safe.put("displayName", name);

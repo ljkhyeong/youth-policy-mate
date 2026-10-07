@@ -14,6 +14,7 @@ management:
         readiness:
           include: readinessState,db
 
-APP_FRONTEND_URL: ${PUBLIC_APP_URL}
-APP_BACKEND_URL: ${PUBLIC_APP_URL}
-APP_COOKIE_SECURE: true
+app:
+  url:
+    frontend: ${PUBLIC_APP_URL}
+    backend: ${PUBLIC_APP_URL}

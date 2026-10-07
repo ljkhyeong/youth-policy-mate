@@ -70,7 +70,7 @@ class EmailKeyRotationTest {
     }
 
     private void member(UUID id, boolean verified) {
-        jdbc.sql("INSERT INTO members(id, provider, provider_subject, display_name) VALUES (:id, 'kakao', :subject, '검증 회원')")
+        jdbc.sql("INSERT INTO members(id, provider, provider_subject) VALUES (:id, 'kakao', :subject)")
                 .param("id", id).param("subject", id.toString()).update();
         jdbc.sql("""
                 INSERT INTO member_email_settings(member_id, version, address_cipher, verified_at, enabled, consented_at, code_hash, expires_at)

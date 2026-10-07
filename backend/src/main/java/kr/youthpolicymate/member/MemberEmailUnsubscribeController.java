@@ -7,9 +7,9 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
+import kr.youthpolicymate.config.AppUrls;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplication;
 import org.springframework.context.annotation.Profile;
-import org.springframework.core.env.Environment;
 import org.springframework.http.CacheControl;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -22,12 +22,11 @@ import java.net.URI;
 @ConditionalOnWebApplication(type = ConditionalOnWebApplication.Type.SERVLET)
 @RequestMapping("/api/v1/email-unsubscribe/{token}")
 public class MemberEmailUnsubscribeController {
-    private final MemberEmailUnsubscribeStore store;
-    private final String frontend;
+    private final MemberEmailStore store;
+    private final AppUrls urls;
 
-    public MemberEmailUnsubscribeController(MemberEmailUnsubscribeStore store, Environment environment) {
-        this.store = store;
-        frontend = environment.getProperty("APP_FRONTEND_URL", "http://127.0.0.1:3000").replaceAll("/+$", "");
+    public MemberEmailUnsubscribeController(MemberEmailStore store, AppUrls urls) {
+        this.store = store; this.urls = urls;
     }
 
     @GetMapping
@@ -35,7 +34,7 @@ public class MemberEmailUnsubscribeController {
     @ApiResponse(responseCode = "303", description = "확인 화면 이동")
     public ResponseEntity<Void> open(@PathVariable @Pattern(regexp = "[A-Za-z0-9_-]{43}") String token) {
         return ResponseEntity.status(303).cacheControl(CacheControl.noStore()).header("Referrer-Policy", "no-referrer")
-                .location(URI.create(frontend + "/email-unsubscribe#" + token)).build();
+                .location(URI.create(urls.frontend() + "/email-unsubscribe#" + token)).build();
     }
 
     @PostMapping(consumes = {MediaType.APPLICATION_FORM_URLENCODED_VALUE, MediaType.MULTIPART_FORM_DATA_VALUE})

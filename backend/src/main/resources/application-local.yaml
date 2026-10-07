@@ -8,8 +8,10 @@ spring:
 
 server:
   address: 127.0.0.1
-
-APP_COOKIE_SECURE: false
+  servlet:
+    session:
+      cookie:
+        secure: false
 
 app:
   reminders:

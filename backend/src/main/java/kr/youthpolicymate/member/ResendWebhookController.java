@@ -4,11 +4,10 @@ import com.svix.Webhook;
 import com.svix.exceptions.WebhookVerificationException;
 import io.swagger.v3.oas.annotations.Hidden;
 import jakarta.servlet.http.HttpServletRequest;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Profile;
-import org.springframework.core.env.Environment;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
+import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RestController;
@@ -22,18 +21,15 @@ import java.util.UUID;
 @Hidden
 @RestController
 @Profile("!preview")
-@ConditionalOnProperty(name = "app.email.provider", havingValue = "resend")
 public class ResendWebhookController {
     private final Webhook verifier;
     private final ObjectMapper mapper;
     private final ResendEmailEvents events;
 
-    public ResendWebhookController(Environment env, ObjectMapper mapper, ResendEmailEvents events) throws Exception {
-        String secret = env.getProperty("app.email.resend.webhook-secret", "");
-        if (secret.isBlank() && env.getProperty("app.email.enabled", Boolean.class, false)) {
-            throw new IllegalStateException("Resend 활성화에는 웹훅 서명 키가 필요합니다.");
-        }
-        verifier = secret.isBlank() ? null : new Webhook(secret);
+    ResendWebhookController(EmailProperties properties, ObjectMapper mapper, ResendEmailEvents events) throws Exception {
+        // 발송을 켜면 서명 키가 필수다(EmailProperties). 끈 상태에서 키가 없으면 수신 경로를 404로 닫는다.
+        String secret = properties.resend().webhookSecret();
+        verifier = StringUtils.hasText(secret) ? new Webhook(secret) : null;
         this.mapper = mapper; this.events = events;
     }
 

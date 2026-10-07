@@ -1,17 +1,14 @@
 package kr.youthpolicymate.admin;
 
-import kr.youthpolicymate.member.MemberEmailSender;
+import kr.youthpolicymate.member.ResendMemberEmailSender;
 import org.springframework.context.annotation.Profile;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.sql.ResultSet;
-import java.sql.SQLException;
 import java.time.Clock;
 import java.time.Instant;
-import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.time.temporal.ChronoUnit;
 import java.util.UUID;
@@ -25,9 +22,9 @@ public class EmailDeliveryStore {
     private static final String FILTER = PERIOD + " AND (:state = '' OR state = :state) AND (:kind = '' OR kind = :kind)";
     private final JdbcClient jdbc;
     private final Clock clock;
-    private final MemberEmailSender sender;
+    private final ResendMemberEmailSender sender;
 
-    public EmailDeliveryStore(JdbcClient jdbc, Clock clock, MemberEmailSender sender) {
+    public EmailDeliveryStore(JdbcClient jdbc, Clock clock, ResendMemberEmailSender sender) {
         this.jdbc = jdbc; this.clock = clock; this.sender = sender;
     }
 
@@ -41,32 +38,26 @@ public class EmailDeliveryStore {
                     count(*) FILTER (WHERE state = 'UNKNOWN') AS unknown
                 FROM member_email_outbox WHERE
                 """ + PERIOD).param("since", since.atOffset(ZoneOffset.UTC)).param("now", checkedAt.atOffset(ZoneOffset.UTC))
-                .query((rs, row) -> new Summary(rs.getLong("total"), rs.getLong("failed"), rs.getLong("unknown"))).single();
+                .query(Summary.class).single();
         long total = filtered("SELECT count(*) FROM member_email_outbox WHERE " + FILTER, since, checkedAt, state, kind)
                 .query(Long.class).single();
+        // 열 이름이 응답 레코드 구성요소(id, kind, state, providerMessageId, …)와 대응한다.
         var items = filtered("""
-                SELECT id, kind, state, provider, provider_message_id, created_at, started_at, finished_at, provider_event_at
+                SELECT id, kind, state, provider_message_id, created_at, started_at, finished_at, provider_event_at
                 FROM member_email_outbox WHERE
                 """ + FILTER + " ORDER BY created_at DESC, id DESC LIMIT :limit OFFSET :offset", since, checkedAt, state, kind)
                 .param("limit", pageSize).param("offset", (page - 1) * pageSize)
-                .query((rs, row) -> new Item(rs.getObject("id", UUID.class), Kind.valueOf(rs.getString("kind")), State.valueOf(rs.getString("state")),
-                        rs.getString("provider"), rs.getObject("provider_message_id", UUID.class), instant(rs, "created_at"),
-                        instant(rs, "started_at"), instant(rs, "finished_at"), instant(rs, "provider_event_at"))).list();
-        return new Page(items, page, pageSize, total, (long) page * pageSize < total, since, checkedAt,
-                sender.available(), sender.provider(), summary);
+                .query(Item.class).list();
+        return new Page(items, page, pageSize, total, (long) page * pageSize < total, since, checkedAt, sender.available(), summary);
     }
 
     public UUID providerMessageId(UUID id) {
-        return jdbc.sql("SELECT provider_message_id FROM member_email_outbox WHERE id = :id AND provider = 'resend' AND provider_message_id IS NOT NULL")
+        return jdbc.sql("SELECT provider_message_id FROM member_email_outbox WHERE id = :id AND provider_message_id IS NOT NULL")
                 .param("id", id).query(UUID.class).optional().orElse(null);
     }
 
     private JdbcClient.StatementSpec filtered(String sql, Instant since, Instant now, State state, Kind kind) {
         return jdbc.sql(sql).param("since", since.atOffset(ZoneOffset.UTC)).param("now", now.atOffset(ZoneOffset.UTC))
                 .param("state", state == null ? "" : state.name()).param("kind", kind == null ? "" : kind.name());
-    }
-    private static Instant instant(ResultSet rs, String column) throws SQLException {
-        var value = rs.getObject(column, OffsetDateTime.class);
-        return value == null ? null : value.toInstant();
     }
 }

@@ -1,7 +1,6 @@
 package kr.youthpolicymate.member;
 
 import io.swagger.v3.oas.annotations.media.Schema;
-import jakarta.validation.Validator;
 import org.springframework.context.annotation.Profile;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Service;
@@ -18,17 +17,14 @@ import java.util.UUID;
 public class MemberEmailStore {
     private final JdbcClient jdbc;
     private final EmailCrypto crypto;
-    private final MemberEmailSender sender;
+    private final ResendMemberEmailSender sender;
     private final Clock clock;
-    private final Validator validator;
-    public MemberEmailStore(JdbcClient jdbc, EmailCrypto crypto, MemberEmailSender sender, Clock clock, Validator validator) {
-        this.jdbc = jdbc; this.crypto = crypto; this.sender = sender; this.clock = clock; this.validator = validator;
+    public MemberEmailStore(JdbcClient jdbc, EmailCrypto crypto, ResendMemberEmailSender sender, Clock clock) {
+        this.jdbc = jdbc; this.crypto = crypto; this.sender = sender; this.clock = clock;
     }
-    void lock(UUID member) {
-        if (jdbc.sql("SELECT id FROM members WHERE id = :id FOR UPDATE").param("id", member).query(UUID.class).optional().isEmpty())
-            throw new org.springframework.security.access.AccessDeniedException("회원 확인이 필요합니다.");
-    }
-    private boolean available() { return crypto.ready() && sender.available(); }
+    private void lock(UUID member) { MemberIdentityStore.lock(jdbc, member); }
+    // 발송을 켜면 암호화 키가 있다는 것을 EmailProperties 바인딩 검증이 보장한다.
+    private boolean available() { return sender.available(); }
     private void requireAvailable() { if (!available()) throw new EmailException(503, "EMAIL_UNAVAILABLE", "이메일 발송 설정을 준비하고 있어요."); }
     static String context(UUID member, UUID version, String purpose) { return member + ":" + version + ":" + purpose; }
     @Transactional
@@ -50,13 +46,12 @@ public class MemberEmailStore {
     @Transactional
     public void request(UUID member, String address) {
         requireAvailable();
-        if (!validator.validateValue(MemberEmailAddress.class, "address", address).isEmpty()) throw new IllegalArgumentException();
         lock(member);
         Instant now = clock.instant();
         var recent = jdbc.sql("SELECT created_at FROM member_email_outbox WHERE member_id = :member AND kind = 'VERIFICATION' AND created_at > :since ORDER BY created_at DESC")
                 .param("member", member).param("since", at(now.minusSeconds(3600)))
-                .query((rs, row) -> rs.getObject(1, OffsetDateTime.class).toInstant()).list();
-        if (recent.size() >= 3 || (!recent.isEmpty() && now.isBefore(recent.getFirst().plusSeconds(60))))
+                .query(OffsetDateTime.class).list();
+        if (recent.size() >= 3 || (!recent.isEmpty() && now.isBefore(recent.getFirst().toInstant().plusSeconds(60))))
             throw new EmailException(429, "EMAIL_RATE_LIMITED", "확인 메일은 60초 간격, 시간당 3회까지 요청할 수 있어요.");
         cancel(member);
         UUID version = UUID.randomUUID(); String code = crypto.code();
@@ -80,14 +75,14 @@ public class MemberEmailStore {
     public boolean confirm(UUID member, String code) {
         requireAvailable(); lock(member);
         var check = jdbc.sql("SELECT version, code_hash, expires_at, attempts FROM member_email_settings WHERE member_id = :member")
-                .param("member", member).query((rs, row) -> new Check(rs.getObject(1, UUID.class), rs.getString(2), rs.getObject(3, OffsetDateTime.class), rs.getInt(4))).optional();
-        if (check.isEmpty() || check.get().hash() == null) return false;
+                .param("member", member).query(Check.class).optional();
+        if (check.isEmpty() || check.get().codeHash() == null) return false;
         var value = check.get();
-        if (!clock.instant().isBefore(value.expires().toInstant()) || value.attempts() >= 5) {
+        if (!clock.instant().isBefore(value.expiresAt().toInstant()) || value.attempts() >= 5) {
             clearCode(member); return false;
         }
         boolean matches = code != null && code.matches("[0-9]{8}") && MessageDigest.isEqual(
-                value.hash().getBytes(StandardCharsets.US_ASCII), crypto.hash(context(member, value.version(), "code"), code).getBytes(StandardCharsets.US_ASCII));
+                value.codeHash().getBytes(StandardCharsets.US_ASCII), crypto.hash(context(member, value.version(), "code"), code).getBytes(StandardCharsets.US_ASCII));
         if (matches) {
             jdbc.sql("UPDATE member_email_settings SET verified_at = :now WHERE member_id = :member")
                     .param("member", member).param("now", at(clock.instant())).update();
@@ -123,6 +118,26 @@ public class MemberEmailStore {
             jdbc.sql("UPDATE member_email_outbox SET state = 'CANCELED' WHERE member_id = :member AND kind = 'POLICY' AND state = 'PENDING'").param("member", member).update();
         }
     }
+    /** 메일 링크의 수신 해제. 로그인 없이 토큰으로 처리하며 발송 설정이 꺼져 있어도 해제한다. */
+    @Transactional
+    public boolean unsubscribe(String token) {
+        String hash = EmailCrypto.tokenHash(token);
+        var member = jdbc.sql("""
+                SELECT m.id FROM members m JOIN member_email_outbox o ON o.member_id = m.id
+                WHERE o.unsubscribe_token_hash = :hash FOR UPDATE OF m
+                """).param("hash", hash).query(UUID.class).optional();
+        if (member.isEmpty()) return false;
+        // 회원 잠금을 기다리는 동안 주소·동의가 바뀌거나 링크가 무효화될 수 있어 새 문장으로 다시 확인한다.
+        var current = jdbc.sql("""
+                SELECT COALESCE(s.version = o.settings_version, false) FROM member_email_outbox o
+                LEFT JOIN member_email_settings s ON s.member_id = o.member_id
+                WHERE o.unsubscribe_token_hash = :hash
+                """).param("hash", hash).query(Boolean.class).optional();
+        if (current.isEmpty()) return false;
+        // 같은 트랜잭션 안의 내부 호출이다. 이 메서드의 @Transactional이 잠금과 해제를 함께 묶는다.
+        if (current.get()) consent(member.get(), false);
+        return true;
+    }
     @Transactional
     public void remove(UUID member) {
         lock(member); cancel(member);
@@ -133,7 +148,7 @@ public class MemberEmailStore {
                 .param("member", member).update();
     }
     static OffsetDateTime at(Instant instant) { return instant.atOffset(java.time.ZoneOffset.UTC); }
-    private record Check(UUID version, String hash, OffsetDateTime expires, int attempts) {}
+    private record Check(UUID version, String codeHash, OffsetDateTime expiresAt, int attempts) {}
     @Schema(name = "MemberEmailSettings", requiredProperties = {"available", "addressRegistered", "address", "verified", "enabled", "verificationExpiresAt", "verificationDelivery", "deliveryIssue"})
     public record Settings(boolean available, boolean addressRegistered, @Schema(types = {"string", "null"}) String address,
                            boolean verified, boolean enabled, @Schema(types = {"string", "null"}, format = "date-time") Instant verificationExpiresAt,

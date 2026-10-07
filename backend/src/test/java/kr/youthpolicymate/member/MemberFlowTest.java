@@ -43,7 +43,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @Testcontainers
 @SpringBootTest(properties = {"app.reminders.enabled=false", "app.email.enabled=false",
         "APP_BACKEND_URL=https://policy.example.test",
-        "app.email.provider=resend", "app.email.resend.webhook-secret=whsec_dGVzdC13ZWJob29rLXNlY3JldA==",
+        "app.email.resend.webhook-secret=whsec_dGVzdC13ZWJob29rLXNlY3JldA==",
         "KAKAO_CLIENT_ID=test-kakao", "KAKAO_CLIENT_SECRET=test-secret",
         "NAVER_CLIENT_ID=test-naver", "NAVER_CLIENT_SECRET=test-secret",
         "app.email.encryption-key=AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="})
@@ -59,7 +59,7 @@ class MemberFlowTest {
     @Autowired MockMvc mvc;
     @Autowired PlatformTransactionManager transactions;
     @MockitoBean Clock clock;
-    @MockitoBean MemberEmailSender emailSender;
+    @MockitoBean ResendMemberEmailSender emailSender;
     @Autowired MemberEmailStore emails;
     @Autowired MemberEmailDelivery emailDelivery;
     @Autowired EmailCrypto crypto;
@@ -87,11 +87,10 @@ class MemberFlowTest {
         raw.put("plcySprtCn", "학업 지원").put("plcyAplyMthdCn", "공식 신청처 접수").put("etcMttrCn", "");
         capture = 0;
         importPolicy();
-        first = identities.login("kakao", "101", "첫 회원");
-        second = identities.login("naver", "101", "둘째 회원");
+        first = identities.login("kakao", "101");
+        second = identities.login("naver", "101");
         time("2026-09-04T15:00:00Z");
         when(emailSender.available()).thenReturn(true);
-        when(emailSender.provider()).thenReturn("resend");
     }
 
     private static final String WEBHOOK_SECRET = "whsec_dGVzdC13ZWJob29rLXNlY3JldA==";
@@ -188,7 +187,7 @@ class MemberFlowTest {
             assertThat((String) call.getArgument(3)).contains("/email-unsubscribe#" + token);
             assertThat(jdbc.sql("SELECT unsubscribe_token_hash FROM member_email_outbox WHERE id = :id")
                     .param("id", outbox).query(String.class).single()).isEqualTo(EmailCrypto.tokenHash(token)).doesNotContain(token);
-            value.set(token); return UUID.randomUUID().toString();
+            value.set(token); return UUID.randomUUID();
         }).when(emailSender).send(any(), any(), any(), any(), any());
         emailDelivery.deliver(outbox);
         return value.get();
@@ -234,7 +233,7 @@ class MemberFlowTest {
         emailDelivery.deliver(pending);
         org.mockito.Mockito.verify(emailSender, org.mockito.Mockito.never()).send(any(), any(), any(), any(), any());
         mvc.perform(webhook(pending, UUID.randomUUID(), "email.bounced", "2026-09-05T00:01:00Z")).andExpect(status().isOk());
-        assertThat(identities.login("kakao", "101", "재가입 회원")).isNotEqualTo(first);
+        assertThat(identities.login("kakao", "101")).isNotEqualTo(first);
     }
 
     @Test @DisplayName("세션 정리 실패는 회원·저장·이메일 삭제를 롤백하고 탈퇴 성공으로 응답하지 않는다")
@@ -274,7 +273,7 @@ class MemberFlowTest {
         UUID mail = verificationMail(); UUID message = UUID.randomUUID();
         doAnswer(call -> {
             mvc.perform(webhook(mail, message, "email.delivered", "2026-09-07T12:00:02Z")).andExpect(status().isOk());
-            return message.toString();
+            return message;
         }).when(emailSender).send(any(), any(), any(), any(), any());
         emailDelivery.deliver(mail);
         assertThat(mailState(mail)).isEqualTo("DELIVERED");
@@ -293,7 +292,7 @@ class MemberFlowTest {
         var code = pendingCode(first);
         assertThat(emails.confirm(first, code)).isTrue();
         emails.consent(first, true);
-        jdbc.sql("UPDATE member_email_outbox SET state = 'UNKNOWN', provider = 'resend' WHERE id = :id").param("id", mail).update();
+        jdbc.sql("UPDATE member_email_outbox SET state = 'UNKNOWN' WHERE id = :id").param("id", mail).update();
         UUID pending = UUID.randomUUID();
         jdbc.sql("INSERT INTO member_email_outbox(id, member_id, settings_version, kind, state, created_at) SELECT :pending, member_id, settings_version, 'VERIFICATION', 'PENDING', created_at FROM member_email_outbox WHERE id = :id")
                 .param("pending", pending).param("id", mail).update();
@@ -355,7 +354,7 @@ class MemberFlowTest {
     @Test
     @DisplayName("동일 제공자 식별자는 재사용하고 다른 제공자의 동일 값은 별도 회원이다")
     void keepsProviderIdentity() {
-        assertThat(identities.login("kakao", "101", "이름 수정")).isEqualTo(first).isNotEqualTo(second);
+        assertThat(identities.login("kakao", "101")).isEqualTo(first).isNotEqualTo(second);
         assertThat(count("members")).isEqualTo(2);
     }
 
@@ -775,14 +774,13 @@ class MemberFlowTest {
     }
 
     @Test
-    @DisplayName("이메일 주소 제약은 HTTP와 서비스 호출에 같게 적용하고 잘못된 주소는 저장하지 않는다")
+    @DisplayName("이메일 주소 제약은 HTTP 입력에 적용하고 잘못된 주소는 저장하지 않는다")
     void validatesEmailAddresses() throws Exception {
         for (String address : java.util.Arrays.asList(null, "", " ", "not-an-address", ".first@example.test",
                 "first..last@example.test", "x".repeat(255) + "@example.test")) {
             mvc.perform(post("/api/v1/me/email-verification").with(oauth2Login().oauth2User(user(first)))
                     .with(csrf()).contentType("application/json").content(mapper.writeValueAsString(new MemberEmailAddress(address))))
                     .andExpect(status().isBadRequest()).andExpect(jsonPath("$.code").value("INVALID_MEMBER_INPUT"));
-            assertThatIllegalArgumentException().isThrownBy(() -> emails.request(first, address));
         }
         assertThat(count("member_email_outbox")).isZero();
         emails.request(first, "first.last+tag@example.test");
@@ -863,7 +861,7 @@ class MemberFlowTest {
     @DisplayName("결과 미확인과 중단된 발송은 다시 보내지 않고 암호화한 코드도 지운다")
     void doesNotRetryUnknownDelivery() {
         emails.request(first, "first@example.test");
-        org.mockito.Mockito.doThrow(new org.springframework.mail.MailSendException("인공 전송 중단")).when(emailSender).send(any(), any(), any(), any(), any());
+        org.mockito.Mockito.doThrow(new org.springframework.web.client.ResourceAccessException("인공 전송 중단")).when(emailSender).send(any(), any(), any(), any(), any());
         emailDelivery.deliverPending(); emailDelivery.deliverPending();
         assertThat(emails.settings(first).verificationDelivery()).isEqualTo("UNKNOWN");
         org.mockito.Mockito.verify(emailSender, org.mockito.Mockito.times(1)).send(any(), any(), any(), any(), any());
@@ -927,7 +925,6 @@ class MemberFlowTest {
     private void time(String now) {
         var fixed = Clock.fixed(Instant.parse(now), ZoneId.of("UTC"));
         when(clock.instant()).thenReturn(fixed.instant());
-        doAnswer(call -> fixed.withZone(call.getArgument(0))).when(clock).withZone(any());
     }
     private long count(String table) { return jdbc.sql("SELECT count(*) FROM " + table).query(Long.class).single(); }
     private long reminders(String state) { return jdbc.sql("SELECT count(*) FROM policy_reminders WHERE state = :state").param("state", state).query(Long.class).single(); }

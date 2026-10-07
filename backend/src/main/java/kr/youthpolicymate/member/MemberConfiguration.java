@@ -1,5 +1,6 @@
 package kr.youthpolicymate.member;
 
+import kr.youthpolicymate.config.AppUrls;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplication;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -9,7 +10,6 @@ import org.springframework.security.oauth2.client.registration.ClientRegistratio
 import org.springframework.security.oauth2.client.registration.InMemoryClientRegistrationRepository;
 import org.springframework.security.oauth2.core.AuthorizationGrantType;
 import org.springframework.security.oauth2.core.ClientAuthenticationMethod;
-import org.springframework.session.web.http.DefaultCookieSerializer;
 
 import java.util.Collections;
 import java.util.LinkedHashMap;
@@ -23,9 +23,9 @@ public class MemberConfiguration {
     SocialMemberService socialMemberService(MemberIdentityStore store) { return new SocialMemberService(store); }
 
     @Bean
-    InMemoryClientRegistrationRepository clientRegistrationRepository(Environment env) {
+    InMemoryClientRegistrationRepository clientRegistrationRepository(Environment env, AppUrls urls) {
         var registrations = new LinkedHashMap<String, ClientRegistration>();
-        var base = env.getProperty("APP_BACKEND_URL", "http://127.0.0.1:8080");
+        var base = urls.backend();
         add(registrations, env, "kakao", "카카오", base, "https://kauth.kakao.com/oauth/authorize",
                 "https://kauth.kakao.com/oauth/token", "https://kapi.kakao.com/v2/user/me", "id");
         add(registrations, env, "naver", "네이버", base, "https://nid.naver.com/oauth2.0/authorize",
@@ -43,14 +43,5 @@ public class MemberConfiguration {
                 .authorizationGrantType(AuthorizationGrantType.AUTHORIZATION_CODE)
                 .redirectUri(base + "/login/oauth2/code/" + id).authorizationUri(authorizationUri).tokenUri(tokenUri)
                 .userInfoUri(userInfoUri).userNameAttributeName(userName).build());
-    }
-
-    @Bean
-    DefaultCookieSerializer cookieSerializer(Environment env) {
-        var cookie = new DefaultCookieSerializer();
-        cookie.setCookieName("YPM_SESSION"); cookie.setCookiePath("/"); cookie.setSameSite("Lax");
-        cookie.setUseHttpOnlyCookie(true);
-        cookie.setUseSecureCookie(env.getProperty("APP_COOKIE_SECURE", Boolean.class, true));
-        return cookie;
     }
 }

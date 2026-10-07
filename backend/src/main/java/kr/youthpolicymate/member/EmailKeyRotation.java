@@ -44,13 +44,13 @@ final class EmailKeyRotation {
 
     private Counts process(EmailCrypto replacement) {
         var addresses = jdbc.sql("SELECT member_id, version, address_cipher FROM member_email_settings ORDER BY member_id")
-                .query((rs, row) -> new Address(rs.getObject(1, UUID.class), rs.getObject(2, UUID.class), rs.getString(3))).list();
+                .query(Address.class).list();
         for (var address : addresses) {
-            String context = MemberEmailStore.context(address.member(), address.version(), "address");
-            String plain = current.decrypt(context, address.cipher());
+            String context = MemberEmailStore.context(address.memberId(), address.version(), "address");
+            String plain = current.decrypt(context, address.addressCipher());
             if (replacement != null) {
                 jdbc.sql("UPDATE member_email_settings SET address_cipher = :cipher WHERE member_id = :member")
-                        .param("cipher", replacement.encrypt(context, plain)).param("member", address.member()).update();
+                        .param("cipher", replacement.encrypt(context, plain)).param("member", address.memberId()).update();
             }
         }
         long codes = jdbc.sql("SELECT count(*) FROM member_email_settings WHERE code_hash IS NOT NULL").query(Long.class).single();
@@ -60,5 +60,5 @@ final class EmailKeyRotation {
     }
 
     record Counts(long addresses, long codes, long pending) {}
-    private record Address(UUID member, UUID version, String cipher) {}
+    private record Address(UUID memberId, UUID version, String addressCipher) {}
 }

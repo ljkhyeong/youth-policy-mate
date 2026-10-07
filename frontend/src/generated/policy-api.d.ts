@@ -707,8 +707,6 @@ export interface components {
             readonly id: string;
             /** @enum {string} */
             readonly kind: "VERIFICATION" | "POLICY";
-            /** @enum {string|null} */
-            readonly provider: "smtp" | "resend" | null;
             /** Format: date-time */
             readonly providerEventAt: string | null;
             /** Format: uuid */
@@ -727,8 +725,6 @@ export interface components {
             readonly page: number;
             /** Format: int32 */
             readonly pageSize: number;
-            /** @enum {string} */
-            readonly provider: "smtp" | "resend";
             readonly sendingEnabled: boolean;
             /** Format: date-time */
             readonly since: string;

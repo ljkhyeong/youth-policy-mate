@@ -24,9 +24,9 @@ public final class AdminTestSupport {
 
     public static void insertMembers(JdbcClient jdbc) {
         jdbc.sql("""
-                INSERT INTO members(id, provider, provider_subject, display_name) VALUES
-                ('10000000-0000-0000-0000-000000000001', 'kakao', 'admin-fixture', '검증 관리자'),
-                ('20000000-0000-0000-0000-000000000002', 'naver', 'member-fixture', '검증 회원')
+                INSERT INTO members(id, provider, provider_subject) VALUES
+                ('10000000-0000-0000-0000-000000000001', 'kakao', 'admin-fixture'),
+                ('20000000-0000-0000-0000-000000000002', 'naver', 'member-fixture')
                 ON CONFLICT (id) DO NOTHING
                 """).update();
     }

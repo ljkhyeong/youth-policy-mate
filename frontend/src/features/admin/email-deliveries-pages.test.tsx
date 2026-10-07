@@ -9,17 +9,16 @@ vi.mock("./load-collection-exceptions", async original => ({
 afterEach(() => vi.resetAllMocks());
 const at = "2026-09-12T00:00:00Z";
 const item: EmailDeliveryPage["items"][number] = {
-  id: "10000000-0000-0000-0000-000000000001", kind: "VERIFICATION", state: "UNKNOWN", provider: "resend",
+  id: "10000000-0000-0000-0000-000000000001", kind: "VERIFICATION", state: "UNKNOWN",
   providerMessageId: null, createdAt: at, startedAt: at, finishedAt: at, providerEventAt: null,
 };
 const data: EmailDeliveryPage = { items: [item], page: 2, pageSize: 20, total: 41, hasNext: true,
-  since: at, checkedAt: at, sendingEnabled: false, provider: "resend", summary: { total: 60, failed: 3, unknown: 41 } };
+  since: at, checkedAt: at, sendingEnabled: false, summary: { total: 60, failed: 3, unknown: 41 } };
 
 describe("관리자 이메일 발송 화면", () => {
-  it("공급자 발송 ID가 있는 Resend 기록에만 상태 조회 버튼을 제공한다", async () => {
+  it("공급자 발송 ID가 있는 기록에만 Resend 상태 조회 버튼을 제공한다", async () => {
     vi.mocked(loadEmailDeliveries).mockResolvedValue({ status: "available", data: { ...data, items: [
-      { ...item, providerMessageId: "20000000-0000-0000-0000-000000000002" },
-      { ...item, id: "missing" }, { ...item, id: "smtp", provider: "smtp", providerMessageId: "20000000-0000-0000-0000-000000000002" },
+      { ...item, providerMessageId: "20000000-0000-0000-0000-000000000002" }, { ...item, id: "missing" },
     ] } });
     const html = renderToStaticMarkup(await EmailDeliveriesPage({ searchParams: Promise.resolve({}) }));
     expect(html.match(/>Resend 상태 조회<\/button>/g)).toHaveLength(1);
@@ -55,11 +54,12 @@ describe("관리자 이메일 발송 화면", () => {
     expect(html).not.toContain(">다음</a>");
   });
 
-  it("공급자 접수와 수신 서버 전달을 구분하고 빈 공급자 기록을 유지한다", async () => {
+  it("공급자 접수와 수신 서버 전달을 구분하고 발송 전 기록에는 Resend 조회 안내를 표시하지 않는다", async () => {
     vi.mocked(loadEmailDeliveries).mockResolvedValue({ status: "available", data: { ...data,
-      items: [{ ...item, state: "SENT", provider: null }, { ...item, id: "another", state: "DELIVERED" }] } });
+      items: [{ ...item, state: "PENDING", startedAt: null, finishedAt: null }, { ...item, id: "sent", state: "SENT", providerMessageId: "20000000-0000-0000-0000-000000000002" },
+        { ...item, id: "another", state: "DELIVERED", providerMessageId: "20000000-0000-0000-0000-000000000003" }] } });
     const html = renderToStaticMarkup(await EmailDeliveriesPage({ searchParams: Promise.resolve({}) }));
-    expect(html).toContain("공급자 기록 없음");
+    expect(html).not.toContain("발송 ID가 없어 Resend 상태를 조회할 수 없습니다.");
     expect(html).toContain("수신 서버 전달 여부는 아직 확인되지 않았습니다");
     expect(html).toContain("사용자의 열람을 뜻하지 않습니다");
   });

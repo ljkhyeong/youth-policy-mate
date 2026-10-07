@@ -3,10 +3,10 @@ package kr.youthpolicymate.member;
 import com.sun.net.httpserver.HttpServer;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.springframework.mock.env.MockEnvironment;
 import org.springframework.web.client.RestClient;
 
 import java.net.InetSocketAddress;
+import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Map;
@@ -35,14 +35,14 @@ class ResendLookupTransportTest {
         });
         server.start();
         try {
-            var env = new MockEnvironment().withProperty("app.email.enabled", "false")
-                    .withProperty("app.email.resend.api-key", "send-only-key")
-                    .withProperty("app.email.resend.base-url", "http://127.0.0.1:" + server.getAddress().getPort());
-            assertThatThrownBy(() -> new ResendEmailLookup(env, RestClient.builder()).retrieve(message))
+            var base = URI.create("http://127.0.0.1:" + server.getAddress().getPort());
+            var sendOnly = new EmailProperties(false, null, null, new EmailProperties.Resend("send-only-key", null, null, base));
+            assertThatThrownBy(() -> new ResendEmailLookup(sendOnly, RestClient.builder()).retrieve(message))
                     .isInstanceOfSatisfying(ResendEmailLookup.Unavailable.class,
                             failure -> assertThat(failure.reason()).isEqualTo(ResendEmailLookup.Reason.NOT_CONFIGURED));
             assertThat(requests).isEmpty();
-            var lookup = new ResendEmailLookup(env.withProperty("app.email.resend.read-api-key", "lookup-key"), RestClient.builder());
+            var lookup = new ResendEmailLookup(new EmailProperties(false, null, null,
+                    new EmailProperties.Resend("send-only-key", "lookup-key", null, base)), RestClient.builder());
             assertThat(lookup.retrieve(message)).isEqualTo(ResendEmailLookup.Event.DELIVERED);
             body.set("{\"id\":\"" + message + "\",\"last_event\":\"new-provider-event\"}");
             assertThat(lookup.retrieve(message)).isEqualTo(ResendEmailLookup.Event.UNKNOWN);

@@ -52,7 +52,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 @Testcontainers
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT, properties = {
-        "app.admin.member-ids=10000000-0000-0000-0000-000000000001", "APP_COOKIE_SECURE=false",
+        "app.admin.member-ids=10000000-0000-0000-0000-000000000001", "server.servlet.session.cookie.secure=false",
         "KAKAO_CLIENT_ID=test-kakao", "KAKAO_CLIENT_SECRET=test-secret",
         "NAVER_CLIENT_ID=test-naver", "NAVER_CLIENT_SECRET=test-secret",
         "app.reminders.enabled=false", "app.email.enabled=false", "app.ontong.schedule.enabled=false"})
@@ -72,7 +72,7 @@ class OAuthLoginFlowTest {
 
     @BeforeEach void reset() {
         jdbc.sql("TRUNCATE members, spring_session CASCADE").update();
-        jdbc.sql("INSERT INTO members(id, provider, provider_subject, display_name) VALUES (:id, 'kakao', '777', '검증 관리자')")
+        jdbc.sql("INSERT INTO members(id, provider, provider_subject) VALUES (:id, 'kakao', '777')")
                 .param("id", UUID.fromString(ADMIN)).update();
         provider.mode = "normal";
         provider.tokenCalls.set(0);

@@ -1722,7 +1722,7 @@
           "memberSession" : [ ]
         } ],
         "summary" : "회원 탈퇴와 개인 데이터·모든 로그인 세션 삭제",
-        "tags" : [ "member-account-controller" ]
+        "tags" : [ "member-controller" ]
       }
     },
     "/api/v1/me/conditions" : {
@@ -2964,10 +2964,6 @@
             "type" : "string",
             "enum" : [ "VERIFICATION", "POLICY" ]
           },
-          "provider" : {
-            "type" : [ "string", "null" ],
-            "enum" : [ "smtp", "resend" ]
-          },
           "providerEventAt" : {
             "type" : [ "string", "null" ],
             "format" : "date-time"
@@ -2985,7 +2981,7 @@
             "enum" : [ "PENDING", "SENDING", "SENT", "DELIVERED", "DELAYED", "FAILED", "UNKNOWN", "BOUNCED", "COMPLAINED", "SUPPRESSED", "CANCELED" ]
           }
         },
-        "required" : [ "createdAt", "finishedAt", "id", "kind", "provider", "providerEventAt", "providerMessageId", "startedAt", "state" ]
+        "required" : [ "createdAt", "finishedAt", "id", "kind", "providerEventAt", "providerMessageId", "startedAt", "state" ]
       },
       "AdminEmailDeliveryPage" : {
         "type" : "object",
@@ -3011,10 +3007,6 @@
             "type" : "integer",
             "format" : "int32"
           },
-          "provider" : {
-            "type" : "string",
-            "enum" : [ "smtp", "resend" ]
-          },
           "sendingEnabled" : {
             "type" : "boolean"
           },
@@ -3030,7 +3022,7 @@
             "format" : "int64"
           }
         },
-        "required" : [ "checkedAt", "hasNext", "items", "page", "pageSize", "provider", "sendingEnabled", "since", "summary", "total" ]
+        "required" : [ "checkedAt", "hasNext", "items", "page", "pageSize", "sendingEnabled", "since", "summary", "total" ]
       },
       "AdminEmailDeliverySummary" : {
         "type" : "object",

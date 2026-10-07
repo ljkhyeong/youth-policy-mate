@@ -1,7 +1,7 @@
 package kr.youthpolicymate.member;
 
+import kr.youthpolicymate.config.AppUrls;
 import org.springframework.context.annotation.Profile;
-import org.springframework.core.env.Environment;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.PlatformTransactionManager;
@@ -15,33 +15,28 @@ import static kr.youthpolicymate.member.MemberEmailStore.*;
 @Profile("!preview")
 public class MemberEmailDelivery {
     private final JdbcClient jdbc;
-    private final MemberEmailStore emails;
     private final MemberPolicyStore policies;
-    private final MemberEmailSender sender;
+    private final ResendMemberEmailSender sender;
     private final EmailCrypto crypto;
     private final Clock clock;
     private final TransactionTemplate transaction;
-    private final String frontend;
-    private final String backend;
-    public MemberEmailDelivery(JdbcClient jdbc, MemberEmailStore emails, MemberPolicyStore policies,
-                               MemberEmailSender sender, EmailCrypto crypto, Clock clock,
-                               PlatformTransactionManager manager, Environment environment) {
-        this.jdbc = jdbc; this.emails = emails; this.policies = policies; this.sender = sender;
-        this.crypto = crypto; this.clock = clock; this.transaction = new TransactionTemplate(manager);
-        this.frontend = environment.getProperty("APP_FRONTEND_URL", "http://127.0.0.1:3000").replaceAll("/+$", "");
-        this.backend = environment.getProperty("APP_BACKEND_URL", "http://127.0.0.1:8080").replaceAll("/+$", "");
+    private final AppUrls urls;
+    public MemberEmailDelivery(JdbcClient jdbc, MemberPolicyStore policies, ResendMemberEmailSender sender, EmailCrypto crypto,
+                               Clock clock, PlatformTransactionManager manager, AppUrls urls) {
+        this.jdbc = jdbc; this.policies = policies; this.sender = sender; this.crypto = crypto; this.clock = clock;
+        this.transaction = new TransactionTemplate(manager); this.urls = urls;
     }
+    // 발송을 켜면 암호화 키가 있다는 것을 EmailProperties 바인딩 검증이 보장한다.
     public void deliverPending() {
-        if (!sender.available() || !crypto.ready()) return;
+        if (!sender.available()) return;
         // 중단된 발송은 자동 재시도하지 않는다. Resend는 서명된 웹훅으로 접수 결과를 보완한다.
         jdbc.sql("UPDATE member_email_outbox SET state = 'UNKNOWN', code_cipher = NULL, finished_at = :now WHERE state = 'SENDING' AND started_at < :before")
                 .param("now", at(clock.instant())).param("before", at(clock.instant().minusSeconds(120))).update();
         jdbc.sql("UPDATE member_email_settings SET code_hash = NULL, expires_at = NULL WHERE expires_at <= :now")
                 .param("now", at(clock.instant())).update();
         // 인증 메일을 먼저 보내고 Resend의 짧은 연속 요청을 줄인다. 처리기는 10초 간격이다.
-        int batchSize = "resend".equals(sender.provider()) ? 5 : 50;
-        for (var id : jdbc.sql("SELECT id FROM member_email_outbox WHERE state = 'PENDING' ORDER BY kind DESC, created_at, id LIMIT :limit")
-                .param("limit", batchSize).query(UUID.class).list()) {
+        for (var id : jdbc.sql("SELECT id FROM member_email_outbox WHERE state = 'PENDING' ORDER BY kind DESC, created_at, id LIMIT 5")
+                .query(UUID.class).list()) {
             try { deliver(id); }
             catch (RuntimeException failure) {
                 org.slf4j.LoggerFactory.getLogger(getClass()).warn("이메일 대기 항목 처리 실패: {}", id);
@@ -51,15 +46,15 @@ public class MemberEmailDelivery {
     public void deliver(UUID id) {
         if (org.springframework.transaction.support.TransactionSynchronizationManager.isActualTransactionActive())
             throw new IllegalStateException("이메일 발송은 저장 트랜잭션 밖에서 실행해야 합니다.");
-        if (!sender.available() || !crypto.ready()) return;
+        if (!sender.available()) return;
         var payload = transaction.execute(status -> claim(id));
         if (payload == null) return;
         String outcome;
-        String messageId = null;
+        UUID messageId = null;
         try {
             messageId = sender.send(id, payload.address(), payload.subject(), payload.body(), payload.headers());
             outcome = "SENT";
-        } catch (org.springframework.mail.MailAuthenticationException | org.springframework.mail.MailPreparationException failure) {
+        } catch (ResendMemberEmailSender.Rejected failure) {
             outcome = "FAILED";
         } catch (RuntimeException failure) {
             outcome = "UNKNOWN";
@@ -68,14 +63,14 @@ public class MemberEmailDelivery {
         jdbc.sql("""
                 UPDATE member_email_outbox SET state = :state, provider_message_id = :messageId, code_cipher = NULL, finished_at = :now
                 WHERE id = :id AND state IN ('SENDING','UNKNOWN') AND provider_event_at IS NULL
-                """).param("state", outcome).param("messageId", messageId == null ? null : UUID.fromString(messageId))
+                """).param("state", outcome).param("messageId", messageId)
                 .param("now", at(clock.instant())).param("id", id).update();
     }
     private Payload claim(UUID id) {
         var owner = jdbc.sql("SELECT member_id, kind FROM member_email_outbox WHERE id = :id").param("id", id)
-                .query((rs, row) -> new Owner(rs.getObject(1, UUID.class), rs.getString(2))).optional();
+                .query(Owner.class).optional();
         if (owner.isEmpty()) return null;
-        UUID member = owner.get().member(); emails.lock(member);
+        UUID member = owner.get().memberId(); MemberIdentityStore.lock(jdbc, member);
         if (owner.get().kind().equals("POLICY")) policies.refresh(member);
         var state = jdbc.sql("SELECT state FROM member_email_outbox WHERE id = :id FOR UPDATE").param("id", id).query(String.class).optional();
         if (state.isEmpty() || !state.get().equals("PENDING")) return null;
@@ -98,12 +93,12 @@ public class MemberEmailDelivery {
                                 "확인 코드: " + code + "\n\n코드는 요청 후 10분간 사용할 수 있습니다.\n직접 요청하지 않았다면 무시해주세요. 이 메일만으로 알림 수신이 켜지지는 않습니다.", Map.of(), null);
                     }
                     String token = crypto.token();
-                    Map<String, String> headers = "https".equalsIgnoreCase(java.net.URI.create(backend).getScheme())
-                            ? Map.of("List-Unsubscribe", "<" + backend + "/api/v1/email-unsubscribe/" + token + ">",
+                    Map<String, String> headers = "https".equalsIgnoreCase(java.net.URI.create(urls.backend()).getScheme())
+                            ? Map.of("List-Unsubscribe", "<" + urls.backend() + "/api/v1/email-unsubscribe/" + token + ">",
                                     "List-Unsubscribe-Post", "List-Unsubscribe=One-Click") : Map.of();
                     return new Payload(address, "[청년정책메이트] " + rs.getString("title").replaceAll("[\\r\\n]", " "),
-                            rs.getString("message") + "\n\n정책 확인: " + frontend + "/policies/" + rs.getString("policy_number")
-                                    + "\n이메일 수신 해제: " + frontend + "/email-unsubscribe#" + token,
+                            rs.getString("message") + "\n\n정책 확인: " + urls.frontend() + "/policies/" + rs.getString("policy_number")
+                                    + "\n이메일 수신 해제: " + urls.frontend() + "/email-unsubscribe#" + token,
                             headers, EmailCrypto.tokenHash(token));
                 }).optional();
         if (candidate.isEmpty()) {
@@ -111,12 +106,12 @@ public class MemberEmailDelivery {
                     .param("id", id).param("now", at(clock.instant())).update();
             return null;
         }
-        jdbc.sql("UPDATE member_email_outbox SET state = 'SENDING', provider = :provider, started_at = :now, code_cipher = NULL, unsubscribe_token_hash = :hash WHERE id = :id")
-                .param("provider", sender.provider()).param("id", id).param("now", at(clock.instant()))
+        jdbc.sql("UPDATE member_email_outbox SET state = 'SENDING', started_at = :now, code_cipher = NULL, unsubscribe_token_hash = :hash WHERE id = :id")
+                .param("id", id).param("now", at(clock.instant()))
                 .param("hash", candidate.get().unsubscribeHash()).update();
         return candidate.get();
     }
-    private record Owner(UUID member, String kind) {}
+    private record Owner(UUID memberId, String kind) {}
     private record Payload(String address, String subject, String body, Map<String, String> headers, String unsubscribeHash) {
         @Override public String toString() { return "이메일 발송 내용 비공개"; }
     }

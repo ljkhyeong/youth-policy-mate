@@ -99,7 +99,7 @@ class PolicyCatalogTest {
         assertThat(evaluated.checks().getFirst().outcome()).isEqualTo(kr.youthpolicymate.eligibility.ConditionOutcome.NOT_MET);
         assertThat(compared.items().getFirst().checks().getFirst().outcome()).isEqualTo(evaluated.checks().getFirst().outcome());
         assertThat(compared.items().getFirst().ruleVersion()).isEqualTo(next.ruleVersion());
-        assertThat(store.list("", 1, 20, true, null, clock.instant()).total()).isOne();
+        assertThat(store.list("", 1, 20, true, null, java.util.Set.of(), clock.instant()).total()).isOne();
         assertThatThrownBy(() -> rules.publish(id, next.ruleVersion(), "rule-test")).hasMessageContaining("이미 적용");
         assertThatThrownBy(() -> jdbc.sql("UPDATE policy_rule_versions SET definition = '{}'::jsonb WHERE id = :id").param("id", id).update())
                 .isInstanceOf(org.springframework.dao.DataAccessException.class);
@@ -133,7 +133,7 @@ class PolicyCatalogTest {
         assertThatThrownBy(() -> questions.prefill(EXAM_FEE, new PolicyQuestions.PrefillRequest(1, current.ruleVersion(), java.time.LocalDate.parse("2000-01-01"))))
                 .isInstanceOf(PolicyQuestionService.PolicyChangedException.class);
         assertThatThrownBy(() -> rules.publish(ids.getFirst(), current.ruleVersion(), "rule-test")).hasMessageContaining("원문이 바뀌");
-        assertThat(store.list("", 1, 20, true, null, AT).total()).isZero();
+        assertThat(store.list("", 1, 20, true, null, java.util.Set.of(), AT).total()).isZero();
     }
 
     @Test @DisplayName("출생일 답변 API는 로그인 없이 사용하고 미래 날짜·오래된 버전을 거부하며 저장하지 않는다")
@@ -186,7 +186,7 @@ class PolicyCatalogTest {
             }
         }
         assertThat(prefills).isEqualTo(10);
-        assertThat(store.list("", 1, 20, true, null, AT).total()).isEqualTo(12);
+        assertThat(store.list("", 1, 20, true, null, java.util.Set.of(), AT).total()).isEqualTo(12);
         // 기본 조건의 연령 항목도 같은 규칙 데이터로 비교하고, 연령 연결이 없는 규칙은 판정하지 않는다.
         var compared = checks.check(new BasicConditions(birth, null, null), 1, "", PolicyCheckResponse.Sort.RECENT, null).items();
         assertThat(compared).hasSize(DEFINITIONS.size()).allSatisfy(checked -> {
@@ -340,14 +340,13 @@ class PolicyCatalogTest {
     }
 
     @Test
-    @DisplayName("잘못된 검색은 400으로 거절하고 쓰기·관리·개발 경로는 계속 차단한다")
+    @DisplayName("잘못된 검색은 400으로 거절하고 쓰기·관리 경로는 계속 차단한다")
     void rejectsInvalidAndPrivateRequests() throws Exception {
         mvc.perform(get("/api/v1/policies").param("questionsOnly", "invalid")).andExpect(status().isBadRequest());
         mvc.perform(get("/api/v1/policies").param("page", "0")).andExpect(status().isBadRequest());
         mvc.perform(get("/api/v1/policies").param("q", "가".repeat(81))).andExpect(status().isBadRequest());
         mvc.perform(post("/api/v1/policies").with(csrf())).andExpect(status().isForbidden());
         mvc.perform(get("/actuator/env")).andExpect(status().isForbidden());
-        mvc.perform(get("/api/dev/eligibility-examples")).andExpect(status().isForbidden());
     }
 
     @Test
@@ -729,7 +728,7 @@ class PolicyCatalogTest {
         var seen = new java.util.HashSet<String>();
         for (int page = 1; page <= 3; page++) {
             org.mockito.Mockito.clearInvocations(jdbc);
-            var result = store.list("필터 지원", page, 10, false, kr.youthpolicymate.policy.RecruitmentStatus.OPEN, AT);
+            var result = store.list("필터 지원", page, 10, false, kr.youthpolicymate.policy.RecruitmentStatus.OPEN, java.util.Set.of(), AT);
             org.mockito.Mockito.verify(jdbc, org.mockito.Mockito.times(3)).sql(org.mockito.ArgumentMatchers.anyString());
             assertThat(result.total()).isEqualTo(24);
             assertThat(result.hasNext()).isEqualTo(page < 3);
@@ -766,20 +765,20 @@ class PolicyCatalogTest {
         for (var time : List.of("2026-09-05T14:59:59.999999Z", "2026-09-05T15:00:00Z", "2026-09-07T14:59:59.999999Z", "2026-09-07T15:00:00Z")) {
             var now = Instant.parse(time);
             var expected = PolicyRecruitment.from(NUMBER, 1, "", item, now).status();
-            assertThat(store.list("", 1, 20, false, expected, now).items()).singleElement()
+            assertThat(store.list("", 1, 20, false, expected, java.util.Set.of(), now).items()).singleElement()
                     .satisfies(policy -> assertThat(policy.recruitment().status()).isEqualTo(expected));
         }
         saveReviewed(MOVING_FEE, "이사비", hash(MOVING_FEE));
         for (var now : List.of(rule(MOVING_FEE).periodNotice().opensAt().minusNanos(1000), rule(MOVING_FEE).periodNotice().opensAt(),
                 rule(MOVING_FEE).periodNotice().closesAt().minusNanos(1000), rule(MOVING_FEE).periodNotice().closesAt())) {
             var expected = PolicyRecruitment.from(MOVING_FEE, 1, hash(MOVING_FEE), item, now).status();
-            assertThat(store.list("이사비", 1, 20, true, expected, now).items()).singleElement()
+            assertThat(store.list("이사비", 1, 20, true, expected, java.util.Set.of(), now).items()).singleElement()
                     .satisfies(policy -> assertThat(policy.recruitment().status()).isEqualTo(expected));
         }
         var current = store.find(MOVING_FEE).orElseThrow();
         importAt(MOVING_FEE, current.content(), "{}", AT.plusSeconds(1), "changed-window", "changed-window");
-        assertThat(store.list("이사비", 1, 20, false, kr.youthpolicymate.policy.RecruitmentStatus.UNKNOWN, AT).total()).isOne();
-        assertThat(store.list("이사비", 1, 20, false, kr.youthpolicymate.policy.RecruitmentStatus.CLOSED, AT).total()).isZero();
+        assertThat(store.list("이사비", 1, 20, false, kr.youthpolicymate.policy.RecruitmentStatus.UNKNOWN, java.util.Set.of(), AT).total()).isOne();
+        assertThat(store.list("이사비", 1, 20, false, kr.youthpolicymate.policy.RecruitmentStatus.CLOSED, java.util.Set.of(), AT).total()).isZero();
     }
 
     @Test @DisplayName("공개 목록은 분야로 좁히고 접수 중인 정책을 마감 임박순으로 먼저 보여준다")

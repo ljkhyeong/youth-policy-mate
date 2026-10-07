@@ -11,7 +11,7 @@
 | API 계약 | springdoc-openapi 3.1.0, openapi-typescript 7.13.0 | 정책·회원·관리자 서버 DTO의 OpenAPI 3.1·TypeScript 생성과 일치 검사 |
 | 서버 | Java 25, Spring Boot 4.1.1, `backend/` | 앱 기동·DB 연결·접근 차단·조건 비교·모집 상태 계산·개정 적용·수집·AI 후보/비용·예약 상태 검사 |
 | 모듈 구성 | 기능별 Java 패키지 | 회원 `member`, 정책·공고 규칙 판정 `policy`, 조건 결과 값 `eligibility`, 수집·AI `ingestion` |
-| DB 접근 | Spring JDBC, Spring Data Commons | JdbcClient·JdbcTemplate과 JDBC 트랜잭션을 사용한다. Commons는 페이지 처리에 사용하며 JPA/Hibernate·Modulith 의존성은 없다. |
+| DB 접근 | Spring JDBC | JdbcClient·JdbcTemplate과 JDBC 트랜잭션을 사용한다. 페이지는 `LIMIT`·`OFFSET`과 개수 조회로 나누며 JPA/Hibernate·Spring Data·Modulith 의존성은 없다. |
 | 빌드 | Gradle Wrapper 9.7.1, npm 잠금 파일 | 백엔드·프런트엔드 빌드 |
 | DB | PostgreSQL 18.6 Alpine, `compose.yaml` | 프로젝트 전용 로컬 DB |
 

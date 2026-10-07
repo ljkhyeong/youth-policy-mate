@@ -5,9 +5,7 @@ import kr.youthpolicymate.policy.RecruitmentStatus;
 import static kr.youthpolicymate.eligibility.ConditionOutcome.*;
 import static kr.youthpolicymate.policy.SeoulTime.SEOUL;
 import org.springframework.context.annotation.Profile;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 import tools.jackson.databind.JsonNode;
 
 import java.time.Clock;
@@ -18,19 +16,20 @@ import java.util.List;
 @Service
 @Profile("!preview")
 public class PolicyCheckService {
+    private static final int PAGE_SIZE = 20;
     private final PolicyCatalogStore store;
     private final Clock clock;
 
     public PolicyCheckService(PolicyCatalogStore store, Clock clock) { this.store = store; this.clock = clock; }
 
-    @Transactional(readOnly = true, isolation = org.springframework.transaction.annotation.Isolation.REPEATABLE_READ)
+    // 규칙·건수·목록의 같은 스냅샷은 store.listForCheck의 읽기 트랜잭션이 보장한다.
     public PolicyCheckResponse check(BasicConditions input, int page, String query, PolicyCheckResponse.Sort sort, RecruitmentStatus recruitmentStatus) {
         var now = clock.instant();
         var today = LocalDate.ofInstant(now, SEOUL);
         input.validate(today);
-        var policies = store.listForCheck(PageRequest.of(page - 1, 20), query, sort, input, recruitmentStatus, now);
+        var policies = store.listForCheck(page, PAGE_SIZE, query, sort, input, recruitmentStatus, now);
         var items = new ArrayList<PolicyCheckResponse.Item>();
-        for (var source : policies) {
+        for (var source : policies.items()) {
             var policy = source.policy();
             var raw = source.raw();
             var comparison = source.comparison();
@@ -53,7 +52,7 @@ public class PolicyCheckService {
                     (input.birthDate() == null ? "지원 내용을 살펴보고 필요한 조건을 추가해보세요." : explanation(comparison, stated, input.birthDate(), today)), policy.content().applicationPeriod(), comparison == null ? policy.sourceUrl() : comparison.sourceUrl(),
                     policy.collectedAt(), checks, source.questionnaireAvailable(), comparison == null ? "" : comparison.ruleVersion(), policy.recruitment()));
         }
-        return new PolicyCheckResponse(items, page, policies.getTotalElements(), policies.hasNext(), now);
+        return new PolicyCheckResponse(items, page, policies.total(), (long) page * PAGE_SIZE < policies.total(), now);
     }
 
     // 검토된 연령 비교가 없으면(생년월일 미입력 포함) 온통청년 표기 범위와 입력한 생년월일의 만 나이를 함께 보여주되 판정하지 않는다.

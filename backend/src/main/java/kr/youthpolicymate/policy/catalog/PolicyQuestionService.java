@@ -2,7 +2,6 @@ package kr.youthpolicymate.policy.catalog;
 
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -17,20 +16,17 @@ public class PolicyQuestionService {
     private final Clock clock;
     public PolicyQuestionService(PolicyCatalogStore store, Clock clock) { this.store = store; this.clock = clock; }
 
-    @Transactional(readOnly = true, isolation = org.springframework.transaction.annotation.Isolation.REPEATABLE_READ)
     public PolicyQuestions.Questionnaire questions(String number) {
         var policy = store.questionVersion(number).orElseThrow(PolicyNotFoundException::new);
         if (policy.definition() != null) return policy.definition().questionnaire(policy.revision(), policy.contentHash(), clock.instant());
         return new PolicyQuestions.Questionnaire(number, policy.revision(), "", false, "신청 조건 확인",
                 "이 정책의 조건 확인 질문은 아직 제공하지 않아요. 공식 안내를 확인해주세요.", PolicyCatalogStore.sourceUrl(number), List.of());
     }
-    @Transactional(readOnly = true, isolation = org.springframework.transaction.annotation.Isolation.REPEATABLE_READ)
     public PolicyQuestions.Evaluation evaluate(String number, PolicyQuestions.Request request) {
         var now = clock.instant();
         var policy = current(number, request.revision(), request.ruleVersion(), now);
         return policy.definition().evaluate(policy.revision(), request, now);
     }
-    @Transactional(readOnly = true, isolation = org.springframework.transaction.annotation.Isolation.REPEATABLE_READ)
     public PolicyQuestions.Prefill prefill(String number, PolicyQuestions.PrefillRequest input) {
         var now = clock.instant();
         if (input.birthDate().getYear() < 1 || input.birthDate().isAfter(LocalDate.ofInstant(now, SEOUL)))

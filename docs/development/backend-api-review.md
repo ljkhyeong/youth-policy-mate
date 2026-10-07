@@ -44,7 +44,7 @@
 
 | 대상 | 적용 내용 |
 |---|---|
-| [조건 확인 조회](../../backend/src/main/java/kr/youthpolicymate/policy/catalog/PolicyCatalogStore.java) | `listForCheck`에서 정책·현재 개정·원문을 JOIN한다. 20건에 SELECT 42회를 호출하던 흐름을 개수·페이지 조회 2회로 줄였다. 페이지 계산은 Spring Data의 `Page`·`PageRequest`를 사용한다. |
+| [조건 확인 조회](../../backend/src/main/java/kr/youthpolicymate/policy/catalog/PolicyCatalogStore.java) | `listForCheck`에서 정책·현재 개정·원문을 JOIN한다. 20건에 SELECT 42회를 호출하던 흐름을 개수·페이지 조회 2회로 줄였다. 페이지 계산은 `LIMIT`/`OFFSET`과 개수 조회로 한다. |
 | [고정 상태용 객체](../../backend/src/main/java/kr/youthpolicymate/policy/catalog/PolicyCheckService.java) | 항상 같은 값을 얻던 판정 객체 생성을 제거하고 `NEEDS_REVIEW`를 직접 반환한다. 응답의 원문·설명·정책 개정과 실제 정책별 판정 규칙은 유지한다. |
 | AI 종료 상태(`AiBudgetReservationState`) | 6개 클래스의 같은 상태 비교를 `Phase.isTerminal()`로 모았다. 종료 상태의 종류와 상태 전이 조건은 그대로다. |
 | DB 시각 처리(`AiDatabaseTime`) | 7곳의 변환과 6곳의 비교 함수를 수집 패키지 내부의 `AiDatabaseTime`으로 모았다. 마이크로초 절삭·UTC 변환·시각 비교 방식은 그대로다. |
@@ -162,11 +162,11 @@ Temurin 25.0.3에서 `npm run verify -- test:policy-collection`을 실행해 48�
 
 프로젝트 점검 범위를 프런트엔드·개발 도구·빌드 의존성까지 넓혔다. Java 소스·테스트에서 JPA 엔티티·저장소와 Modulith 검증·이벤트 사용처가 없음을 확인해 `c8cfc33`에서 다음을 정리했다.
 
-- JPA 스타터를 JDBC 스타터로 바꾸고, 페이지 처리에 쓰는 Spring Data Commons를 명시했다. 기존 JdbcClient·JdbcTemplate·`@Transactional` 코드는 유지하며 Spring Boot의 JDBC 자동 설정을 사용한다.
+- JPA 스타터를 JDBC 스타터로 바꾸고, 당시 페이지 처리에 쓰던 Spring Data Commons를 명시했다(2026-10-07 제거). 기존 JdbcClient·JdbcTemplate·`@Transactional` 코드는 유지하며 Spring Boot의 JDBC 자동 설정을 사용한다.
 - Spring Modulith 스타터와 전용 BOM, 사용하지 않는 `spring.jpa` 설정을 제거했다. 기능별 패키지 구조는 유지한다.
 - JPA 예외 변환을 기대하던 테스트 2곳은 실제 입력 오류인 `IllegalArgumentException`을 확인하도록 변경했다. 음수 청구·역전된 시각·예산 잔액·상태 보존 검사는 유지했다.
 
-JPA·ORM·Modulith 라이브러리가 실행 JAR에서 빠졌으며 JDBC·Spring Data Commons와 입력 검증용 Hibernate Validator는 남아 있음을 확인했다. 별도의 연결·트랜잭션 래퍼는 추가하지 않았다. [기술 결정](../ADR/0001_기술스택과_책임_분리.md)과 [로컬 구성](local-development.md)을 실제 의존성에 맞췄다.
+JPA·ORM·Modulith 라이브러리가 실행 JAR에서 빠졌으며 JDBC·Spring Data Commons(2026-10-07 제거)와 입력 검증용 Hibernate Validator는 남아 있음을 확인했다. 별도의 연결·트랜잭션 래퍼는 추가하지 않았다. [기술 결정](../ADR/0001_기술스택과_책임_분리.md)과 [로컬 구성](local-development.md)을 실제 의존성에 맞췄다.
 
 Temurin 25.0.3에서 `npm run verify -- check:backend`로 서버 전체 테스트 436건과 빌드를 통과했다. 실패·오류·건너뜀은 없으며 DB 잠금·롤백·동시 수집·회원·알림·AI 예약/복구와 API 계약 검사를 포함한다. 로그는 `.local/verification/1788690272938-2917da10.log`다. 검증한 앱 코드는 `c8cfc33`이며 후속 변경은 문서뿐이다.
 

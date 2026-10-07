@@ -2,9 +2,6 @@ package kr.youthpolicymate.policy.catalog;
 
 import kr.youthpolicymate.policy.RecruitmentStatus;
 import org.springframework.context.annotation.Profile;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageImpl;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
@@ -16,12 +13,14 @@ import java.sql.SQLException;
 import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
+import java.util.List;
 import java.util.Optional;
 import java.util.Map;
 import java.util.HashMap;
 import java.util.StringJoiner;
 import java.util.UUID;
 import java.util.Objects;
+import java.util.stream.Collectors;
 import kr.youthpolicymate.ingestion.OntongPolicyCapture;
 
 @Repository
@@ -136,37 +135,21 @@ public class PolicyCatalogStore {
     }
 
     @Transactional(readOnly = true, isolation = org.springframework.transaction.annotation.Isolation.REPEATABLE_READ)
-    public PolicyListResponse list(String query, int page, int pageSize, boolean questionsOnly, RecruitmentStatus recruitmentStatus, Instant now) {
-        return list(query, page, pageSize, questionsOnly, recruitmentStatus, java.util.Set.of(), now);
-    }
-
-    @Transactional(readOnly = true, isolation = org.springframework.transaction.annotation.Isolation.REPEATABLE_READ)
     public PolicyListResponse list(String query, int page, int pageSize, boolean questionsOnly, RecruitmentStatus recruitmentStatus,
                                    java.util.Set<PolicyCategory> categories, Instant now) {
-        var reviewed = reviewedHashes(rules.published(), now);
+        // 정책번호마다 적용 버전은 하나(policy_rule_heads PK)이므로 키가 겹치지 않는다.
+        var reviewed = rules.published().stream().filter(definition -> definition.appliesAt(now))
+                .collect(Collectors.toMap(PolicyRuleDefinition::policyNumber, PolicyRuleDefinition::contentHash));
         var parameters = new HashMap<String, Object>();
-        parameters.put("query", query);
-        // strpos는 검색어의 %·_를 패턴으로 해석하지 않고 바인딩한 문자열 그대로 검색한다.
-        var where = " WHERE p.current_revision > 0 AND (:query = '' OR strpos(lower((p.content->>'title') || ' ' || (p.content->>'description')), lower(:query)) > 0)";
-        if (questionsOnly) {
-            var alternatives = new StringJoiner(" OR ", "(", ")").setEmptyValue("FALSE");
-            int index = 0;
-            for (var entry : reviewed.entrySet()) {
-                alternatives.add("(p.policy_number = :number" + index + " AND p.content_hash = :hash" + index + ")");
-                parameters.put("number" + index, entry.getKey());
-                parameters.put("hash" + index, entry.getValue());
-                index++;
-            }
-            where += " AND " + alternatives;
-        }
-        where += recruitmentFilter(recruitmentStatus, now, parameters);
+        var where = where(query, recruitmentStatus, now, parameters);
+        if (questionsOnly) where += " AND " + rowIn("reviewed",
+                reviewed.entrySet().stream().map(entry -> new Object[]{entry.getKey(), entry.getValue()}).toList(), parameters);
         // 여러 분야를 고르면 하나라도 해당하는 정책을 보여준다. 한 정책은 EXISTS로 한 번만 센다.
         if (!categories.isEmpty()) {
             where += " AND " + categoryMatch("categories");
             parameters.put("categories", categories.stream().flatMap(category -> category.labels().stream()).toList());
         }
         var total = jdbc.sql("SELECT count(*) FROM policies p" + where).params(parameters).query(Long.class).single();
-        parameters.put("orderNow", now.atOffset(ZoneOffset.UTC));
         var items = jdbc.sql("""
                 SELECT p.policy_number, p.current_revision, p.content_hash, p.last_collected_at,
                     p.content->>'title' AS title, p.content->>'description' AS description,
@@ -179,8 +162,7 @@ public class PolicyCatalogStore {
                             rs.getString("description"), rs.getString("category"), rs.getString("organization"),
                             rs.getString("application_period"),
                             rs.getObject("last_collected_at", OffsetDateTime.class).toInstant(),
-                            reviewed.containsKey(rs.getString("policy_number"))
-                                    && reviewed.get(rs.getString("policy_number")).equals(rs.getString("content_hash")),
+                            rs.getString("content_hash").equals(reviewed.get(rs.getString("policy_number"))),
                             PolicyRecruitment.from(rs.getString("policy_number"), rs.getLong("current_revision"), rs.getString("content_hash"),
                                     mapper.readTree(rs.getString("raw_policy")), now)))
                 .list();
@@ -215,34 +197,39 @@ public class PolicyCatalogStore {
 
     // 공개 목록은 접수 중인 정책을 마감 임박순으로 먼저 보여준다. 검색용 모집 기간과 같은 기준이다.
     private static final String AVAILABILITY_ORDER = """
-            CASE WHEN p.recruitment_kind = 'PERIOD' AND p.recruitment_opens_at <= :orderNow AND p.recruitment_closes_at > :orderNow THEN 0
-                 WHEN p.recruitment_kind = 'PERIOD' AND p.recruitment_opens_at > :orderNow THEN 1
+            CASE WHEN p.recruitment_kind = 'PERIOD' AND p.recruitment_opens_at <= :now AND p.recruitment_closes_at > :now THEN 0
+                 WHEN p.recruitment_kind = 'PERIOD' AND p.recruitment_opens_at > :now THEN 1
                  WHEN p.recruitment_kind IN ('ROLLING', 'UNTIL_EXHAUSTED') THEN 2
                  WHEN p.recruitment_kind = 'UNKNOWN' THEN 3 ELSE 4 END,
-            CASE WHEN p.recruitment_kind = 'PERIOD' AND p.recruitment_opens_at <= :orderNow AND p.recruitment_closes_at > :orderNow
+            CASE WHEN p.recruitment_kind = 'PERIOD' AND p.recruitment_opens_at <= :now AND p.recruitment_closes_at > :now
                  THEN p.recruitment_closes_at END""";
 
-    private Map<String, String> reviewedHashes(java.util.List<PolicyRuleDefinition> definitions, Instant now) {
-        var reviewed = new HashMap<String, String>();
-        for (var definition : definitions) {
-            reviewed.remove(definition.policyNumber());
-            if (definition.appliesAt(now)) reviewed.put(definition.policyNumber(), definition.contentHash());
-        }
-        return reviewed;
+    // 목록과 조건 확인이 같은 검색어·접수 상태 조건을 쓴다. strpos는 검색어의 %·_를 패턴으로 해석하지 않는다.
+    private static String where(String query, RecruitmentStatus status, Instant now, Map<String, Object> parameters) {
+        parameters.put("query", query);
+        parameters.put("now", now.atOffset(ZoneOffset.UTC));
+        return " WHERE p.current_revision > 0 AND (:query = '' OR strpos(lower((p.content->>'title') || ' ' || (p.content->>'description')), lower(:query)) > 0)"
+                + recruitmentFilter(status, parameters);
     }
 
-    private static String recruitmentFilter(RecruitmentStatus status, Instant now, Map<String, Object> parameters) {
+    private static String recruitmentFilter(RecruitmentStatus status, Map<String, Object> parameters) {
         if (status == null) return "";
-        parameters.put("recruitmentNow", now.atOffset(ZoneOffset.UTC));
         return " AND " + switch (status) {
-            case BEFORE_OPENING -> "(p.recruitment_kind = 'PERIOD' AND p.recruitment_opens_at > :recruitmentNow)";
-            case OPEN -> "(p.recruitment_kind = 'PERIOD' AND p.recruitment_opens_at <= :recruitmentNow AND p.recruitment_closes_at > :recruitmentNow)";
-            case CLOSED -> "(p.recruitment_kind = 'CLOSED' OR (p.recruitment_kind = 'PERIOD' AND p.recruitment_closes_at <= :recruitmentNow))";
+            case BEFORE_OPENING -> "(p.recruitment_kind = 'PERIOD' AND p.recruitment_opens_at > :now)";
+            case OPEN -> "(p.recruitment_kind = 'PERIOD' AND p.recruitment_opens_at <= :now AND p.recruitment_closes_at > :now)";
+            case CLOSED -> "(p.recruitment_kind = 'CLOSED' OR (p.recruitment_kind = 'PERIOD' AND p.recruitment_closes_at <= :now))";
             case ROLLING, UNTIL_EXHAUSTED, UNKNOWN -> {
                 parameters.put("recruitmentKind", status.name());
                 yield "p.recruitment_kind = :recruitmentKind";
             }
         };
+    }
+
+    // (정책번호, 내용 해시) 쌍 목록을 튜플 IN으로 비교한다. 빈 IN ()은 문법 오류라 FALSE로 둔다.
+    private static String rowIn(String name, List<Object[]> rows, Map<String, Object> parameters) {
+        if (rows.isEmpty()) return "FALSE";
+        parameters.put(name, rows);
+        return "(p.policy_number, p.content_hash) IN (:" + name + ")";
     }
 
     public Optional<PolicyDetailResponse> find(String number) {
@@ -253,44 +240,29 @@ public class PolicyCatalogStore {
     }
 
     @Transactional(readOnly = true, isolation = org.springframework.transaction.annotation.Isolation.REPEATABLE_READ)
-    public Page<CheckSource> listForCheck(PageRequest page, String query, PolicyCheckResponse.Sort sort,
-                                         BasicConditions input, RecruitmentStatus recruitmentStatus, Instant now) {
-        var definitions = rules.published();
-        var reviewed = reviewedHashes(definitions, now);
+    public CheckPage listForCheck(int page, int pageSize, String query, PolicyCheckResponse.Sort sort,
+                                  BasicConditions input, RecruitmentStatus recruitmentStatus, Instant now) {
+        var definitions = rules.published().stream().filter(definition -> definition.appliesAt(now)).toList();
+        var reviewed = definitions.stream().collect(Collectors.toMap(PolicyRuleDefinition::policyNumber, PolicyRuleDefinition::contentHash));
         var comparisons = new HashMap<String, PolicyAgeComparison>();
-        for (var definition : definitions) {
-            comparisons.remove(definition.policyNumber());
-            if (input.birthDate() != null && definition.appliesAt(now)) {
-                var comparison = definition.compareBirth(input.birthDate(), now);
-                if (comparison != null) comparisons.put(definition.policyNumber(), comparison);
-            }
+        if (input.birthDate() != null) for (var definition : definitions) {
+            var comparison = definition.compareBirth(input.birthDate(), now);
+            if (comparison != null) comparisons.put(definition.policyNumber(), comparison);
         }
         var parameters = new HashMap<String, Object>();
-        parameters.put("query", query);
-        var where = " WHERE p.current_revision > 0 AND (:query = '' OR strpos(lower((p.content->>'title') || ' ' || (p.content->>'description')), lower(:query)) > 0)";
-        where += recruitmentFilter(recruitmentStatus, now, parameters);
+        var where = where(query, recruitmentStatus, now, parameters);
         var total = jdbc.sql("SELECT count(*) FROM policies p" + where).params(parameters).query(Long.class).single();
         var order = "p.last_collected_at DESC, p.policy_number";
-        if (sort == PolicyCheckResponse.Sort.AGE_MATCH && !comparisons.isEmpty()) {
-            var priority = new StringBuilder("CASE");
-            int index = 0;
-            for (var entry : comparisons.entrySet()) {
-                priority.append(" WHEN p.policy_number = :number").append(index).append(" AND p.content_hash = :hash").append(index)
-                        .append(" THEN :priority").append(index);
-                parameters.put("number" + index, entry.getKey());
-                parameters.put("hash" + index, entry.getValue().contentHash());
-                parameters.put("priority" + index, entry.getValue().priority());
-                index++;
-            }
-            order = priority.append(" ELSE 1 END, ") + order;
+        if (sort == PolicyCheckResponse.Sort.AGE_MATCH) {
+            // 충족 0·불충족 2만 나열하고 미확인과 비교 없음은 ELSE 1로 둔다.
+            var byPriority = comparisons.entrySet().stream().collect(Collectors.groupingBy(entry -> entry.getValue().priority(),
+                    Collectors.mapping(entry -> new Object[]{entry.getKey(), entry.getValue().contentHash()}, Collectors.toList())));
+            order = "CASE WHEN " + rowIn("met", byPriority.getOrDefault(0, List.of()), parameters) + " THEN 0 WHEN "
+                    + rowIn("notMet", byPriority.getOrDefault(2, List.of()), parameters) + " THEN 2 ELSE 1 END, " + order;
         }
-        var items = jdbc.sql("""
-                SELECT p.policy_number, p.current_revision, p.content, p.content_hash, p.last_collected_at, s.raw_policy
-                FROM policies p
-                LEFT JOIN policy_revisions r ON r.policy_number = p.policy_number AND r.revision = p.current_revision
-                LEFT JOIN policy_source_snapshots s ON s.id = r.source_snapshot_id
-                """ + where + " ORDER BY " + order + " LIMIT :limit OFFSET :offset")
-                .params(parameters).param("limit", page.getPageSize()).param("offset", page.getOffset())
+        var items = jdbc.sql("SELECT p.policy_number, p.current_revision, p.content, p.content_hash, p.last_collected_at, s.raw_policy FROM policies p "
+                        + SOURCE_JOIN + where + " ORDER BY " + order + " LIMIT :limit OFFSET :offset")
+                .params(parameters).param("limit", pageSize).param("offset", (page - 1) * pageSize)
                 .query((rs, row) -> {
                     var raw = rs.getString("raw_policy");
                     if (raw == null) throw new PolicyNotFoundException();
@@ -298,11 +270,10 @@ public class PolicyCatalogStore {
                     var hash = rs.getString("content_hash");
                     var comparison = comparisons.get(number);
                     var source = mapper.readTree(raw);
-                    return new CheckSource(detail(rs, source, now), source,
-                            reviewed.containsKey(number) && reviewed.get(number).equals(hash),
+                    return new CheckSource(detail(rs, source, now), source, hash.equals(reviewed.get(number)),
                             comparison != null && comparison.contentHash().equals(hash) ? comparison : null);
                 }).list();
-        return new PageImpl<>(items, page, total);
+        return new CheckPage(items, total);
     }
 
     private PolicyDetailResponse detail(ResultSet rs, JsonNode raw, Instant now) throws SQLException {
@@ -330,6 +301,7 @@ public class PolicyCatalogStore {
 
     public enum ImportResult { APPLIED, UNCHANGED, REPLAYED, STALE, CORRECTION_CONFLICT }
     record CheckSource(PolicyDetailResponse policy, JsonNode raw, boolean questionnaireAvailable, PolicyAgeComparison comparison) {}
+    record CheckPage(List<CheckSource> items, long total) {}
     record QuestionVersion(long revision, String contentHash, PolicyRuleDefinition definition) {}
     private record Current(long revision, String hash, long requestSequence) {}
 }

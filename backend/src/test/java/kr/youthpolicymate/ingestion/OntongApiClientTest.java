@@ -8,7 +8,6 @@ import org.junit.jupiter.api.Test;
 import tools.jackson.databind.json.JsonMapper;
 
 import java.net.InetSocketAddress;
-import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.time.Clock;
 import java.time.Instant;
@@ -40,10 +39,10 @@ class OntongApiClientTest {
         });
         server.start();
         client = new OntongApiClient(JsonMapper.builder().build(), Clock.fixed(Instant.EPOCH, ZoneOffset.UTC),
-                URI.create("http://127.0.0.1:" + server.getAddress().getPort() + "/policy"));
+                "http://127.0.0.1:" + server.getAddress().getPort() + "/policy");
     }
 
-    @AfterEach void close() { client.close(); server.stop(0); }
+    @AfterEach void close() { server.stop(0); }
 
     @Test
     @DisplayName("서울 필터의 지정 페이지를 최대 10건으로 한 번만 요청하고 원문을 보존한다")

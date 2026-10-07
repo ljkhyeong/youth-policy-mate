@@ -11,7 +11,7 @@
 | [OAuth 제공자 저장소](../../backend/src/main/java/kr/youthpolicymate/member/MemberConfiguration.java) | 내부 `Registrations` 클래스를 `InMemoryClientRegistrationRepository`로 교체했다. 변경 불가능한 LinkedHashMap으로 카카오·네이버 순서와 제공자가 없는 상태를 유지한다. |
 | 재시도 정책(`AiReservationRecoveryRetryPolicy`, 2026-10-05 제거) | `List.copyOf` 이후의 null 원소 검사 3곳을 제거했다. 예약 ID·순번·완료 상태·재시도 간격 검사는 유지한다. |
 | 임대 갱신 스케줄러(`PolicyAiRecoveryHeartbeat`, 2026-10-05 제거) | 호출되지 않는 `HeartbeatScheduler.scheduled`와 전용 import를 제거했다. 인터페이스와 관리형 스케줄러는 유지한다. |
-| [정책 답변 검증](../../backend/src/main/java/kr/youthpolicymate/policy/catalog/PolicyQuestions.java) | `validatedAnswers`에 질문·선택지·중복 답변 검증을 모았다. 국가근로장학금·응시료 지원·K-패스·청년주택드림청약통장·서울청년정책네트워크 5개 규칙이 같은 함수를 사용한다. |
+| [정책 답변 검증](../../backend/src/main/java/kr/youthpolicymate/policy/catalog/PolicyRuleDefinition.java) | `validatedAnswers`에 질문·선택지·중복 답변 검증을 모았다. 모든 공고 규칙이 판정표를 실행할 때 같은 검사를 사용한다. |
 
 ## 설정과 입력 형식
 

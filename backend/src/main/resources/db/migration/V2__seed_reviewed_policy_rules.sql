@@ -1,3 +1,471 @@
+-- 원문과 공식 안내를 대조해 검토한 공고별 질문·판정 규칙의 초기 데이터다.
+-- 운영 중 규칙 변경은 관리자 화면이나 rules:policy 명령으로 새 버전을 등록한다.
+INSERT INTO policy_rule_versions(id, policy_number, rule_version, definition, created_by, reason, published_at, published_by)
+VALUES ('ba390000-0000-4000-8000-000000000001', '20260527005400113224', 'exam-fee-2026-v1', $rule$
+{
+  "policyNumber": "20260527005400113224",
+  "ruleVersion": "exam-fee-2026-v1",
+  "scope": "2026년 청년 국가기술자격 응시료 지원 조건",
+  "reason": "출생일·시험 종류·남은 지원 횟수를 확인해요. 시험 응시자격, 예산 소진 여부, 할인 적용 여부는 큐넷에서 확인해주세요.",
+  "sourceUrl": "https://hrdc.hrdkorea.or.kr/hrdc/196105",
+  "questions": [
+    {
+      "id": "birthRange",
+      "label": "출생일이 어느 구간에 해당하나요?",
+      "help": "오늘의 만 나이 대신 2026년 공식 안내의 출생일 기준을 사용해요. 생년월일 전체는 입력하지 않아요.",
+      "options": [
+        {
+          "value": "ON_OR_AFTER_1991_01_01",
+          "label": "1991.1.1. 이후 출생 (당일 포함)"
+        },
+        {
+          "value": "BEFORE_1991_01_01",
+          "label": "1990.12.31. 이전 출생 (당일 포함)"
+        },
+        {
+          "value": "UNKNOWN",
+          "label": "모르겠어요"
+        }
+      ]
+    },
+    {
+      "id": "exam",
+      "label": "응시할 시험의 종류와 시행기관을 확인했나요?",
+      "help": "한국산업인력공단에서 시행하는 국가기술자격시험이 대상이에요. 큐넷에 보이는 모든 시험이 대상인 것은 아니에요.",
+      "options": [
+        {
+          "value": "HRDK_TECHNICAL",
+          "label": "한국산업인력공단 국가기술자격시험"
+        },
+        {
+          "value": "OTHER",
+          "label": "다른 기관 시험·국가전문·민간자격"
+        },
+        {
+          "value": "UNKNOWN",
+          "label": "모르겠어요"
+        }
+      ]
+    },
+    {
+      "id": "remainingUses",
+      "label": "큐넷에서 확인한 2026년 남은 응시료 지원 횟수는 얼마인가요?",
+      "help": "취소 후 횟수 복구가 아직 반영되지 않았다면 ‘복구 확인 중’을 선택해주세요. 시험에 가지 않은 것만으로는 횟수가 복구되지 않아요.",
+      "options": [
+        {
+          "value": "ONE",
+          "label": "1회"
+        },
+        {
+          "value": "TWO",
+          "label": "2회"
+        },
+        {
+          "value": "THREE",
+          "label": "3회"
+        },
+        {
+          "value": "ZERO",
+          "label": "0회 · 복구 대기 없음"
+        },
+        {
+          "value": "RESTORING",
+          "label": "접수 취소 후 지원 횟수 복구 중"
+        },
+        {
+          "value": "UNKNOWN",
+          "label": "모르겠어요"
+        }
+      ]
+    }
+  ],
+  "contentHash": "7d7880c52f4f696225afd12d0871c41bf155ab568dd7b72f3d34b7f76b800d56",
+  "validFrom": "2026-01-01T00:00:00+09:00",
+  "validUntil": "2027-01-01T00:00:00+09:00",
+  "explanation": "출생일·시험 종류·남은 지원 횟수의 확인 결과예요. 시험 접수, 예산 소진 여부, 할인 적용 여부는 별도로 확인해주세요.",
+  "remainingChecks": [
+    "해당 시험의 응시자격·원서접수 일정은 별도로 확인해주세요.",
+    "지원은 2026년 1월 6일부터 예산 소진 전까지예요. 남은 횟수가 있어도 예산 소진 시 지원되지 않으며, 이 서비스는 현재 예산을 조회하지 않아요.",
+    "공식 안내는 원서접수 때 지원 자동 적용과 ‘지원받지 않기’ 선택을 설명해요. 결제 전 실제 할인 금액과 횟수 차감을 큐넷에서 확인해주세요."
+  ],
+  "checks": [
+    {
+      "label": "공식 출생일 기준",
+      "evidence": "2026년 지원 대상은 1991년 1월 1일 이후 출생자예요(당일 포함).",
+      "questionId": "birthRange",
+      "cases": [
+        {
+          "when": {
+            "birthRange": [
+              "ON_OR_AFTER_1991_01_01"
+            ]
+          },
+          "outcome": "MET",
+          "explanation": "입력한 답변은 이 조건을 충족해요."
+        },
+        {
+          "when": {
+            "birthRange": [
+              "BEFORE_1991_01_01"
+            ]
+          },
+          "outcome": "NOT_MET",
+          "explanation": "입력한 답변은 이 조건을 충족하지 않아요."
+        }
+      ],
+      "unknownExplanation": "이 항목을 확인한 뒤 다시 답해주세요."
+    },
+    {
+      "label": "시험 종류와 시행기관",
+      "evidence": "이 지원은 한국산업인력공단이 시행하는 국가기술자격시험의 응시료에 적용돼요.",
+      "questionId": "exam",
+      "cases": [
+        {
+          "when": {
+            "exam": [
+              "HRDK_TECHNICAL"
+            ]
+          },
+          "outcome": "MET",
+          "explanation": "입력한 답변은 이 조건을 충족해요."
+        },
+        {
+          "when": {
+            "exam": [
+              "OTHER"
+            ]
+          },
+          "outcome": "NOT_MET",
+          "explanation": "입력한 답변은 이 조건을 충족하지 않아요."
+        }
+      ],
+      "unknownExplanation": "이 항목을 확인한 뒤 다시 답해주세요."
+    },
+    {
+      "label": "2026년 남은 지원 횟수",
+      "evidence": "해당 연도 최대 3회예요. 원서접수 취소 후 차감 횟수는 복구되지만 시험 미응시만으로는 복구되지 않아요. 실제 반영 여부는 큐넷에서 확인해요.",
+      "questionId": "remainingUses",
+      "cases": [
+        {
+          "when": {
+            "remainingUses": [
+              "ONE",
+              "TWO",
+              "THREE"
+            ]
+          },
+          "outcome": "MET",
+          "explanation": "입력한 답변은 이 조건을 충족해요."
+        },
+        {
+          "when": {
+            "remainingUses": [
+              "ZERO"
+            ]
+          },
+          "outcome": "NOT_MET",
+          "explanation": "입력한 답변은 이 조건을 충족하지 않아요."
+        },
+        {
+          "when": {
+            "remainingUses": [
+              "RESTORING"
+            ]
+          },
+          "outcome": "UNKNOWN",
+          "explanation": "큐넷에서 지원 횟수가 복구됐는지 확인한 뒤 다시 답해주세요."
+        }
+      ],
+      "unknownExplanation": "이 항목을 확인한 뒤 다시 답해주세요."
+    }
+  ],
+  "birthBinding": {
+    "questionId": "birthRange",
+    "minimumInclusive": "1991-01-01",
+    "maximumInclusive": null,
+    "below": "BEFORE_1991_01_01",
+    "within": "ON_OR_AFTER_1991_01_01",
+    "above": null
+  }
+}
+$rule$::jsonb, 'seed', '검토한 공고 규칙 초기 데이터', now(), 'seed');
+INSERT INTO policy_rule_heads(policy_number, version_id) VALUES ('20260527005400113224', 'ba390000-0000-4000-8000-000000000001');
+
+INSERT INTO policy_rule_versions(id, policy_number, rule_version, definition, created_by, reason, published_at, published_by)
+VALUES ('ba390000-0000-4000-8000-000000000002', '20260821005400113348', 'work-study-2026-2-v1', $rule$
+{
+  "policyNumber": "20260821005400113348",
+  "ruleVersion": "work-study-2026-2-v1",
+  "scope": "2026년 2학기 국가근로장학금 신청 조건",
+  "reason": "국적·학적·성적·학자금 지원구간을 확인해요. 대학별 선발요건과 참여 제한은 별도로 확인해주세요.",
+  "sourceUrl": "https://www.kosaf.go.kr/ko/scholar.do?pg=scholarship05_04_01",
+  "questions": [
+    {
+      "id": "nationality",
+      "label": "대한민국 국적을 가지고 있나요?",
+      "help": "국적과 거주지는 다른 조건이에요.",
+      "options": [
+        {
+          "value": "YES",
+          "label": "예"
+        },
+        {
+          "value": "NO",
+          "label": "아니요"
+        },
+        {
+          "value": "UNKNOWN",
+          "label": "모르겠어요"
+        }
+      ]
+    },
+    {
+      "id": "enrollment",
+      "label": "2026년 2학기 지원 대상 대학의 재학생 또는 입학예정자인가요?",
+      "help": "학교명이나 학번은 입력하지 않아요. 지원 대상 여부는 대학 안내에서 확인해주세요.",
+      "options": [
+        {
+          "value": "YES",
+          "label": "예"
+        },
+        {
+          "value": "NO",
+          "label": "아니요"
+        },
+        {
+          "value": "UNKNOWN",
+          "label": "모르겠어요"
+        }
+      ]
+    },
+    {
+      "id": "grade",
+      "label": "직전학기 성적은 100점 기준으로 몇 점인가요?",
+      "help": "대학이 제공한 백분위 성적을 확인해주세요. 4.5점 만점 평점을 직접 환산하지 마세요.",
+      "options": [
+        {
+          "value": "AT_LEAST_70",
+          "label": "70점 이상"
+        },
+        {
+          "value": "BELOW_70",
+          "label": "70점 미만"
+        },
+        {
+          "value": "NOT_ISSUED",
+          "label": "직전학기 성적이 없어요"
+        },
+        {
+          "value": "UNKNOWN",
+          "label": "모르겠어요"
+        }
+      ]
+    },
+    {
+      "id": "gradeException",
+      "label": "성적 기준의 적용 제외를 확인받았나요?",
+      "help": "성적 기준을 적용받지 않는 대상인지 재단이나 대학에서 확인해주세요. 사유·증빙은 이곳에 제출하지 않아요.",
+      "options": [
+        {
+          "value": "CONFIRMED",
+          "label": "적용 제외 · 재단·대학 확인 완료"
+        },
+        {
+          "value": "NONE",
+          "label": "적용 제외 대상 아님"
+        },
+        {
+          "value": "UNKNOWN",
+          "label": "모르겠어요"
+        }
+      ]
+    },
+    {
+      "id": "income",
+      "label": "한국장학재단에서 확인한 2026년 2학기 학자금 지원구간은 몇 구간인가요?",
+      "help": "월급이나 가구 소득액으로 직접 환산하지 않아요.",
+      "options": [
+        {
+          "value": "UP_TO_9",
+          "label": "기초·차상위 또는 1~9구간"
+        },
+        {
+          "value": "ABOVE_9",
+          "label": "9구간 초과"
+        },
+        {
+          "value": "NOT_CALCULATED",
+          "label": "아직 산정되지 않았어요"
+        },
+        {
+          "value": "UNKNOWN",
+          "label": "모르겠어요"
+        }
+      ]
+    },
+    {
+      "id": "incomeException",
+      "label": "학자금 지원구간 기준의 적용 제외를 확인받았나요?",
+      "help": "위기가구·일부 근로유형은 예외가 있어요. 재단이나 대학에서 적용 제외 여부를 확인해주세요.",
+      "options": [
+        {
+          "value": "CONFIRMED",
+          "label": "적용 제외 · 재단·대학 확인 완료"
+        },
+        {
+          "value": "NONE",
+          "label": "적용 제외 대상 아님"
+        },
+        {
+          "value": "UNKNOWN",
+          "label": "모르겠어요"
+        }
+      ]
+    }
+  ],
+  "contentHash": "a1523aaa7fc8ac8097c70cf4830048c9c6f8430464864823206778f7c82c5e5d",
+  "validFrom": "2026-01-01T00:00:00+09:00",
+  "validUntil": "2027-01-01T00:00:00+09:00",
+  "explanation": "국적·학적·성적·학자금 지원구간의 확인 결과예요. 대학별 기준과 예외는 별도로 확인해주세요.",
+  "remainingChecks": [
+    "대학의 2026년 2학기 선발요건·참여 제한·중복 참여 기준을 확인해주세요.",
+    "대학이 이번 차수에 신청을 받는지, 서류 제출·가구원 동의 기한은 언제인지 확인해주세요."
+  ],
+  "checks": [
+    {
+      "label": "대한민국 국적",
+      "evidence": "지원 대상은 대한민국 국적 보유자예요.",
+      "questionId": "nationality",
+      "cases": [
+        {
+          "when": {
+            "nationality": [
+              "YES"
+            ]
+          },
+          "outcome": "MET",
+          "explanation": "입력한 답변이 이 요건에 해당해요."
+        },
+        {
+          "when": {
+            "nationality": [
+              "NO"
+            ]
+          },
+          "outcome": "NOT_MET",
+          "explanation": "입력한 답변이 이 요건에 해당하지 않아요."
+        }
+      ],
+      "unknownExplanation": "이 항목을 확인해야 해요."
+    },
+    {
+      "label": "지원 대상 대학의 학적",
+      "evidence": "지원 대상 대학의 재학생과 입학예정자를 확인해요.",
+      "questionId": "enrollment",
+      "cases": [
+        {
+          "when": {
+            "enrollment": [
+              "YES"
+            ]
+          },
+          "outcome": "MET",
+          "explanation": "입력한 답변이 이 요건에 해당해요."
+        },
+        {
+          "when": {
+            "enrollment": [
+              "NO"
+            ]
+          },
+          "outcome": "NOT_MET",
+          "explanation": "입력한 답변이 이 요건에 해당하지 않아요."
+        }
+      ],
+      "unknownExplanation": "이 항목을 확인해야 해요."
+    },
+    {
+      "label": "직전학기 성적",
+      "evidence": "직전학기 백분위 70점 이상이 기준이며, 인정된 성적 적용 제외를 함께 확인해요.",
+      "questionId": "grade",
+      "cases": [
+        {
+          "when": {
+            "grade": [
+              "AT_LEAST_70"
+            ]
+          },
+          "outcome": "MET",
+          "explanation": "입력한 구간은 이 기준을 충족해요."
+        },
+        {
+          "when": {
+            "gradeException": [
+              "CONFIRMED"
+            ]
+          },
+          "outcome": "MET",
+          "explanation": "재단이나 대학에서 적용 제외를 확인받았다는 답변을 반영했어요."
+        },
+        {
+          "when": {
+            "grade": [
+              "BELOW_70"
+            ],
+            "gradeException": [
+              "NONE"
+            ]
+          },
+          "outcome": "NOT_MET",
+          "explanation": "입력한 구간은 지원 기준에 맞지 않고, 적용 제외 대상에도 해당하지 않아요."
+        }
+      ],
+      "unknownExplanation": "성적·학자금 지원구간이나 적용 제외 여부를 확인한 뒤 다시 답해주세요."
+    },
+    {
+      "label": "학자금 지원구간",
+      "evidence": "2026년 2학기 재단 산정 9구간 이하가 기준이며, 인정된 적용 제외를 함께 확인해요.",
+      "questionId": "income",
+      "cases": [
+        {
+          "when": {
+            "income": [
+              "UP_TO_9"
+            ]
+          },
+          "outcome": "MET",
+          "explanation": "입력한 구간은 이 기준을 충족해요."
+        },
+        {
+          "when": {
+            "incomeException": [
+              "CONFIRMED"
+            ]
+          },
+          "outcome": "MET",
+          "explanation": "재단이나 대학에서 적용 제외를 확인받았다는 답변을 반영했어요."
+        },
+        {
+          "when": {
+            "income": [
+              "ABOVE_9"
+            ],
+            "incomeException": [
+              "NONE"
+            ]
+          },
+          "outcome": "NOT_MET",
+          "explanation": "입력한 구간은 지원 기준에 맞지 않고, 적용 제외 대상에도 해당하지 않아요."
+        }
+      ],
+      "unknownExplanation": "성적·학자금 지원구간이나 적용 제외 여부를 확인한 뒤 다시 답해주세요."
+    }
+  ],
+  "birthBinding": null
+}
+$rule$::jsonb, 'seed', '검토한 공고 규칙 초기 데이터', now(), 'seed');
+INSERT INTO policy_rule_heads(policy_number, version_id) VALUES ('20260821005400113348', 'ba390000-0000-4000-8000-000000000002');
+
 INSERT INTO policy_rule_versions(id, policy_number, rule_version, definition, created_by, reason, published_at, published_by)
 VALUES ('ba390000-0000-4000-8024-000000000001', '20260710005400113257', 'k-pass-2026-v1', $rule$
 {
@@ -249,7 +717,7 @@ VALUES ('ba390000-0000-4000-8024-000000000001', '20260710005400113257', 'k-pass-
   },
   "ageNotice": ""
 }
-$rule$::jsonb, 'migration-v24', '기존 검토 규칙을 데이터로 이전', now(), 'migration-v24');
+$rule$::jsonb, 'seed', '검토한 공고 규칙 초기 데이터', now(), 'seed');
 INSERT INTO policy_rule_heads(policy_number, version_id) VALUES ('20260710005400113257', 'ba390000-0000-4000-8024-000000000001');
 
 INSERT INTO policy_rule_versions(id, policy_number, rule_version, definition, created_by, reason, published_at, published_by)
@@ -519,7 +987,7 @@ VALUES ('ba390000-0000-4000-8024-000000000002', '20260616005400113238', 'youth-h
   },
   "ageNotice": "오늘(서울 기준) 가입할 때의 연령이에요. 가입일이 달라지면 다시 확인해주세요."
 }
-$rule$::jsonb, 'migration-v24', '기존 검토 규칙을 데이터로 이전', now(), 'migration-v24');
+$rule$::jsonb, 'seed', '검토한 공고 규칙 초기 데이터', now(), 'seed');
 INSERT INTO policy_rule_heads(policy_number, version_id) VALUES ('20260616005400113238', 'ba390000-0000-4000-8024-000000000002');
 
 INSERT INTO policy_rule_versions(id, policy_number, rule_version, definition, created_by, reason, published_at, published_by)
@@ -774,7 +1242,7 @@ VALUES ('ba390000-0000-4000-8024-000000000003', '20260520005400213208', 'seoul-n
     "above": "TOO_YOUNG"
   }
 }
-$rule$::jsonb, 'migration-v24', '기존 검토 규칙을 데이터로 이전', now(), 'migration-v24');
+$rule$::jsonb, 'seed', '검토한 공고 규칙 초기 데이터', now(), 'seed');
 INSERT INTO policy_rule_heads(policy_number, version_id) VALUES ('20260520005400213208', 'ba390000-0000-4000-8024-000000000003');
 
 INSERT INTO policy_rule_versions(id, policy_number, rule_version, definition, created_by, reason, published_at, published_by)
@@ -1516,7 +1984,7 @@ VALUES ('ba390000-0000-4000-8024-000000000004', '20260614005400213232', 'moving-
     }
   }
 }
-$rule$::jsonb, 'migration-v24', '기존 검토 규칙을 데이터로 이전', now(), 'migration-v24');
+$rule$::jsonb, 'seed', '검토한 공고 규칙 초기 데이터', now(), 'seed');
 INSERT INTO policy_rule_heads(policy_number, version_id) VALUES ('20260614005400213232', 'ba390000-0000-4000-8024-000000000004');
 
 INSERT INTO policy_rule_versions(id, policy_number, rule_version, definition, created_by, reason, published_at, published_by)
@@ -1843,7 +2311,7 @@ VALUES ('ba390000-0000-4000-8024-000000000005', '20260430005400113009', 'youth-t
   },
   "ageNotice": "수집 안내와 소득·출생일 기준이 달라 2026년 사업 지침을 적용했어요."
 }
-$rule$::jsonb, 'migration-v24', '기존 검토 규칙을 데이터로 이전', now(), 'migration-v24');
+$rule$::jsonb, 'seed', '검토한 공고 규칙 초기 데이터', now(), 'seed');
 INSERT INTO policy_rule_heads(policy_number, version_id) VALUES ('20260430005400113009', 'ba390000-0000-4000-8024-000000000005');
 
 INSERT INTO policy_rule_versions(id, policy_number, rule_version, definition, created_by, reason, published_at, published_by)
@@ -2206,7 +2674,7 @@ VALUES ('ba390000-0000-4000-8024-000000000006', '20260527005400113223', 'guarant
     }
   ]
 }
-$rule$::jsonb, 'migration-v24', '기존 검토 규칙을 데이터로 이전', now(), 'migration-v24');
+$rule$::jsonb, 'seed', '검토한 공고 규칙 초기 데이터', now(), 'seed');
 INSERT INTO policy_rule_heads(policy_number, version_id) VALUES ('20260527005400113223', 'ba390000-0000-4000-8024-000000000006');
 
 INSERT INTO policy_rule_versions(id, policy_number, rule_version, definition, created_by, reason, published_at, published_by)
@@ -2482,7 +2950,7 @@ VALUES ('ba390000-0000-4000-8024-000000000007', '20260724005400113307', 'haetsal
   },
   "ageNotice": "오늘(서울 기준) 보증 신청 시 연령이에요. 신청일이 달라지면 다시 확인해주세요."
 }
-$rule$::jsonb, 'migration-v24', '기존 검토 규칙을 데이터로 이전', now(), 'migration-v24');
+$rule$::jsonb, 'seed', '검토한 공고 규칙 초기 데이터', now(), 'seed');
 INSERT INTO policy_rule_heads(policy_number, version_id) VALUES ('20260724005400113307', 'ba390000-0000-4000-8024-000000000007');
 
 INSERT INTO policy_rule_versions(id, policy_number, rule_version, definition, created_by, reason, published_at, published_by)
@@ -2765,7 +3233,7 @@ VALUES ('ba390000-0000-4000-8024-000000000008', '20260421005400112773', 'miso-yo
   },
   "ageNotice": "오늘(서울 기준) 대출 신청 시 연령이에요. 신청일이 달라지면 다시 확인해주세요."
 }
-$rule$::jsonb, 'migration-v24', '기존 검토 규칙을 데이터로 이전', now(), 'migration-v24');
+$rule$::jsonb, 'seed', '검토한 공고 규칙 초기 데이터', now(), 'seed');
 INSERT INTO policy_rule_heads(policy_number, version_id) VALUES ('20260421005400112773', 'ba390000-0000-4000-8024-000000000008');
 
 INSERT INTO policy_rule_versions(id, policy_number, rule_version, definition, created_by, reason, published_at, published_by)
@@ -3115,5 +3583,368 @@ VALUES ('ba390000-0000-4000-8024-000000000009', '20260722005400213264', 'future-
     "above": "TOO_YOUNG"
   }
 }
-$rule$::jsonb, 'migration-v24', '기존 검토 규칙을 데이터로 이전', now(), 'migration-v24');
+$rule$::jsonb, 'seed', '검토한 공고 규칙 초기 데이터', now(), 'seed');
 INSERT INTO policy_rule_heads(policy_number, version_id) VALUES ('20260722005400213264', 'ba390000-0000-4000-8024-000000000009');
+
+INSERT INTO policy_rule_versions(id, policy_number, rule_version, definition, created_by, reason, published_at, published_by)
+VALUES ('ba390000-0000-4000-8033-000000000001', '20260714005400113258', 'k-newdeal-academy-2026-v1', $rule$
+{
+  "policyNumber": "20260714005400113258",
+  "ruleVersion": "k-newdeal-academy-2026-v1",
+  "scope": "2026년 K-뉴딜 아카데미 참여 조건",
+  "reason": "참여 신청일 기준 연령·취업·사업자등록·재학·다른 직업훈련 수강과 아카데미 시작 연도의 참여 횟수를 확인해요. 조건이 맞아도 아카데미별 선발 절차가 있어요.",
+  "sourceUrl": "https://www.work24.go.kr/cm/c/f/1100/selecSystInfo.do?currentPageNo=1&recordCountPerPage=10&systId=SI00000512&systClId=SC00000391",
+  "questions": [
+    {
+      "id": "age",
+      "label": "참여 신청일 기준 만 나이는 어떻게 되나요?",
+      "help": "만 15~34세 미취업 청년이 대상이에요. 군필자는 의무복무 기간만큼 연령 상한을 높여 최대 만 39세까지 참여할 수 있어요.",
+      "options": [
+        {
+          "value": "AGE_15_TO_34",
+          "label": "만 15~34세"
+        },
+        {
+          "value": "EXTENSION_CONFIRMED",
+          "label": "만 35~39세 · 34세에 의무복무 기간을 더한 상한 이내"
+        },
+        {
+          "value": "EXTENSION_PENDING",
+          "label": "만 35세 이상 · 군복무 연장 확인 중"
+        },
+        {
+          "value": "OVER_LIMIT",
+          "label": "만 35세 이상 · 연장 해당 없음 또는 만 40세 이상"
+        },
+        {
+          "value": "UNDER_15",
+          "label": "만 15세 미만"
+        },
+        {
+          "value": "UNKNOWN",
+          "label": "모르겠어요"
+        }
+      ]
+    },
+    {
+      "id": "employment",
+      "label": "참여 신청일에 고용보험에 가입해 일하고 있나요?",
+      "help": "취업 여부는 신청일의 고용보험 가입으로 확인해요. 주 30시간 미만 단시간·플랫폼·일용 근로자가 훈련시간 외 근로임을 증빙하거나, 아카데미 시작 전에 제한 사유가 해소되면 참여할 수 있어요. 사업자등록은 다음 질문에서 확인해요.",
+      "options": [
+        {
+          "value": "NOT_INSURED",
+          "label": "고용보험에 가입돼 있지 않아요"
+        },
+        {
+          "value": "EXCEPTION_CONFIRMED",
+          "label": "가입 중 · 근로 예외 또는 시작 전 해소 인정 확인"
+        },
+        {
+          "value": "EMPLOYED_NO_EXCEPTION",
+          "label": "가입 중 · 예외 없고 시작 전에도 해소 안 됨"
+        },
+        {
+          "value": "UNKNOWN",
+          "label": "가입 여부·예외 확인 중"
+        }
+      ]
+    },
+    {
+      "id": "business",
+      "label": "참여 신청일에 사업자등록이 있나요?",
+      "help": "사업자등록이 있어도 실제 사업을 하지 않음을 객관적으로 증명하거나, 아카데미 시작 전에 제한 사유가 해소되면 참여할 수 있어요.",
+      "options": [
+        {
+          "value": "NONE",
+          "label": "사업자등록 없음"
+        },
+        {
+          "value": "INACTIVE_CONFIRMED",
+          "label": "등록 있음 · 미영업 증빙 또는 시작 전 해소 인정 확인"
+        },
+        {
+          "value": "ACTIVE_NO_EXCEPTION",
+          "label": "등록 있음 · 예외 없고 시작 전에도 해소 안 됨"
+        },
+        {
+          "value": "UNKNOWN",
+          "label": "사업자등록·예외 확인 중"
+        }
+      ]
+    },
+    {
+      "id": "education",
+      "label": "고등학교나 대학(원)에 재학 중인가요?",
+      "help": "재학생은 참여가 제한돼요. 대학(원) 졸업예정자(4학년 2학기 이상·마지막 학기), 졸업 이수학점을 모두 취득한 사람, 휴학생, 특성화고·산업수요맞춤형고·일반고 직업교육 관련 학과 3학년 2학기로 학교장 추천을 받은 졸업예정자는 예외예요. 아카데미 시작 전에 졸업 등으로 제한 사유가 해소되면 증빙 후 참여할 수 있어요. 휴학 예외의 범위는 안내마다 달라 1년 미만 휴학은 확인이 필요해요.",
+      "options": [
+        {
+          "value": "NOT_ENROLLED",
+          "label": "재학·휴학 중이 아니에요"
+        },
+        {
+          "value": "GRADUATING",
+          "label": "대학(원) 졸업예정 또는 졸업 이수학점 모두 취득"
+        },
+        {
+          "value": "LONG_LEAVE",
+          "label": "대학(원) 휴학 · 연속 1년 이상 또는 통산 2년 이상"
+        },
+        {
+          "value": "SHORT_LEAVE",
+          "label": "대학(원) 휴학 · 위 기간 미만"
+        },
+        {
+          "value": "VOCATIONAL_RECOMMENDED",
+          "label": "고등학교 직업교육 학과 3학년 2학기 · 학교장 추천"
+        },
+        {
+          "value": "RESOLVING_BEFORE_START",
+          "label": "재학 중 · 시작 전 해소 예정"
+        },
+        {
+          "value": "ENROLLED_NO_EXCEPTION",
+          "label": "재학 중 · 예외 없고 시작 전에도 해소 안 됨"
+        },
+        {
+          "value": "UNKNOWN",
+          "label": "모르겠어요"
+        }
+      ]
+    },
+    {
+      "id": "training",
+      "label": "국가나 지방자치단체가 실시하거나 비용을 지원하는 직업훈련을 지금 수강하고 있나요?",
+      "help": "정부·지자체가 실시하거나 비용을 지원하는 직업능력개발훈련을 수강 중이면 참여가 제한돼요. 아카데미 시작 전에 수강이 끝나면 증빙 후 참여할 수 있어요. 수강 중인 과정이 해당하는지 모르면 운영기관에 확인해주세요.",
+      "options": [
+        {
+          "value": "NO",
+          "label": "수강하고 있지 않아요"
+        },
+        {
+          "value": "ENDS_BEFORE_START",
+          "label": "수강 중 · 시작 전 종료 예정"
+        },
+        {
+          "value": "CONTINUES",
+          "label": "수강 중 · 시작 후에도 계속"
+        },
+        {
+          "value": "UNKNOWN",
+          "label": "해당 여부 확인 중"
+        }
+      ]
+    },
+    {
+      "id": "participation",
+      "label": "참여하려는 아카데미가 시작하는 해에 K-뉴딜 아카데미에 참여한 적이 있나요?",
+      "help": "아카데미 시작일이 속한 연도에 최대 2회까지 참여할 수 있어요. 여러 아카데미에 동시에 참여하거나 같은 아카데미에 다시 참여할 수는 없어요.",
+      "options": [
+        {
+          "value": "NONE_OR_ONCE",
+          "label": "그해 0~1회 · 일정이 겹치는 아카데미 없음"
+        },
+        {
+          "value": "TWICE",
+          "label": "그해 이미 2회 참여"
+        },
+        {
+          "value": "OVERLAPPING",
+          "label": "참여 중인 아카데미와 일정이 겹쳐요"
+        },
+        {
+          "value": "UNKNOWN",
+          "label": "모르겠어요"
+        }
+      ]
+    }
+  ],
+  "contentHash": "02369c6645f3cde944eb6186852b0a5c33c160e212ca6e0c01ccdd16e427f2b2",
+  "validFrom": "2026-07-06T15:00:00Z",
+  "validUntil": "2026-12-31T15:00:00Z",
+  "explanation": "K-뉴딜 아카데미 공통 참여 조건의 확인 결과예요. 아카데미별 선발과 참여수당 요건은 별도로 확인해주세요.",
+  "remainingChecks": [
+    "고용24 등 직업안정기관에 구직등록이 필요해요. 아직이라면 아카데미 시작 전까지 등록하고 증빙해주세요.",
+    "대한민국 국적이 없으면 참여할 수 없어요. 같은 아카데미에는 다시 참여할 수 없어요.",
+    "근로·사업자등록·재학 예외는 증빙서류 제출과 운영기관의 인정이 필요해요.",
+    "아카데미별 모집 일정·선발 기준과 참여수당 지급 요건은 고용24의 연계 기업 모집 페이지에서 확인해주세요."
+  ],
+  "checks": [
+    {
+      "label": "참여 신청일 연령",
+      "evidence": "참여 신청일 기준 만 15~34세가 대상이에요. 군필자는 의무복무 기간만큼 상한을 높여 최대 만 39세까지 적용해요.",
+      "questionId": "age",
+      "cases": [
+        {
+          "when": {
+            "age": [
+              "AGE_15_TO_34",
+              "EXTENSION_CONFIRMED"
+            ]
+          },
+          "outcome": "MET",
+          "explanation": "입력한 답변은 이 조건을 충족해요."
+        },
+        {
+          "when": {
+            "age": [
+              "OVER_LIMIT",
+              "UNDER_15"
+            ]
+          },
+          "outcome": "NOT_MET",
+          "explanation": "입력한 답변은 이 조건을 충족하지 않아요."
+        }
+      ],
+      "unknownExplanation": "만 35~39세는 군필자의 의무복무 기간만큼 연장될 수 있어요. 만 40세 이상은 참여할 수 없어요. 군복무 기간과 참여 신청일의 만 나이를 확인해주세요."
+    },
+    {
+      "label": "취업 상태",
+      "evidence": "참여 신청일 현재 고용보험 피보험자격으로 취업 여부를 확인해요. 주 30시간 미만 단시간·고용보험 가입 대상 플랫폼·일용 근로자가 훈련시간 외 근로임을 증빙하거나 아카데미 개시 전 제한 사유가 해소되면 참여할 수 있어요.",
+      "questionId": "employment",
+      "cases": [
+        {
+          "when": {
+            "employment": [
+              "NOT_INSURED",
+              "EXCEPTION_CONFIRMED"
+            ]
+          },
+          "outcome": "MET",
+          "explanation": "입력한 답변은 이 조건을 충족해요."
+        },
+        {
+          "when": {
+            "employment": [
+              "EMPLOYED_NO_EXCEPTION"
+            ]
+          },
+          "outcome": "NOT_MET",
+          "explanation": "입력한 답변은 이 조건을 충족하지 않아요."
+        }
+      ],
+      "unknownExplanation": "고용보험 가입 여부와 근로 예외의 증빙 인정 여부를 운영기관에서 확인해주세요."
+    },
+    {
+      "label": "사업자등록",
+      "evidence": "사업자등록 중인 사람은 참여가 제한돼요. 실제 사업을 영위하지 않음을 객관적으로 증명하거나 아카데미 개시 전 제한 사유가 해소되면 참여할 수 있어요.",
+      "questionId": "business",
+      "cases": [
+        {
+          "when": {
+            "business": [
+              "NONE",
+              "INACTIVE_CONFIRMED"
+            ]
+          },
+          "outcome": "MET",
+          "explanation": "입력한 답변은 이 조건을 충족해요."
+        },
+        {
+          "when": {
+            "business": [
+              "ACTIVE_NO_EXCEPTION"
+            ]
+          },
+          "outcome": "NOT_MET",
+          "explanation": "입력한 답변은 이 조건을 충족하지 않아요."
+        }
+      ],
+      "unknownExplanation": "사업자등록 여부와 미영업 증빙의 인정 여부를 운영기관에서 확인해주세요."
+    },
+    {
+      "label": "재학 상태",
+      "evidence": "고등학교·대학(원) 재학생은 참여가 제한돼요. 대학(원) 졸업예정자, 졸업 이수학점 취득자, 휴학생, 고등학교 직업교육 관련 학과의 학교장 추천 졸업예정자는 참여할 수 있어요. 제한 사유가 아카데미 개시 전에 해소되면 증빙 후 참여할 수 있어요. 휴학 예외는 안내마다 범위가 달라요(신청일 현재 휴학 중 또는 연속 1년 이상·통산 2년 이상 장기 휴학).",
+      "questionId": "education",
+      "cases": [
+        {
+          "when": {
+            "education": [
+              "NOT_ENROLLED",
+              "GRADUATING",
+              "LONG_LEAVE",
+              "VOCATIONAL_RECOMMENDED"
+            ]
+          },
+          "outcome": "MET",
+          "explanation": "입력한 답변은 이 조건을 충족해요."
+        },
+        {
+          "when": {
+            "education": [
+              "ENROLLED_NO_EXCEPTION"
+            ]
+          },
+          "outcome": "NOT_MET",
+          "explanation": "입력한 답변은 이 조건을 충족하지 않아요."
+        }
+      ],
+      "unknownExplanation": "재학 예외나 시작 전 해소에 해당하는지 확인해주세요. 1년 미만 휴학은 안내마다 예외 범위가 달라 운영기관 확인이 필요해요."
+    },
+    {
+      "label": "다른 직업훈련 수강",
+      "evidence": "국가 또는 지방자치단체가 실시하거나 비용을 지원하는 직업능력개발훈련을 수강하고 있는 사람은 참여가 제한돼요. 아카데미 개시 전에 해소되면 증빙 후 참여할 수 있어요.",
+      "questionId": "training",
+      "cases": [
+        {
+          "when": {
+            "training": [
+              "NO"
+            ]
+          },
+          "outcome": "MET",
+          "explanation": "입력한 답변은 이 조건을 충족해요."
+        },
+        {
+          "when": {
+            "training": [
+              "CONTINUES"
+            ]
+          },
+          "outcome": "NOT_MET",
+          "explanation": "입력한 답변은 이 조건을 충족하지 않아요."
+        }
+      ],
+      "unknownExplanation": "수강 중인 과정이 국가·지자체 직업훈련에 해당하는지, 아카데미 시작 전에 끝나는지 증빙과 함께 확인해주세요."
+    },
+    {
+      "label": "개시 연도 참여 횟수",
+      "evidence": "아카데미 개시일 기준 연도에 최대 2회까지 참여할 수 있고, 동시에 여러 아카데미에 참여하거나 같은 아카데미에 다시 참여할 수 없어요.",
+      "questionId": "participation",
+      "cases": [
+        {
+          "when": {
+            "participation": [
+              "NONE_OR_ONCE"
+            ]
+          },
+          "outcome": "MET",
+          "explanation": "입력한 답변은 이 조건을 충족해요."
+        },
+        {
+          "when": {
+            "participation": [
+              "TWICE",
+              "OVERLAPPING"
+            ]
+          },
+          "outcome": "NOT_MET",
+          "explanation": "입력한 답변은 이 조건을 충족하지 않아요."
+        }
+      ],
+      "unknownExplanation": "아카데미가 시작하는 해의 참여 횟수와 일정이 겹치는 아카데미가 있는지 확인해주세요."
+    }
+  ],
+  "ageBinding": {
+    "questionId": "age",
+    "minimumInclusive": 15,
+    "maximumInclusive": 34,
+    "referenceDate": null,
+    "below": "UNDER_15",
+    "within": "AGE_15_TO_34",
+    "above": "EXTENSION_PENDING",
+    "showCalculatedAge": true
+  },
+  "ageNotice": "오늘(서울 기준) 참여 신청 시 연령이에요. 신청일이 달라지면 다시 확인해주세요."
+}
+$rule$::jsonb, 'seed', '검토한 공고 규칙 초기 데이터', now(), 'seed');
+INSERT INTO policy_rule_heads(policy_number, version_id) VALUES ('20260714005400113258', 'ba390000-0000-4000-8033-000000000001');

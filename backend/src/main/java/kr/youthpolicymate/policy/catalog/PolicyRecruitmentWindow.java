@@ -8,8 +8,8 @@ import java.time.OffsetDateTime;
 import static kr.youthpolicymate.policy.SeoulTime.SEOUL;
 
 /** 전체 목록 필터에 쓰는 기간이다. 날짜형 종료일도 다음 날 서울 자정의 미포함 경계로 저장한다. */
-public record PolicyRecruitmentWindow(String kind, OffsetDateTime opensAt, OffsetDateTime closesAt) {
-    public static PolicyRecruitmentWindow from(String number, String hash, JsonNode raw) {
+record PolicyRecruitmentWindow(String kind, OffsetDateTime opensAt, OffsetDateTime closesAt) {
+    static PolicyRecruitmentWindow from(String number, String hash, JsonNode raw) {
         return switch (PolicyRecruitment.period(number, hash, raw)) {
             case ApplicationPeriod.Dates dates -> new PolicyRecruitmentWindow("PERIOD",
                     dates.startsOnInclusive().atStartOfDay(SEOUL).toOffsetDateTime(),

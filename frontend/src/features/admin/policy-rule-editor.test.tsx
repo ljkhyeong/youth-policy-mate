@@ -4,9 +4,8 @@ import { describe, expect, it } from "vitest";
 import { RuleEditor } from "./policy-rule-editor";
 import { moveRuleCase, ruleDraftJson, seoulDateTime, type RuleDefinition } from "./policy-rule-editor-model";
 
-const rules = ["V23__seed_reviewed_policy_rules.sql", "V24__migrate_policy_question_rules.sql"].flatMap(file =>
-  [...readFileSync(new URL(`../../../../backend/src/main/resources/db/migration/${file}`, import.meta.url), "utf8")
-    .matchAll(/\$rule\$([\s\S]*?)\$rule\$/g)].map(match => JSON.parse(match[1]) as RuleDefinition));
+const rules = [...readFileSync(new URL("../../../../backend/src/main/resources/db/migration/V2__seed_reviewed_policy_rules.sql", import.meta.url), "utf8")
+  .matchAll(/\$rule\$([\s\S]*?)\$rule\$/g)].map(match => JSON.parse(match[1]) as RuleDefinition);
 
 describe("관리자 규칙 편집", () => {
   it("원문 재검토와 새 버전명이 있어야 초안 요청을 만든다", () => {

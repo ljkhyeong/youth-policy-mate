@@ -8,7 +8,7 @@ import java.util.Map;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import static kr.youthpolicymate.policy.catalog.PolicyQuestions.*;
-import static kr.youthpolicymate.eligibility.ConditionAssessment.Outcome.*;
+import static kr.youthpolicymate.eligibility.ConditionOutcome.*;
 import static kr.youthpolicymate.eligibility.EligibilityStatus.*;
 import static org.assertj.core.api.Assertions.*;
 

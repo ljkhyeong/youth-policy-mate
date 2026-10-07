@@ -2,7 +2,7 @@ package kr.youthpolicymate.policy.catalog;
 
 import kr.youthpolicymate.eligibility.EligibilityStatus;
 import kr.youthpolicymate.policy.RecruitmentStatus;
-import static kr.youthpolicymate.eligibility.ConditionAssessment.Outcome.*;
+import static kr.youthpolicymate.eligibility.ConditionOutcome.*;
 import static kr.youthpolicymate.policy.SeoulTime.SEOUL;
 import org.springframework.context.annotation.Profile;
 import org.springframework.data.domain.PageRequest;

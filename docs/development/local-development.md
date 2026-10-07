@@ -100,7 +100,6 @@ npm run db:down
 
 ```sh
 npm run test:web
-npm run test:eligibility
 npm run test:recruitment
 npm run test:ai-reservation-db
 npm run check:api-types
@@ -110,8 +109,6 @@ npm run check:backend
 npm run check:tools
 npm audit
 ```
-
-`test:eligibility`는 순수 Java 판정 집계와 연령 비교를 실행한다. API 인증키·DB·Docker 없이 충족·불충족·미확인·예외와 근거 보존, 연령 범위·기준일을 확인한다. 실제 정책 원문 해석의 정확도 검증은 아니다. 구현 범위는 [자격 판정 결과](eligibility-decision.md), [연령 비교](age-condition.md)를 따른다.
 
 `test:recruitment`는 순수 Java 모집 상태 23건과 마감 날짜 제공 8건, 총 31건을 실행한다. 서울 날짜 경계·명시적 접수 종료 시각·상시·소진 시 종료·미확인 이유·근거 보존을 검사하며 API 인증키·DB·Docker가 필요하지 않다. [모집 기간 구현](recruitment-period.md)에 입력 범위와 실제 원문 해석이 아닌 점을 정리했다.
 
@@ -143,15 +140,11 @@ curl -i http://127.0.0.1:8080/actuator/env
 
 조건 입력 추가 후 Vitest 5개, 린트·타입 검사와 프로덕션 빌드를 확인했다. `npm audit`의 알려진 취약점은 0건이다. 브라우저에서 빈 입력 오류·첫 오류 포커스, 확인 화면, 수정 시 값 유지, 초기화와 새로고침 시 값 삭제를 확인했다. 데스크톱 1280px와 모바일 390px 화면에서 시작·입력·확인 화면을 점검했다. 모바일은 브라우저 크기 변경이며 실제 휴대전화 검증이나 저장소에 추가한 E2E 자동 테스트는 아니다. 브라우저 도구의 Tab·Enter 동작이 반영되지 않아 키보드만 사용하는 전체 흐름은 확인하지 못했다. 상세 범위는 [비회원 조건 입력](guest-conditions.md)을 따른다.
 
-판정 결과 집계 모델 추가 후에는 `test:eligibility`의 14건과 `./backend/gradlew -p backend assemble --no-daemon` 빌드를 확인했다. 모두 통과했다. DB·웹 코드는 변경하지 않았으며 기존 PostgreSQL 통합 테스트와 프런트엔드 검사는 이 작업에서 다시 실행하지 않았다.
-
 CI 구성 후에는 macOS arm64의 별도 임시 복사본에서 Node.js 24.20.0·npm 11.19.0으로 `npm ci --no-audit --no-fund`, 개발 도구 테스트 7개, 웹 테스트 5개, 린트·타입 검사·프로덕션 빌드를 모두 통과했다. 서버도 전체 `build`를 실행해 단위 14개·PostgreSQL 통합 2개가 실패·건너뛰기 없이 통과했다. actionlint 1.7.12로 워크플로 문법을 확인했다. GitHub의 Ubuntu 실행·캐시·보고서 업로드는 아직 확인하지 않았다. 자세한 환경과 경고는 [CI 검증 기록](ci.md#실제-확인한-결과)을 따른다.
 
 공통 상태 화면 추가 후에는 Node.js 25.4.0·npm 11.7.0에서 웹 테스트 8개·린트·타입 검사·빌드를 통과했다. 개발 미리보기와 운영 빌드의 404 차단, 데스크톱·모바일 배치를 확인했다. 실제 API 복구와 키보드 전용 흐름 등 미확인 범위는 [상태 화면 검증 기록](page-states.md#접근성과-검증)을 따른다.
 
-연령 비교기 추가 후에는 `npm run test:eligibility`의 32건과 `./backend/gradlew -p backend assemble --no-daemon` 빌드가 통과했다. 생일·윤일 경계와 미해석 조건은 인공 입력으로 검사했다. 실제 정책 API는 호출하지 않았으며 웹·PostgreSQL 통합 검사는 다시 실행하지 않았다. 상세 범위는 [연령 비교 검증 기록](age-condition.md#코드와-검증)을 따른다.
-
-2026-08-31까지 추가한 거주·취업·소득 비교기, 마감 알림 후보 날짜, `/dev` 미리보기 화면과 preview API의 검증 기록은 해당 코드를 2026-10-07 제거하면서 함께 삭제했다. 필요하면 저장소 이력에서 확인한다.
+2026-08-31까지 추가한 판정 결과 집계 모델·연령 비교기(`test:eligibility`), 거주·취업·소득 비교기, 마감 알림 후보 날짜, `/dev` 미리보기 화면과 preview API의 검증 기록은 해당 코드를 2026-10-07 제거하면서 함께 삭제했다. 필요하면 저장소 이력에서 확인한다.
 
 2026-08-31 모집 기간 모델 추가 후에는 모집 기간 23건과 기존 자격 판정 117건을 함께 실행해 총 140건이 통과했고 서버 `assemble`도 통과했다. 웹·PostgreSQL 통합 검사는 다시 실행하지 않았다. Gradle 캐시 접근 권한 처리와 Java agent 경고, 검증한 경계는 [모집 기간 검증 기록](recruitment-period.md#실행한-검증)을 따른다.
 

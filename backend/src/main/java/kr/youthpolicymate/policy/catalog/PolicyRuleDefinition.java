@@ -3,13 +3,13 @@ package kr.youthpolicymate.policy.catalog;
 import jakarta.validation.Valid;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.*;
-import kr.youthpolicymate.eligibility.ConditionAssessment;
+import kr.youthpolicymate.eligibility.ConditionOutcome;
 import kr.youthpolicymate.eligibility.EligibilityStatus;
 import java.time.*;
 import java.util.*;
 import static kr.youthpolicymate.policy.SeoulTime.SEOUL;
 import static kr.youthpolicymate.policy.catalog.PolicyQuestions.*;
-import static kr.youthpolicymate.eligibility.ConditionAssessment.Outcome.*;
+import static kr.youthpolicymate.eligibility.ConditionOutcome.*;
 
 /** 공고의 선택지 판정표. 첫 일치 행을 적용하고 미일치는 추가 확인으로 남긴다. */
 @Schema(name = "PolicyRuleDefinition", requiredProperties = {"policyNumber", "ruleVersion", "contentHash", "validFrom", "validUntil",
@@ -64,7 +64,7 @@ public record PolicyRuleDefinition(
     }
     @Schema(name = "PolicyRuleCase", requiredProperties = {"when", "outcome", "explanation"})
     public record RuleCase(@NotEmpty Map<@NotBlank String, @NotEmpty Set<@NotNull @Size(max = 40) String>> when,
-                           @NotNull ConditionAssessment.Outcome outcome, @NotBlank String explanation) {}
+                           @NotNull ConditionOutcome outcome, @NotBlank String explanation) {}
     @Schema(name = "PolicyRuleBirthBinding", requiredProperties = {"questionId", "within"})
     public record BirthBinding(@NotBlank String questionId,
                                @Schema(types = {"string", "null"}, format = "date") LocalDate minimumInclusive,

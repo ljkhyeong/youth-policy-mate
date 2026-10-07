@@ -3,13 +3,13 @@ package kr.youthpolicymate.policy.catalog;
 import java.time.Instant;
 import java.util.List;
 import java.util.stream.Stream;
-import kr.youthpolicymate.eligibility.ConditionAssessment.Outcome;
+import kr.youthpolicymate.eligibility.ConditionOutcome;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 import static kr.youthpolicymate.policy.catalog.PolicyQuestions.*;
-import static kr.youthpolicymate.eligibility.ConditionAssessment.Outcome.*;
+import static kr.youthpolicymate.eligibility.ConditionOutcome.*;
 import static kr.youthpolicymate.eligibility.EligibilityStatus.*;
 import static org.assertj.core.api.Assertions.*;
 import static kr.youthpolicymate.policy.catalog.PolicyRuleFixtures.*;
@@ -73,7 +73,7 @@ class MovingFeeRulesTest {
             "BOTH, BROKERAGE, NOT_MET", "BOTH, MOVING, NOT_MET", "NONE, BOTH, MET"
     })
     @DisplayName("타 기관 한쪽 비용 지원은 신청 비용별로 비교하며 일부 중복을 전체 불충족으로 바꾸지 않는다")
-    void comparesOtherSupportByRequestedCost(String other, String requested, Outcome outcome) {
+    void comparesOtherSupportByRequestedCost(String other, String requested, ConditionOutcome outcome) {
         var result = evaluate("NO_HOME", "WITHIN_LIMIT", "NONE", other, requested);
         assertThat(result.checks().get(6).outcome()).isEqualTo(outcome);
         assertThat(result.commonCriteriaStatus()).isEqualTo(switch (outcome) {
@@ -116,7 +116,7 @@ class MovingFeeRulesTest {
             "excludedResidency, 9, CLEAR, MET", "excludedResidency, 9, RESTRICTED, NOT_MET", "excludedResidency, 9, UNKNOWN, UNKNOWN"
     })
     @DisplayName("참여 제한을 항목별로 비교하고 다른 미응답 요건을 면제하지 않는다")
-    void comparesParticipationRestrictions(String questionId, int index, String value, Outcome outcome) {
+    void comparesParticipationRestrictions(String questionId, int index, String value, ConditionOutcome outcome) {
         var result = rule(MOVING_FEE).evaluate(1, new Request(1, version(MOVING_FEE), List.of(new Answer(questionId, value))), NOW);
         assertThat(result.checks().get(index).outcome()).isEqualTo(outcome);
         assertThat(result.checks().subList(0, 7)).extracting(Check::outcome).containsOnly(UNKNOWN);

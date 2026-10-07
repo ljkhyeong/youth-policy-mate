@@ -1,6 +1,6 @@
 # 정책 수집·판정 데이터 구조 초안
 
-- 상태: 원천 데이터·저장 구조 설계 초안. 2026-09-05에 목록·상세 성공 응답을 확인하고 V10의 소량 정책 저장·조회 테이블을 추가했다. 현재 구현은 [정책 조회 안내](../development/policy-catalog.md)를 따른다. 아래 내용은 자동 수집·판정까지 포함한 설계 초안이다. AI 예산·요청 예약 테이블은 이 초안과 별도로 구현했다. 독립적인 [판정 결과 집계](../development/eligibility-decision.md), [연령](../development/age-condition.md) 비교기는 순수 모델로 구현
+- 상태: 원천 데이터·저장 구조 설계 초안. 2026-09-05에 목록·상세 성공 응답을 확인하고 V10의 소량 정책 저장·조회 테이블을 추가했다. 현재 구현은 [정책 조회 안내](../development/policy-catalog.md)를 따른다. 아래 내용은 자동 수집·판정까지 포함한 설계 초안이다. AI 예산·요청 예약 테이블은 이 초안과 별도로 구현했다. 판정 결과 집계와 연령 비교는 공고별 판정표로 구현했다([판정 결과 집계](../development/eligibility-decision.md), [연령](../development/age-condition.md)).
 - 제품 기준: [PRD-0001](../PRD/0001_product-baseline/spec.md)
 - 기술 기준: [ADR-0001](../ADR/0001_기술스택과_책임_분리.md)
 - 조사 근거: [온통청년 API 계약 조사](../research/ontong-api-contract.md)

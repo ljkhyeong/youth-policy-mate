@@ -35,7 +35,7 @@ allowed-tools:
 
 | 바뀐 위치 | 기본 스크립트 | 함께 볼 것 |
 |---|---|---|
-| `eligibility/**` | `test:eligibility` | 판정표에 영향이 있으면 `test:policy-questions` |
+| `eligibility/**`(결과 enum·자치구) | `test:policy-questions` | 응답 형식이 바뀌면 `test:policy-catalog`와 API 계약 행 |
 | `policy/catalog/` 질문·판정표(`PolicyRuleDefinition`, `PolicyQuestion*`, `BasicConditions`) | `test:policy-questions` | 규칙 형식은 `PolicyRuleDefinitionTest`, DB 적용·목록은 `test:policy-catalog` |
 | `policy/catalog/` 목록·상세·저장소(`PolicyCatalogStore`, `*Response`) | `test:policy-catalog` | 응답 형식이 바뀌면 API 계약 행 |
 | `policy/Recruitment*`, `ApplicationPeriod` | `test:recruitment` | `catalog/PolicyRecruitment*`·`PolicyDeadline*`은 해당 테스트 클래스 |

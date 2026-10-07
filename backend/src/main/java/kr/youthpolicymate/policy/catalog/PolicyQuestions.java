@@ -8,7 +8,7 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.Size;
-import kr.youthpolicymate.eligibility.ConditionAssessment;
+import kr.youthpolicymate.eligibility.ConditionOutcome;
 import kr.youthpolicymate.eligibility.EligibilityStatus;
 import java.time.Instant;
 import java.util.List;
@@ -57,5 +57,5 @@ public final class PolicyQuestions {
                              EligibilityStatus commonCriteriaStatus, String scope, String explanation, List<String> remainingChecks,
                              String sourceUrl, Instant evaluatedAt, List<Check> checks) {}
     @Schema(name = "PolicyEvaluatedCheck", requiredProperties = {"label", "providedValue", "outcome", "explanation", "evidence"})
-    public record Check(String label, String providedValue, ConditionAssessment.Outcome outcome, String explanation, String evidence) {}
+    public record Check(String label, String providedValue, ConditionOutcome outcome, String explanation, String evidence) {}
 }

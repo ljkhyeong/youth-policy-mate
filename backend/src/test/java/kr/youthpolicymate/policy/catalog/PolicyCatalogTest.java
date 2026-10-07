@@ -96,7 +96,7 @@ class PolicyCatalogTest {
         var prefill = questions.prefill(EXAM_FEE, new PolicyQuestions.PrefillRequest(1, next.ruleVersion(), birth));
         var evaluated = questions.evaluate(EXAM_FEE, new PolicyQuestions.Request(1, next.ruleVersion(), prefill.answers()));
         var compared = checks.check(new BasicConditions(birth, "강남구", BasicConditions.EmploymentStatus.OTHER), 1, "", PolicyCheckResponse.Sort.AGE_MATCH, null);
-        assertThat(evaluated.checks().getFirst().outcome()).isEqualTo(kr.youthpolicymate.eligibility.ConditionAssessment.Outcome.NOT_MET);
+        assertThat(evaluated.checks().getFirst().outcome()).isEqualTo(kr.youthpolicymate.eligibility.ConditionOutcome.NOT_MET);
         assertThat(compared.items().getFirst().checks().getFirst().outcome()).isEqualTo(evaluated.checks().getFirst().outcome());
         assertThat(compared.items().getFirst().ruleVersion()).isEqualTo(next.ruleVersion());
         assertThat(store.list("", 1, 20, true, null, clock.instant()).total()).isOne();
@@ -195,7 +195,7 @@ class PolicyCatalogTest {
             assertThat(checked.questionnaireAvailable()).isTrue();
             assertThat(checked.ruleVersion()).isEqualTo(expected == null ? "" : definition.versionAt(AT));
             assertThat(checked.checks().getFirst().outcome()).isEqualTo(expected == null
-                    ? kr.youthpolicymate.eligibility.ConditionAssessment.Outcome.UNKNOWN : expected.age().outcome());
+                    ? kr.youthpolicymate.eligibility.ConditionOutcome.UNKNOWN : expected.age().outcome());
         });
     }
 
@@ -217,7 +217,7 @@ class PolicyCatalogTest {
                 .isInstanceOf(PolicyQuestionService.PolicyChangedException.class);
         var answers = questions.prefill(K_PASS, new PolicyQuestions.PrefillRequest(1, current.ruleVersion(), birth)).answers();
         assertThat(questions.evaluate(K_PASS, new PolicyQuestions.Request(1, current.ruleVersion(), answers)).checks().getFirst().outcome())
-                .isEqualTo(kr.youthpolicymate.eligibility.ConditionAssessment.Outcome.NOT_MET);
+                .isEqualTo(kr.youthpolicymate.eligibility.ConditionOutcome.NOT_MET);
     }
 
     @Test
@@ -654,12 +654,12 @@ class PolicyCatalogTest {
         org.mockito.Mockito.verify(jdbc, org.mockito.Mockito.times(3)).sql(org.mockito.ArgumentMatchers.anyString());
         assertThat(first.total()).isEqualTo(23);
         assertThat(first.items().getFirst().policyNumber()).isEqualTo(K_PASS);
-        assertThat(first.items().getFirst().checks().getFirst().outcome()).isEqualTo(kr.youthpolicymate.eligibility.ConditionAssessment.Outcome.MET);
+        assertThat(first.items().getFirst().checks().getFirst().outcome()).isEqualTo(kr.youthpolicymate.eligibility.ConditionOutcome.MET);
         assertThat(first.items().getFirst().ruleVersion()).isEqualTo(rule(K_PASS).versionAt(AT));
         var second = checks.check(input, 2, "", PolicyCheckResponse.Sort.AGE_MATCH, null);
         assertThat(second.items()).hasSize(3);
         assertThat(second.items().getLast().policyNumber()).isEqualTo(EXAM_FEE);
-        assertThat(second.items().getLast().checks().getFirst().outcome()).isEqualTo(kr.youthpolicymate.eligibility.ConditionAssessment.Outcome.NOT_MET);
+        assertThat(second.items().getLast().checks().getFirst().outcome()).isEqualTo(kr.youthpolicymate.eligibility.ConditionOutcome.NOT_MET);
         assertThat(first.items()).noneMatch(value -> second.items().stream().anyMatch(next -> value.policyNumber().equals(next.policyNumber())));
         var search = checks.check(input, 1, "응시료", PolicyCheckResponse.Sort.AGE_MATCH, null);
         assertThat(search.total()).isEqualTo(1);
@@ -675,7 +675,7 @@ class PolicyCatalogTest {
         var current = store.find(K_PASS).orElseThrow();
         importAt(K_PASS, current.content(), "{}", AT.plusSeconds(2), "changed-basic", "changed-basic-hash");
         var changed = checks.check(input, 1, "K-패스", PolicyCheckResponse.Sort.AGE_MATCH, null).items().getFirst();
-        assertThat(changed.checks().getFirst().outcome()).isEqualTo(kr.youthpolicymate.eligibility.ConditionAssessment.Outcome.UNKNOWN);
+        assertThat(changed.checks().getFirst().outcome()).isEqualTo(kr.youthpolicymate.eligibility.ConditionOutcome.UNKNOWN);
         assertThat(changed.ruleVersion()).isEmpty();
         assertThat(changed.questionnaireAvailable()).isFalse();
     }

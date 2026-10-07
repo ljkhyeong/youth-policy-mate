@@ -7,7 +7,7 @@ import java.time.LocalDate;
 import java.util.List;
 import static kr.youthpolicymate.policy.catalog.PolicyQuestions.*;
 import static kr.youthpolicymate.eligibility.EligibilityStatus.*;
-import static kr.youthpolicymate.eligibility.ConditionAssessment.Outcome.*;
+import static kr.youthpolicymate.eligibility.ConditionOutcome.*;
 import static org.assertj.core.api.Assertions.*;
 import static kr.youthpolicymate.policy.catalog.PolicyRuleFixtures.*;
 

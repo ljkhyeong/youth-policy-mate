@@ -70,7 +70,7 @@ API 인증키 없이 사용할 수 있는 비회원 조건 입력 화면(`/condi
 
 조건 입력의 로딩 화면과 공통 오류·404 안내를 추가했습니다.
 
-서버에는 항목별 결과를 3단계 자격 상태로 합치는 모델과 근거 구조를 추가했습니다. 확인한 연령 범위를 비교합니다. 정책 미해석·예외·사용자 정보 누락을 구분하며, `npm run test:eligibility`로 인증키·DB 없이 단위 테스트를 실행할 수 있습니다.
+서버에는 항목별 결과를 3단계 자격 상태로 합치는 모델과 근거 구조, 확인한 연령 범위의 비교기를 추가했습니다. 실제 판정이 공고별 판정표로 옮겨 간 뒤 상태 계산은 판정표 실행 코드의 함수로, 만 나이 계산은 규칙의 연령 연결로 합치고 이 모델은 2026-10-07 제거했습니다([판정 결과 집계](docs/development/eligibility-decision.md)).
 
 당시 함께 만든 거주·취업·소득 비교기, 마감 알림 후보 계산(`schedule` 모듈), 개발 전용 `/dev` 미리보기 화면과 `preview` 프로필의 인공 자료 API·계약은 실제 판정이 [공고별 조건 데이터](docs/ADR/0003_공고별_조건_데이터.md)로, 마감 알림 예약이 회원 저장 흐름으로 옮겨 가면서 2026-10-07 제거했습니다. [결정 기록](docs/ADR/0002_서버_DTO_기반_API_계약_생성.md#개발-전용-계약-제거--2026-10-07)
 
@@ -109,8 +109,8 @@ AI 예약 복구 작업자·후보 상태·요청 전 판단·개정 적용 순�
 - [모바일 우선 웹앱 인터페이스 기준](docs/design/webapp-interface.md)
 - [비회원 조건 입력의 구현 범위](docs/development/guest-conditions.md)
 - [공통 상태 화면](docs/development/page-states.md)
-- [자격 판정 결과 집계와 근거 구조](docs/development/eligibility-decision.md)
-- [명시적 연령 조건 비교와 미지원 범위](docs/development/age-condition.md)
+- [자격 판정 결과 집계와 공통요건 상태](docs/development/eligibility-decision.md)
+- [규칙 데이터의 연령 조건 비교](docs/development/age-condition.md)
 - [모집 기간·마감 상태의 날짜와 시각 설계](docs/design/recruitment-period.md)
 - [모집 기간 상태 구현과 경계 검증](docs/development/recruitment-period.md)
 - [온통청년 인증키 설정과 응답 점검](docs/development/ontong-api-probe.md)

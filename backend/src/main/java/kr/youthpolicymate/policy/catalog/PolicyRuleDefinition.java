@@ -143,7 +143,7 @@ public record PolicyRuleDefinition(
     public Evaluation evaluate(long revision, Request input, Instant now) {
         if (!appliesAt(now)) throw new IllegalArgumentException("검토한 적용 기간의 규칙만 사용할 수 있습니다.");
         if (!versionAt(now).equals(input.ruleVersion())) throw new IllegalArgumentException("질문 기준 시점이 바뀌었습니다.");
-        var values = validatedAnswers(questions, input.answers());
+        var values = validatedAnswers(input.answers());
         var results = checks.stream().map(c -> evaluateCheck(c, values)).toList();
         var remaining = new ArrayList<>(remainingChecks);
         if (remainingVariant != null) remaining.set(remainingVariant.index(), remainingVariant.byValue()
@@ -153,11 +153,22 @@ public record PolicyRuleDefinition(
                 scopeAt(now), noticeAt(now) + explanation, remaining, sourceUrl, now, results);
     }
     /** 공통요건 상태. 불충족이 있으면 불충족, 미확인이 있으면 추가 확인이며 미확인을 충족으로 바꾸지 않는다. 항목이 없으면 추가 확인으로 남긴다. */
-    static EligibilityStatus commonStatus(List<Check> results) {
+    private static EligibilityStatus commonStatus(List<Check> results) {
         if (results.isEmpty()) return EligibilityStatus.NEEDS_REVIEW;
         if (results.stream().anyMatch(c -> c.outcome() == NOT_MET)) return EligibilityStatus.INELIGIBLE;
         if (results.stream().anyMatch(c -> c.outcome() == UNKNOWN)) return EligibilityStatus.NEEDS_REVIEW;
         return EligibilityStatus.ELIGIBLE;
+    }
+    // 이 규칙의 질문·선택지에 있는 답변만 받고 같은 질문의 중복 답변은 거절한다.
+    private Map<String, String> validatedAnswers(List<Answer> answers) {
+        var values = new HashMap<String, String>();
+        for (var answer : answers) {
+            if (answer == null || questions.stream().noneMatch(q -> q.id().equals(answer.questionId())
+                    && q.options().stream().anyMatch(option -> option.value().equals(answer.value())))
+                    || values.putIfAbsent(answer.questionId(), answer.value()) != null)
+                throw new IllegalArgumentException("질문과 답변을 다시 확인해주세요.");
+        }
+        return values;
     }
     private Check evaluateCheck(RuleCheck check, Map<String, String> values) {
         var row = check.cases().stream().filter(c -> c.when().entrySet().stream()

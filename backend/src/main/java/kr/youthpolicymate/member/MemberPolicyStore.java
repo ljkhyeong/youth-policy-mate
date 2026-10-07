@@ -46,13 +46,13 @@ public class MemberPolicyStore {
     @Transactional
     public void saveConditions(UUID member, BasicConditions conditions) {
         BasicConditions.checkBirthDate(conditions.birthDate(), today()); lock(member);
-        jdbc.sql("UPDATE members SET conditions = CAST(:conditions AS jsonb), conditions_updated_at = CURRENT_TIMESTAMP WHERE id = :id")
+        jdbc.sql("UPDATE members SET conditions = CAST(:conditions AS jsonb) WHERE id = :id")
                 .param("id", member).param("conditions", mapper.writeValueAsString(conditions)).update();
     }
     @Transactional
     public void clearConditions(UUID member) {
         lock(member);
-        jdbc.sql("UPDATE members SET conditions = NULL, conditions_updated_at = CURRENT_TIMESTAMP WHERE id = :id").param("id", member).update();
+        jdbc.sql("UPDATE members SET conditions = NULL WHERE id = :id").param("id", member).update();
     }
 
     @Transactional
@@ -61,14 +61,13 @@ public class MemberPolicyStore {
         var policy = policies.find(number).orElseThrow(PolicyNotFoundException::new);
         var deadline = PolicyDeadline.from(policy.recruitment());
         var generation = UUID.randomUUID();
-        boolean exists = jdbc.sql("SELECT count(*) FROM saved_policies WHERE member_id = :member AND policy_number = :number")
-                .param("member", member).param("number", number).query(Long.class).single() > 0;
-        if (exists) return;
-        jdbc.sql("""
+        // 이미 저장한 정책은 기존 저장 식별자와 예약을 그대로 둔다.
+        if (jdbc.sql("""
                 INSERT INTO saved_policies(member_id, policy_number, generation, saved_revision, current_revision, deadline_on, deadline_note)
                 VALUES (:member, :number, :generation, :revision, :revision, :date, :note)
+                ON CONFLICT (member_id, policy_number) DO NOTHING
                 """).param("member", member).param("number", number).param("generation", generation).param("revision", policy.revision())
-                .param("date", deadline.date()).param("note", deadline.note()).update();
+                .param("date", deadline.date()).param("note", deadline.note()).update() == 0) return;
         plan(member, number, generation, policy.revision(), deadline);
     }
     private void plan(UUID member, String number, UUID generation, long revision, PolicyDeadline deadline) {
@@ -149,20 +148,18 @@ public class MemberPolicyStore {
                     s.current_revision AS saved_revision, s.generation
                 FROM saved_policies s JOIN policies p ON p.policy_number = s.policy_number
                 WHERE s.member_id = :member ORDER BY p.policy_number FOR SHARE OF p
-                """).param("member", member).query((rs, row) -> new SavedVersion(rs.getString("policy_number"),
-                        rs.getLong("current_revision"), rs.getLong("saved_revision"), rs.getObject("generation", UUID.class),
-                        rs.getString("title"))).list();
+                """).param("member", member).query(SavedVersion.class).list();
         for (var saved : versions) {
-            if (saved.revision() <= 0) throw new PolicyNotFoundException();
-            if (saved.savedRevision() == saved.revision()) continue;
-            var number = saved.number();
+            if (saved.currentRevision() <= 0) throw new PolicyNotFoundException();
+            if (saved.savedRevision() == saved.currentRevision()) continue;
+            var number = saved.policyNumber();
             var deadline = PolicyDeadline.from(policies.find(number).orElseThrow(PolicyNotFoundException::new).recruitment());
             cancel(member, number);
             jdbc.sql("UPDATE saved_policies SET current_revision = :revision, deadline_on = :date, deadline_note = :note WHERE member_id = :member AND policy_number = :number")
-                    .param("member", member).param("number", number).param("revision", saved.revision())
+                    .param("member", member).param("number", number).param("revision", saved.currentRevision())
                     .param("date", deadline.date()).param("note", deadline.note()).update();
-            plan(member, number, saved.generation(), saved.revision(), deadline);
-            notify(member, number, saved.generation(), saved.revision(), "POLICY_CHANGED", saved.title(), "저장한 정책 내용이 바뀌었어요. 신청 조건과 기간을 다시 확인해주세요.");
+            plan(member, number, saved.generation(), saved.currentRevision(), deadline);
+            notify(member, number, saved.generation(), saved.currentRevision(), "POLICY_CHANGED", saved.title(), "저장한 정책 내용이 바뀌었어요. 신청 조건과 기간을 다시 확인해주세요.");
         }
     }
     @Transactional
@@ -170,19 +167,18 @@ public class MemberPolicyStore {
         refresh(member);
         var today = today();
         var due = jdbc.sql("""
-                SELECT r.* , p.content->>'title' AS title FROM policy_reminders r
+                SELECT r.id, r.policy_number, r.generation, r.policy_revision, r.days_before, r.due_on, p.content->>'title' AS title
+                FROM policy_reminders r
                 JOIN saved_policies s ON s.member_id = r.member_id AND s.policy_number = r.policy_number
                     AND s.generation = r.generation AND s.current_revision = r.policy_revision
                 JOIN policies p ON p.policy_number = s.policy_number AND p.current_revision = s.current_revision
                 WHERE r.member_id = :member AND r.state = 'PENDING' AND r.due_on <= :today ORDER BY r.due_on
-                """).param("member", member).param("today", today).query((rs, row) -> new Due(rs.getObject("id", UUID.class),
-                        rs.getString("policy_number"), rs.getObject("generation", UUID.class), rs.getLong("policy_revision"),
-                        rs.getInt("days_before"), rs.getObject("due_on", LocalDate.class), rs.getString("title"))).list();
+                """).param("member", member).param("today", today).query(Due.class).list();
         for (var reminder : due) {
-            if (reminder.date().equals(today)) notify(member, reminder.number(), reminder.generation(), reminder.revision(),
-                    "DEADLINE_" + reminder.before(), reminder.title(), "신청 마감 " + reminder.before() + "일 전이에요. 정확한 마감 시각은 공식 안내를 확인해주세요.");
-            jdbc.sql("UPDATE policy_reminders SET state = :state, delivered_at = CASE WHEN :state = 'DELIVERED' THEN CURRENT_TIMESTAMP ELSE NULL END WHERE id = :id")
-                    .param("id", reminder.id()).param("state", reminder.date().equals(today) ? "DELIVERED" : "SKIPPED").update();
+            if (reminder.dueOn().equals(today)) notify(member, reminder.policyNumber(), reminder.generation(), reminder.policyRevision(),
+                    "DEADLINE_" + reminder.daysBefore(), reminder.title(), "신청 마감 " + reminder.daysBefore() + "일 전이에요. 정확한 마감 시각은 공식 안내를 확인해주세요.");
+            jdbc.sql("UPDATE policy_reminders SET state = :state WHERE id = :id")
+                    .param("id", reminder.id()).param("state", reminder.dueOn().equals(today) ? "DELIVERED" : "SKIPPED").update();
         }
     }
     private void notify(UUID member, String number, UUID generation, long revision, String kind, String title, String message) {
@@ -207,14 +203,14 @@ public class MemberPolicyStore {
         var counts = jdbc.sql("""
                 SELECT count(*) AS total, count(*) FILTER (WHERE read_at IS NULL) AS unread
                 FROM member_notifications WHERE member_id = :member
-                """).param("member", member).query((rs, row) -> new NotificationCounts(rs.getLong("total"), rs.getLong("unread"))).single();
+                """).param("member", member).query(NotificationCounts.class).single();
         var total = filter == MemberResponses.NotificationFilter.UNREAD ? counts.unread() : counts.total();
         var items = jdbc.sql("""
-                SELECT * FROM member_notifications WHERE member_id = :member AND (:filter = 'ALL' OR read_at IS NULL)
+                SELECT id, policy_number, title, message, created_at, read_at IS NOT NULL AS read
+                FROM member_notifications WHERE member_id = :member AND (:filter = 'ALL' OR read_at IS NULL)
                 ORDER BY created_at DESC, id DESC LIMIT :limit OFFSET :offset
                 """).param("member", member).param("filter", filter.name()).param("limit", pageSize).param("offset", (long) (page - 1) * pageSize)
-                .query((rs,row) -> new MemberResponses.Notification(rs.getString("id"),rs.getString("policy_number"),
-                        rs.getString("title"),rs.getString("message"),rs.getObject("created_at",OffsetDateTime.class).toInstant(),rs.getObject("read_at") != null)).list();
+                .query(MemberResponses.Notification.class).list();
         return new MemberResponses.Notifications(items, page, pageSize, total, (long) page * pageSize < total, counts.unread());
     }
     public void read(UUID member, UUID id) {
@@ -225,7 +221,8 @@ public class MemberPolicyStore {
         jdbc.sql("UPDATE member_notifications SET read_at = CURRENT_TIMESTAMP WHERE member_id = :member AND read_at IS NULL")
                 .param("member", member).update();
     }
-    private record SavedVersion(String number, long revision, long savedRevision, UUID generation, String title) {}
-    private record Due(UUID id, String number, UUID generation, long revision, int before, LocalDate date, String title) {}
+    // 아래 record는 JdbcClient.query(Class)가 구성요소 이름(snake_case 열)으로 채운다.
+    private record SavedVersion(String policyNumber, long currentRevision, long savedRevision, UUID generation, String title) {}
+    private record Due(UUID id, String policyNumber, UUID generation, long policyRevision, int daysBefore, LocalDate dueOn, String title) {}
     private record NotificationCounts(long total, long unread) {}
 }

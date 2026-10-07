@@ -49,7 +49,7 @@ class FutureYouthJobsRulesTest {
     void preservesAgeBoundariesAndMilitaryException() {
         Map.of("1985-12-31", UNKNOWN, "1986-01-01", MET, "2007-12-31", MET, "2008-01-01", NOT_MET)
                 .forEach((birth, expected) -> {
-                    var input = new BasicConditions(LocalDate.parse(birth), "강남구", BasicConditions.EmploymentStatus.EMPLOYED);
+                    var input = new BasicConditions(LocalDate.parse(birth), kr.youthpolicymate.eligibility.SeoulDistrict.GANGNAM, BasicConditions.EmploymentStatus.EMPLOYED);
                     var comparison = comparisons(input, NOW).get(FUTURE_YOUTH_JOBS);
                     assertThat(comparison.age().outcome()).as(birth).isEqualTo(expected);
                     assertThat(comparison.periodNotice()).contains("5월", "마감");
@@ -83,7 +83,7 @@ class FutureYouthJobsRulesTest {
         assertThat(rule(FUTURE_YOUTH_JOBS).evaluate(1, request, NOW).checks()).extracting(Check::outcome).containsOnly(UNKNOWN);
         assertThat(rule(FUTURE_YOUTH_JOBS).appliesAt(Instant.parse("2026-05-03T15:00:00Z"))).isTrue();
         assertThat(rule(FUTURE_YOUTH_JOBS).appliesAt(Instant.parse("2026-12-31T14:59:59Z"))).isTrue();
-        var input = new BasicConditions(LocalDate.parse("2000-01-01"), "강남구", BasicConditions.EmploymentStatus.NOT_EMPLOYED);
+        var input = new BasicConditions(LocalDate.parse("2000-01-01"), kr.youthpolicymate.eligibility.SeoulDistrict.GANGNAM, BasicConditions.EmploymentStatus.NOT_EMPLOYED);
         for (var value : List.of("2026-05-03T14:59:59Z", "2026-12-31T15:00:00Z")) {
             var now = Instant.parse(value);
             assertThat(rule(FUTURE_YOUTH_JOBS).appliesAt(now)).isFalse();

@@ -85,7 +85,7 @@ class KNewDealAcademyRulesTest {
         assertThat(rule.evaluate(1, new Request(1, VERSION, List.of()), NOW).checks()).extracting(Check::outcome).containsOnly(UNKNOWN);
         assertThat(rule.appliesAt(Instant.parse("2026-07-06T15:00:00Z"))).isTrue();
         assertThat(rule.appliesAt(Instant.parse("2026-12-31T14:59:59Z"))).isTrue();
-        var input = new BasicConditions(LocalDate.parse("2000-01-01"), "강남구", BasicConditions.EmploymentStatus.NOT_EMPLOYED);
+        var input = new BasicConditions(LocalDate.parse("2000-01-01"), kr.youthpolicymate.eligibility.SeoulDistrict.GANGNAM, BasicConditions.EmploymentStatus.NOT_EMPLOYED);
         for (var value : List.of("2026-07-06T14:59:59Z", "2026-12-31T15:00:00Z")) {
             var now = Instant.parse(value);
             assertThat(rule.appliesAt(now)).isFalse();

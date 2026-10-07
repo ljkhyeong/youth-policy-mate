@@ -5,6 +5,11 @@ spring:
     timeout: 12h
     jdbc:
       initialize-schema: never
+  jackson:
+    datatype:
+      enum:
+        # 요청 본문의 enum(자치구·취업상태 등)을 순번 숫자로 받지 않는다.
+        fail-on-numbers-for-enums: true
   task:
     scheduling:
       pool:

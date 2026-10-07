@@ -29,8 +29,7 @@ public class PolicyQuestionService {
     }
     public PolicyQuestions.Prefill prefill(String number, PolicyQuestions.PrefillRequest input) {
         var now = clock.instant();
-        if (input.birthDate().getYear() < 1 || input.birthDate().isAfter(LocalDate.ofInstant(now, SEOUL)))
-            throw new IllegalArgumentException("생년월일을 확인해주세요.");
+        BasicConditions.checkBirthDate(input.birthDate(), LocalDate.ofInstant(now, SEOUL));
         return new PolicyQuestions.Prefill(current(number, input.revision(), input.ruleVersion(), now).definition().prefill(input.birthDate(), now));
     }
     // 현재 원문·적용 기간에 질문을 제공하고 요청한 개정·규칙 버전이 같을 때만 규칙을 사용한다.

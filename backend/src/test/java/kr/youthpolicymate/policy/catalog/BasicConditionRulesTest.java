@@ -32,7 +32,7 @@ class BasicConditionRulesTest {
 
     @Test @DisplayName("군복무 정보가 없으면 연령 연장을 미확인으로 남기고 거주·취업 상태를 대신 판정하지 않는다")
     void keepsUnconfirmedExtension() {
-        var input = new BasicConditions(LocalDate.parse("1986-01-01"), "강남구", BasicConditions.EmploymentStatus.OTHER);
+        var input = new BasicConditions(LocalDate.parse("1986-01-01"), kr.youthpolicymate.eligibility.SeoulDistrict.GANGNAM, BasicConditions.EmploymentStatus.OTHER);
         var result = comparisons(input, NOW).get(SEOUL_YOUTH_NETWORK);
         assertThat(result.age().outcome()).isEqualTo(UNKNOWN);
         assertThat(result.age().explanation()).contains("연장");
@@ -42,7 +42,7 @@ class BasicConditionRulesTest {
 
     @Test @DisplayName("서울 자정에 검토 연도가 끝나면 연령 비교를 재사용하지 않는다")
     void expiresReviewedComparisons() {
-        var input = new BasicConditions(LocalDate.parse("2000-01-01"), "강남구", BasicConditions.EmploymentStatus.NOT_EMPLOYED);
+        var input = new BasicConditions(LocalDate.parse("2000-01-01"), kr.youthpolicymate.eligibility.SeoulDistrict.GANGNAM, BasicConditions.EmploymentStatus.NOT_EMPLOYED);
         assertThat(comparisons(input, Instant.parse("2026-12-31T14:59:59Z"))).isNotEmpty();
         assertThat(comparisons(input, Instant.parse("2026-12-31T15:00:00Z"))).isEmpty();
         assertThat(age(K_PASS, LocalDate.parse("2007-09-06"), Instant.parse("2026-09-05T14:59:59Z")).outcome()).isEqualTo(NOT_MET);

@@ -1,10 +1,11 @@
 import type { BasicConditions } from "@/features/member/member-api";
 
+// 서버 SeoulDistrict의 REST 값(표시 이름)과 같다. 생성 계약과 어긋나면 타입 검사에서 실패한다.
 export const SEOUL_DISTRICTS = [
   "강남구", "강동구", "강북구", "강서구", "관악구", "광진구", "구로구", "금천구", "노원구",
   "도봉구", "동대문구", "동작구", "마포구", "서대문구", "서초구", "성동구", "성북구", "송파구",
   "양천구", "영등포구", "용산구", "은평구", "종로구", "중구", "중랑구",
-] as const;
+] as const satisfies readonly NonNullable<BasicConditions["district"]>[];
 
 // 화면 입력용 선택지다. 온통청년 코드나 자격 판정 규칙으로 사용하지 않는다.
 export const EMPLOYMENT_OPTIONS = [
@@ -46,9 +47,10 @@ export function validateConditionDraft(draft: ConditionDraft, today: string): Co
 
 export function conditionInput(draft: ConditionDraft): BasicConditions {
   const employment = EMPLOYMENT_OPTIONS.find(option => option.value === draft.employmentStatus);
+  const district = SEOUL_DISTRICTS.find(value => value === draft.district);
   return {
     ...(draft.birthDate ? { birthDate: draft.birthDate } : {}),
-    ...(draft.district ? { district: draft.district } : {}),
+    ...(district ? { district } : {}),
     ...(employment ? { employmentStatus: employment.value } : {}),
   };
 }

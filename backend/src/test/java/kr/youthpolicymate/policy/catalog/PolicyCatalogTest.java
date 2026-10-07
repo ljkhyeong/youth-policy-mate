@@ -95,7 +95,7 @@ class PolicyCatalogTest {
         var birth = java.time.LocalDate.parse("1991-12-31");
         var prefill = questions.prefill(EXAM_FEE, new PolicyQuestions.PrefillRequest(1, next.ruleVersion(), birth));
         var evaluated = questions.evaluate(EXAM_FEE, new PolicyQuestions.Request(1, next.ruleVersion(), prefill.answers()));
-        var compared = checks.check(new BasicConditions(birth, "강남구", BasicConditions.EmploymentStatus.OTHER), 1, "", PolicyCheckResponse.Sort.AGE_MATCH, null);
+        var compared = checks.check(new BasicConditions(birth, kr.youthpolicymate.eligibility.SeoulDistrict.GANGNAM, BasicConditions.EmploymentStatus.OTHER), 1, "", PolicyCheckResponse.Sort.AGE_MATCH, null);
         assertThat(evaluated.checks().getFirst().outcome()).isEqualTo(kr.youthpolicymate.eligibility.ConditionOutcome.NOT_MET);
         assertThat(compared.items().getFirst().checks().getFirst().outcome()).isEqualTo(evaluated.checks().getFirst().outcome());
         assertThat(compared.items().getFirst().ruleVersion()).isEqualTo(next.ruleVersion());
@@ -519,7 +519,7 @@ class PolicyCatalogTest {
         save("current-revision", AT.plusSeconds(1));
         var expected = new java.util.ArrayList<>(numbers);
         expected.addFirst(expected.removeLast());
-        var input = new BasicConditions(java.time.LocalDate.of(2000, 1, 2), "강남구", BasicConditions.EmploymentStatus.NOT_EMPLOYED);
+        var input = new BasicConditions(java.time.LocalDate.of(2000, 1, 2), kr.youthpolicymate.eligibility.SeoulDistrict.GANGNAM, BasicConditions.EmploymentStatus.NOT_EMPLOYED);
 
         for (int page = 1; page <= 3; page++) {
             org.mockito.Mockito.clearInvocations(jdbc);
@@ -588,13 +588,14 @@ class PolicyCatalogTest {
     @DisplayName("기본 조건 결과의 질문 제공 여부는 자격 상태와 분리하고 같은 비교 시각을 사용한다")
     void exposesQuestionsInConditionChecks() throws Exception {
         saveReviewed(EXAM_FEE, "응시료 지원", hash(EXAM_FEE));
-        var input = new BasicConditions(java.time.LocalDate.of(2000, 1, 2), "강남구", BasicConditions.EmploymentStatus.NOT_EMPLOYED);
+        var input = new BasicConditions(java.time.LocalDate.of(2000, 1, 2), kr.youthpolicymate.eligibility.SeoulDistrict.GANGNAM, BasicConditions.EmploymentStatus.NOT_EMPLOYED);
         var body = mapper.writeValueAsString(input);
         org.mockito.Mockito.when(clock.instant()).thenReturn(Instant.parse("2026-12-31T14:59:59Z"), Instant.parse("2026-12-31T15:00:00Z"));
         mvc.perform(post("/api/v1/policies/checks").contentType("application/json").content(body))
                 .andExpect(status().isOk()).andExpect(header().string("Cache-Control", "no-store"))
                 .andExpect(jsonPath("$.evaluatedAt").value("2026-12-31T14:59:59Z"))
                 .andExpect(jsonPath("$.items[0].questionnaireAvailable").value(true))
+                .andExpect(jsonPath("$.items[0].checks[1].providedValue").value("서울특별시 강남구"))
                 .andExpect(jsonPath("$.items[0].status").value("NEEDS_REVIEW"));
         mvc.perform(post("/api/v1/policies/checks").contentType("application/json").content(body))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.items[0].questionnaireAvailable").value(false))
@@ -639,7 +640,9 @@ class PolicyCatalogTest {
                 .andExpect(jsonPath("$.items[0].policyNumber").value(K_PASS))
                 .andExpect(jsonPath("$.items[0].checks[0].outcome").value("MET"))
                 .andExpect(jsonPath("$.items[1].checks[0].outcome").value("NOT_MET"));
-        for (String body : List.of("{\"birthDate\":\"9999-01-01\"}", "{\"district\":\"부산\"}", "{\"employmentStatus\":\"UNKNOWN\"}")) {
+        // 자치구는 표시 이름만 받는다. enum 이름·순번은 거절한다.
+        for (String body : List.of("{\"birthDate\":\"9999-01-01\"}", "{\"district\":\"부산\"}", "{\"district\":\"GANGNAM\"}", "{\"district\":0}",
+                "{\"employmentStatus\":\"UNKNOWN\"}")) {
             mvc.perform(post("/api/v1/policies/checks").contentType("application/json").content(body)).andExpect(status().isBadRequest());
         }
     }
@@ -652,7 +655,7 @@ class PolicyCatalogTest {
             item.put("plcyNo", "900000000000000000%02d".formatted(index)).put("plcyNm", "미검토 정책 " + index);
             save("condition-order-" + index, AT.plusSeconds(1));
         }
-        var input = new BasicConditions(java.time.LocalDate.parse("1990-12-31"), "강남구", BasicConditions.EmploymentStatus.NOT_EMPLOYED);
+        var input = new BasicConditions(java.time.LocalDate.parse("1990-12-31"), kr.youthpolicymate.eligibility.SeoulDistrict.GANGNAM, BasicConditions.EmploymentStatus.NOT_EMPLOYED);
         org.mockito.Mockito.clearInvocations(jdbc);
         var first = checks.check(input, 1, "", PolicyCheckResponse.Sort.AGE_MATCH, null);
         org.mockito.Mockito.verify(jdbc, org.mockito.Mockito.times(3)).sql(org.mockito.ArgumentMatchers.anyString());
@@ -690,7 +693,7 @@ class PolicyCatalogTest {
         for (var field : List.of("plcySprtCn", "plcyAplyMthdCn", "etcMttrCn", "addAplyQlfcCndCn", "srngMthdCn", "plcyExplnCn")) item.put(field, "안내");
         save("recruitment", AT);
         var number = item.path("plcyNo").asString();
-        var body = mapper.writeValueAsString(new BasicConditions(java.time.LocalDate.parse("2000-01-01"), "강남구", BasicConditions.EmploymentStatus.NOT_EMPLOYED));
+        var body = mapper.writeValueAsString(new BasicConditions(java.time.LocalDate.parse("2000-01-01"), kr.youthpolicymate.eligibility.SeoulDistrict.GANGNAM, BasicConditions.EmploymentStatus.NOT_EMPLOYED));
         org.mockito.Mockito.clearInvocations(jdbc);
         mvc.perform(get("/api/v1/policies")).andExpect(status().isOk())
                 .andExpect(jsonPath("$.items[0].recruitment.status").value("OPEN"))
@@ -746,7 +749,7 @@ class PolicyCatalogTest {
         }
         mvc.perform(get("/api/v1/policies").param("recruitmentStatus", "UNTIL_EXHAUSTED"))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.total").value(0));
-        var body = mapper.writeValueAsString(new BasicConditions(java.time.LocalDate.parse("2000-01-01"), "강남구", BasicConditions.EmploymentStatus.NOT_EMPLOYED));
+        var body = mapper.writeValueAsString(new BasicConditions(java.time.LocalDate.parse("2000-01-01"), kr.youthpolicymate.eligibility.SeoulDistrict.GANGNAM, BasicConditions.EmploymentStatus.NOT_EMPLOYED));
         mvc.perform(post("/api/v1/policies/checks").param("recruitmentStatus", "OPEN").param("page", "2")
                         .param("q", "필터 지원").param("sort", "RECENT").contentType("application/json").content(body))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.total").value(24)).andExpect(jsonPath("$.items.length()").value(4))

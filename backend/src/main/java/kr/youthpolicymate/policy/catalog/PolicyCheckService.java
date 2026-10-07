@@ -26,7 +26,7 @@ public class PolicyCheckService {
     public PolicyCheckResponse check(BasicConditions input, int page, String query, PolicyCheckResponse.Sort sort, RecruitmentStatus recruitmentStatus) {
         var now = clock.instant();
         var today = LocalDate.ofInstant(now, SEOUL);
-        input.validate(today);
+        BasicConditions.checkBirthDate(input.birthDate(), today);
         var policies = store.listForCheck(page, PAGE_SIZE, query, sort, input, recruitmentStatus, now);
         var items = new ArrayList<PolicyCheckResponse.Item>();
         for (var source : policies.items()) {
@@ -39,7 +39,7 @@ public class PolicyCheckService {
             var checks = List.of(
                     age == null ? statedAge(input, stated, today, text(raw, "addAplyQlfcCndCn", "plcySprtCn"))
                             : new PolicyQuestions.Check("연령", age.providedValue(), age.outcome(), age.explanation(), age.evidence()),
-                    new PolicyQuestions.Check("거주", input.district() == null ? "미입력" : "서울특별시 " + input.district(), UNKNOWN,
+                    new PolicyQuestions.Check("거주", input.district() == null ? "미입력" : "서울특별시 " + input.district().label(), UNKNOWN,
                             "신청 가능한 거주지와 거주 기간·전입 조건은 공식 안내를 확인해주세요.",
                             text(raw, "addAplyQlfcCndCn", "plcyExplnCn")),
                     new PolicyQuestions.Check("취업·학력·소득", input.employmentStatus() == null ? "미입력" : "기본 취업상태 입력됨", UNKNOWN,

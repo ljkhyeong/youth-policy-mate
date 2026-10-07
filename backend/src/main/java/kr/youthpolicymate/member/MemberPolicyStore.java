@@ -45,7 +45,7 @@ public class MemberPolicyStore {
     }
     @Transactional
     public void saveConditions(UUID member, BasicConditions conditions) {
-        conditions.validate(today()); lock(member);
+        BasicConditions.checkBirthDate(conditions.birthDate(), today()); lock(member);
         jdbc.sql("UPDATE members SET conditions = CAST(:conditions AS jsonb), conditions_updated_at = CURRENT_TIMESTAMP WHERE id = :id")
                 .param("id", member).param("conditions", mapper.writeValueAsString(conditions)).update();
     }

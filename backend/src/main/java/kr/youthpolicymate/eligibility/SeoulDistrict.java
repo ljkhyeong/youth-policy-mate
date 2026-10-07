@@ -1,6 +1,6 @@
 package kr.youthpolicymate.eligibility;
 
-// 서버 내부의 서울 자치구 값이며 온통청년 지역 코드나 확정 API 계약이 아니다.
+// 기본 조건(BasicConditions.district)의 서울 자치구 값이다. REST 값은 표시 이름이며 온통청년 지역 코드는 아니다.
 public enum SeoulDistrict {
     GANGNAM("강남구"),
     GANGDONG("강동구"),
@@ -34,6 +34,7 @@ public enum SeoulDistrict {
         this.label = label;
     }
 
+    @com.fasterxml.jackson.annotation.JsonValue
     public String label() {
         return label;
     }

@@ -57,7 +57,7 @@
 
 웹과 서버를 `localhost`와 `127.0.0.1`로 섞지 않는다. 쿠키는 포트가 아닌 호스트를 기준으로 공유된다. 운영에서는 같은 HTTPS 호스트 아래에서 웹과 로그인 경로를 제공하는 역방향 프록시 구성이 필요하다. `/oauth2/authorization/*`, `/login/oauth2/code/*`는 Spring으로 전달한다. 별도 호스트 배포는 현재 쿠키 중계 방식으로 지원하지 않는다.
 
-세션 쿠키(`YPM_SESSION`, HttpOnly·SameSite=Lax)는 `application.yaml`의 `server.servlet.session.cookie.*`로 정하며 Spring Boot가 내장 서버에 적용한다. HTTPS 전용(`secure`)이 기본이고 `local` 프로필만 끈다. 운영에서 바꿔야 하면 `SERVER_SERVLET_SESSION_COOKIE_SECURE`를 쓴다.
+세션 쿠키(`YPM_SESSION`, HttpOnly·SameSite=Lax)는 `application.yaml`의 `server.servlet.session.cookie.*`로 정하며 Spring Boot가 내장 서버(bootRun·bootJar, 테스트 RANDOM_PORT)에 적용한다. MockMvc MOCK 테스트에는 적용되지 않아 쿠키 이름이 `SESSION`이다. HTTPS 전용(`secure`)이 기본이고 `local` 프로필만 끈다. 운영에서 바꿔야 하면 `SERVER_SERVLET_SESSION_COOKIE_SECURE`를 쓴다.
 
 Next.js에도 `APP_FRONTEND_URL`을 같은 웹 주소로 설정한다. 변경 요청의 Origin을 이 주소와 비교한다. 로컬 기본은 `http://127.0.0.1:3000`이다.
 

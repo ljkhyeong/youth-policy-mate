@@ -3,7 +3,6 @@ package kr.youthpolicymate.admin;
 import kr.youthpolicymate.config.ApiException;
 import kr.youthpolicymate.policy.catalog.PolicyRuleDefinition;
 import kr.youthpolicymate.policy.catalog.PolicyRuleStore;
-import org.springframework.context.annotation.Profile;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -14,7 +13,6 @@ import java.util.Optional;
 import java.util.UUID;
 
 @Service
-@Profile("!preview")
 @Transactional
 class PolicyRuleManagementService {
     private final JdbcClient jdbc;

@@ -2,7 +2,6 @@ package kr.youthpolicymate.member;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 import kr.youthpolicymate.config.ApiException;
-import org.springframework.context.annotation.Profile;
 import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Service;
@@ -15,7 +14,6 @@ import java.time.OffsetDateTime;
 import java.util.UUID;
 
 @Service
-@Profile("!preview")
 public class MemberEmailStore {
     private final JdbcClient jdbc;
     private final EmailCrypto crypto;

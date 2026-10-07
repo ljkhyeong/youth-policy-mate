@@ -1,7 +1,6 @@
 package kr.youthpolicymate.policy.catalog;
 
 import jakarta.validation.Validator;
-import org.springframework.context.annotation.Profile;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Propagation;
@@ -15,7 +14,6 @@ import java.time.*;
 import java.util.*;
 
 @Repository
-@Profile("!preview")
 public class PolicyRuleStore {
     public static final int MAX_DEFINITION_BYTES = 131072;
     private final JdbcClient jdbc;

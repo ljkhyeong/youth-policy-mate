@@ -4,7 +4,6 @@ import io.swagger.v3.core.converter.ModelConverters;
 import kr.youthpolicymate.policy.catalog.PolicyRuleDefinition;
 import kr.youthpolicymate.policy.catalog.PolicyRuleStore;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.context.annotation.Profile;
 import org.springframework.http.MediaType;
 import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.stereotype.Component;
@@ -19,7 +18,6 @@ import java.time.Duration;
 import java.util.Map;
 
 @Component
-@Profile("!preview")
 public class OpenAiRuleClient {
     static final String PROMPT_VERSION = "openai-rule-v2";
     private final AiProperties properties;

@@ -1,7 +1,6 @@
 package kr.youthpolicymate.member;
 
 import org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplication;
-import org.springframework.context.annotation.Profile;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.session.FindByIndexNameSessionRepository;
@@ -13,7 +12,6 @@ import java.util.UUID;
 
 /** 회원 행의 생성·확인·삭제. 세션 저장소가 있는 웹 서버에서만 만든다. */
 @Repository
-@Profile("!preview")
 @ConditionalOnWebApplication(type = ConditionalOnWebApplication.Type.SERVLET)
 public class MemberIdentityStore {
     private final JdbcClient jdbc;

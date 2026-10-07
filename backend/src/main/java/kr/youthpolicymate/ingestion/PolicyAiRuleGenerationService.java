@@ -1,6 +1,5 @@
 package kr.youthpolicymate.ingestion;
 
-import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClientException;
 
@@ -11,7 +10,6 @@ import java.util.UUID;
 
 // 외부 API 호출을 DB 트랜잭션 밖에 두려고 이 서비스에는 @Transactional을 붙이지 않는다.
 @Service
-@Profile("!preview")
 public class PolicyAiRuleGenerationService {
     private final PolicyAiRuleDraftStore drafts;
     private final PolicyAiRuleCallStore calls;

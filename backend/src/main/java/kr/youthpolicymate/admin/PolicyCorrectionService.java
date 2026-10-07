@@ -5,7 +5,6 @@ import kr.youthpolicymate.ingestion.OntongPolicyCapture;
 import kr.youthpolicymate.policy.catalog.PolicyCatalogStore;
 import kr.youthpolicymate.policy.catalog.PolicyContent;
 import kr.youthpolicymate.policy.catalog.PolicyCorrectionStore.Field;
-import org.springframework.context.annotation.Profile;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -19,7 +18,6 @@ import java.util.Optional;
 import java.util.UUID;
 
 @Service
-@Profile("!preview")
 class PolicyCorrectionService {
     private final JdbcClient jdbc;
     private final ObjectMapper mapper;

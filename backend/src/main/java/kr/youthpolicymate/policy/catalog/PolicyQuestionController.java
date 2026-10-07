@@ -5,11 +5,9 @@ import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import jakarta.validation.Valid;
-import org.springframework.context.annotation.Profile;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@Profile("!preview")
 @RequestMapping("/api/v1/policies/{number}")
 @ApiResponse(responseCode = "200")
 @ApiResponse(responseCode = "404", description = "정책 없음", content = @Content(schema = @Schema(implementation = PolicyApiError.class)))

@@ -32,5 +32,5 @@ when_to_use: backend member의 저장 정책·알림·이메일(MemberReminderSc
 
 ### 검증
 
-- 저장·예약·알림·이메일 흐름은 `test:member-flow`·`test:email`, 관리자 발송 현황은 `test:admin-email`, 키 교체는 `test:email-key-rotation`, 이메일 설정 바인딩·암호화는 `EmailCryptoTest` 클래스다. 서울 날짜 경계는 고정 `Clock`으로 만든다.
+- 저장·예약·알림·이메일 흐름은 `test:member-flow`·`test:email`, 관리자 발송 현황은 `test:admin-email`, 키 교체와 이메일 설정 바인딩·암호화는 `test:email-key-rotation`이다. 서울 날짜 경계는 고정 `Clock`으로 만든다.
 - 테스트 선택과 기록은 `youth-policy-verify` 스킬을 따른다.

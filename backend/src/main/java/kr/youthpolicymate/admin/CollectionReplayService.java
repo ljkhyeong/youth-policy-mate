@@ -2,7 +2,6 @@ package kr.youthpolicymate.admin;
 
 import kr.youthpolicymate.config.ApiException;
 import kr.youthpolicymate.ingestion.OntongCollectionService;
-import org.springframework.context.annotation.Profile;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.jdbc.core.SimplePropertyRowMapper;
 import org.springframework.jdbc.core.simple.JdbcClient;
@@ -13,7 +12,6 @@ import java.util.List;
 import java.util.UUID;
 
 @Service
-@Profile("!preview")
 class CollectionReplayService {
     // admin_collection_replays의 열 11개가 Result 구성요소 이름과 그대로 대응한다. 구성요소 이름을 바꾸면 열도 맞춘다.
     private static final RowMapper<CollectionReplays.Result> RESULT = new SimplePropertyRowMapper<>(CollectionReplays.Result.class);

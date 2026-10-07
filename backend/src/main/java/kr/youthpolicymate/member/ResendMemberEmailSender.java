@@ -1,6 +1,5 @@
 package kr.youthpolicymate.member;
 
-import org.springframework.context.annotation.Profile;
 import org.springframework.http.client.JdkClientHttpRequestFactory;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
@@ -13,7 +12,6 @@ import java.util.Map;
 import java.util.UUID;
 
 @Component
-@Profile("!preview")
 public class ResendMemberEmailSender {
     /** 공급자가 요청을 명확히 거절해 접수되지 않은 발송. 응답 본문에 주소·본문이 있을 수 있어 담지 않는다. */
     public static class Rejected extends RuntimeException {

@@ -1,6 +1,5 @@
 package kr.youthpolicymate.member;
 
-import org.springframework.context.annotation.Profile;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -11,7 +10,6 @@ import java.util.Set;
 import java.util.UUID;
 
 @Service
-@Profile("!preview")
 public class ResendEmailEvents {
     private static final Map<String, String> STATES = Map.of(
             "email.sent", "SENT", "email.delivered", "DELIVERED", "email.delivery_delayed", "DELAYED",

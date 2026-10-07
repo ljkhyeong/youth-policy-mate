@@ -1,7 +1,6 @@
 package kr.youthpolicymate.admin;
 
 import kr.youthpolicymate.member.ResendMemberEmailSender;
-import org.springframework.context.annotation.Profile;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Isolation;
@@ -17,7 +16,6 @@ import java.util.UUID;
 import static kr.youthpolicymate.admin.EmailDeliveries.*;
 
 @Service
-@Profile("!preview")
 public class EmailDeliveryStore {
     private static final String PERIOD = "created_at >= :since AND created_at <= :now";
     private static final String FILTER = PERIOD + " AND (:state = '' OR state = :state) AND (:kind = '' OR kind = :kind)";

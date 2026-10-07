@@ -4,7 +4,6 @@ import kr.youthpolicymate.eligibility.EligibilityStatus;
 import kr.youthpolicymate.policy.RecruitmentStatus;
 import static kr.youthpolicymate.eligibility.ConditionOutcome.*;
 import static kr.youthpolicymate.policy.SeoulTime.SEOUL;
-import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Service;
 import tools.jackson.databind.JsonNode;
 
@@ -14,7 +13,6 @@ import java.util.ArrayList;
 import java.util.List;
 
 @Service
-@Profile("!preview")
 public class PolicyCheckService {
     private static final int PAGE_SIZE = 20;
     private final PolicyCatalogStore store;

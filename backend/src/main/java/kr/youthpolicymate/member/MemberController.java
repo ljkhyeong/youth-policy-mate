@@ -10,7 +10,6 @@ import jakarta.validation.constraints.Max;
 import kr.youthpolicymate.config.AppUrls;
 import kr.youthpolicymate.policy.catalog.BasicConditions;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplication;
-import org.springframework.context.annotation.Profile;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -24,7 +23,6 @@ import java.util.ArrayList;
 import java.util.UUID;
 
 @RestController
-@Profile("!preview")
 @ConditionalOnWebApplication(type = ConditionalOnWebApplication.Type.SERVLET)
 @RequestMapping("/api/v1")
 public class MemberController {

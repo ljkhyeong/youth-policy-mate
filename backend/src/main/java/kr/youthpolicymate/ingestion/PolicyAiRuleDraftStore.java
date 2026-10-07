@@ -6,7 +6,6 @@ import jakarta.validation.constraints.*;
 import kr.youthpolicymate.policy.catalog.PolicyContent;
 import kr.youthpolicymate.policy.catalog.PolicyRuleDefinition;
 import kr.youthpolicymate.policy.catalog.PolicyRuleStore;
-import org.springframework.context.annotation.Profile;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
@@ -20,7 +19,6 @@ import java.util.Optional;
 import java.util.UUID;
 
 @Repository
-@Profile("!preview")
 public class PolicyAiRuleDraftStore {
     private final JdbcClient jdbc;
     private final ObjectMapper mapper;

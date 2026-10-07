@@ -1,7 +1,6 @@
 package kr.youthpolicymate.ingestion;
 
 import kr.youthpolicymate.policy.catalog.PolicyCatalogStore;
-import org.springframework.context.annotation.Profile;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.jdbc.core.simple.JdbcClient;
@@ -20,7 +19,6 @@ import java.util.UUID;
 import static kr.youthpolicymate.policy.SeoulTime.SEOUL;
 
 @Repository
-@Profile("!preview")
 public class OntongCollectionStore {
     /** 요청 배정·발송 시작·범위 진행을 직렬화하는 advisory 잠금 키. AI 자동 처리 키(794631028)와 겹치지 않게 둔다. */
     static final long REQUEST_LOCK = 794631029L;

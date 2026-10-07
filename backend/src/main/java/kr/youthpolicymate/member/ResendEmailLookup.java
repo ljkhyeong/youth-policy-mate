@@ -2,7 +2,6 @@ package kr.youthpolicymate.member;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import kr.youthpolicymate.config.ApiException;
-import org.springframework.context.annotation.Profile;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.client.JdkClientHttpRequestFactory;
 import org.springframework.stereotype.Component;
@@ -17,7 +16,6 @@ import java.util.Locale;
 import java.util.UUID;
 
 @Component
-@Profile("!preview")
 public class ResendEmailLookup {
     public enum Event { SENT, DELIVERED, DELIVERY_DELAYED, BOUNCED, COMPLAINED, SUPPRESSED, FAILED, OPENED, CLICKED, SCHEDULED, CANCELED, QUEUED, UNKNOWN }
     public enum Reason { NOT_CONFIGURED, ACCESS_DENIED, NOT_FOUND, RATE_LIMITED, UNAVAILABLE }

@@ -1,7 +1,6 @@
 package kr.youthpolicymate.admin;
 
 import kr.youthpolicymate.policy.catalog.PolicyRuleDefinition;
-import org.springframework.context.annotation.Profile;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.jdbc.core.SimplePropertyRowMapper;
 import org.springframework.jdbc.core.simple.JdbcClient;
@@ -17,7 +16,6 @@ import java.util.Optional;
 import java.util.UUID;
 
 @Repository
-@Profile("!preview")
 @Transactional(readOnly = true, isolation = Isolation.REPEATABLE_READ)
 class PolicyRuleReviewStore {
     // 상태 계산을 공통 쿼리로 두어 필터·전체 건수·페이지 순서가 같은 기준을 사용한다.

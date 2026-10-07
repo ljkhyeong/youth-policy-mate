@@ -1,13 +1,11 @@
 package kr.youthpolicymate.ingestion;
 
-import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Service;
 
 import java.time.Clock;
 import java.util.UUID;
 
 @Service
-@Profile("!preview")
 public class PolicyAiRuleAutoRunner {
     private final PolicyAiRuleAutoStore store;
     private final PolicyAiRuleGenerationService generation;

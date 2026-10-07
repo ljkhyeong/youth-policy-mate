@@ -13,13 +13,11 @@ import io.swagger.v3.oas.models.security.SecurityScheme;
 import org.springdoc.core.customizers.OpenApiCustomizer;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.context.annotation.Profile;
 
 import java.util.List;
 import java.util.Set;
 
 @Configuration(proxyBeanMethods = false)
-@Profile("!preview")
 class MemberApiConfiguration {
     /** 회원 세션을 쓰는 회원·관리자 API와 로그아웃에 세션·CSRF 요구와 401·403 응답을 한 규칙으로 적는다. */
     @Bean

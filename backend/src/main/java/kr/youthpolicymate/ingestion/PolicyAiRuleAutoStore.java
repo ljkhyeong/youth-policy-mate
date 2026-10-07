@@ -1,6 +1,5 @@
 package kr.youthpolicymate.ingestion;
 
-import org.springframework.context.annotation.Profile;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
@@ -12,7 +11,6 @@ import java.util.UUID;
 import static kr.youthpolicymate.policy.SeoulTime.SEOUL;
 
 @Repository
-@Profile("!preview")
 public class PolicyAiRuleAutoStore {
     private static final String CURRENT_REQUEST = """
             p.current_revision = q.revision AND p.content_hash = q.content_hash

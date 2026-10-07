@@ -10,7 +10,6 @@ import jakarta.validation.Valid;
 import kr.youthpolicymate.config.ApiException;
 import kr.youthpolicymate.member.CurrentMember;
 import kr.youthpolicymate.policy.catalog.PolicyApiError;
-import org.springframework.context.annotation.Profile;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -22,7 +21,6 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.UUID;
 
 @RestController
-@Profile("!preview")
 @RequestMapping("/api/v1/admin/collection-exceptions")
 @ApiResponse(responseCode = "200")
 @ApiResponse(responseCode = "400", description = "조회 조건 오류", content = @Content(schema = @Schema(implementation = PolicyApiError.class)))

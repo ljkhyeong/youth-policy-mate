@@ -5,7 +5,6 @@ import com.svix.exceptions.WebhookVerificationException;
 import io.swagger.v3.oas.annotations.Hidden;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplication;
-import org.springframework.context.annotation.Profile;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
 import org.springframework.util.StringUtils;
@@ -21,7 +20,6 @@ import java.util.UUID;
 
 @Hidden
 @RestController
-@Profile("!preview")
 @ConditionalOnWebApplication(type = ConditionalOnWebApplication.Type.SERVLET)
 public class ResendWebhookController {
     private final Webhook verifier;

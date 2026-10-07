@@ -1,6 +1,5 @@
 package kr.youthpolicymate.ingestion;
 
-import org.springframework.context.annotation.Profile;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
@@ -13,7 +12,6 @@ import java.util.Optional;
 import java.util.UUID;
 
 @Repository
-@Profile("!preview")
 public class OntongSweepStore {
     private final JdbcClient jdbc;
     private final OntongCollectionStore pages;

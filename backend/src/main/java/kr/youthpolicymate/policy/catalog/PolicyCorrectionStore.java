@@ -1,6 +1,5 @@
 package kr.youthpolicymate.policy.catalog;
 
-import org.springframework.context.annotation.Profile;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
 import tools.jackson.databind.ObjectMapper;
@@ -10,7 +9,6 @@ import java.util.Optional;
 import java.util.UUID;
 
 @Repository
-@Profile("!preview")
 public class PolicyCorrectionStore {
     private final JdbcClient jdbc;
     private final ObjectMapper mapper;

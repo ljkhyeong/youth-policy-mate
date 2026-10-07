@@ -2,7 +2,6 @@ package kr.youthpolicymate.policy.catalog;
 
 import kr.youthpolicymate.config.ApiException;
 import kr.youthpolicymate.policy.RecruitmentStatus;
-import org.springframework.context.annotation.Profile;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
@@ -25,7 +24,6 @@ import java.util.stream.Collectors;
 import kr.youthpolicymate.ingestion.OntongPolicyCapture;
 
 @Repository
-@Profile("!preview")
 public class PolicyCatalogStore {
     private final JdbcClient jdbc;
     private final ObjectMapper mapper;

@@ -9,7 +9,6 @@ import jakarta.validation.constraints.Min;
 import kr.youthpolicymate.config.ApiException;
 import kr.youthpolicymate.policy.catalog.PolicyApiError;
 import kr.youthpolicymate.member.ResendEmailLookup;
-import org.springframework.context.annotation.Profile;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -20,7 +19,6 @@ import java.time.Clock;
 import java.util.UUID;
 
 @RestController
-@Profile("!preview")
 @ApiResponse(responseCode = "200")
 public class EmailDeliveryController {
     private final EmailDeliveryStore store;

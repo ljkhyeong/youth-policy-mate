@@ -2,7 +2,6 @@ package kr.youthpolicymate.member;
 
 import kr.youthpolicymate.config.ApiException;
 import kr.youthpolicymate.policy.catalog.*;
-import org.springframework.context.annotation.Profile;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -18,7 +17,6 @@ import java.util.UUID;
 import static kr.youthpolicymate.policy.SeoulTime.SEOUL;
 
 @Service
-@Profile("!preview")
 public class MemberPolicyStore {
     private final JdbcClient jdbc;
     private final ObjectMapper mapper;

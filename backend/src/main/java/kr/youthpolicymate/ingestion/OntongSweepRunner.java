@@ -1,12 +1,10 @@
 package kr.youthpolicymate.ingestion;
 
 import kr.youthpolicymate.ingestion.OntongSweepStore.Step;
-import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Service;
 import java.util.UUID;
 
 @Service
-@Profile("!preview")
 public class OntongSweepRunner {
     private final OntongSweepStore sweeps;
     private final OntongCollectionStore pages;

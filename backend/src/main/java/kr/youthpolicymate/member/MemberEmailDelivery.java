@@ -1,7 +1,6 @@
 package kr.youthpolicymate.member;
 
 import kr.youthpolicymate.config.AppUrls;
-import org.springframework.context.annotation.Profile;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.PlatformTransactionManager;
@@ -12,7 +11,6 @@ import java.util.Map;
 import static kr.youthpolicymate.member.MemberEmailStore.*;
 
 @Service
-@Profile("!preview")
 public class MemberEmailDelivery {
     private final JdbcClient jdbc;
     private final MemberPolicyStore policies;

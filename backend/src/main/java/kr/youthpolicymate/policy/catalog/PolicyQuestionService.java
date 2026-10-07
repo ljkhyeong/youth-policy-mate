@@ -1,7 +1,6 @@
 package kr.youthpolicymate.policy.catalog;
 
 import kr.youthpolicymate.config.ApiException;
-import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Service;
 import java.time.Clock;
 import java.time.Instant;
@@ -11,7 +10,6 @@ import java.util.List;
 import static kr.youthpolicymate.policy.SeoulTime.SEOUL;
 
 @Service
-@Profile("!preview")
 public class PolicyQuestionService {
     private final PolicyCatalogStore store;
     private final Clock clock;

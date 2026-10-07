@@ -8,13 +8,11 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.Pattern;
 import kr.youthpolicymate.member.CurrentMember;
 import kr.youthpolicymate.policy.catalog.PolicyApiError;
-import org.springframework.context.annotation.Profile;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.UUID;
 
 @RestController
-@Profile("!preview")
 @RequestMapping("/api/v1/admin/policy-rule-reviews/{number}")
 @ApiResponse(responseCode = "200")
 @ApiResponse(responseCode = "400", description = "규칙·사유 입력 오류", content = @Content(schema = @Schema(implementation = PolicyApiError.class)))

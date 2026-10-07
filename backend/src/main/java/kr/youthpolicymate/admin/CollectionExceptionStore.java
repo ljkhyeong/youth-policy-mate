@@ -1,7 +1,6 @@
 package kr.youthpolicymate.admin;
 
 import kr.youthpolicymate.policy.catalog.PolicyContent;
-import org.springframework.context.annotation.Profile;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
@@ -14,7 +13,6 @@ import java.util.Optional;
 import java.util.UUID;
 
 @Repository
-@Profile("!preview")
 @Transactional(readOnly = true)
 class CollectionExceptionStore {
     private static final String FIELDS = """

@@ -1,7 +1,6 @@
 package kr.youthpolicymate.admin;
 
 import kr.youthpolicymate.ingestion.AiProperties;
-import org.springframework.context.annotation.Profile;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Isolation;
@@ -11,7 +10,6 @@ import java.time.OffsetDateTime;
 import java.util.Map;
 
 @Repository
-@Profile("!preview")
 @Transactional(readOnly = true, isolation = Isolation.REPEATABLE_READ)
 class PolicyAiRunStore {
     private static final String RUNS = """

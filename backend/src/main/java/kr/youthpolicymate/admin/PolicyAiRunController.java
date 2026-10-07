@@ -8,11 +8,9 @@ import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.Size;
 import kr.youthpolicymate.policy.catalog.PolicyApiError;
-import org.springframework.context.annotation.Profile;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@Profile("!preview")
 @RequestMapping("/api/v1/admin/policy-ai-runs")
 @ApiResponse(responseCode = "200")
 @ApiResponse(responseCode = "400", description = "조회 조건 오류", content = @Content(schema = @Schema(implementation = PolicyApiError.class)))

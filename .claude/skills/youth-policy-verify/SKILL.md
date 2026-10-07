@@ -45,7 +45,7 @@ allowed-tools:
 | `ingestion/OpenAiCosts*` | `test:ai-costs` | |
 | `member/SocialMemberService`, 세션·로그인 | `test:member-login` | 보안 설정이 바뀌면 `check:backend` |
 | `member/MemberEmail*`, `Resend*` | `test:email` | |
-| `member/EmailCrypto`, `EmailProperties`, `EmailKeyRotation*` | `test:email-key-rotation --tests 'kr.youthpolicymate.member.EmailCryptoTest'` | 설정 바인딩·기동 거절·암호화는 스크립트 기본 범위에 없는 `EmailCryptoTest`가 맡으므로 인자로 더해 함께 기록한다 |
+| `member/EmailCrypto`, `EmailProperties`, `EmailKeyRotation*` | `test:email-key-rotation` | 키 교체와 설정 바인딩·기동 거절·암호화(`EmailCryptoTest`)를 함께 실행한다 |
 | `member/` 저장 정책·계정·알림 | `test:member-flow` | |
 | `admin/Collection*`, `PolicyCorrection*`, `PolicyRule*` | `test:admin-collection` | |
 | `admin/PolicyAiRun*` | `test:admin-ai` | |

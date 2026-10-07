@@ -1,6 +1,5 @@
 package kr.youthpolicymate.ingestion;
 
-import org.springframework.context.annotation.Profile;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
@@ -17,7 +16,6 @@ import static kr.youthpolicymate.policy.SeoulTime.SEOUL;
 
 /** 규칙 추출 호출 한 건의 비용 예약·발송·응답·정산을 policy_ai_rule_calls 한 행과 월 예산 행으로 관리한다. */
 @Repository
-@Profile("!preview")
 public class PolicyAiRuleCallStore {
     // 자동 실행의 예산 확인도 같은 서울 기준 월 예산을 사용한다.
     static String monthlyBudgetId(Instant at) {

@@ -22,7 +22,7 @@ public record PolicyRuleDefinition(
         @NotBlank String scope, @NotBlank String reason, @NotBlank String explanation,
         @NotBlank @Pattern(regexp = "https://[^\\s]+") String sourceUrl,
         @NotEmpty List<@NotBlank String> remainingChecks,
-        @NotEmpty @Size(max = 20) List<@NotNull Question> questions,
+        @NotEmpty @Size(max = 20) List<@NotNull @Valid Question> questions,
         @NotEmpty List<@NotNull @Valid RuleCheck> checks,
         @Valid BirthBinding birthBinding, @Valid AgeBinding ageBinding,
         Boolean monthly, @Valid PeriodNotice periodNotice,
@@ -87,15 +87,9 @@ public record PolicyRuleDefinition(
             throw new IllegalArgumentException("판정 항목 이름이 중복됐습니다.");
         var options = new HashMap<String, Set<String>>();
         for (var question : questions) {
-            if (question.id() == null || !question.id().matches("[a-zA-Z][a-zA-Z0-9_]{0,59}")
-                    || question.label() == null || question.label().isBlank() || question.help() == null
-                    || question.options() == null || question.options().isEmpty()) throw new IllegalArgumentException("질문 형식을 확인해주세요.");
             var values = new HashSet<String>();
-            for (var option : question.options()) {
-                if (option == null || option.value() == null || option.value().isBlank() || option.value().length() > 40
-                        || option.label() == null || option.label().isBlank() || !values.add(option.value()))
-                    throw new IllegalArgumentException("선택지 형식과 중복을 확인해주세요.");
-            }
+            for (var option : question.options())
+                if (!values.add(option.value())) throw new IllegalArgumentException("선택지 값이 중복됐습니다.");
             if (options.putIfAbsent(question.id(), values) != null) throw new IllegalArgumentException("질문 식별자가 중복됐습니다.");
         }
         if (monthly && ruleVersion.length() > 72) throw new IllegalArgumentException("월별 규칙 버전은 72자 이하여야 합니다.");

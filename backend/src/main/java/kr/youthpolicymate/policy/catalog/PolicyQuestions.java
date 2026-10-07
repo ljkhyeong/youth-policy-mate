@@ -3,7 +3,9 @@ package kr.youthpolicymate.policy.catalog;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.Size;
 import kr.youthpolicymate.eligibility.ConditionAssessment;
@@ -32,9 +34,10 @@ public final class PolicyQuestions {
     public record Questionnaire(String policyNumber, long revision, String ruleVersion, boolean available, String scope,
                                 String reason, String sourceUrl, List<Question> questions) {}
     @Schema(name = "PolicyQuestion", requiredProperties = {"id", "label", "help", "options"})
-    public record Question(String id, String label, String help, List<Option> options) {}
+    public record Question(@NotNull @Pattern(regexp = "[a-zA-Z][a-zA-Z0-9_]{0,59}") String id, @NotBlank String label,
+                           @NotNull String help, @NotEmpty List<@NotNull @Valid Option> options) {}
     @Schema(name = "PolicyAnswerOption", requiredProperties = {"value", "label"})
-    public record Option(String value, String label) {}
+    public record Option(@NotBlank @Size(max = 40) String value, @NotBlank String label) {}
     @Schema(name = "PolicyAnswer", requiredProperties = {"questionId", "value"})
     public record Answer(@NotBlank @Size(max = 60) String questionId, @NotBlank @Size(max = 40) String value) {}
     @Schema(name = "PolicyEvaluationRequest", requiredProperties = {"revision", "ruleVersion", "answers"})

@@ -52,6 +52,8 @@ npm run rules:policy -- --args='publish <등록한 초안 UUID> exam-fee-2026-v1
 
 여러 답변을 함께 표시하는 항목은 `providedAnswers`의 질문·접두어와 `separator`를 사용한다. 이사비처럼 선택한 비용에 따라 추가 안내가 달라지면 `remainingVariant`의 질문·선택지별 문구로 `remainingChecks`의 지정 위치를 바꾼다. 위치는 0부터 시작하며 존재하는 항목만 바꿀 수 있다.
 
+질문 식별자 형식, 문구·도움말 누락, 선택지 값(40자 이하)은 `PolicyRuleDefinition`·`PolicyQuestions`의 Bean Validation 제약으로 검사해 위반 경로를 돌려준다. 질문 식별자·선택지 값·판정 항목 이름(`label`)의 중복과 질문·선택지 참조는 `validate()`가 확인한다. 같은 이름의 판정 항목은 결과를 구분할 수 없어 초안 등록·적용에서 거절하고, AI 추출 결과는 형식 오류(`INVALID_DEFINITION`)로 남긴다.
+
 ## 입력 재사용
 
 `/conditions`에서 확인한 생년월일을 화면 메모리에만 두고, 상세의 ‘질문에 답하기’를 누르면 `POST /api/v1/policies/{number}/question-prefill`에 현재 개정·규칙 버전과 함께 보낸다. 10개 정책의 출생일·연령 답변을 채우고 적용 사실을 표시한다. 국가근로장학금·보증료 지원의 답변은 생년월일에서 만들지 않는다. 학적·소득 등 다른 답변은 추정하지 않는다.

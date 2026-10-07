@@ -4,8 +4,11 @@ import jakarta.validation.Validation;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.DisplayName;
 import tools.jackson.databind.json.JsonMapper;
+import tools.jackson.databind.node.ObjectNode;
 import java.time.*;
 import java.util.List;
+import java.util.Map;
+import java.util.function.Consumer;
 import static org.assertj.core.api.Assertions.*;
 import static kr.youthpolicymate.policy.catalog.PolicyQuestions.*;
 import static kr.youthpolicymate.policy.catalog.PolicyRuleFixtures.*;
@@ -39,16 +42,41 @@ class PolicyRuleDefinitionTest {
         var mapper = JsonMapper.builder().build();
         try (var factory = Validation.buildDefaultValidatorFactory()) {
             var json = mapper.valueToTree(exam());
-            ((tools.jackson.databind.node.ObjectNode) json.at("/checks/0/cases/0/when")).putArray("birthRange").add("MISSING");
+            ((ObjectNode) json.at("/checks/0/cases/0/when")).putArray("birthRange").add("MISSING");
             assertThatThrownBy(() -> mapper.treeToValue(json, PolicyRuleDefinition.class).validate(factory.getValidator())).isInstanceOf(IllegalArgumentException.class);
             var other = mapper.valueToTree(exam());
-            ((tools.jackson.databind.node.ObjectNode) other.at("/checks/0/cases/0/when")).putArray("exam").add("HRDK_TECHNICAL");
+            ((ObjectNode) other.at("/checks/0/cases/0/when")).putArray("exam").add("HRDK_TECHNICAL");
             assertThatThrownBy(() -> mapper.treeToValue(other, PolicyRuleDefinition.class).validate(factory.getValidator())).isInstanceOf(IllegalArgumentException.class);
             var sameLabel = mapper.valueToTree(exam());
-            ((tools.jackson.databind.node.ObjectNode) sameLabel.at("/checks/1")).put("label", sameLabel.at("/checks/0/label").asString());
+            ((ObjectNode) sameLabel.at("/checks/1")).put("label", sameLabel.at("/checks/0/label").asString());
             assertThatThrownBy(() -> mapper.treeToValue(sameLabel, PolicyRuleDefinition.class).validate(factory.getValidator()))
                     .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("판정 항목 이름");
         }
+    }
+    @Test @DisplayName("질문 식별자 형식·빈 문구·누락된 도움말·긴 선택지 값은 형식 검사에서, 중복 선택지 값은 참조 검사에서 거절한다")
+    void rejectsInvalidQuestionFormats() {
+        var mapper = JsonMapper.builder().build();
+        // 위반 경로까지 확인해 질문·선택지의 @Valid가 빠지면 다른 참조 오류로 통과하지 않게 한다.
+        Map<String, Consumer<ObjectNode>> cases = Map.of(
+                "questions[0].id", json -> question(json).put("id", "1bad"),
+                "questions[0].label", json -> question(json).put("label", " "),
+                "questions[0].help", json -> question(json).putNull("help"),
+                "questions[0].options[0].value", json -> option(json, 0).put("value", "x".repeat(41)),
+                "선택지 값이 중복", json -> option(json, 1).put("value", option(json, 0).get("value").asString()));
+        try (var factory = Validation.buildDefaultValidatorFactory()) {
+            cases.forEach((message, change) -> {
+                var json = (ObjectNode) mapper.valueToTree(exam());
+                change.accept(json);
+                assertThatThrownBy(() -> mapper.treeToValue(json, PolicyRuleDefinition.class).validate(factory.getValidator()))
+                        .isInstanceOf(IllegalArgumentException.class).hasMessageContaining(message);
+            });
+        }
+    }
+    private static ObjectNode question(ObjectNode json) {
+        return (ObjectNode) json.at("/questions/0");
+    }
+    private static ObjectNode option(ObjectNode json, int index) {
+        return (ObjectNode) json.at("/questions/0/options/" + index);
     }
     @Test @DisplayName("양쪽 출생일 경계를 포함하고 학적·소득 답변은 생년월일에서 추정하지 않는다")
     void mapsOnlyReviewedBirthAnswers() {

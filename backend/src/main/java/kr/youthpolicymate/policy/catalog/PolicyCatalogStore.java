@@ -151,7 +151,7 @@ public class PolicyCatalogStore {
         }
         var total = jdbc.sql("SELECT count(*) FROM policies p" + where).params(parameters).query(Long.class).single();
         var items = jdbc.sql("""
-                SELECT p.policy_number, p.current_revision, p.content_hash, p.last_collected_at,
+                SELECT p.policy_number, p.content_hash, p.last_collected_at,
                     p.content->>'title' AS title, p.content->>'description' AS description,
                     p.content->>'category' AS category, p.content->>'organization' AS organization,
                     p.content->>'applicationPeriod' AS application_period,
@@ -163,7 +163,7 @@ public class PolicyCatalogStore {
                             rs.getString("application_period"),
                             rs.getObject("last_collected_at", OffsetDateTime.class).toInstant(),
                             rs.getString("content_hash").equals(reviewed.get(rs.getString("policy_number"))),
-                            PolicyRecruitment.from(rs.getString("policy_number"), rs.getLong("current_revision"), rs.getString("content_hash"),
+                            PolicyRecruitment.from(rs.getString("policy_number"), rs.getString("content_hash"),
                                     mapper.readTree(rs.getString("raw_policy")), now)))
                 .list();
         return new PolicyListResponse(items, page, pageSize, total, (long) page * pageSize < total);
@@ -282,21 +282,13 @@ public class PolicyCatalogStore {
                 mapper.readValue(rs.getString("content"), PolicyContent.class),
                 sourceUrl(number),
                 rs.getObject("last_collected_at", OffsetDateTime.class).toInstant(),
-                PolicyRecruitment.from(number, rs.getLong("current_revision"), rs.getString("content_hash"), raw, now),
+                PolicyRecruitment.from(number, rs.getString("content_hash"), raw, now),
                 PolicySourceNotice.forContent(number, rs.getString("content_hash")),
                 PolicySourceConditions.from(raw).items());
     }
 
     static String sourceUrl(String number) {
         return "https://www.youthcenter.go.kr/youthPolicy/ythPlcyTotalSearch/ythPlcyDetail/" + number + "?isNew=N";
-    }
-
-    public Optional<tools.jackson.databind.JsonNode> source(String number) {
-        return jdbc.sql("""
-                SELECT s.raw_policy FROM policies p
-                JOIN policy_revisions r ON r.policy_number = p.policy_number AND r.revision = p.current_revision
-                JOIN policy_source_snapshots s ON s.id = r.source_snapshot_id WHERE p.policy_number = :number
-                """).param("number", number).query((rs, row) -> mapper.readTree(rs.getString(1))).optional();
     }
 
     public enum ImportResult { APPLIED, UNCHANGED, REPLAYED, STALE, CORRECTION_CONFLICT }

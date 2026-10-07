@@ -18,7 +18,7 @@ when_to_use: backend member의 저장 정책·알림·이메일(MemberReminderSc
 
 | 영역 | 코드 | 문서(`docs/development/`) |
 |---|---|---|
-| 저장 정책·D-7·D-3·D-1 예약·서비스 내 알림 | `member/MemberPolicyStore`, `MemberReminderScheduler`, `policy/catalog/PolicyDeadline` | `member-policy-flow.md`, `member-notifications.md`, `member-calendar.md`, `recruitment-period.md` |
+| 저장 정책·D-7·D-3·D-1 예약·서비스 내 알림 | `member/MemberPolicyStore`, `MemberReminderScheduler`, `policy/catalog/PolicyDeadline`(마감일은 `PolicyRecruitment`와 같은 계산) | `member-policy-flow.md`, `member-notifications.md`, `member-calendar.md`, `recruitment-period.md` |
 | 이메일 Outbox·발송·설정 | `member/MemberEmail*`, `ResendMemberEmailSender`, `EmailProperties` | `member-email-reminders.md` |
 | 공급자 결과·웹훅·상태 조회 | `member/Resend*`, `admin/EmailDelivery*` | `email-provider-status.md`, `admin-email-deliveries.md` |
 | 수신 해제·설정 복구·키 교체 | `member/MemberEmailUnsubscribeController`, `MemberEmailStore.unsubscribe`, `EmailCrypto`, `EmailKeyRotation*` | `email-unsubscribe.md`, `email-settings-recovery.md`, `email-key-rotation.md` |

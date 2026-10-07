@@ -69,7 +69,7 @@ Next.js의 서버 내부 접속 주소는 `POLICY_API_BASE_URL`이다. 로컬 �
 
 ## 마감일과 서비스 내 알림
 
-정책 모듈이 단일 신청 날짜 구간의 종료 날짜를 제공한다. 날짜를 임의의 자정이나 23:59로 바꾸지 않는다. 상시는 마감일을 두지 않고, 소진·회차별 접수·본문의 다른 날짜·파싱 실패는 추가 확인으로 남긴다. [내 정책 마감 일정](member-calendar.md)은 공개 정책과 같은 접수 상태를 표시하고 가까운 마감순 정렬·접수 상태 필터를 제공한다. 원문 전체를 의미적으로 검토하는 기능은 아니므로 실제 공급 자료에서 누락·상충이 없는지 추가 확인해야 한다.
+정책 모듈이 화면 접수 상태와 같은 마감일(`PolicyRecruitment.deadlineOnSeoul`)을 `PolicyDeadline`으로 제공한다. 날짜형은 단일 신청 날짜 구간의 종료 날짜, 검토한 시각형 접수 기간은 마감 순간의 서울 날짜다. 날짜를 임의의 자정이나 23:59로 바꾸지 않는다. 상시는 마감일을 두지 않고, 소진·회차별 접수·본문의 다른 날짜·파싱 실패는 추가 확인으로 남긴다. [내 정책 마감 일정](member-calendar.md)은 공개 정책과 같은 접수 상태를 표시하고 가까운 마감순 정렬·접수 상태 필터를 제공한다. 원문 전체를 의미적으로 검토하는 기능은 아니므로 실제 공급 자료에서 누락·상충이 없는지 추가 확인해야 한다.
 
 저장과 D-7·D-3·D-1 예약은 같은 트랜잭션이다. 저장 해제는 미전달 예약을 취소하고, 다시 저장하면 별도 저장 식별자를 사용한다. 최신 개정으로 일정과 예약을 다시 만들며, 같은 저장의 동일 날짜·동일 D 알림을 이미 전달했다면 본문 변경만으로 재전달하지 않는다. 지난 날짜의 예약은 `SKIPPED`, 서비스 내 전달은 `DELIVERED`, 해제·이전 개정은 `CANCELED`로 남긴다. 알림과 예약 상태 변경을 한 번에 커밋하므로 중간 실패로 절반만 반영되지 않는다.
 
@@ -92,7 +92,7 @@ Next.js의 서버 내부 접속 주소는 `POLICY_API_BASE_URL`이다. 로컬 �
 응답 계약은 `api/openapi.policy.json`, 웹 타입은 `frontend/src/generated/policy-api.d.ts`다. 저장된 조건이 없는 경우 `conditions: null`, 마감이 불명확하면 `deadline.date: null`을 그대로 보낸다. 개인 응답과 조건 확인 응답은 `no-store`로 처리한다. 생년월일을 URL이나 정책 확인 응답에 넣지 않는다.
 
 ```bash
-./backend/gradlew -p backend test --tests 'kr.youthpolicymate.member.*' --tests 'kr.youthpolicymate.policy.catalog.PolicyDeadlineTest' --no-daemon
+./backend/gradlew -p backend test --tests 'kr.youthpolicymate.member.*' --tests 'kr.youthpolicymate.policy.catalog.PolicyRecruitmentTest' --no-daemon
 npm run generate:api
 npm run check:web
 npm run test:web

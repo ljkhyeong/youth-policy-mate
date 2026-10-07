@@ -59,7 +59,7 @@ public class MemberPolicyStore {
     public void save(UUID member, String number) {
         lock(member); lockPolicy(number);
         var policy = policies.find(number).orElseThrow(PolicyNotFoundException::new);
-        var deadline = PolicyDeadline.from(policies.source(number).orElseThrow(PolicyNotFoundException::new));
+        var deadline = PolicyDeadline.from(policy.recruitment());
         var generation = UUID.randomUUID();
         boolean exists = jdbc.sql("SELECT count(*) FROM saved_policies WHERE member_id = :member AND policy_number = :number")
                 .param("member", member).param("number", number).query(Long.class).single() > 0;
@@ -116,7 +116,7 @@ public class MemberPolicyStore {
                     new MemberResponses.Saved(rs.getString("policy_number"), rs.getString("title"), rs.getLong("saved_revision"),
                             rs.getLong("current_revision"), new PolicyDeadline(rs.getObject("deadline_on", LocalDate.class), rs.getString("deadline_note")),
                             rs.getObject("saved_at", OffsetDateTime.class).toInstant(), rs.getString("application_period"),
-                            PolicyRecruitment.from(rs.getString("policy_number"), rs.getLong("current_revision"), rs.getString("content_hash"),
+                            PolicyRecruitment.from(rs.getString("policy_number"), rs.getString("content_hash"),
                                     mapper.readTree(rs.getString("raw_policy")), now))).list().stream()
                 .sorted(Comparator.comparing(item -> item.recruitment().status() == kr.youthpolicymate.policy.RecruitmentStatus.CLOSED)).toList();
         return new MemberResponses.SavedList(items);
@@ -156,7 +156,7 @@ public class MemberPolicyStore {
             if (saved.revision() <= 0) throw new PolicyNotFoundException();
             if (saved.savedRevision() == saved.revision()) continue;
             var number = saved.number();
-            var deadline = PolicyDeadline.from(policies.source(number).orElseThrow(PolicyNotFoundException::new));
+            var deadline = PolicyDeadline.from(policies.find(number).orElseThrow(PolicyNotFoundException::new).recruitment());
             cancel(member, number);
             jdbc.sql("UPDATE saved_policies SET current_revision = :revision, deadline_on = :date, deadline_note = :note WHERE member_id = :member AND policy_number = :number")
                     .param("member", member).param("number", number).param("revision", saved.revision())

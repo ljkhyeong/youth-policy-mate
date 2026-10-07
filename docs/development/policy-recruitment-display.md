@@ -6,11 +6,11 @@
 
 ## 계산과 근거
 
-- 기존 `RecruitmentAssessment`와 `ApplicationPeriod`를 사용한다. 날짜만 있으면 서울 날짜 기준으로 시작일·종료일을 포함하며, 정확한 접수 시각은 미확인이라고 안내한다.
+- `PolicyRecruitment.of`가 `ApplicationPeriod`로 상태·안내·마감일을 계산한다. 날짜만 있으면 서울 날짜 기준으로 시작일·종료일을 포함하며, 정확한 접수 시각은 미확인이라고 안내한다.
 - `PolicyApplicationPeriod`는 기존 마감일 추출 코드를 공유하도록 분리한 원문 해석기다. 온통청년의 신청기간 코드·단일 날짜 구간·추가 안내를 읽으며, 날짜 형식은 Java의 `BASIC_ISO_DATE`로 엄격하게 해석한다.
 - 코드·날짜 안내가 함께 있어 의미가 충돌하거나, 잘못된 날짜·역전 구간·복수 회차·선착순·소진·본문의 다른 날짜가 있으면 미확인으로 남긴다. 날짜가 없는 상시·명시적 마감은 별도 상태다. 사업기간을 신청기간으로 대신 쓰지 않는다.
 - [서울청년정책네트워크](seoul-youth-network-questions.md)와 [상반기 이사비 지원](moving-fee-questions.md)은 검토한 정책번호·원문 해시가 일치할 때만 기존 규칙의 정확한 접수 시각을 적용한다. 원문이 바뀌면 이전 시각을 중단한다. 해당 공고의 과거 마감 사실은 연도가 바뀌어도 유지하며 새 모집에 적용하지 않는다.
-- `PolicyDeadline`도 같은 해석기를 사용한다. 시각을 새로 만들거나 상시·미확인 자료에 마감 날짜를 추가하지 않는다. 기존 알림 예약·발송 로직은 유지한다.
+- `PolicyDeadline`은 `PolicyRecruitment`(검토 보정 포함)의 마감일·상태에서 만든다. 저장 정책 마감일·알림 예약일은 화면 마감일과 같다. 시각을 새로 만들거나 상시·미확인 자료에 마감 날짜를 추가하지 않는다.
 
 ## API와 화면
 
@@ -23,7 +23,7 @@
 최종 코드 리비전 `811d400`을 아래 범위로 확인했다. 이후 변경은 문서뿐이다.
 
 - `npm run generate:api`: 서버 DTO에서 OpenAPI·TypeScript 생성 완료. `/tmp/youth-recruitment-api.log`.
-- `npm run verify -- test:policy-catalog -- --tests kr.youthpolicymate.policy.catalog.PolicyRecruitmentTest --tests kr.youthpolicymate.policy.catalog.PolicyDeadlineTest --tests 'kr.youthpolicymate.policy.Recruitment*Test' --tests kr.youthpolicymate.policy.catalog.SeoulYouthNetworkRulesTest --tests kr.youthpolicymate.policy.catalog.MovingFeeRulesTest --tests kr.youthpolicymate.member.MemberFlowTest`: 통과. 기존 목록·수집 원문·계약 검사와 모집 상태·마감·회원 저장/알림 흐름을 함께 확인했다. `.local/verification/1788703051063-62e78ae7.log`.
+- `npm run verify -- test:policy-catalog -- --tests kr.youthpolicymate.policy.catalog.PolicyRecruitmentTest --tests kr.youthpolicymate.policy.catalog.PolicyDeadlineTest --tests 'kr.youthpolicymate.policy.Recruitment*Test' --tests kr.youthpolicymate.policy.catalog.SeoulYouthNetworkRulesTest --tests kr.youthpolicymate.policy.catalog.MovingFeeRulesTest --tests kr.youthpolicymate.member.MemberFlowTest`: 통과(당시 명령. `PolicyDeadlineTest`·`Recruitment*Test`는 2026-10-07 `PolicyRecruitmentTest`로 합쳤다). 기존 목록·수집 원문·계약 검사와 모집 상태·마감·회원 저장/알림 흐름을 함께 확인했다. `.local/verification/1788703051063-62e78ae7.log`.
 - `npm run verify -- test:web -- src/app/policies src/features/policies src/features/conditions`: 통과. `.local/verification/1788703047098-c85e39c4.log`.
 - `npm run verify -- check:web`: 린트·타입 검사 통과. `.local/verification/1788703047098-8d32b0bf.log`.
 - `npm run verify -- check:api-types`: 생성 계약 일치. `.local/verification/1788703047098-7096cca0.log`.

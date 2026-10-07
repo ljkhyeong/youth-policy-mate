@@ -1,21 +1,21 @@
 package kr.youthpolicymate.policy.catalog;
 
 import io.swagger.v3.oas.annotations.media.Schema;
-import tools.jackson.databind.JsonNode;
 
 import java.time.LocalDate;
 
 @Schema(requiredProperties = {"date", "note"})
 public record PolicyDeadline(@Schema(types = {"string", "null"}, format = "date") LocalDate date, String note) {
-    public static PolicyDeadline from(JsonNode raw) {
-        return switch (PolicyApplicationPeriod.parse(raw)) {
-            case kr.youthpolicymate.policy.ApplicationPeriod.Dates dates -> new PolicyDeadline(dates.endsOnInclusive(),
-                    "온통청년에 안내된 마감일이에요. 마감 시간은 공식 안내를 확인해주세요.");
-            case kr.youthpolicymate.policy.ApplicationPeriod.Rolling ignored -> new PolicyDeadline(null, "상시 접수라 마감 알림을 제공하지 않아요.");
-            case kr.youthpolicymate.policy.ApplicationPeriod.Closed ignored -> new PolicyDeadline(null, "온통청년 안내 기준으로 접수가 끝났어요.");
-            case kr.youthpolicymate.policy.ApplicationPeriod.Unresolved unresolved -> new PolicyDeadline(null,
-                    "마감일을 확인할 수 없어 알림을 예약하지 못했어요. " + unresolved.reason());
-            default -> throw new IllegalStateException("마감 날짜 추출에 지원하지 않는 신청기간입니다.");
-        };
+    // 저장 정책 마감일·알림 예약일은 화면의 접수 상태(검토 보정 포함)와 같은 마감일을 쓴다.
+    public static PolicyDeadline from(PolicyRecruitment recruitment) {
+        if (recruitment.deadlineOnSeoul() != null)
+            return new PolicyDeadline(recruitment.deadlineOnSeoul(), "공고에 안내된 마감일이에요. 정확한 마감 시각은 공식 안내를 확인해주세요.");
+        return new PolicyDeadline(null, switch (recruitment.status()) {
+            case ROLLING -> "상시 접수라 마감 알림을 제공하지 않아요.";
+            case UNTIL_EXHAUSTED -> "예산·인원 소진 시 마감돼 마감 알림을 제공하지 않아요.";
+            case CLOSED -> "온통청년 안내 기준으로 접수가 끝났어요.";
+            // 마감일이 없는 나머지는 기간 미확인이며 설명이 미확인 이유다.
+            default -> "마감일을 확인할 수 없어 알림을 예약하지 못했어요. " + recruitment.explanation();
+        });
     }
 }

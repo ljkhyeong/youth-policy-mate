@@ -29,7 +29,7 @@
     "build:web": "npm run build --workspace frontend",
     "check:web": "npm run lint --workspace frontend && npm run typecheck --workspace frontend",
     "test:web": "npm run test --workspace frontend",
-    "test:recruitment": "./backend/gradlew -p backend test --tests 'kr.youthpolicymate.policy.Recruitment*' --no-daemon",
+    "test:recruitment": "./backend/gradlew -p backend test --tests 'kr.youthpolicymate.policy.catalog.PolicyRecruitmentTest' --no-daemon",
     "test:ai-reservation-db": "./backend/gradlew -p backend test --tests 'kr.youthpolicymate.ingestion.PolicyAiRuleCallStoreTest' --no-daemon",
     "test:member-login": "./backend/gradlew -p backend test --tests 'kr.youthpolicymate.member.OAuthLoginFlowTest' --tests 'kr.youthpolicymate.member.SocialMemberServiceTest' --no-daemon",
     "test:admin-email": "./backend/gradlew -p backend test --tests 'kr.youthpolicymate.admin.EmailDeliveryApiTest' --no-daemon",

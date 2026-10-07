@@ -4,16 +4,16 @@
 
 ## 코드와 책임
 
-`backend/src/main/java/kr/youthpolicymate/policy/`에 순수 Java 모델을 추가했다. Spring 실행·인증키·DB·외부 API 없이 확인된 신청기간과 계산 시각만 비교한다.
+`backend/src/main/java/kr/youthpolicymate/policy/`의 순수 Java 값과 `policy/catalog`의 계산 함수로 구성한다. Spring 실행·인증키·DB·외부 API 없이 확인된 신청기간과 계산 시각만 비교한다.
 
 | 코드 | 역할 |
 |---|---|
 | `ApplicationPeriod` | 날짜 범위·시각 범위·상시·소진 시 종료·명시적 마감·미확인을 서로 다른 타입으로 표현 |
-| `RecruitmentSchedule` | 정책 식별자·적용 개정, 신청기간과 원문 참조·위치·선택적 발췌문 보존 |
-| `RecruitmentAssessment` | 자료와 한 번 읽은 시계 시점을 보존하고 상태·서울 날짜·안내 문구 제공 |
 | `RecruitmentStatus` | 모집 전·접수 기간·마감·상시·소진 시 종료·기간 미확인 |
+| `catalog/PolicyRecruitment` | `of(period, now)`가 상태·안내 문구·서울 마감일·남은 일수를 계산한다. `from(number, hash, raw, now)`는 원문 기간을 해석해 같은 계산을 쓴다. |
+| `catalog/PolicyDeadline` | `PolicyRecruitment`의 마감일·상태로 저장 정책 마감일과 알림 미제공 사유를 만든다. |
 
-`RecruitmentAssessment.evaluate(schedule, clock)`에 호출 측 시계를 전달한다. 결과는 자료와 `evaluatedAt`으로 고정되며 상태를 별도 필드로 받아 덮어쓰지 않는다. 시계의 기본 시간대 대신 명시적인 `Asia/Seoul`로 달력 날짜를 계산한다.
+호출 측이 주입한 `Clock`에서 한 번 읽은 시각을 넘긴다. 같은 요청의 목록·상세·조건 결과는 그 시각을 공유하며, 시계의 기본 시간대 대신 명시적인 `Asia/Seoul`로 달력 날짜를 계산한다.
 
 날짜형 `Dates`는 포함 의미가 확인된 양 끝 `LocalDate`를 받는다. 끝 날짜까지 달력 범위에 포함되며 정확한 접수 시간은 미확인임을 안내한다. 날짜를 `23:59:59`나 다음 날 자정의 마감 시각으로 변환하지 않는다.
 
@@ -21,13 +21,13 @@
 
 신청기간 누락·충돌·복수 차수·시간대 미확인은 `Unresolved`에 이유와 원문을 남긴다. 사업기간을 입력받지 않으므로 사업 종료일로 신청 마감을 보충하지 않는다. 상시·소진 시 종료·명시적 마감은 확인되지 않은 날짜를 만들지 않으며, 소진 완료 여부도 추정하지 않는다.
 
-모집 안내는 정책 모듈의 값이며 자격 판정 모듈이나 회원 데이터에 의존하지 않는다. 내부 record와 enum은 원천 DTO·REST 계약·DB 테이블이 아니다. 최신 개정 적용과 자료의 최신성 검사는 아직 없다.
+모집 안내는 정책 모듈의 값이며 자격 판정 모듈이나 회원 데이터에 의존하지 않는다. `ApplicationPeriod`는 원천 DTO·REST 계약·DB 테이블이 아니며, 응답에는 계산한 `PolicyRecruitment`만 보낸다. 최신 개정 적용과 자료의 최신성 검사는 아직 없다.
 
-후속 작업에서 `RecruitmentSchedule.confirmedDeadlineOnSeoul()`을 추가했다. 날짜형은 종료 날짜, 시각형은 마감 순간의 서울 날짜를 반환하며 원본 기간은 그대로 보존한다. 이 값은 공개 응답의 `deadlineOnSeoul`에 쓴다. 회원 저장 시 D-7·D-3·D-1 예약은 `MemberPolicyStore`가 정책 마감일로 만든다([회원 저장·알림](member-policy-flow.md#마감일과-서비스-내-알림)).
+마감일은 날짜형이면 종료 날짜, 시각형이면 마감 순간의 서울 날짜다. 이 값은 공개 응답의 `deadlineOnSeoul`에 쓰고, 회원 저장 시 `PolicyDeadline.from(recruitment)`으로 같은 날짜를 저장해 `MemberPolicyStore`가 D-7·D-3·D-1 예약을 만든다([회원 저장·알림](member-policy-flow.md#마감일과-서비스-내-알림)). 화면 마감일과 알림 예약일은 항상 같다.
 
 ## 실행한 검증
 
-저장소 루트에서 모집 기간만 검사한다.
+저장소 루트에서 모집 기간만 검사한다. 지금은 `PolicyRecruitmentTest`를 실행한다.
 
 ```sh
 npm run test:recruitment
@@ -55,4 +55,4 @@ npm run test:recruitment
 
 ## 다음 연결
 
-마감 날짜 제공 테스트 8건을 더해 당시 `test:recruitment`는 31건을 실행했다. 함께 만든 알림 후보 날짜 모델은 회원 저장 예약과 규칙이 중복되어 2026-10-07 제거했다. 원천 기간 문자열 파서는 인증키 발급 후 성공 응답과 본문을 확인한 뒤 작성한다.
+마감 날짜 제공 테스트 8건을 더해 당시 `test:recruitment`는 31건을 실행했다. 함께 만든 알림 후보 날짜 모델은 회원 저장 예약과 규칙이 중복되어 2026-10-07 제거했다. 같은 날 운영 경로에서 쓰지 않는 메타데이터(정책 ID·개정·출처·발췌)만 감싸던 `RecruitmentSchedule`·`RecruitmentAssessment`도 삭제하고 계산을 `PolicyRecruitment.of`로 옮겼다. 위 검증 목록 중 메타데이터 보존·시계 한 번 읽기·시계 시간대 검사는 이때 삭제했다. 원천 기간 문자열 파서는 인증키 발급 후 성공 응답과 본문을 확인한 뒤 작성한다.

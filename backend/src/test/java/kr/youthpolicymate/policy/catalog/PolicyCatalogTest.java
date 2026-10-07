@@ -309,7 +309,7 @@ class PolicyCatalogTest {
         item.put("addAplyQlfcCndCn", "가구 소득인정액 기준 중위소득 100% 이하");
         item.put("earnEtcCn", "가구 소득인정액 기준 중위소득 50% 이하");
         saveReviewed(number, "청년내일저축계좌", hash(YOUTH_TOMORROW_SAVINGS));
-        var original = store.source(number).orElseThrow();
+        var original = source(number);
         var content = store.find(number).orElseThrow().content();
 
         mvc.perform(get("/api/v1/policies/" + number)).andExpect(status().isOk())
@@ -318,7 +318,7 @@ class PolicyCatalogTest {
                 .andExpect(jsonPath("$.sourceNotices[0].sourceUrl")
                         .value("https://www.bokjiro.go.kr/ssis-tbu/cms/pc/customer/notice/1309680_1141.html"))
                 .andExpect(jsonPath("$.sourceNotices[1].title").value("출생일 기준 확인 필요"));
-        assertThat(store.source(number).orElseThrow()).isEqualTo(original);
+        assertThat(source(number)).isEqualTo(original);
         assertThat(store.find(number).orElseThrow().content()).isEqualTo(content);
         assertThat(content.sections()).extracting(PolicyContent.TextSection::text)
                 .contains("가구 소득인정액 기준 중위소득 100% 이하", "가구 소득인정액 기준 중위소득 50% 이하");
@@ -764,14 +764,14 @@ class PolicyCatalogTest {
         save("dates", AT);
         for (var time : List.of("2026-09-05T14:59:59.999999Z", "2026-09-05T15:00:00Z", "2026-09-07T14:59:59.999999Z", "2026-09-07T15:00:00Z")) {
             var now = Instant.parse(time);
-            var expected = PolicyRecruitment.from(NUMBER, 1, "", item, now).status();
+            var expected = PolicyRecruitment.from(NUMBER, "", item, now).status();
             assertThat(store.list("", 1, 20, false, expected, java.util.Set.of(), now).items()).singleElement()
                     .satisfies(policy -> assertThat(policy.recruitment().status()).isEqualTo(expected));
         }
         saveReviewed(MOVING_FEE, "이사비", hash(MOVING_FEE));
         for (var now : List.of(rule(MOVING_FEE).periodNotice().opensAt().minusNanos(1000), rule(MOVING_FEE).periodNotice().opensAt(),
                 rule(MOVING_FEE).periodNotice().closesAt().minusNanos(1000), rule(MOVING_FEE).periodNotice().closesAt())) {
-            var expected = PolicyRecruitment.from(MOVING_FEE, 1, hash(MOVING_FEE), item, now).status();
+            var expected = PolicyRecruitment.from(MOVING_FEE, hash(MOVING_FEE), item, now).status();
             assertThat(store.list("이사비", 1, 20, true, expected, java.util.Set.of(), now).items()).singleElement()
                     .satisfies(policy -> assertThat(policy.recruitment().status()).isEqualTo(expected));
         }
@@ -837,6 +837,14 @@ class PolicyCatalogTest {
         mvc.perform(get("/api/v1/policies").param("category", "JOB", "HOUSING")).andExpect(status().isOk())
                 .andExpect(jsonPath("$.total").value(4))
                 .andExpect(jsonPath("$.items[*].policyNumber").value(org.hamcrest.Matchers.containsInAnyOrder("991", "992", "995", "999")));
+    }
+
+    private String source(String number) {
+        return jdbc.sql("""
+                SELECT s.raw_policy::text FROM policies p
+                JOIN policy_revisions r ON r.policy_number = p.policy_number AND r.revision = p.current_revision
+                JOIN policy_source_snapshots s ON s.id = r.source_snapshot_id WHERE p.policy_number = :number
+                """).param("number", number).query(String.class).single();
     }
 
     private void saveReviewed(String number, String title, String hash) {

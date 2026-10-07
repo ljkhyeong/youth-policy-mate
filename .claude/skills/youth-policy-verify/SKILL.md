@@ -38,7 +38,7 @@ allowed-tools:
 | `eligibility/**`(결과 enum·자치구) | `test:policy-questions` | 응답 형식이 바뀌면 `test:policy-catalog`와 API 계약 행 |
 | `policy/catalog/` 질문·판정표(`PolicyRuleDefinition`, `PolicyQuestion*`, `BasicConditions`) | `test:policy-questions` | 규칙 형식은 `PolicyRuleDefinitionTest`, DB 적용·목록은 `test:policy-catalog` |
 | `policy/catalog/` 목록·상세·저장소(`PolicyCatalogStore`, `*Response`) | `test:policy-catalog` | 응답 형식이 바뀌면 API 계약 행 |
-| `policy/Recruitment*`, `ApplicationPeriod` | `test:recruitment` | `catalog/PolicyRecruitment*`·`PolicyDeadline*`은 해당 테스트 클래스 |
+| `policy/ApplicationPeriod`, `catalog/PolicyRecruitment*`·`PolicyDeadline` | `test:recruitment` | 저장 정책 마감·알림 예약이 바뀌면 `test:member-flow` |
 | `ingestion/Ontong*` | `test:policy-collection` | |
 | `ingestion/PolicyAiRuleCallStore`(예약·정산), V27 마이그레이션 | `test:ai-reservation-db` | 생성 서비스와 함께 바뀌면 `test:ai-rule-generation`도 |
 | `ingestion/PolicyAiRule*`, `OpenAiRuleClient`, `AiProperties` | `test:ai-rule-generation` | 스케줄러는 `test:ai-rule-auto`, 초안 저장소만이면 `test:ai-rule-drafts`, 설정 바인딩은 `test:runtime`도 |

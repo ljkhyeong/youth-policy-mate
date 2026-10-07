@@ -64,9 +64,9 @@ class FutureYouthJobsRulesTest {
         var raw = tools.jackson.databind.json.JsonMapper.builder().build().createObjectNode()
                 .put("aplyPrdSeCd", "0057001").put("aplyYmd", "20260504 ~ 20260531");
         var may4 = Instant.parse("2026-05-03T15:00:00Z");
-        assertThat(PolicyRecruitment.from(FUTURE_YOUTH_JOBS, 1, hash(FUTURE_YOUTH_JOBS), raw, may4).status())
+        assertThat(PolicyRecruitment.from(FUTURE_YOUTH_JOBS, hash(FUTURE_YOUTH_JOBS), raw, may4).status())
                 .isEqualTo(kr.youthpolicymate.policy.RecruitmentStatus.BEFORE_OPENING);
-        assertThat(PolicyRecruitment.from(FUTURE_YOUTH_JOBS, 2, "changed", raw, may4).status())
+        assertThat(PolicyRecruitment.from(FUTURE_YOUTH_JOBS, "changed", raw, may4).status())
                 .isEqualTo(kr.youthpolicymate.policy.RecruitmentStatus.OPEN);
         assertThat(rule(FUTURE_YOUTH_JOBS).periodNotice().at(Instant.parse("2026-05-17T14:59:59Z"))).contains("접수 전");
         assertThat(rule(FUTURE_YOUTH_JOBS).periodNotice().at(Instant.parse("2026-05-17T15:00:00Z"))).doesNotContain("접수 전", "마감됐어요");

@@ -9,7 +9,6 @@ import java.time.*;
 import java.util.List;
 import java.util.UUID;
 
-import static kr.youthpolicymate.ingestion.AiDatabaseTime.dbTime;
 import static kr.youthpolicymate.policy.SeoulTime.SEOUL;
 
 @Repository
@@ -26,36 +25,36 @@ public class PolicyAiRuleAutoStore {
     public PolicyAiRuleAutoStore(JdbcClient jdbc, PolicyAiRuleDraftStore drafts) { this.jdbc = jdbc; this.drafts = drafts; }
 
     @Transactional
-    public Claim claim(Limits limits, OpenAiRuleClient.Settings settings) {
+    public Claim claim(AiProperties settings) {
+        var limits = settings.auto();
         // 짧은 선택 트랜잭션만 직렬화한다. 외부 호출 중에는 이 잠금을 보유하지 않는다.
         if (!jdbc.sql("SELECT pg_try_advisory_xact_lock(794631028)").query(Boolean.class).single()) return new Claim("BUSY", null);
         var now = now();
-        expire(now, limits.maximumAttempts());
+        expire(now, limits.maxAttempts());
         if (jdbc.sql("SELECT EXISTS(SELECT 1 FROM policy_ai_rule_auto_runs WHERE state = 'RUNNING')").query(Boolean.class).single())
             return new Claim("BUSY", null);
         var start = LocalDate.ofInstant(now, SEOUL).atStartOfDay(SEOUL).toInstant();
         if (jdbc.sql("SELECT count(*) FROM policy_ai_rule_auto_runs WHERE started_at >= :start")
-                .param("start", dbTime(start)).query(Long.class).single() >= limits.dailyLimit()) return new Claim("DAILY_LIMIT", null);
+                .param("start", utc(start)).query(Long.class).single() >= limits.dailyLimit()) return new Claim("DAILY_LIMIT", null);
         if (jdbc.sql("SELECT EXISTS(SELECT 1 FROM policy_ai_rule_auto_runs WHERE started_at > :cutoff)")
-                .param("cutoff", dbTime(now.minusSeconds(limits.intervalSeconds()))).query(Boolean.class).single()) return new Claim("WAITING", null);
+                .param("cutoff", utc(now.minusSeconds(limits.intervalSeconds()))).query(Boolean.class).single()) return new Claim("WAITING", null);
         var retry = jdbc.sql("""
                 SELECT q.id, a.attempt, call.request_id IS NOT NULL AS reserved FROM policy_ai_rule_requests q
                 JOIN policies p ON p.policy_number = q.policy_number
                 JOIN LATERAL (SELECT * FROM policy_ai_rule_auto_runs WHERE request_id = q.id ORDER BY attempt DESC LIMIT 1) a ON true
                 LEFT JOIN policy_ai_rule_candidates result ON result.request_id = q.id
                 LEFT JOIN policy_ai_rule_calls call ON call.request_id = q.id
-                LEFT JOIN ai_request_reservations reservation ON reservation.reservation_id = call.reservation_id
                 WHERE a.state IN ('RETRY_PENDING', 'INTERRUPTED') AND a.attempt < :maximum AND result.request_id IS NULL
-                  AND (call.request_id IS NULL OR call.response_body IS NOT NULL OR reservation.phase = 'HELD') AND
+                  AND (call.request_id IS NULL OR call.response_body IS NOT NULL OR call.phase = 'HELD') AND
                 """ + CURRENT_REQUEST + " ORDER BY a.started_at, q.sequence LIMIT 1 FOR UPDATE OF p SKIP LOCKED")
-                .param("maximum", limits.maximumAttempts())
+                .param("maximum", limits.maxAttempts())
                 .query((rs, row) -> new Retry(rs.getObject("id", UUID.class), rs.getInt("attempt") + 1, rs.getBoolean("reserved"))).optional();
         if (retry.isEmpty() || !retry.get().reserved()) {
             var budget = jdbc.sql("SELECT limit_won, limit_won - confirmed_won - reserved_won AS remaining FROM ai_budgets WHERE budget_id = :id")
                     .param("id", PolicyAiRuleCallStore.monthlyBudgetId(now))
                     .query((rs, row) -> new Budget(rs.getBigDecimal("limit_won"), rs.getBigDecimal("remaining"))).optional();
             if (budget.isPresent()) {
-                if (budget.get().limit().compareTo(settings.monthlyLimit()) != 0) return new Claim("BUDGET_CONFIGURATION_REQUIRED", null);
+                if (budget.get().limit().compareTo(settings.monthlyLimitWon()) != 0) return new Claim("BUDGET_CONFIGURATION_REQUIRED", null);
                 if (budget.get().remaining().compareTo(settings.maximumWon(0)) <= 0) return new Claim("BUDGET_LIMIT", null);
             }
         }
@@ -81,7 +80,7 @@ public class PolicyAiRuleAutoStore {
                 INSERT INTO policy_ai_rule_auto_runs(id, request_id, attempt, started_at, lease_until, state)
                 VALUES (:id, :request, :attempt, :at, :until, 'RUNNING')
                 """).param("id", run.id()).param("request", run.requestId()).param("attempt", run.attempt())
-                .param("at", dbTime(run.startedAt())).param("until", dbTime(run.leaseUntil())).update();
+                .param("at", utc(run.startedAt())).param("until", utc(run.leaseUntil())).update();
         return new Claim("STARTED", run);
     }
 
@@ -117,33 +116,26 @@ public class PolicyAiRuleAutoStore {
                 """ + CURRENT_REQUEST + """
                     ) THEN 'SUPERSEDED'
                     WHEN a.attempt >= :maximum OR EXISTS (
-                        SELECT 1 FROM policy_ai_rule_calls c JOIN ai_request_reservations r ON r.reservation_id = c.reservation_id
-                        WHERE c.request_id = a.request_id AND c.response_body IS NULL AND r.phase <> 'HELD'
+                        SELECT 1 FROM policy_ai_rule_calls c
+                        WHERE c.request_id = a.request_id AND c.response_body IS NULL AND c.phase <> 'HELD'
                     ) THEN 'REVIEW_REQUIRED' ELSE 'INTERRUPTED' END
                 WHERE a.state = 'RUNNING' AND a.lease_until <= :at
-                """).param("at", dbTime(now)).param("maximum", maximum).update();
+                """).param("at", utc(now)).param("maximum", maximum).update();
     }
 
     public List<Summary> recent() {
         return jdbc.sql("""
-                SELECT a.*, q.policy_number, q.revision, c.status AS candidate_status, r.phase
+                SELECT a.id AS run_id, a.request_id, q.policy_number, q.revision, a.attempt, a.state, a.result_code,
+                    c.status AS candidate_status, call.phase AS reservation_phase, a.started_at
                 FROM policy_ai_rule_auto_runs a JOIN policy_ai_rule_requests q ON q.id = a.request_id
                 LEFT JOIN policy_ai_rule_candidates c ON c.request_id = a.request_id
-                LEFT JOIN ai_request_reservations r ON r.reservation_id = a.request_id::text
+                LEFT JOIN policy_ai_rule_calls call ON call.request_id = a.request_id
                 ORDER BY a.started_at DESC, a.id LIMIT 20
-                """).query((rs, row) -> new Summary(rs.getObject("id", UUID.class), rs.getObject("request_id", UUID.class),
-                        rs.getString("policy_number"), rs.getLong("revision"), rs.getInt("attempt"), rs.getString("state"),
-                        rs.getString("result_code"), rs.getString("candidate_status"), rs.getString("phase"),
-                        rs.getObject("started_at", OffsetDateTime.class).toInstant())).list();
+                """).query(Summary.class).list();
     }
 
     private Instant now() { return jdbc.sql("SELECT clock_timestamp()").query(OffsetDateTime.class).single().toInstant(); }
-    public record Limits(int dailyLimit, long intervalSeconds, int maximumAttempts) {
-        public Limits {
-            if (dailyLimit < 1 || dailyLimit > 100 || intervalSeconds < 60 || maximumAttempts < 1 || maximumAttempts > 5)
-                throw new IllegalArgumentException("AI 자동 처리의 일일 한도(1~100건)·간격(60초 이상)·최대 시도(1~5회)를 설정해주세요.");
-        }
-    }
+    private static OffsetDateTime utc(Instant instant) { return instant.atOffset(ZoneOffset.UTC); }
     public record Run(UUID id, UUID requestId, int attempt, Instant startedAt, Instant leaseUntil) {}
     public record Claim(String reason, Run run) {}
     public record Summary(UUID runId, UUID requestId, String policyNumber, long revision, int attempt, String state,

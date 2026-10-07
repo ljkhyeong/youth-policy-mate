@@ -6,10 +6,12 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.context.properties.bind.BindException;
+import org.springframework.boot.context.properties.bind.Binder;
+import org.springframework.boot.context.properties.source.MapConfigurationPropertySource;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.springframework.dao.DataAccessException;
 import org.springframework.http.MediaType;
-import org.springframework.mock.env.MockEnvironment;
 import org.springframework.test.web.client.MockRestServiceServer;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
@@ -39,12 +41,13 @@ class PolicyAiRuleGenerationTest {
     @Autowired PolicyCatalogStore policies;
     @Autowired PolicyAiRuleDraftStore drafts;
     @Autowired PolicyAiRuleCallStore calls;
-    @Autowired AiBudgetReservationStore reservations;
-    @Autowired AiBudgetReservationLifecycleStore lifecycle;
     @Autowired PolicyAiRuleAutoStore automation;
     @Autowired kr.youthpolicymate.policy.catalog.PolicyRuleStore rules;
     MockRestServiceServer server;
-    MockEnvironment environment;
+    RestClient restClient;
+    // 운영 설정과 같은 app.ai 키를 실제 바인딩으로 읽는다. 테스트 중 바꾸면 configure()로 다시 만든다.
+    final Map<String, String> settings = new HashMap<>();
+    AiProperties properties;
     OpenAiRuleClient client;
     PolicyAiRuleGenerationService service;
     PolicyAiRuleAutoRunner automatic;
@@ -54,7 +57,6 @@ class PolicyAiRuleGenerationTest {
         jdbc.sql("DELETE FROM policy_ai_rule_calls").update();
         jdbc.sql("DELETE FROM policy_ai_rule_candidates").update();
         jdbc.sql("DELETE FROM policy_ai_rule_requests").update();
-        jdbc.sql("DELETE FROM ai_request_reservations").update();
         jdbc.sql("DELETE FROM ai_budgets").update();
         jdbc.sql("DELETE FROM policy_rule_heads WHERE policy_number = :number").param("number", NUMBER).update();
         jdbc.sql("DELETE FROM policy_rule_versions WHERE policy_number = :number").param("number", NUMBER).update();
@@ -62,17 +64,40 @@ class PolicyAiRuleGenerationTest {
         jdbc.sql("DELETE FROM policy_source_snapshots").update();
         jdbc.sql("DELETE FROM policies").update();
         source("AI 호출 검증 공고", Instant.now().minusSeconds(60));
-        environment = new MockEnvironment().withProperty("AI_ENABLED", "true").withProperty("OPENAI_API_KEY", "test-key")
-                .withProperty("OPENAI_MODEL", "test-model").withProperty("AI_MONTHLY_LIMIT_WON", "100")
-                .withProperty("AI_INPUT_WON_PER_MILLION", "1000").withProperty("AI_OUTPUT_WON_PER_MILLION", "2000")
-                .withProperty("AI_MAX_OUTPUT_TOKENS", "1000").withProperty("AI_PRICING_VERSION", "test-pricing-v1")
-                .withProperty("AI_PRICING_VALID_UNTIL", Instant.now().plusSeconds(86400).toString());
+        settings.putAll(Map.of("enabled", "true", "api-key", "test-key", "model", "test-model", "monthly-limit-won", "100",
+                "input-won-per-million", "1000", "output-won-per-million", "2000", "max-output-tokens", "1000",
+                "pricing-version", "test-pricing-v1", "pricing-valid-until", Instant.now().plusSeconds(86400).toString()));
+        settings.putAll(Map.of("auto.daily-limit", "10", "auto.interval-seconds", "60", "auto.max-attempts", "3"));
         var builder = RestClient.builder().baseUrl("https://api.openai.com/v1");
         server = MockRestServiceServer.bindTo(builder).build();
-        client = new OpenAiRuleClient(environment, mapper, builder.build());
-        service = new PolicyAiRuleGenerationService(drafts, calls, reservations, lifecycle, client, Clock.systemUTC());
-        environment.withProperty("AI_AUTO_DAILY_LIMIT", "10").withProperty("AI_AUTO_INTERVAL_SECONDS", "60").withProperty("AI_AUTO_MAX_ATTEMPTS", "3");
-        automatic = new PolicyAiRuleAutoRunner(automation, service, client, environment, Clock.systemUTC());
+        restClient = builder.build();
+        configure();
+    }
+
+    private void configure() {
+        properties = bind(settings);
+        client = new OpenAiRuleClient(properties, mapper, restClient);
+        service = new PolicyAiRuleGenerationService(drafts, calls, client, properties, Clock.systemUTC());
+        automatic = new PolicyAiRuleAutoRunner(automation, service, properties, Clock.systemUTC());
+    }
+
+    private static AiProperties bind(Map<String, String> settings) {
+        var values = new HashMap<String, String>();
+        settings.forEach((key, value) -> values.put("app.ai." + key, value));
+        return new Binder(new MapConfigurationPropertySource(values)).bindOrCreate("app.ai", AiProperties.class);
+    }
+
+    @Test @DisplayName("빈 설정 값은 기본값으로 읽고 형식이 틀린 값은 거절하며 API 키를 문자열에 남기지 않는다")
+    void bindsSettings() {
+        var empty = bind(Map.of("enabled", "", "monthly-limit-won", "", "pricing-valid-until", "", "max-output-tokens", "",
+                "auto.enabled", "", "auto.daily-limit", "", "auto.interval-seconds", "", "auto.max-attempts", ""));
+        assertThat(empty.enabled()).isFalse();
+        assertThat(empty.monthlyLimitWon()).isNull();
+        assertThat(empty.auto()).isEqualTo(new AiProperties.Auto(false, 0, 300L, 3));
+        assertThatThrownBy(() -> empty.requireUsable(Instant.now())).hasMessageContaining("비활성화");
+        assertThat(bind(Map.of("auto.enabled", "true")).auto().enabled()).isTrue();
+        assertThatThrownBy(() -> bind(Map.of("monthly-limit-won", "abc"))).isInstanceOf(BindException.class);
+        assertThat(properties.toString()).doesNotContain("test-key");
     }
 
     @Test @DisplayName("수집된 신규·변경 공고를 자동 추출하고 내용이 같은 재수집에는 다시 호출하지 않는다")
@@ -107,10 +132,12 @@ class PolicyAiRuleGenerationTest {
 
     @Test @DisplayName("자동 설정 누락·일일 한도 소진을 차단하고 한국 날짜가 바뀌면 일일 한도를 다시 계산한다")
     void enforcesAutomaticDailyLimit() throws Exception {
-        environment.withProperty("AI_AUTO_DAILY_LIMIT", "0");
+        settings.put("auto.daily-limit", "0");
+        configure();
         assertThat(automatic.tick().state()).isEqualTo("CONFIGURATION_REQUIRED");
         assertThat(automation.recent()).isEmpty();
-        environment.withProperty("AI_AUTO_DAILY_LIMIT", "1");
+        settings.put("auto.daily-limit", "1");
+        configure();
         countTokens(); automaticResponse(); countTokens(); automaticResponse();
         assertThat(automatic.tick().state()).isEqualTo("COMPLETED");
         source("다음 자동 추출 공고", Instant.now());
@@ -122,7 +149,8 @@ class PolicyAiRuleGenerationTest {
 
     @Test @DisplayName("호출 전 실패는 동일 요청으로 제한된 횟수만 재개한다")
     void boundsAutomaticRetries() {
-        environment.withProperty("AI_AUTO_MAX_ATTEMPTS", "2");
+        settings.put("auto.max-attempts", "2");
+        configure();
         server.expect(requestTo("https://api.openai.com/v1/responses/input_tokens")).andRespond(withServerError());
         server.expect(requestTo("https://api.openai.com/v1/responses/input_tokens")).andRespond(withServerError());
         var first = automatic.tick();
@@ -141,20 +169,18 @@ class PolicyAiRuleGenerationTest {
     @Test @DisplayName("여러 작업자가 동시에 선택해도 한 건만 배정하고 중단 후 같은 요청으로 재개한다")
     void claimsOnceAndResumes() throws Exception {
         var start = new CountDownLatch(1);
-        var limits = new PolicyAiRuleAutoStore.Limits(10, 60, 3);
-        var settings = client.settings(Instant.now());
         try (var pool = Executors.newVirtualThreadPerTaskExecutor()) {
             var tasks = new ArrayList<Future<PolicyAiRuleAutoStore.Claim>>();
-            for (int i = 0; i < 3; i++) tasks.add(pool.submit(() -> { start.await(); return automation.claim(limits, settings); }));
+            for (int i = 0; i < 3; i++) tasks.add(pool.submit(() -> { start.await(); return automation.claim(properties); }));
             start.countDown();
             var claims = new ArrayList<PolicyAiRuleAutoStore.Claim>();
             for (var task : tasks) claims.add(task.get(10, TimeUnit.SECONDS));
             assertThat(claims.stream().filter(c -> c.run() != null)).hasSize(1);
         }
         var original = automation.recent().getFirst();
-        assertThat(automation.claim(limits, settings).reason()).isEqualTo("BUSY");
+        assertThat(automation.claim(properties).reason()).isEqualTo("BUSY");
         elapse();
-        var resumed = automation.claim(limits, settings).run();
+        var resumed = automation.claim(properties).run();
         assertThat(resumed.requestId()).isEqualTo(original.requestId());
         assertThat(resumed.attempt()).isEqualTo(2);
         assertThat(automation.recent()).extracting(PolicyAiRuleAutoStore.Summary::state).containsExactly("RUNNING", "INTERRUPTED");
@@ -165,10 +191,10 @@ class PolicyAiRuleGenerationTest {
 
     @Test @DisplayName("발송 후 중단된 작업은 자동 재호출하지 않고 운영자 확인으로 남긴다")
     void doesNotRedispatchInterruptedWork() {
-        var run = automation.claim(new PolicyAiRuleAutoStore.Limits(10, 60, 3), client.settings(Instant.now())).run();
+        var run = automation.claim(properties).run();
         var request = drafts.prepared(run.requestId());
         var call = reserve(request);
-        calls.dispatch(request, call, new AiBudgetReservationState.Dispatch("auto-interrupted", Instant.now()));
+        calls.dispatch(request, call, Instant.now());
         elapse();
         assertThat(automatic.tick().state()).isEqualTo("EMPTY");
         assertThat(automation.recent().getFirst().state()).isEqualTo("REVIEW_REQUIRED");
@@ -178,7 +204,7 @@ class PolicyAiRuleGenerationTest {
 
     @Test @DisplayName("비용 예약 직후 중단된 작업은 남은 예산이 없어도 같은 예약으로 실행한다")
     void resumesHeldReservationWithExhaustedBudget() {
-        var run = automation.claim(new PolicyAiRuleAutoStore.Limits(10, 60, 3), client.settings(Instant.now())).run();
+        var run = automation.claim(properties).run();
         reserve(drafts.prepared(run.requestId()));
         jdbc.sql("UPDATE ai_budgets SET confirmed_won = limit_won - reserved_won").update();
         elapse();
@@ -187,7 +213,7 @@ class PolicyAiRuleGenerationTest {
         assertThat(result.state()).isEqualTo("COMPLETED");
         assertThat(result.requestId()).isEqualTo(run.requestId());
         assertThat(automation.recent().getFirst().attempt()).isEqualTo(2);
-        assertThat(jdbc.sql("SELECT reserved_won FROM ai_budgets").query(java.math.BigDecimal.class).single()).isEqualByComparingTo("2.1");
+        assertThat(budget("reserved_won")).isEqualByComparingTo("2.1");
         server.verify();
     }
 
@@ -235,7 +261,7 @@ class PolicyAiRuleGenerationTest {
                 .andExpect(jsonPath("$.text.format.type").value("json_object"))
                 .andExpect(http -> {
                     assertThat(TransactionSynchronizationManager.isActualTransactionActive()).isFalse();
-                    assertThat(lifecycle.find(request.id().toString()).orElseThrow().phase().name()).isEqualTo("DISPATCHED");
+                    assertThat(calls.find(request.id()).orElseThrow().phase()).isEqualTo("DISPATCHED");
                 }).andRespond(withSuccess(response(definition(request)), MediaType.APPLICATION_JSON));
         var result = service.generate(request.id());
         assertThat(result.candidateStatus()).isEqualTo("DRAFT_CREATED");
@@ -247,39 +273,45 @@ class PolicyAiRuleGenerationTest {
         assertThat(call.body().path("instructions").asString()).contains("PolicyRuleDefinition", "신뢰하지 않는 자료");
         assertThat(call.body().path("input").asString()).doesNotContain("검증 작업자", "requestedBy", "memberId");
         assertThat(call.response().body()).contains("response-test", "usage");
-        assertThat(calls.balance(call.budgetId()).reservedWon()).isEqualByComparingTo("2.1");
-        assertThat(calls.balance(call.budgetId()).confirmedWon()).isZero();
+        assertThat(budget("reserved_won")).isEqualByComparingTo("2.1");
+        assertThat(budget("confirmed_won")).isZero();
         assertThat(heads()).isZero();
-        assertThatThrownBy(() -> jdbc.sql("UPDATE policy_ai_rule_calls SET request_body = '{}'::jsonb").update())
-                .isInstanceOf(DataAccessException.class);
+        // 전송 내용·비용 예약·저장한 응답은 바꿀 수 없고 정산 단계만 갱신한다.
+        for (var change : List.of("request_body = '{}'::jsonb", "maximum_won = 0", "response_body = 'changed'"))
+            assertThatThrownBy(() -> jdbc.sql("UPDATE policy_ai_rule_calls SET " + change).update()).isInstanceOf(DataAccessException.class);
         var confirmedAt = Instant.now();
-        assertThat(service.settle(request.id(), "test-receipt-1", confirmedAt, new java.math.BigDecimal("1.25")).decision().name())
-                .isEqualTo("SETTLED");
-        assertThat(service.settle(request.id(), "test-receipt-1", confirmedAt, new java.math.BigDecimal("1.25")).decision().name())
-                .isEqualTo("REPLAYED");
-        assertThat(calls.balance(call.budgetId()).reservedWon()).isZero();
-        assertThat(calls.balance(call.budgetId()).confirmedWon()).isEqualByComparingTo("1.25");
+        assertThat(calls.settle(request.id(), "test-receipt-1", confirmedAt, new java.math.BigDecimal("1.25")))
+                .isEqualTo(PolicyAiRuleCallStore.Completion.APPLIED);
+        assertThat(calls.settle(request.id(), "test-receipt-1", confirmedAt, new java.math.BigDecimal("1.25")))
+                .isEqualTo(PolicyAiRuleCallStore.Completion.REPLAYED);
+        assertThat(service.status(request.id()).reservationPhase()).isEqualTo("SETTLED");
+        assertThat(budget("reserved_won")).isZero();
+        assertThat(budget("confirmed_won")).isEqualByComparingTo("1.25");
         server.verify();
     }
 
     @Test @DisplayName("설정 누락·요금 만료·오래된 요청은 호출 전에 차단하고 예산 초과는 생성 요청을 보내지 않는다")
     void rejectsBeforeGeneration() {
         var request = prepare();
-        environment.withProperty("AI_ENABLED", "false");
+        settings.put("enabled", "false");
+        configure();
         assertThatThrownBy(() -> service.generate(request.id())).hasMessageContaining("비활성화");
-        environment.withProperty("AI_ENABLED", "true").withProperty("OPENAI_API_KEY", "");
+        settings.putAll(Map.of("enabled", "true", "api-key", ""));
+        configure();
         assertThatThrownBy(() -> service.generate(request.id())).hasMessageContaining("OPENAI_API_KEY");
-        environment.withProperty("OPENAI_API_KEY", "test-key");
-        environment.withProperty("AI_ENABLED", "true").withProperty("AI_PRICING_VALID_UNTIL", "2020-01-01T00:00:00Z");
+        settings.putAll(Map.of("api-key", "test-key", "pricing-valid-until", "2020-01-01T00:00:00Z"));
+        configure();
         assertThatThrownBy(() -> service.generate(request.id())).hasMessageContaining("유효기간");
-        environment.withProperty("AI_PRICING_VALID_UNTIL", Instant.now().plusSeconds(86400).toString());
+        settings.put("pricing-valid-until", Instant.now().plusSeconds(86400).toString());
+        configure();
         var current = prepare();
         assertThatThrownBy(() -> service.generate(request.id())).hasMessageContaining("변경");
-        environment.withProperty("AI_MONTHLY_LIMIT_WON", "1");
+        settings.put("monthly-limit-won", "1");
+        configure();
         countTokens();
         assertThatThrownBy(() -> service.generate(current.id())).hasMessageContaining("BUDGET_LIMIT");
         assertThat(calls.find(current.id())).isEmpty();
-        assertThat(lifecycle.find(current.id().toString())).isEmpty();
+        assertThat(jdbc.sql("SELECT count(*) FROM ai_budgets").query(Long.class).single()).isZero();
         server.verify();
     }
 
@@ -292,10 +324,10 @@ class PolicyAiRuleGenerationTest {
         });
         assertThatThrownBy(() -> service.generate(request.id())).hasMessageContaining("변경");
         var current = prepare();
-        var call = reserve(current);
+        reserve(current);
         prepare();
         assertThat(service.generate(current.id()).reservationPhase()).isEqualTo("CANCELLED");
-        assertThat(calls.balance(call.budgetId()).reservedWon()).isZero();
+        assertThat(budget("reserved_won")).isZero();
         server.verify();
     }
 
@@ -332,9 +364,22 @@ class PolicyAiRuleGenerationTest {
         assertThat(result.responseStored()).isFalse();
         assertThat(service.generate(request.id())).isEqualTo(result);
         var confirmedAt = Instant.now();
-        assertThat(service.noCharge(request.id(), "test-no-charge", confirmedAt).decision().name()).isEqualTo("RELEASED_NO_CHARGE");
-        assertThat(service.noCharge(request.id(), "test-no-charge", confirmedAt).decision().name()).isEqualTo("REPLAYED");
+        assertThat(calls.releaseNoCharge(request.id(), "test-no-charge", confirmedAt)).isEqualTo(PolicyAiRuleCallStore.Completion.APPLIED);
+        assertThat(calls.releaseNoCharge(request.id(), "test-no-charge", confirmedAt)).isEqualTo(PolicyAiRuleCallStore.Completion.REPLAYED);
         assertThat(service.generate(request.id()).reservationPhase()).isEqualTo("RELEASED_NO_CHARGE");
+        server.verify();
+    }
+
+    @Test @DisplayName("예상하지 못한 호출 예외는 결과 미확인으로 바꾸지 않고 발송 상태와 예약액을 유지한다")
+    void keepsDispatchOnUnexpectedFailure() {
+        var request = prepare();
+        countTokens();
+        server.expect(requestTo("https://api.openai.com/v1/responses")).andRespond(http -> { throw new IllegalArgumentException("검증 예외"); });
+        assertThatThrownBy(() -> service.generate(request.id())).isInstanceOf(IllegalArgumentException.class);
+        var result = service.generate(request.id());
+        assertThat(result.reservationPhase()).isEqualTo("DISPATCHED");
+        assertThat(result.responseStored()).isFalse();
+        assertThat(budget("reserved_won")).isEqualByComparingTo("2.1");
         server.verify();
     }
 
@@ -355,7 +400,8 @@ class PolicyAiRuleGenerationTest {
             jdbc.sql("DROP FUNCTION fail_ai_candidate_test()").update();
         }
         source("수정된 AI 호출 공고", Instant.now());
-        environment.withProperty("AI_ENABLED", "false");
+        settings.put("enabled", "false");
+        configure();
         var result = service.generate(request.id());
         assertThat(result.candidateStatus()).isEqualTo("SOURCE_CHANGED");
         assertThat(result.reservationPhase()).isEqualTo("DISPATCHED");
@@ -390,7 +436,6 @@ class PolicyAiRuleGenerationTest {
         assertThatThrownBy(() -> service.generate(request.id())).hasMessageContaining("토큰 수");
         assertThatThrownBy(() -> service.generate(request.id())).hasMessageContaining("HTTP 500");
         assertThat(calls.find(request.id())).isEmpty();
-        assertThat(lifecycle.find(request.id().toString())).isEmpty();
         server.verify();
     }
 
@@ -400,8 +445,11 @@ class PolicyAiRuleGenerationTest {
                 .andRespond(withSuccess("{\"input_tokens\":100,\"object\":\"response.input_tokens\"}", MediaType.APPLICATION_JSON));
     }
     private PolicyAiRuleCallStore.Call reserve(PolicyAiRuleDraftStore.Prepared request) {
-        var settings = client.settings(Instant.now());
-        return calls.reserve(request, client.request(request, settings), 100, settings, Instant.now());
+        var usable = properties.requireUsable(Instant.now());
+        return calls.reserve(request, client.request(request, usable), 100, usable, Instant.now());
+    }
+    private java.math.BigDecimal budget(String column) {
+        return jdbc.sql("SELECT " + column + " FROM ai_budgets").query(java.math.BigDecimal.class).single();
     }
     private PolicyAiRuleDraftStore.Prepared prepare() {
         return drafts.prepare(new PolicyAiRuleDraftStore.Preparation(UUID.randomUUID(), NUMBER, 1, "test-extraction-v1", "검증 작업자"));

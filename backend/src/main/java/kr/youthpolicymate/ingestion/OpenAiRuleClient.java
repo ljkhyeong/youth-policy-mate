@@ -2,9 +2,9 @@ package kr.youthpolicymate.ingestion;
 
 import io.swagger.v3.core.converter.ModelConverters;
 import kr.youthpolicymate.policy.catalog.PolicyRuleDefinition;
+import kr.youthpolicymate.policy.catalog.PolicyRuleStore;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Profile;
-import org.springframework.core.env.Environment;
 import org.springframework.http.MediaType;
 import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.stereotype.Component;
@@ -14,28 +14,25 @@ import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 import tools.jackson.databind.node.ObjectNode;
 
-import java.math.BigDecimal;
-import java.math.RoundingMode;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
-import java.time.Instant;
 import java.util.Map;
 
 @Component
 @Profile("!preview")
 public class OpenAiRuleClient {
     static final String PROMPT_VERSION = "openai-rule-v1";
-    private final Environment environment;
+    private final AiProperties properties;
     private final ObjectMapper mapper;
     private final RestClient client;
 
     @Autowired
-    public OpenAiRuleClient(Environment environment, ObjectMapper mapper) {
-        this(environment, mapper, httpClient());
+    public OpenAiRuleClient(AiProperties properties, ObjectMapper mapper) {
+        this(properties, mapper, httpClient());
     }
 
-    OpenAiRuleClient(Environment environment, ObjectMapper mapper, RestClient client) {
-        this.environment = environment; this.mapper = mapper; this.client = client;
+    OpenAiRuleClient(AiProperties properties, ObjectMapper mapper, RestClient client) {
+        this.properties = properties; this.mapper = mapper; this.client = client;
     }
 
     private static RestClient httpClient() {
@@ -45,22 +42,7 @@ public class OpenAiRuleClient {
         return RestClient.builder().baseUrl("https://api.openai.com/v1").requestFactory(factory).build();
     }
 
-    Settings settings(Instant now) {
-        if (!environment.getProperty("AI_ENABLED", Boolean.class, false))
-            throw new IllegalStateException("AI 호출이 비활성화돼 있습니다. AI_ENABLED 설정을 확인해주세요.");
-        required("OPENAI_API_KEY");
-        var settings = new Settings(required("OPENAI_MODEL"), decimal("AI_MONTHLY_LIMIT_WON"),
-                decimal("AI_INPUT_WON_PER_MILLION"), decimal("AI_OUTPUT_WON_PER_MILLION"),
-                required("AI_PRICING_VERSION"), Instant.parse(required("AI_PRICING_VALID_UNTIL")),
-                Integer.parseInt(required("AI_MAX_OUTPUT_TOKENS")));
-        if (settings.monthlyLimit().signum() <= 0 || settings.monthlyLimit().compareTo(new BigDecimal("30000")) > 0
-                || settings.inputRate().signum() <= 0 || settings.outputRate().signum() <= 0
-                || settings.outputLimit() < 1 || settings.outputLimit() > 16384 || !now.isBefore(settings.validUntil()))
-            throw new IllegalArgumentException("AI 한도(0원 초과, 최대 30000원)·양수 요금·출력 상한(1~16384)·요금 유효기간을 확인해주세요.");
-        return settings;
-    }
-
-    ObjectNode request(PolicyAiRuleDraftStore.Prepared source, Settings settings) {
+    ObjectNode request(PolicyAiRuleDraftStore.Prepared source, AiProperties settings) {
         var schemas = io.swagger.v3.core.util.Json.mapper().valueToTree(
                 ModelConverters.getInstance().readAll(PolicyRuleDefinition.class)).toString();
         var instructions = """
@@ -73,6 +55,7 @@ public class OpenAiRuleClient {
                 날짜를 만들지 말고 {"unavailable":"확인할 수 없는 내용"}을 반환한다.
                 remainingChecks에는 증빙·선발·원문으로 확인하지 못한 조건을 남긴다.
                 질문 id는 영문자로 시작하는 영문·숫자·밑줄 60자 이내, 선택지 value는 서로 다른 40자 이내 값이다.
+                checks의 label은 서로 달라야 한다.
                 checks의 questionId와 when의 키는 questions의 id를 참조한다. when 값은 해당 질문의 선택지 value 배열이다.
                 when의 질문 간에는 AND, 배열 값 간에는 OR를 적용하며 첫 일치 행만 적용한다. 미일치는 UNKNOWN이다.
                 outcome은 MET, NOT_MET, UNKNOWN 중 하나다. unknownExplanation에는 미확인 사유를 쓴다.
@@ -82,7 +65,7 @@ public class OpenAiRuleClient {
         var input = mapper.valueToTree(Map.of("policyNumber", source.policyNumber(), "contentHash", source.contentHash(),
                 "ruleVersion", source.ruleVersion(), "rawPolicy", source.rawPolicy(), "content", source.content()));
         return mapper.createObjectNode().put("model", settings.model()).put("instructions", instructions)
-                .put("input", input.toString()).put("store", false).put("max_output_tokens", settings.outputLimit())
+                .put("input", input.toString()).put("store", false).put("max_output_tokens", settings.maxOutputTokens())
                 .put("service_tier", "default")
                 .set("text", mapper.valueToTree(Map.of("format", Map.of("type", "json_object"))));
     }
@@ -103,7 +86,7 @@ public class OpenAiRuleClient {
     Response generate(JsonNode request) { return post("/responses", request); }
 
     private Response post(String path, JsonNode body) {
-        return client.post().uri(path).headers(headers -> headers.setBearerAuth(required("OPENAI_API_KEY")))
+        return client.post().uri(path).headers(headers -> headers.setBearerAuth(properties.apiKey()))
                 .contentType(MediaType.APPLICATION_JSON).body(body.toString()).exchange((request, response) -> {
                     var bytes = response.getBody().readNBytes(1048577);
                     if (bytes.length > 1048576) throw new IllegalStateException("AI 응답이 저장 한도를 초과했습니다.");
@@ -125,23 +108,9 @@ public class OpenAiRuleClient {
                 }
             }
             var body = text.toString();
-            return body.getBytes(StandardCharsets.UTF_8).length <= 131072 ? body : "AI 추출 결과가 128KB를 초과했습니다.";
+            return body.getBytes(StandardCharsets.UTF_8).length <= PolicyRuleStore.MAX_DEFINITION_BYTES ? body : "AI 추출 결과가 128KB를 초과했습니다.";
         } catch (JacksonException exception) { return "AI 응답 형식 오류"; }
     }
 
-    private String required(String key) {
-        var value = environment.getProperty(key);
-        if (value == null || value.isBlank()) throw new IllegalStateException("AI 설정이 필요합니다: " + key);
-        return value.trim();
-    }
-    private BigDecimal decimal(String key) { return new BigDecimal(required(key)); }
-
-    record Settings(String model, BigDecimal monthlyLimit, BigDecimal inputRate, BigDecimal outputRate,
-                    String pricingVersion, Instant validUntil, int outputLimit) {
-        BigDecimal maximumWon(long inputTokens) {
-            return inputRate.multiply(BigDecimal.valueOf(inputTokens)).add(outputRate.multiply(BigDecimal.valueOf(outputLimit)))
-                    .divide(new BigDecimal("1000000"), 6, RoundingMode.CEILING);
-        }
-    }
     record Response(int status, String body) {}
 }

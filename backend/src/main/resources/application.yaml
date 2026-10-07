@@ -29,9 +29,23 @@ springdoc:
     enabled: false
 
 app:
+  # 숫자·시각 형식이 틀리면 기동하지 않는다. 값이 없거나 범위를 벗어나면 AI 호출 직전에 보류한다.
   ai:
+    enabled: ${AI_ENABLED:false}
+    api-key: ${OPENAI_API_KEY:}
+    model: ${OPENAI_MODEL:}
+    monthly-limit-won: ${AI_MONTHLY_LIMIT_WON:}
+    input-won-per-million: ${AI_INPUT_WON_PER_MILLION:}
+    output-won-per-million: ${AI_OUTPUT_WON_PER_MILLION:}
+    pricing-version: ${AI_PRICING_VERSION:}
+    pricing-valid-until: ${AI_PRICING_VALID_UNTIL:}
+    max-output-tokens: ${AI_MAX_OUTPUT_TOKENS:}
     auto:
       enabled: ${AI_AUTO_ENABLED:false}
+      # 비우면 AiProperties.Auto의 기본값(0건으로 실행 차단·300초·3회)을 쓴다.
+      daily-limit: ${AI_AUTO_DAILY_LIMIT:}
+      interval-seconds: ${AI_AUTO_INTERVAL_SECONDS:}
+      max-attempts: ${AI_AUTO_MAX_ATTEMPTS:}
   admin:
     member-ids: ${ADMIN_MEMBER_IDS:}
   url:

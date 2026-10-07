@@ -1,11 +1,14 @@
 package kr.youthpolicymate.ingestion;
 
 import kr.youthpolicymate.YouthPolicyMateApplication;
+import kr.youthpolicymate.policy.catalog.PolicyRuleStore;
 import tools.jackson.databind.ObjectMapper;
 
+import java.math.BigDecimal;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
+import java.time.Instant;
 import java.util.UUID;
 
 public final class PolicyAiRuleCommand {
@@ -29,15 +32,15 @@ public final class PolicyAiRuleCommand {
                 }
                 case "complete" -> {
                     var path = Path.of(args[2]);
-                    if (Files.size(path) > 131072) throw new IllegalArgumentException("추출 결과는 128KB 이하의 파일을 사용해주세요.");
+                    if (Files.size(path) > PolicyRuleStore.MAX_DEFINITION_BYTES) throw new IllegalArgumentException("추출 결과는 128KB 이하의 파일을 사용해주세요.");
                     System.out.println(store.complete(UUID.fromString(args[1]), Files.readString(path)));
                 }
                 case "generate" -> System.out.println(context.getBean(PolicyAiRuleGenerationService.class).generate(UUID.fromString(args[1])));
                 case "status" -> System.out.println(context.getBean(PolicyAiRuleGenerationService.class).status(UUID.fromString(args[1])));
-                case "settle" -> System.out.println(context.getBean(PolicyAiRuleGenerationService.class).settle(UUID.fromString(args[1]),
-                        args[2], java.time.Instant.parse(args[3]), new java.math.BigDecimal(args[4])));
-                case "no-charge" -> System.out.println(context.getBean(PolicyAiRuleGenerationService.class).noCharge(UUID.fromString(args[1]),
-                        args[2], java.time.Instant.parse(args[3])));
+                case "settle" -> System.out.println(context.getBean(PolicyAiRuleCallStore.class).settle(UUID.fromString(args[1]),
+                        args[2], Instant.parse(args[3]), new BigDecimal(args[4])));
+                case "no-charge" -> System.out.println(context.getBean(PolicyAiRuleCallStore.class).releaseNoCharge(UUID.fromString(args[1]),
+                        args[2], Instant.parse(args[3])));
                 default -> throw new IllegalArgumentException("지원하지 않는 명령입니다.");
             }
         }

@@ -47,7 +47,7 @@ class PolicyAiRunApiTest {
 
     @BeforeEach void setup() {
         insertMembers(jdbc);
-        for (var table : List.of("policy_ai_rule_auto_runs", "policy_ai_rule_calls", "ai_request_reservations", "ai_budgets", "policy_ai_rule_candidates", "policy_ai_rule_requests",
+        for (var table : List.of("policy_ai_rule_auto_runs", "policy_ai_rule_calls", "ai_budgets", "policy_ai_rule_candidates", "policy_ai_rule_requests",
                 "policy_revisions", "policy_source_snapshots", "policies")) jdbc.sql("DELETE FROM " + table).update();
     }
 
@@ -123,25 +123,18 @@ class PolicyAiRunApiTest {
                 VALUES ('test-budget', now() - interval '1 day', now() + interval '1 day', 100, 1, now(), now())
                 """).update();
         jdbc.sql("""
-                INSERT INTO ai_request_reservations(reservation_id, budget_id, policy_id, source_revision_number,
-                    source_collection_sequence, source_observed_at, source_name, source_snapshot_id, source_body_sha256,
-                    comparison_version, source_content_sha256, ai_kind, generation_version, request_sequence,
-                    request_prepared_at, pricing_version, cost_valid_until, maximum_won, phase, reserved_at, created_at, updated_at)
-                SELECT id::text, 'test-budget', policy_number, revision, revision, now(), 'test', 'test', content_hash,
-                    'test', content_hash, 'CONDITION_EXTRACTION', generation_version, sequence,
-                    now(), 'test', now() + interval '1 hour', 1, 'HELD', now(), now(), now()
-                FROM policy_ai_rule_requests WHERE id = :id
+                INSERT INTO policy_ai_rule_calls(request_id, budget_id, request_body, input_tokens, input_won_per_million,
+                    output_won_per_million, pricing_version, maximum_won, reserved_at, cost_valid_until, phase,
+                    response_status, response_body, received_at)
+                VALUES (:id, 'test-budget', '{"input":"private-prompt"}', 1, 1, 1, 'test', 1, now(), now() + interval '1 hour', 'HELD',
+                    200, 'private-response', now())
                 """).param("id", id).update();
-        jdbc.sql("""
-                INSERT INTO policy_ai_rule_calls(request_id, reservation_id, request_body, input_tokens, input_won_per_million,
-                    output_won_per_million, response_status, response_body, received_at)
-                VALUES (:id, :reservation, '{"input":"private-prompt"}', 1, 1, 1, 200, 'private-response', now())
-                """).param("id", id).param("reservation", id.toString()).update();
         mvc.perform(get(ROOT).with(social(ADMIN))).andExpect(jsonPath("$.items[0].reservationPhase").value("HELD"))
                 .andExpect(jsonPath("$.items[0].responseStored").value(true))
                 .andExpect(content().string(not(containsString("private-"))))
                 .andExpect(content().string(not(containsString("검증 작업자"))));
-        jdbc.sql("UPDATE ai_request_reservations SET phase = 'DISPATCHED', dispatch_id = 'test', dispatched_at = now()").update();
+        // 응답을 저장한 뒤에도 비용 예약 단계는 갱신할 수 있다.
+        jdbc.sql("UPDATE policy_ai_rule_calls SET phase = 'DISPATCHED', dispatched_at = now()").update();
         mvc.perform(get(ROOT).with(social(ADMIN))).andExpect(jsonPath("$.items[0].reservationPhase").value("DISPATCHED"));
         assertThat(jdbc.sql("SELECT reserved_won FROM ai_budgets").query(java.math.BigDecimal.class).single()).isEqualByComparingTo("1");
     }

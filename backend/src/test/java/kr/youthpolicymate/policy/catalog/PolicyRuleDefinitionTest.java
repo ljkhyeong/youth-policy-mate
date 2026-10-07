@@ -84,4 +84,15 @@ class PolicyRuleDefinitionTest {
         assertThat(exam().prefill(LocalDate.parse("1990-12-31"), NOW)).containsExactly(new Answer("birthRange", "BEFORE_1991_01_01"));
         assertThat(work().prefill(LocalDate.parse("2000-01-01"), NOW)).isEmpty();
     }
+    @Test @DisplayName("정책 기준일보다 늦은 생년월일은 음수 나이로 계산하지 않고 연령 답변과 비교를 비워 둔다")
+    void skipsBirthAfterReferenceDate() {
+        var mapper = JsonMapper.builder().build();
+        var json = (ObjectNode) mapper.valueToTree(rule(K_PASS));
+        ((ObjectNode) json.get("ageBinding")).put("referenceDate", "2020-01-01");
+        var definition = mapper.treeToValue(json, PolicyRuleDefinition.class);
+        var birth = LocalDate.parse("2021-01-01");
+        assertThat(definition.prefill(birth, NOW)).isEmpty();
+        assertThat(definition.compareBirth(birth, NOW)).isNull();
+        assertThat(definition.prefill(LocalDate.parse("2000-01-01"), NOW)).hasSize(1);
+    }
 }

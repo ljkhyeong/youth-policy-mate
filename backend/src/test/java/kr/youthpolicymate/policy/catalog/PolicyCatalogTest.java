@@ -194,8 +194,13 @@ class PolicyCatalogTest {
             var expected = definition.compareBirth(birth, AT);
             assertThat(checked.questionnaireAvailable()).isTrue();
             assertThat(checked.ruleVersion()).isEqualTo(expected == null ? "" : definition.versionAt(AT));
+            assertThat(checked.checks().getFirst().label()).isEqualTo("연령");
             assertThat(checked.checks().getFirst().outcome()).isEqualTo(expected == null
                     ? kr.youthpolicymate.eligibility.ConditionOutcome.UNKNOWN : expected.age().outcome());
+            if (expected == null) return;
+            // 미확인이면 규칙 항목 설명을, 충족·불충족이면 공통 안내를 쓰고 기간·연령 안내를 뒤에 붙인다.
+            assertThat(checked.explanation()).startsWith(expected.age().outcome() == kr.youthpolicymate.eligibility.ConditionOutcome.UNKNOWN
+                    ? expected.age().explanation() : "입력한 생년월일은").endsWith(expected.periodNotice());
         });
     }
 

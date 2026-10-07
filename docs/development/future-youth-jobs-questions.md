@@ -44,15 +44,12 @@
   --tests 'kr.youthpolicymate.policy.catalog.PolicyRecruitmentTest' \
   --tests 'kr.youthpolicymate.policy.catalog.PolicyCatalogTest' bootJar --no-daemon
 
-./backend/gradlew -p backend test \
-  --tests 'kr.youthpolicymate.policy.catalog.PolicyCatalogTest.migratesOnlyReviewedFutureYouthJobsPeriod' --no-daemon
-
 npm run verify -- test:web -- src/app/policies/policy-content.test.tsx src/features/eligibility/policy-questionnaire.test.tsx
 npm run verify -- check:web
 ```
 
 - 서버 첫 실행 통과: 예외·미응답·날짜 경계, 원문·개정·규칙 변경 후 제출 거부, 기존 정책 API·생성 계약 일치와 패키징을 확인했다. 로그: `/tmp/youth-future-jobs-test.log`.
-- 마이그레이션 검사에 실제 원본·개정 관계와 목록 상태 확인을 보완하고 해당 메서드만 다시 실행해 통과했다. 다른 정책번호·다른 해시의 기간과 원본·개정 수를 유지한다. 로그: `/tmp/youth-future-jobs-migration-test.log`.
+- V21 이관만 확인하던 `PolicyCatalogTest`의 마이그레이션 검사는 Flyway 기준 스키마 정리에 맞춰 삭제했다.
 - 웹 검사·린트·타입 검사 통과. 기록: `.local/verification/1789164221321-94fcc2ed.log`, `1789164221304-59695402.log`. 다른 웹 파일은 이전 전체 검사와 같아 재사용했다. 화면 구조·라우팅·의존성과 API 구조는 유지해 웹 빌드·전체 서버 검사·원격 CI는 반복하지 않았다.
 - 실제 브라우저에서 1280px·390px의 질문 여섯 개와 세 안내를 확인했다. 근로·재학·사업 예외의 조건 충족, 재학 미확인의 추가 확인, 전체 자격의 추가 확인 유지, 답변 삭제를 검증했다. 처음 사용한 결과 선택자가 실제 화면과 달라 수정한 뒤 최종 실행을 마쳤다. 가로 넘침과 새 콘솔 오류는 없었다. 로그: `/tmp/youth-future-jobs-ui/flow-final.log`.
 - 1280px에서 기본 조건 입력→점프업 검색→연령 충족·다른 조건 미확인·마감 표시→상세 질문 이동을 확인했다. 상세 질문은 빈 답변으로 시작하며 시험 기본 조건도 지웠다. 로그: `/tmp/youth-future-jobs-ui/age-flow.log`. 화면은 같은 디렉터리의 `questions-390.png`, `result-1280.png`, `age-search-1280.png` 등에 있다.

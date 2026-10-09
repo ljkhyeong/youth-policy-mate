@@ -1,12 +1,13 @@
 # 작업 인계
 
-2026-10-07 기준. 개발 이력은 Git과 [개발 문서](docs/development/)에서 확인한다.
+2026-10-09 기준. 개발 이력은 Git과 [개발 문서](docs/development/)에서 확인한다.
 
 ## 현재 작업
 
-- `codex/progressive-policy-discovery`에 어두운 화면과 Spring·JDK 표준 기능 정리를 로컬에 커밋했다(원격 미반영). 원격 `main`은 `11d32fa`에서 [웹·전체 서버 CI](https://github.com/ljkhyeong/youth-policy-mate/actions/runs/37401169359)를 통과한 상태다.
-- 표준 기능 정리: 운영 DB 전이라 보존할 데이터가 없다는 전제로 직접 구현한 코드와 쓰지 않는 코드·스키마를 정리했다. 개발 미리보기·preview 프로필·Spring Batch·SMTP·로컬 캡처 반입·AI 예약 구 모델을 지우고, 설정은 `@ConfigurationProperties`, 오류 응답은 `@RestControllerAdvice` 하나, 캐시 헤더는 Spring Security 기본값, 온통청년 호출은 `RestClient`로 바꿨다. Flyway는 `V1__baseline_schema.sql`·`V2__seed_reviewed_policy_rules.sql` 두 개로 합쳤다. 오류 `code`가 공통 값으로 바뀌었다(화면이 쓰는 `EMAIL_*`는 그대로). [전체 기록과 동작 변화](docs/development/backend-api-review.md#springjdk-표준-기능-정리-전체--2026-10-07-적용)
-- 검증: 최종 커밋에서 `check:backend`·`test:web`·`check:web`·`build:web`·`check:api-types`·`check:tools`·`test:runtime`과 문서 링크 검사를 통과했다. 실제 외부 호출과 브라우저 화면 확인은 하지 않았다(화면 변경은 `/dev` 삭제와 쓰지 않는 스타일 삭제뿐).
+- `codex/progressive-policy-discovery`에 어두운 화면, Spring·JDK 표준 기능 정리(2026-10-07), 미사용·중복 코드 정리(2026-10-09)를 로컬에 커밋했다(원격 미반영). 원격 `main`은 `11d32fa`에서 [웹·전체 서버 CI](https://github.com/ljkhyeong/youth-policy-mate/actions/runs/37401169359)를 통과한 상태다.
+- 표준 기능 정리: 운영 DB 전이라는 전제로 직접 구현한 코드와 쓰지 않는 코드·스키마를 정리하고 Flyway를 `V1__baseline_schema.sql`·`V2__seed_reviewed_policy_rules.sql` 두 개로 합쳤다. 오류 `code`가 공통 값으로 바뀌었다(화면이 쓰는 `EMAIL_*`는 그대로). [전체 기록과 동작 변화](docs/development/backend-api-review.md#springjdk-표준-기능-정리-전체--2026-10-07-적용)
+- 미사용·중복 코드 정리: 제거 예정 Spring API 2건, 빈 하나만 만들던 수집 설정 클래스, 읽지 않는 레코드 구성요소, 분야 색·이전 응답 호환 같은 웹 잔재, 회원 화면의 중복 401 처리, 효과 없는 CSS를 정리했다. API 계약·DB 스키마·화면 표시는 그대로다(저장 정책 변경 내용의 네트워크 오류만 안내 문구로 보여준다). 유지한 후보와 이유(`UNTIL_EXHAUSTED`, 저장 정책 마감 열, 관리자 폼 중복 등)는 [정리 기록](docs/development/backend-api-review.md#미사용중복-코드-정리--2026-10-09-적용)에 있다.
+- 검증: 최종 파일에서 `check:backend`·`test:web`·`check:web`·`build:web`·`check:api-types`와 문서 링크 검사를 통과했다. CSS·마크업 변경은 모의 정책 API와 헤드리스 Playwright로 변경 전후 화면 10장이 같음을 확인했다. 실제 외부 호출과 실제 Spring 데이터 화면은 확인하지 않았다.
 - 로컬 DB 볼륨을 2026-10-07에 다시 만들어 V1·V2를 적용하고 온통청년 서울 1~4페이지 40건을 다시 수집했다(전체 730건). 검토 규칙이 있는 12개 정책(4~8월 공고)은 이 범위에 없어 로컬에서는 조건 질문을 확인할 수 없다. 해당 공고가 있는 페이지를 [범위 수집](docs/development/policy-range-collection.md)으로 더 받아야 한다. 이전 볼륨은 `.local/backups/`에 백업했다. 서버 기동·정책 목록·오류 응답은 새 DB로 확인했다. 정기 수집·AI 자동 처리·이메일·알림은 비활성화다. 실제 OAuth·Resend 연동, 이미지 빌드·공유기·TLS·k3s·백업 운영 설정은 사용자가 진행한다. 백업·외부 공급자 데이터의 보관/삭제와 관리자 기록 보관 기준은 남아 있다.
 
 ## 구현·검증 범위

@@ -330,8 +330,45 @@ Temurin 25.0.3·PostgreSQL 18.6 Testcontainers에서 실행했다. 실제 OAuth 
 
 동작 변화: 오류 `code`는 공통 값(`INVALID_REQUEST`·`NOT_FOUND`·`CONFLICT`·`SERVICE_UNAVAILABLE`)이고 화면이 쓰는 `EMAIL_*`·`EMAIL_PROVIDER_*`와 보안 코드는 그대로다. 공개·질문 API의 DB 장애는 503이다. 범위 수집 중단 코드는 `COLLECTION_FAILED`다. AI 생성 방식 버전은 `openai-rule-v2`다. 회원 닉네임을 `members`에 저장하지 않는다. `EMAIL_FROM` 형식과 운영 `PUBLIC_APP_URL`(http(s) 절대 주소) 누락은 기동을 막는다.
 
-남은 후보: 항상 `NEEDS_REVIEW`인 조건 비교 `status` 응답 필드, 쓰이지 않는 `UNTIL_EXHAUSTED` 상태, 저장 정책 마감 관련 중복 필드, 공고 3건의 하드코딩 신청 기간 보정(수집 원문으로 `Dates` 해석 여부를 확인한 뒤 삭제), 수집 파서 단일 인스턴스 주입.
+남은 후보: 항상 `NEEDS_REVIEW`인 조건 비교 `status` 응답 필드, 쓰이지 않는 `UNTIL_EXHAUSTED` 상태, 저장 정책 마감 관련 중복 필드, 공고 3건의 하드코딩 신청 기간 보정(수집 원문으로 `Dates` 해석 여부를 확인한 뒤 삭제), 수집 파서 단일 인스턴스 주입. 2026-10-09에 모두 검토했다([미사용·중복 코드 정리](#미사용중복-코드-정리--2026-10-09-적용)의 유지한 것).
 
 ### 검증
 
 최종 커밋 기준으로 `npm run verify -- check:backend`(서버 전체 테스트와 빌드), `test:web`, `check:web`, `build:web`, `check:api-types`, `check:tools`, `test:runtime`과 문서 링크 검사를 통과했다. 실행 기록은 `npm run verify -- status`에 있다. 실제 OAuth·Resend·OpenAI·온통청년 호출과 로컬 DB 볼륨 재생성은 하지 않았다.
+
+## 미사용·중복 코드 정리 — 2026-10-09 적용
+
+2026-10-07 정리 뒤 남은 코드를 서버·웹·설정으로 나눠 다시 감사했다. 호출부가 없는 서버 메서드는 없었다. 쓰지 않는 구성요소·중복·제거 예정 API만 정리했고 API 계약·DB 스키마·화면 문구는 바꾸지 않았다.
+
+| 대상 | 변경 |
+|---|---|
+| 서버 | Resend 웹훅은 Spring 7에서 제거 예정인 `HttpHeaders.asMultiValueMap()` 대신 `@RequestHeader MultiValueMap`을 Svix 검증기에 넘긴다. 헤더 이름은 Svix가 대소문자 구분 없이 찾는다. 빈 하나만 만들던 `OntongCollectionConfiguration`을 지우고 `OntongApiClient`를 `OpenAiRuleClient`처럼 컴포넌트로 등록했다. 수집 범위 레코드에서 읽지 않는 `firstPage`·`failureCode`를 뺐다. |
+| 서버 테스트 | 제거 예정 `isPayloadTooLarge()`를 `isContentTooLarge()`로 바꿨다. 웹훅 테스트는 대문자로 시작하는 헤더 이름으로 서명 확인을 검사한다. |
+| 웹 | 분야 색을 지운 뒤 남은 `data-category`·`categoryKey`·`isPolicyCategory`와 쓰지 않는 `PolicyRecruitment`의 `compact` 속성을 지웠다. 남은 일수 판정을 `openDaysLeft`로 모아 D-day와 상세 여백 메모가 함께 쓰고, 생성 타입에서 필수인 `daysUntilDeadline`의 이전 응답 호환 분기를 뺐다. 회원 화면 5곳의 401 안내 분기를 `describeFailure`로 모았다. `PolicyPeriodText`는 손으로 쓴 타입 대신 생성 타입을 쓰고, 로그인 전 정책 기록 키는 `login-destination.ts`에만 둔다. 파일 밖에서 쓰지 않는 export 7개를 모듈 내부로 돌렸다. |
+| 웹 오류 표시 | 저장 정책의 변경 내용 조회가 네트워크 실패 때 브라우저 원문 오류(`Failed to fetch`) 대신 안내 문구를 보여준다. |
+| CSS | 마크업이 없는 선택자(`.review-label`, `.availability-note`의 `> span`·`p:first-child`·`p + p`), 레이어 밖 규칙에 모두 덮인 `.condition-panel` 선언, 같은 레이어에서 덮이거나 기본 규칙과 같은 값을 지웠다. 레이어 밖에서 컴포넌트 규칙을 덮는 `button, input, select { font: inherit }` 같은 리셋은 preflight와 같아 보여도 유지했다. |
+| 설정·문서 | ESLint의 `globalIgnores`는 eslint-config-next 기본 무시 목록과 같아 지웠다. `build.gradle`의 수집·AI 명령 설명과 `.env` 사용 주석, `.env.example`의 온통청년 키 설명을 실제 범위에 맞췄다. |
+
+### 유지한 것
+
+- 항상 `NEEDS_REVIEW`인 `PolicyCheckItem.status`·`PolicyEvaluation.status`: 공통요건 결과와 별개로 전체 자격이 추가 확인임을 응답 계약으로 밝히고, 조건 비교 API와 정책별 규칙 테스트가 이 값을 검사한다.
+- 생성되지 않는 `UNTIL_EXHAUSTED`: [PRD 3.2](../PRD/0001_product-baseline/spec.md#32-최소-화면-범위)와 [모집 기간 설계](../design/recruitment-period.md)가 소진형을 제품 상태로 정의한다. 원문 파서는 소진 안내를 기간 미확인으로 남긴다. 지우려면 PRD·설계와 API enum·V1 CHECK를 함께 바꿔야 해서 제품 결정으로 남긴다.
+- 저장 정책의 `deadline_on`·`deadline_note`: 조회 때 다시 계산할 수 있지만, 열을 지우면 해석 코드가 바뀐 뒤 화면 마감일과 이미 예약한 알림일 중 어느 쪽을 따를지가 바뀌고 새 Flyway 버전이 필요하다.
+- 공고 3건의 하드코딩 신청 기간 보정: 원문의 공고기간을 실제 접수기간으로 바로잡은 검토 값이다([미래 청년 일자리](future-youth-jobs-questions.md#원문-차이와-접수-기간)·[이사비](moving-fee-questions.md#원문과-적용-범위)·[청정넷](seoul-youth-network-questions.md#모집-기간과-기준-변경)).
+- 수집 파서: 운영 코드는 이미 `OntongPolicyCapture` 빈 하나를 주입받는다. 테스트만 직접 만든다.
+- 관리자 변경 폼 3개의 요청 ID 재사용·거절/미확인 처리 중복: 대화형 DOM 테스트가 없고 로컬 관리자 로그인을 확인할 수 없어 옮기지 않았다.
+- 관리자 요청 사유의 반복 `strip()`: 요청 레코드에서 정규화하면 `@Size`가 공백을 뺀 길이에 적용되는 의미 변화가 있다.
+- 수집 실패 결과 문자열 묶음, null 변환이 있는 수동 행 매핑, HTTP 요청 팩토리 구성: SQL에서 바로 읽히거나 리다이렉트 기본값이 달라져 그대로 둔다.
+
+### 검증
+
+| 명령 | 결과 | 로그 |
+|---|---|---|
+| `npm run verify -- check:backend` | 서버 전체 테스트·빌드·계약 일치 통과 | `.local/verification/1791515122311-e84c08b4.log` |
+| `npm run verify -- test:web` | 통과 | `.local/verification/1791515432708-e598bc24.log` |
+| `npm run verify -- check:web` | 린트·타입 검사 통과 | `.local/verification/1791515105064-0b0f6d69.log` |
+| `npm run verify -- build:web` | 프로덕션 빌드 통과 | `.local/verification/1791515412687-5e4b3254.log` |
+| `npm run verify -- check:api-types` | 생성 타입 변화 없음 | `.local/verification/1791515417955-4e51f11e.log` |
+
+- `javac -Xlint:all`로 서버 앱·테스트를 다시 컴파일해 경고가 0건임을 확인했다. 변경 전에는 제거 예정 API 경고가 2건이었다.
+- CSS·마크업 변경은 웹 개발 서버(3103)와 모의 정책 API로 변경 전후를 헤드리스 Playwright에서 비교했다. 조건 입력(1280·500·390px), 정책 목록(같은 세 폭), 상세(1280·390px), 로그인 불가 안내, 내 정책 탭의 화면 전체 스크린샷 10장이 바이트 단위로 같았다. 계산된 스타일 차이는 조건 입력 영역의 `border-top-style`(`none`→`solid`, 두께 0px)뿐이다. 실제 Spring·OAuth·Resend 연동은 확인하지 않았다.

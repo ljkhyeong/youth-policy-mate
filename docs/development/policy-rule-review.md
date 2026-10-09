@@ -52,7 +52,7 @@ Java 25.0.3·PostgreSQL 18.6·Node 25.4.0에서 `e05fa3d`를 확인했다. 규�
 
 | 검증 | 결과와 로그 |
 |---|---|
-| `./backend/gradlew -p backend test --tests 'kr.youthpolicymate.admin.PolicyRuleReviewApiTest' exportPreviewOpenApi exportPolicyOpenApi --no-daemon` | 구조화된 규칙 반환·초안/적용·권한·재시도·경합·롤백과 계약 생성 통과. `/tmp/youth-rule-editor-api.log` |
+| `./backend/gradlew -p backend test --tests 'kr.youthpolicymate.admin.PolicyRuleReviewApiTest' exportPreviewOpenApi exportPolicyOpenApi --no-daemon` | 구조화된 규칙 반환·초안/적용·권한·재시도·경합·롤백과 계약 생성 통과(당시 명령. `exportPreviewOpenApi`는 2026-10-07 preview 계약과 함께 삭제했다). `/tmp/youth-rule-editor-api.log` |
 | `npm run verify -- test:admin-collection` | 파싱·잠금 통합 후 잘못된 파일 400·낡은 원문 409·동시 적용·재시도·권한 통과. `.local/verification/1791330192599-21f6ae62.log` |
 | `npm run generate:api-types --workspace frontend` | 서버 계약에서 생성 타입 갱신. `/tmp/youth-rule-editor-api.log` |
 | `npm run verify -- test:web -- src/features/admin/policy-rule-editor.test.tsx src/features/admin/policy-rule-review-pages.test.tsx` | 기존 11개 규칙의 별도 설정 보존·새 버전/원문 확인·판정 순서·미응답·서울 시각·화면 통과. `.local/verification/1789171096370-91d50834.log` |

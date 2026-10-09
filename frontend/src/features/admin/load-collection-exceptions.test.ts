@@ -9,7 +9,8 @@ afterEach(() => { vi.unstubAllGlobals(); vi.resetAllMocks(); });
 
 describe("관리자 수집 예외 서버 조회", () => {
   it("이메일 조회 기간·상태·종류를 보내고 전체 필터는 생략한다", async () => {
-    const fetch = vi.fn().mockResolvedValue(Response.json({ items: [] })); vi.stubGlobal("fetch", fetch);
+    // 응답 본문은 한 번만 읽을 수 있어 호출마다 새 응답을 만든다.
+    const fetch = vi.fn().mockImplementation(async () => Response.json({ items: [] })); vi.stubGlobal("fetch", fetch);
     await loadEmailDeliveries(2, 30, "UNKNOWN", "VERIFICATION");
     expect(fetch.mock.calls[0][0].pathname).toBe("/api/v1/admin/email-deliveries");
     expect(Object.fromEntries(fetch.mock.calls[0][0].searchParams)).toEqual({ page: "2", pageSize: "20", days: "30", state: "UNKNOWN", kind: "VERIFICATION" });
@@ -28,7 +29,7 @@ describe("관리자 수집 예외 서버 조회", () => {
     expect(options.headers.Cookie).toBe("YPM_SESSION=fixture-session");
   });
   it("조건 검토의 검색어를 인코딩하고 잘못된 정책번호는 전송하지 않는다", async () => {
-    const fetch = vi.fn().mockResolvedValue(Response.json({ items: [] })); vi.stubGlobal("fetch", fetch);
+    const fetch = vi.fn().mockImplementation(async () => Response.json({ items: [] })); vi.stubGlobal("fetch", fetch);
     await loadRuleReviews(2, "SOURCE_CHANGED", "청년 & 지원");
     const [url, options] = fetch.mock.calls[0];
     expect(url.pathname).toBe("/api/v1/admin/policy-rule-reviews");

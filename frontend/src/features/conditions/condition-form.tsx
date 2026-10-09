@@ -70,7 +70,7 @@ export function ConditionForm({ today }: { today: string }) {
 
   const reflected = (input.birthDate ?? "") === draft.birthDate && (input.district ?? "") === draft.district
     && (input.employmentStatus ?? "") === draft.employmentStatus;
-  return <section className="condition-panel condition-workspace" aria-label="내 조건 입력과 확인">
+  return <section className="condition-workspace" aria-label="내 조건 입력과 확인">
     <details className="condition-disclosure">
       <summary>생년월일로 연령 비교하기 <span className="condition-optional">선택</span></summary>
     <form ref={formRef} onSubmit={submit} noValidate method="post" autoComplete="off">

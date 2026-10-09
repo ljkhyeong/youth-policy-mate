@@ -15,11 +15,7 @@ export const categoryLabels = (category: string | null | undefined) => {
   const labels = [...new Set((category ?? "").split(",").map(part => part.replace(sourceSpaces, "").replaceAll("･", "·")).filter(Boolean))];
   return labels.length > 0 ? labels : ["청년 정책"];
 };
-export const categoryKey = (label: string) => policyCategories.find(item => item.label === label)?.key;
-export const isPolicyCategory = (value: unknown): value is PolicyCategoryKey => policyCategories.some(item => item.key === value);
 
 export function CategoryChips({ category }: { category: string | null | undefined }) {
-  return <span className="category-chips">
-    {categoryLabels(category).map(label => <span key={label} className="category-chip" data-category={categoryKey(label)}>{label}</span>)}
-  </span>;
+  return <>{categoryLabels(category).map(label => <span key={label} className="category-chip">{label}</span>)}</>;
 }

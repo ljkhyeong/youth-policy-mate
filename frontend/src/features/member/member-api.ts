@@ -18,6 +18,12 @@ export class MemberApiError extends Error {
   constructor(public status: number, message: string, public code?: string) { super(message); }
 }
 
+// 로그인이 끊긴 실패는 로그인 안내를, 그 밖의 실패는 화면별 안내를 보여준다.
+export function describeFailure(failure: unknown, fallback: string) {
+  const loginRequired = failure instanceof MemberApiError && failure.status === 401;
+  return { loginRequired, message: loginRequired ? failure.message : fallback };
+}
+
 export async function memberApi<T>(path: string, options: { method?: string; body?: unknown; csrf?: string; signal?: AbortSignal } = {}): Promise<T> {
   const response = await fetch(`/api/member/${path}`, {
     method: options.method || "GET", credentials: "same-origin", cache: "no-store", signal: options.signal,

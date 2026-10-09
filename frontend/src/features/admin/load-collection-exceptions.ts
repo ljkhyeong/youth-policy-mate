@@ -4,7 +4,7 @@ import type { components } from "@/generated/policy-api";
 export type ExceptionPage = components["schemas"]["AdminSliceCollectionExceptionItem"];
 export type ExceptionDetail = components["schemas"]["CollectionExceptionDetail"];
 export type PageFailureList = components["schemas"]["AdminSliceCollectionPageFailure"];
-export type ReplayPage = components["schemas"]["AdminSliceCollectionReplayResult"];
+type ReplayPage = components["schemas"]["AdminSliceCollectionReplayResult"];
 export type LoadFailure = "unauthenticated" | "forbidden" | "missing" | "invalid" | "unavailable";
 type Loaded<T> = { status: "available"; data: T } | { status: LoadFailure };
 
@@ -51,7 +51,7 @@ export function loadCollectionException(runId: string, itemIndex: string): Promi
 }
 
 export type CorrectionItem = components["schemas"]["PolicyCorrectionItem"];
-export type CorrectionPage = components["schemas"]["AdminSlicePolicyCorrectionItem"];
+type CorrectionPage = components["schemas"]["AdminSlicePolicyCorrectionItem"];
 export type CorrectionPolicy = components["schemas"]["CollectionExceptionCurrentPolicy"];
 
 export function loadPolicyCorrections(page: number) {

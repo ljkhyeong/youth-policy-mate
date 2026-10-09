@@ -3,7 +3,7 @@ import type { NotificationFilter } from "./member-api";
 
 type QueryValue = string | string[] | null;
 type MemberLocationInput = { view?: QueryValue; status?: QueryValue; page?: QueryValue | number; filter?: QueryValue; q?: QueryValue; changed?: QueryValue | boolean };
-export type MemberLocation = {
+type MemberLocation = {
   view: "saved" | "calendar" | "notifications" | "email";
   status: RecruitmentFilter;
   page: number;

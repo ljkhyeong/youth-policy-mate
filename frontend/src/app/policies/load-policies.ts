@@ -2,9 +2,9 @@ import type { RecruitmentFilter } from "@/features/policies/policy-recruitment";
 import type { PolicyCategoryKey } from "@/features/policies/policy-category";
 import type { components } from "@/generated/policy-api";
 
-export type PolicyList = components["schemas"]["PolicyListResponse"];
-export type PolicyDetail = components["schemas"]["PolicyDetailResponse"];
-export type PolicyCategoryCounts = components["schemas"]["PolicyCategoryCounts"];
+type PolicyList = components["schemas"]["PolicyListResponse"];
+type PolicyDetail = components["schemas"]["PolicyDetailResponse"];
+type PolicyCategoryCounts = components["schemas"]["PolicyCategoryCounts"];
 type Loaded<T> = { status: "available"; data: T } | { status: "missing" | "unavailable" };
 
 // 공개 정책의 서버 렌더링에서만 사용한다. 브라우저에서 온통청년을 직접 호출하지 않는다.

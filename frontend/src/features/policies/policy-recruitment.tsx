@@ -13,11 +13,14 @@ export function RecruitmentOptions() {
     <option key={value} value={value}>{label}</option>)}</>;
 }
 
-// 접수 기간인 정책에만 서버가 계산한 남은 일수를 표시한다. 이전 서버 응답에는 값이 없을 수 있다.
-export function deadlineLabel(recruitment: Pick<Recruitment, "status"> & { daysUntilDeadline?: number | null }) {
-  const days = recruitment.daysUntilDeadline;
-  if (recruitment.status !== "OPEN" || typeof days !== "number" || days < 0) return null;
-  return days === 0 ? "오늘 마감" : `D-${days}`;
+// 접수 기간인 정책에만 서버가 계산한 남은 일수를 쓴다.
+export function openDaysLeft({ status, daysUntilDeadline }: Pick<Recruitment, "status" | "daysUntilDeadline">) {
+  return status === "OPEN" && daysUntilDeadline !== null && daysUntilDeadline >= 0 ? daysUntilDeadline : null;
+}
+
+export function deadlineLabel(recruitment: Pick<Recruitment, "status" | "daysUntilDeadline">) {
+  const days = openDaysLeft(recruitment);
+  return days === null ? null : days === 0 ? "오늘 마감" : `D-${days}`;
 }
 
 export function RecruitmentBadge({ recruitment }: { recruitment: Recruitment }) {
@@ -34,9 +37,9 @@ export function RecruitmentExplanation({ recruitment }: { recruitment: Recruitme
   return <details className="recruitment-explanation"><summary>접수 상태 안내</summary><p>{recruitment.explanation}</p></details>;
 }
 
-export function PolicyRecruitment({ recruitment, compact = false }: { recruitment: Recruitment; compact?: boolean }) {
+export function PolicyRecruitment({ recruitment }: { recruitment: Recruitment }) {
   return <div className="policy-recruitment" role="group" aria-label="접수 상태">
     <RecruitmentBadge recruitment={recruitment} />
-    {compact ? <RecruitmentExplanation recruitment={recruitment} /> : <p>{recruitment.explanation}</p>}
+    <p>{recruitment.explanation}</p>
   </div>;
 }

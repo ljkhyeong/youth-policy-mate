@@ -33,7 +33,7 @@ export function SavedPolicyChanges({ policyNumber }: { policyNumber: string }) {
         if (controller.signal.aborted) return;
         setError(failure instanceof MemberApiError && failure.status === 404
           ? "저장한 정책을 확인할 수 없어요. 내 정책 목록을 새로고침해주세요."
-          : failure instanceof Error ? failure.message : "변경 내용을 불러오지 못했어요.");
+          : failure instanceof MemberApiError ? failure.message : "변경 내용을 불러오지 못했어요.");
       });
     return () => controller.abort();
   }, [open, policyNumber, reload]);

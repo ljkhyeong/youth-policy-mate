@@ -87,8 +87,8 @@ describe("정책 목록의 공통요건 질문 탐색", () => {
     expect(html).toContain('type="hidden" name="category" value="JOB"');
     expect(html).toContain('type="hidden" name="category" value="HOUSING"');
     // 고른 분야를 누르면 빼고, 고르지 않은 분야를 누르면 더한다.
-    expect(html).toContain(`data-category="HOUSING" data-selected="true" href="${base}&amp;category=JOB">주거<span class="sr-only"> 선택됨, 누르면 해제</span>`);
-    expect(html).toContain(`data-category="FINANCE" href="${base}&amp;category=JOB&amp;category=HOUSING&amp;category=FINANCE">금융·복지·문화</a>`);
+    expect(html).toContain(`data-selected="true" href="${base}&amp;category=JOB">주거<span class="sr-only"> 선택됨, 누르면 해제</span>`);
+    expect(html).toContain(`href="${base}&amp;category=JOB&amp;category=HOUSING&amp;category=FINANCE">금융·복지·문화</a>`);
     expect(html).toContain(`href="${base}">전체 분야</a>`);
     expect(html).toContain("‘지원’ 검색 결과 · 일자리, 주거 · 접수 기간");
     expect(html).toContain(">마감 임박순<");

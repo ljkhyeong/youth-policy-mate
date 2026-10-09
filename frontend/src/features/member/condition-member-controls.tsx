@@ -12,7 +12,7 @@ type ConditionAction = "load" | "save" | "clear";
 export function ConditionMemberControls({ input, prepareLoad, onSuggestBirthDate }: {
   input?: BasicConditions;
   prepareLoad: () => (value: ConditionDraft) => boolean;
-  onSuggestBirthDate?: (value: string) => void;
+  onSuggestBirthDate: (value: string) => void;
 }) {
   const [state, setState] = useState<SessionState>({ phase: "loading" });
   const [message, setMessage] = useState("");
@@ -35,7 +35,7 @@ export function ConditionMemberControls({ input, prepareLoad, onSuggestBirthDate
     memberApi<MemberSession>("session", { signal: controller.signal }).then(session => {
       if (controller.signal.aborted) return;
       setState({ phase: "ready", session });
-      if (session.authenticated && session.suggestedBirthDate) onSuggestBirthDate?.(session.suggestedBirthDate);
+      if (session.authenticated && session.suggestedBirthDate) onSuggestBirthDate(session.suggestedBirthDate);
     }).catch(error => {
       if (!controller.signal.aborted) setState({ phase: "error", message: "로그인 상태를 확인하지 못했어요. 다시 시도해주세요.", loginRequired: error instanceof MemberApiError && error.status === 401 });
     }).finally(() => { if (active.current === controller) active.current = null; });

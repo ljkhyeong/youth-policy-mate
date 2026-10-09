@@ -32,6 +32,19 @@ describe("정책 상세의 온통청년 표기 조건", () => {
   });
 });
 
+describe("정책 상세의 남은 일수 메모", () => {
+  it("접수 기간인 정책에만 서버가 계산한 남은 일수를 여백 메모로 보여준다", () => {
+    const open = (daysUntilDeadline: number) => renderToStaticMarkup(<PolicyArticle policy={{ ...policy,
+      recruitment: { ...policy.recruitment, status: "OPEN", deadlineOnSeoul: "2026-05-20", daysUntilDeadline } }} />);
+    expect(open(0)).toContain("오늘 마감이에요");
+    expect(open(5)).toContain("5일 남았어요");
+    for (const html of [open(-1), renderToStaticMarkup(<PolicyArticle policy={policy} />)]) {
+      expect(html).not.toContain("남았어요");
+      expect(html).not.toContain("오늘 마감이에요");
+    }
+  });
+});
+
 describe("정책 상세의 원문 충돌 안내", () => {
   it("서버의 안내와 근거 링크를 질문보다 먼저 표시하고 수집 본문을 유지한다", () => {
     const notice = {

@@ -75,7 +75,7 @@ export default async function PoliciesPage({ searchParams }: Props) {
           전체 분야{categories.length === 0 && <span className="sr-only"> 선택됨</span>}</Link>
         {policyCategories.map(item => {
           const selected = categories.includes(item.key);
-          return <Link key={item.key} href={pageHref(1, questionsOnly, toggled(item.key))} data-category={item.key} data-selected={selected || undefined}>
+          return <Link key={item.key} href={pageHref(1, questionsOnly, toggled(item.key))} data-selected={selected || undefined}>
             {item.label}{selected && <span className="sr-only"> 선택됨, 누르면 해제</span>}</Link>;
         })}
       </nav>

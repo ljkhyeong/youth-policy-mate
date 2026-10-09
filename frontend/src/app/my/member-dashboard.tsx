@@ -1,5 +1,6 @@
 "use client";
 import { announceAccountChange } from "@/features/member/account-transitions";
+import { forgetPendingPolicy } from "@/features/member/login-destination";
 
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -9,12 +10,12 @@ import { MemberPolicyList } from "@/features/member/member-policy-list";
 import { MemberWithdrawal } from "@/features/member/member-withdrawal";
 import { getMemberHref, readMemberLocation, getMemberLoginHref } from "@/features/member/member-location";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { memberApi, MemberApiError, type MemberSession, type SavedPolicies, type NotificationFilter } from "@/features/member/member-api";
+import { describeFailure, memberApi, type MemberSession, type SavedPolicies, type NotificationFilter } from "@/features/member/member-api";
 
 type MemberAction = "remove" | "logout" | "withdraw";
 
 function announceSessionEnd() {
-  sessionStorage.removeItem("ypm-pending-policy");
+  forgetPendingPolicy();
   announceAccountChange();
 }
 
@@ -64,10 +65,9 @@ export function MemberDashboard() {
       if (isCurrentRequest(controller)) setPolicies(saved);
     }).catch(failure => {
       if (!isCurrentRequest(controller)) return;
-      const expired = failure instanceof MemberApiError && failure.status === 401;
-      if (expired) clearData();
-      setLoginRequired(expired);
-      setError(expired ? failure.message : "내 정보를 불러오지 못했어요. 다시 시도해주세요.");
+      const failed = describeFailure(failure, "내 정보를 불러오지 못했어요. 다시 시도해주세요.");
+      if (failed.loginRequired) clearData();
+      setLoginRequired(failed.loginRequired); setError(failed.message);
     }), [clearData]);
 
   useEffect(() => {
@@ -112,11 +112,10 @@ export function MemberDashboard() {
     } catch (failure) {
       if (!isCurrentRequest(controller)) return;
       clearData();
-      const expired = failure instanceof MemberApiError && failure.status === 401;
-      setLoginRequired(expired);
-      setError(expired ? failure.message : action === "remove" ? "저장 해제 결과를 확인하지 못했어요. 다시 불러와주세요."
+      const failed = describeFailure(failure, action === "remove" ? "저장 해제 결과를 확인하지 못했어요. 다시 불러와주세요."
         : action === "logout" ? "로그아웃 여부를 확인하지 못했어요. 로그인 상태를 다시 확인해주세요."
         : "탈퇴 완료 여부를 확인하지 못했어요. 로그인 상태를 다시 확인해주세요.");
+      setLoginRequired(failed.loginRequired); setError(failed.message);
     } finally {
       if (isCurrentRequest(controller)) setPending(null);
       if (active.current === controller) active.current = null;

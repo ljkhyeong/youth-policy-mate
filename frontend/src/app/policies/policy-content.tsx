@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { PolicyRecruitment, RecruitmentBadge, RecruitmentExplanation } from "@/features/policies/policy-recruitment";
+import { openDaysLeft, PolicyRecruitment, RecruitmentBadge, RecruitmentExplanation } from "@/features/policies/policy-recruitment";
 import { CategoryChips } from "@/features/policies/policy-category";
 import { PolicyPeriodText } from "@/features/policies/policy-period-text";
 import type { components } from "@/generated/policy-api";
@@ -9,7 +9,7 @@ import { SavePolicyButton } from "@/features/member/save-policy-button";
 type Summary = components["schemas"]["PolicySummary"];
 type Detail = components["schemas"]["PolicyDetailResponse"];
 
-export function collectedTime(value: string) {
+function collectedTime(value: string) {
   return new Intl.DateTimeFormat("ko-KR", {
     timeZone: "Asia/Seoul", year: "numeric", month: "long", day: "numeric", hour: "2-digit", minute: "2-digit",
   }).format(new Date(value));
@@ -42,6 +42,7 @@ const restrictionTitle = /제한|제외/;
 
 export function PolicyArticle({ policy }: { policy: Detail }) {
   const content = policy.content;
+  const daysLeft = openDaysLeft(policy.recruitment);
   return <article className="policy-article">
     <header className="policy-detail-heading">
       <p className="policy-meta">{content.organization || "온통청년 제공"} · <CategoryChips category={content.category} /></p>
@@ -49,8 +50,7 @@ export function PolicyArticle({ policy }: { policy: Detail }) {
       <p className="policy-lead">{content.description}</p>
       <div className="policy-date-panel"><p>신청 기간</p><strong><PolicyPeriodText period={content.applicationPeriod} recruitment={policy.recruitment} /></strong>
         <PolicyRecruitment recruitment={policy.recruitment} />
-        {policy.recruitment.status === "OPEN" && typeof policy.recruitment.daysUntilDeadline === "number" && policy.recruitment.daysUntilDeadline >= 0
-          && <MarginNote>{policy.recruitment.daysUntilDeadline === 0 ? "오늘 마감이에요" : `${policy.recruitment.daysUntilDeadline}일 남았어요`}</MarginNote>}
+        {daysLeft !== null && <MarginNote>{daysLeft === 0 ? "오늘 마감이에요" : `${daysLeft}일 남았어요`}</MarginNote>}
       </div>
       <SavePolicyButton key={policy.policyNumber} policyNumber={policy.policyNumber} />
       <nav className="policy-detail-nav" aria-label="정책 상세 바로가기">

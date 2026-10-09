@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useRef, useState, type RefObject } from "react";
-import { memberApi, MemberApiError, type NotificationFilter, type Notifications } from "./member-api";
+import { describeFailure, memberApi, type NotificationFilter, type Notifications } from "./member-api";
 import { seoulDateTimeFormat as receivedAt } from "@/lib/seoul-date";
 import { readMemberLocation } from "./member-location";
 
@@ -54,9 +54,8 @@ function NotificationList({ csrf, active, onUnreadCount, loginHref, page, filter
       .catch(failure => {
         if (!isCurrentRequest(controller, page, filter)) return;
         onUnreadCount(null);
-        const expired = failure instanceof MemberApiError && failure.status === 401;
-        setLoginRequired(expired);
-        setError(expired ? failure.message : "알림을 불러오지 못했어요. 다시 시도해주세요.");
+        const failed = describeFailure(failure, "알림을 불러오지 못했어요. 다시 시도해주세요.");
+        setLoginRequired(failed.loginRequired); setError(failed.message);
       }).finally(() => {
         if (isCurrentRequest(controller, page, filter)) setBusy(false);
         if (readRequest.current === controller) readRequest.current = null;
@@ -89,9 +88,8 @@ function NotificationList({ csrf, active, onUnreadCount, loginHref, page, filter
     } catch (failure) {
       if (!isCurrentRequest(controller, page, filter)) return;
       setData(null); onUnreadCount(null);
-      const expired = failure instanceof MemberApiError && failure.status === 401;
-      setLoginRequired(expired);
-      setError(expired ? failure.message : "읽음 처리 결과를 확인하지 못했어요. 알림을 다시 불러와주세요.");
+      const failed = describeFailure(failure, "읽음 처리 결과를 확인하지 못했어요. 알림을 다시 불러와주세요.");
+      setLoginRequired(failed.loginRequired); setError(failed.message);
       setBusy(false);
     } finally {
       if (readRequest.current === controller) readRequest.current = null;

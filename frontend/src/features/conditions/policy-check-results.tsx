@@ -5,7 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import { memberApi, type BasicConditions, type PolicyChecks } from "@/features/member/member-api";
 import type { operations } from "@/generated/policy-api";
 
-type CheckSort = NonNullable<operations["checkPolicyConditions"]["parameters"]["query"]>["sort"];
+type CheckSort = NonNullable<NonNullable<operations["checkPolicyConditions"]["parameters"]["query"]>["sort"]>;
 
 export function PolicyCheckResults({ input }: { input: BasicConditions }) {
   const headingRef = useRef<HTMLHeadingElement>(null);
@@ -20,7 +20,7 @@ export function PolicyCheckResults({ input }: { input: BasicConditions }) {
   const [retry, setRetry] = useState(0);
   useEffect(() => {
     const controller = new AbortController();
-    const params = new URLSearchParams({ page: String(page), q: query, sort: sort || "AGE_MATCH" });
+    const params = new URLSearchParams({ page: String(page), q: query, sort });
     if (recruitmentStatus) params.set("recruitmentStatus", recruitmentStatus);
     memberApi<PolicyChecks>(`checks?${params}`, { method: "POST", body: input, signal: controller.signal })
       .then(result => { if (!controller.signal.aborted) setResponse(result); })

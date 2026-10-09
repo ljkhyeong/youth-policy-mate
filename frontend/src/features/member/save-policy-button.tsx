@@ -2,15 +2,14 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { memberApi, MemberApiError, type MemberSession, type SavedPolicies } from "./member-api";
+import { describeFailure, memberApi, type MemberSession, type SavedPolicies } from "./member-api";
 
 type SaveState = { phase: "loading" }
   | { phase: "unavailable"; message: string; loginRequired: boolean }
   | { phase: "ready" | "saving"; session: MemberSession; saved: boolean };
 
 function unavailable(failure: unknown, fallback: string): SaveState {
-  const loginRequired = failure instanceof MemberApiError && failure.status === 401;
-  return { phase: "unavailable", loginRequired, message: loginRequired ? failure.message : fallback };
+  return { phase: "unavailable", ...describeFailure(failure, fallback) };
 }
 
 export function SavePolicyButton({ policyNumber }: { policyNumber: string }) {

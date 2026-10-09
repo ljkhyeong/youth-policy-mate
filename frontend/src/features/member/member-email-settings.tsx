@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { memberApi, MemberApiError, type EmailSettings, type EmailAddress, type EmailCode, type EmailConsent } from "./member-api";
+import { describeFailure, memberApi, MemberApiError, type EmailSettings, type EmailAddress, type EmailCode, type EmailConsent } from "./member-api";
 
 function errorText(failure: unknown) {
   if (failure instanceof MemberApiError) {
@@ -42,10 +42,9 @@ export function MemberEmailSettings({ csrf, loginHref }: { csrf: string; loginHr
       if (!controller.signal.aborted) setSettings(value);
     }).catch(failure => {
       if (controller.signal.aborted) return;
-      const expired = failure instanceof MemberApiError && failure.status === 401;
-      setSettings(null); setLoginRequired(expired);
-      setError(expired ? failure.message : "이메일 설정을 불러오지 못했어요. 다시 불러와주세요.");
-      if (expired) { setAddress(""); setCode(""); }
+      const failed = describeFailure(failure, "이메일 설정을 불러오지 못했어요. 다시 불러와주세요.");
+      setSettings(null); setLoginRequired(failed.loginRequired); setError(failed.message);
+      if (failed.loginRequired) { setAddress(""); setCode(""); }
     }), []);
 
   useEffect(() => {

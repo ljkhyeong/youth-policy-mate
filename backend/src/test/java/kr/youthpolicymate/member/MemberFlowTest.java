@@ -258,9 +258,10 @@ class MemberFlowTest {
                 "data", Map.of("email_id", message.toString(), "tags", Map.of("outbox_id", outbox.toString()))));
         String id = "msg-test-" + outbox;
         long timestamp = Instant.now().getEpochSecond();
+        // 프록시가 헤더 이름의 대소문자를 바꿔도 서명을 확인하는지 함께 본다.
         return post("/api/v1/webhooks/resend").contentType("application/json").content(body)
-                .header("svix-id", id).header("svix-timestamp", timestamp)
-                .header("svix-signature", new com.svix.Webhook(WEBHOOK_SECRET).sign(id, timestamp, body));
+                .header("Svix-Id", id).header("Svix-Timestamp", timestamp)
+                .header("Svix-Signature", new com.svix.Webhook(WEBHOOK_SECRET).sign(id, timestamp, body));
     }
 
     private UUID verificationMail() {
@@ -334,7 +335,7 @@ class MemberFlowTest {
                 .header("svix-signature", new com.svix.Webhook(WEBHOOK_SECRET).sign(oldId, oldTime, "{}")))
                 .andExpect(status().isUnauthorized());
         mvc.perform(post("/api/v1/webhooks/resend").contentType("application/json").content("x".repeat(65537)))
-                .andExpect(status().isPayloadTooLarge());
+                .andExpect(status().isContentTooLarge());
         mvc.perform(put("/api/v1/me/email-settings").with(oauth2Login().oauth2User(user(first))).contentType("application/json").content("{\"enabled\":true}"))
                 .andExpect(status().isForbidden());
     }

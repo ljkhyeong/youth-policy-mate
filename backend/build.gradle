@@ -52,11 +52,11 @@ tasks.named('test') {
     systemProperty 'email.rotation.classpath', sourceSets.main.runtimeClasspath.asPath
 }
 
-// 운영 명령은 루트 .env를 읽도록 저장소 루트에서 실행한다.
+// 운영 명령은 저장소 루트에서 실행한다. 수집·규칙·AI 명령은 루트 .env를 읽고, 키 교체·비용 조회는 실행 환경변수를 쓴다.
 [
-    collectPolicyPage: ['kr.youthpolicymate.ingestion.OntongCollectionCommand', '서울 필터의 한 페이지를 수집하거나 저장 원본 재처리·이력을 조회한다.'],
+    collectPolicyPage: ['kr.youthpolicymate.ingestion.OntongCollectionCommand', '서울 필터의 한 페이지나 페이지 범위를 수집하고, 저장 원본 재처리·범위 재개·중단과 이력을 조회한다.'],
     managePolicyRules: ['kr.youthpolicymate.policy.catalog.PolicyRuleCommand', '공고 규칙 초안·적용 버전·재검토 상태를 관리한다.'],
-    managePolicyAiRules: ['kr.youthpolicymate.ingestion.PolicyAiRuleCommand', '공고 개정에 연결한 AI 추출 요청과 규칙 초안 결과를 저장한다.'],
+    managePolicyAiRules: ['kr.youthpolicymate.ingestion.PolicyAiRuleCommand', '공고 개정의 AI 추출 요청을 준비·생성·저장하고 비용 정산과 자동 추출 실행·상태를 다룬다.'],
     rotateEmailKey: ['kr.youthpolicymate.member.EmailKeyRotationCommand', '이메일 주소 복호화를 점검하거나 서비스 중지 후 암호화 키를 교체한다.'],
     queryOpenAiCosts: ['kr.youthpolicymate.ingestion.OpenAiCostsCommand', '지정 프로젝트의 UTC 월 비용을 OpenAI에서 조회한다. 생성·DB 정산은 하지 않는다.'],
 ].each { taskName, command ->

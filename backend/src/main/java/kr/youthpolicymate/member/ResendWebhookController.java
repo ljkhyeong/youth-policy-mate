@@ -5,8 +5,8 @@ import com.svix.exceptions.WebhookVerificationException;
 import io.swagger.v3.oas.annotations.Hidden;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplication;
-import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
+import org.springframework.util.MultiValueMap;
 import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestHeader;
@@ -34,12 +34,12 @@ public class ResendWebhookController {
     }
 
     @PostMapping("/api/v1/webhooks/resend")
-    public ResponseEntity<Void> receive(HttpServletRequest request, @RequestHeader HttpHeaders headers) throws IOException {
+    public ResponseEntity<Void> receive(HttpServletRequest request, @RequestHeader MultiValueMap<String, String> headers) throws IOException {
         if (verifier == null) return ResponseEntity.notFound().build();
         byte[] bytes = request.getInputStream().readNBytes(65_537);
         if (bytes.length > 65_536) return ResponseEntity.status(413).build();
         String payload = new String(bytes, StandardCharsets.UTF_8);
-        try { verifier.verify(payload, headers.asMultiValueMap()); }
+        try { verifier.verify(payload, headers); }
         catch (WebhookVerificationException failure) { return ResponseEntity.status(401).build(); }
         String type; Instant occurred; UUID outbox; UUID message;
         try {

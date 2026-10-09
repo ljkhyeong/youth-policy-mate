@@ -124,7 +124,7 @@ public class OntongSweepStore {
     }
 
     public Sweep find(UUID id) {
-        return jdbc.sql("SELECT id, origin, first_page, last_page, next_page, state, failure_code FROM ontong_collection_sweeps WHERE id = :id")
+        return jdbc.sql("SELECT id, origin, last_page, next_page, state FROM ontong_collection_sweeps WHERE id = :id")
                 .param("id", id).query(Sweep.class).optional()
                 .orElseThrow(() -> new OntongApiClient.Failure("SWEEP_NOT_FOUND"));
     }
@@ -164,7 +164,7 @@ public class OntongSweepStore {
     private void lockGate() { OntongCollectionStore.lockRequests(jdbc); }
     private OffsetDateTime now() { return clock.instant().atOffset(ZoneOffset.UTC); }
     static void validateRange(int first, int last) { if (first < 1 || last < first || last > 1000) throw new IllegalArgumentException("수집 페이지 범위는 1~1000 안에서 지정해주세요."); }
-    public record Sweep(UUID id, String origin, int firstPage, int lastPage, int nextPage, String state, String failureCode) {}
+    public record Sweep(UUID id, String origin, int lastPage, int nextPage, String state) {}
     /** claim이 지시한 처리와 tick 결과. 이름을 CLI·로그 출력에 그대로 쓴다. */
     public enum Step { FETCH, REPLAY, SKIP, WAITING_RESPONSE, PAUSED, COMPLETED, PARTIAL, ABANDONED, PROGRESSED, LOCAL_REQUEST_INTERVAL, LOCAL_DAILY_LIMIT }
     public record Work(Step kind, UUID sweepId, UUID runId, int page) {}

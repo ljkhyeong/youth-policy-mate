@@ -1,8 +1,10 @@
 package kr.youthpolicymate.ingestion;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.client.JdkClientHttpRequestFactory;
+import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.util.UriUtils;
 import tools.jackson.databind.ObjectMapper;
@@ -15,12 +17,14 @@ import java.time.Instant;
 import java.util.Locale;
 
 /** 서울 필터의 지정 페이지를 한 번 요청한다. 오류에 요청 URL이나 인증키를 포함하지 않는다. */
+@Component
 public class OntongApiClient {
     static final int MAX_BYTES = 1024 * 1024;
     private final RestClient client;
     private final ObjectMapper mapper;
     private final Clock clock;
 
+    @Autowired
     public OntongApiClient(ObjectMapper mapper, Clock clock) {
         this(mapper, clock, "https://www.youthcenter.go.kr/go/ythip/getPlcy");
     }

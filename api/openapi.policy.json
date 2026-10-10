@@ -2787,7 +2787,7 @@
           "required" : false,
           "schema" : {
             "type" : "string",
-            "enum" : [ "BEFORE_OPENING", "OPEN", "CLOSED", "ROLLING", "UNTIL_EXHAUSTED", "UNKNOWN" ]
+            "enum" : [ "BEFORE_OPENING", "OPEN", "CLOSED", "ROLLING", "UNKNOWN" ]
           }
         }, {
           "in" : "query",
@@ -2905,7 +2905,7 @@
           "required" : false,
           "schema" : {
             "type" : "string",
-            "enum" : [ "BEFORE_OPENING", "OPEN", "CLOSED", "ROLLING", "UNTIL_EXHAUSTED", "UNKNOWN" ]
+            "enum" : [ "BEFORE_OPENING", "OPEN", "CLOSED", "ROLLING", "UNKNOWN" ]
           }
         } ],
         "requestBody" : {
@@ -4580,7 +4580,7 @@
           "deadlineOnSeoul" : {
             "type" : [ "string", "null" ],
             "format" : "date",
-            "description" : "확인한 마감일(서울). 상시·소진형·기간 미확인과 날짜 없는 마감은 null"
+            "description" : "확인한 마감일(서울). 상시·기간 미확인과 날짜 없는 마감은 null"
           },
           "evaluatedAt" : {
             "type" : "string",
@@ -4591,7 +4591,7 @@
           },
           "status" : {
             "type" : "string",
-            "enum" : [ "BEFORE_OPENING", "OPEN", "CLOSED", "ROLLING", "UNTIL_EXHAUSTED", "UNKNOWN" ]
+            "enum" : [ "BEFORE_OPENING", "OPEN", "CLOSED", "ROLLING", "UNKNOWN" ]
           }
         },
         "required" : [ "daysUntilDeadline", "deadlineOnSeoul", "evaluatedAt", "explanation", "status" ]

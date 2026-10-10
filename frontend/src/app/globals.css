@@ -908,7 +908,7 @@ mark {
 .recruitment-badge { display: inline-flex; align-items: center; padding: 1px 8px; border: 2px solid currentColor; border-radius: 4px; background: none; color: var(--stamp); font-size: 13px; font-weight: 900; letter-spacing: 0.06em; transform: rotate(-4deg); white-space: nowrap; }
 .recruitment-badge[data-status="BEFORE_OPENING"] { color: var(--stamp-before); }
 .recruitment-badge[data-status="CLOSED"] { color: var(--stamp-closed); transform: none; }
-.recruitment-badge[data-status="UNKNOWN"], .recruitment-badge[data-status="UNTIL_EXHAUSTED"] { color: var(--stamp-unsure); }
+.recruitment-badge[data-status="UNKNOWN"] { color: var(--stamp-unsure); }
 
 }
 

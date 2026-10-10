@@ -17,7 +17,6 @@ record PolicyRecruitmentWindow(String kind, OffsetDateTime opensAt, OffsetDateTi
             case ApplicationPeriod.Times times -> new PolicyRecruitmentWindow("PERIOD",
                     times.opensAtInclusive().toOffsetDateTime(), times.closesAtExclusive().toOffsetDateTime());
             case ApplicationPeriod.Rolling ignored -> new PolicyRecruitmentWindow("ROLLING", null, null);
-            case ApplicationPeriod.UntilExhausted ignored -> new PolicyRecruitmentWindow("UNTIL_EXHAUSTED", null, null);
             case ApplicationPeriod.Closed ignored -> new PolicyRecruitmentWindow("CLOSED", null, null);
             case ApplicationPeriod.Unresolved ignored -> new PolicyRecruitmentWindow("UNKNOWN", null, null);
         };

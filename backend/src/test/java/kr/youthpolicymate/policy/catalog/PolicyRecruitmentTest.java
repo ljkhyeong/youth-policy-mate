@@ -78,15 +78,14 @@ class PolicyRecruitmentTest {
     }
 
     static Stream<ApplicationPeriod> noDeadlinePeriods() {
-        return Stream.of(new ApplicationPeriod.Rolling(), new ApplicationPeriod.UntilExhausted(), new ApplicationPeriod.Closed());
+        return Stream.of(new ApplicationPeriod.Rolling(), new ApplicationPeriod.Closed());
     }
 
     @ParameterizedTest
     @MethodSource("noDeadlinePeriods")
-    @DisplayName("상시·소진 시 종료·명시적 마감은 날짜 경과로 바꾸지 않고 마감일을 만들지 않는다")
+    @DisplayName("상시·명시적 마감은 날짜 경과로 바꾸지 않고 마감일을 만들지 않는다")
     void keepsNonCalendarRecruitment(ApplicationPeriod period) {
-        RecruitmentStatus expected = period instanceof ApplicationPeriod.Rolling ? ROLLING
-                : period instanceof ApplicationPeriod.UntilExhausted ? UNTIL_EXHAUSTED : CLOSED;
+        RecruitmentStatus expected = period instanceof ApplicationPeriod.Rolling ? ROLLING : CLOSED;
         var before = PolicyRecruitment.of(period, Instant.parse("2026-08-30T15:00:00Z"));
         var after = PolicyRecruitment.of(period, Instant.parse("2027-08-30T15:00:00Z"));
         assertThat(before.status()).isEqualTo(expected);

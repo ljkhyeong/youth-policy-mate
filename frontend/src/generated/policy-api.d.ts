@@ -1243,14 +1243,14 @@ export interface components {
             readonly daysUntilDeadline: number | null;
             /**
              * Format: date
-             * @description 확인한 마감일(서울). 상시·소진형·기간 미확인과 날짜 없는 마감은 null
+             * @description 확인한 마감일(서울). 상시·기간 미확인과 날짜 없는 마감은 null
              */
             readonly deadlineOnSeoul: string | null;
             /** Format: date-time */
             readonly evaluatedAt: string;
             readonly explanation: string;
             /** @enum {string} */
-            readonly status: "BEFORE_OPENING" | "OPEN" | "CLOSED" | "ROLLING" | "UNTIL_EXHAUSTED" | "UNKNOWN";
+            readonly status: "BEFORE_OPENING" | "OPEN" | "CLOSED" | "ROLLING" | "UNKNOWN";
         };
         readonly PolicyRuleActionResult: {
             /** @enum {string} */
@@ -3599,7 +3599,7 @@ export interface operations {
                 readonly page?: number;
                 readonly pageSize?: number;
                 readonly questionsOnly?: boolean;
-                readonly recruitmentStatus?: "BEFORE_OPENING" | "OPEN" | "CLOSED" | "ROLLING" | "UNTIL_EXHAUSTED" | "UNKNOWN";
+                readonly recruitmentStatus?: "BEFORE_OPENING" | "OPEN" | "CLOSED" | "ROLLING" | "UNKNOWN";
                 readonly category?: readonly ("JOB" | "HOUSING" | "EDUCATION" | "FINANCE" | "PARTICIPATION")[];
             };
             readonly header?: never;
@@ -3672,7 +3672,7 @@ export interface operations {
                 readonly page?: number;
                 readonly q?: string;
                 readonly sort?: "AGE_MATCH" | "RECENT";
-                readonly recruitmentStatus?: "BEFORE_OPENING" | "OPEN" | "CLOSED" | "ROLLING" | "UNTIL_EXHAUSTED" | "UNKNOWN";
+                readonly recruitmentStatus?: "BEFORE_OPENING" | "OPEN" | "CLOSED" | "ROLLING" | "UNKNOWN";
             };
             readonly header?: never;
             readonly path?: never;

@@ -1,6 +1,7 @@
 package kr.youthpolicymate.member;
 
 import kr.youthpolicymate.config.ApiException;
+import kr.youthpolicymate.policy.RecruitmentStatus;
 import kr.youthpolicymate.policy.catalog.*;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Service;
@@ -54,22 +55,22 @@ public class MemberPolicyStore {
     public void save(UUID member, String number) {
         lock(member); lockPolicy(number);
         var policy = policies.find(number).orElseThrow(ApiException::notFound);
-        var deadline = PolicyDeadline.from(policy.recruitment());
         var generation = UUID.randomUUID();
         // 이미 저장한 정책은 기존 저장 식별자와 예약을 그대로 둔다.
         if (jdbc.sql("""
-                INSERT INTO saved_policies(member_id, policy_number, generation, saved_revision, current_revision, deadline_on, deadline_note)
-                VALUES (:member, :number, :generation, :revision, :revision, :date, :note)
+                INSERT INTO saved_policies(member_id, policy_number, generation, saved_revision, current_revision)
+                VALUES (:member, :number, :generation, :revision, :revision)
                 ON CONFLICT (member_id, policy_number) DO NOTHING
                 """).param("member", member).param("number", number).param("generation", generation).param("revision", policy.revision())
-                .param("date", deadline.date()).param("note", deadline.note()).update() == 0) return;
-        plan(member, number, generation, policy.revision(), deadline);
+                .update() == 0) return;
+        plan(member, number, generation, policy.revision(), policy.recruitment().deadlineOnSeoul());
     }
-    private void plan(UUID member, String number, UUID generation, long revision, PolicyDeadline deadline) {
-        if (deadline.date() == null) return;
+    // 화면 접수 상태와 같은 마감일로 예약한다. 마감일이 없는 상시·마감·기간 미확인은 예약하지 않는다.
+    private void plan(UUID member, String number, UUID generation, long revision, LocalDate deadline) {
+        if (deadline == null) return;
         var today = today();
         for (int before : List.of(7,3,1)) {
-            var due = deadline.date().minusDays(before);
+            var due = deadline.minusDays(before);
             if (due.isBefore(today)) continue;
             jdbc.sql("""
                     INSERT INTO policy_reminders(id, member_id, policy_number, generation, policy_revision, days_before, due_on, state)
@@ -105,14 +106,20 @@ public class MemberPolicyStore {
                 FROM saved_policies s JOIN policies p ON p.policy_number = s.policy_number
                 JOIN policy_revisions revision ON revision.policy_number = p.policy_number AND revision.revision = p.current_revision
                 JOIN policy_source_snapshots source ON source.id = revision.source_snapshot_id
-                WHERE s.member_id = :member ORDER BY s.deadline_on NULLS LAST, s.saved_at DESC, s.policy_number
-                """).param("member", member).query((rs, row) ->
-                    new MemberResponses.Saved(rs.getString("policy_number"), rs.getString("title"), rs.getLong("saved_revision"),
-                            rs.getLong("current_revision"), new PolicyDeadline(rs.getObject("deadline_on", LocalDate.class), rs.getString("deadline_note")),
-                            rs.getObject("saved_at", OffsetDateTime.class).toInstant(), rs.getString("application_period"),
-                            PolicyRecruitment.from(rs.getString("policy_number"), rs.getString("content_hash"),
-                                    mapper.readTree(rs.getString("raw_policy")), now))).list().stream()
-                .sorted(Comparator.comparing(item -> item.recruitment().status() == kr.youthpolicymate.policy.RecruitmentStatus.CLOSED)).toList();
+                WHERE s.member_id = :member
+                """).param("member", member).query((rs, row) -> {
+                    var recruitment = PolicyRecruitment.from(rs.getString("policy_number"), rs.getString("content_hash"),
+                            mapper.readTree(rs.getString("raw_policy")), now);
+                    return new MemberResponses.Saved(rs.getString("policy_number"), rs.getString("title"), rs.getLong("saved_revision"),
+                            rs.getLong("current_revision"), PolicyDeadline.from(recruitment),
+                            rs.getObject("saved_at", OffsetDateTime.class).toInstant(), rs.getString("application_period"), recruitment);
+                }).list().stream()
+                // 마감된 정책은 뒤로 보내고, 가까운 마감일(없으면 뒤)·최근 저장·정책번호 순으로 놓는다.
+                .sorted(Comparator.comparing((MemberResponses.Saved item) -> item.recruitment().status() == RecruitmentStatus.CLOSED)
+                        .thenComparing(item -> item.deadline().date(), Comparator.nullsLast(Comparator.naturalOrder()))
+                        .thenComparing(MemberResponses.Saved::savedAt, Comparator.reverseOrder())
+                        .thenComparing(MemberResponses.Saved::policyNumber))
+                .toList();
         return new MemberResponses.SavedList(items);
     }
     public MemberResponses.SavedChanges changes(UUID member, String number) {
@@ -148,11 +155,10 @@ public class MemberPolicyStore {
             if (saved.currentRevision() <= 0) throw ApiException.notFound();
             if (saved.savedRevision() == saved.currentRevision()) continue;
             var number = saved.policyNumber();
-            var deadline = PolicyDeadline.from(policies.find(number).orElseThrow(ApiException::notFound).recruitment());
+            var deadline = policies.find(number).orElseThrow(ApiException::notFound).recruitment().deadlineOnSeoul();
             cancel(member, number);
-            jdbc.sql("UPDATE saved_policies SET current_revision = :revision, deadline_on = :date, deadline_note = :note WHERE member_id = :member AND policy_number = :number")
-                    .param("member", member).param("number", number).param("revision", saved.currentRevision())
-                    .param("date", deadline.date()).param("note", deadline.note()).update();
+            jdbc.sql("UPDATE saved_policies SET current_revision = :revision WHERE member_id = :member AND policy_number = :number")
+                    .param("member", member).param("number", number).param("revision", saved.currentRevision()).update();
             plan(member, number, saved.generation(), saved.currentRevision(), deadline);
             notify(member, number, saved.generation(), saved.currentRevision(), "POLICY_CHANGED", saved.title(), "저장한 정책 내용이 바뀌었어요. 신청 조건과 기간을 다시 확인해주세요.");
         }
@@ -170,10 +176,13 @@ public class MemberPolicyStore {
                 WHERE r.member_id = :member AND r.state = 'PENDING' AND r.due_on <= :today ORDER BY r.due_on
                 """).param("member", member).param("today", today).query(Due.class).list();
         for (var reminder : due) {
-            if (reminder.dueOn().equals(today)) notify(member, reminder.policyNumber(), reminder.generation(), reminder.policyRevision(),
+            // 개정 없이 마감일 해석이 바뀌었으면 화면 마감일과 다른 이전 날짜 기준 알림을 보내지 않는다.
+            var deadline = policies.find(reminder.policyNumber()).map(policy -> policy.recruitment().deadlineOnSeoul()).orElse(null);
+            boolean deliver = reminder.dueOn().equals(today) && reminder.dueOn().plusDays(reminder.daysBefore()).equals(deadline);
+            if (deliver) notify(member, reminder.policyNumber(), reminder.generation(), reminder.policyRevision(),
                     "DEADLINE_" + reminder.daysBefore(), reminder.title(), "신청 마감 " + reminder.daysBefore() + "일 전이에요. 정확한 마감 시각은 공식 안내를 확인해주세요.");
             jdbc.sql("UPDATE policy_reminders SET state = :state WHERE id = :id")
-                    .param("id", reminder.id()).param("state", reminder.dueOn().equals(today) ? "DELIVERED" : "SKIPPED").update();
+                    .param("id", reminder.id()).param("state", deliver ? "DELIVERED" : "SKIPPED").update();
         }
     }
     private void notify(UUID member, String number, UUID generation, long revision, String kind, String title, String message) {

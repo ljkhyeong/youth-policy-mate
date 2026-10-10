@@ -30,9 +30,6 @@ public sealed interface ApplicationPeriod {
     record Rolling() implements ApplicationPeriod {
     }
 
-    record UntilExhausted() implements ApplicationPeriod {
-    }
-
     record Closed() implements ApplicationPeriod {
     }
 

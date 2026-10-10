@@ -13,7 +13,7 @@ import static kr.youthpolicymate.policy.SeoulTime.SEOUL;
 
 @Schema(requiredProperties = {"status", "explanation", "evaluatedAt", "deadlineOnSeoul", "daysUntilDeadline"})
 public record PolicyRecruitment(RecruitmentStatus status, String explanation, Instant evaluatedAt,
-                                @Schema(types = {"string", "null"}, format = "date", description = "확인한 마감일(서울). 상시·소진형·기간 미확인과 날짜 없는 마감은 null")
+                                @Schema(types = {"string", "null"}, format = "date", description = "확인한 마감일(서울). 상시·기간 미확인과 날짜 없는 마감은 null")
                                 LocalDate deadlineOnSeoul,
                                 @Schema(types = {"integer", "null"}, description = "평가 시점의 서울 날짜부터 마감일까지 남은 일수. 마감일이 없으면 null")
                                 Integer daysUntilDeadline) {
@@ -31,7 +31,6 @@ public record PolicyRecruitment(RecruitmentStatus status, String explanation, In
             case ApplicationPeriod.Times times -> now.isBefore(times.opensAtInclusive().toInstant()) ? BEFORE_OPENING
                     : now.isBefore(times.closesAtExclusive().toInstant()) ? OPEN : CLOSED;
             case ApplicationPeriod.Rolling ignored -> ROLLING;
-            case ApplicationPeriod.UntilExhausted ignored -> UNTIL_EXHAUSTED;
             case ApplicationPeriod.Closed ignored -> CLOSED;
             case ApplicationPeriod.Unresolved ignored -> UNKNOWN;
         };
@@ -56,7 +55,6 @@ public record PolicyRecruitment(RecruitmentStatus status, String explanation, In
                 default -> "공고상 접수가 마감됐어요. 정확한 마감 날짜·시각은 확인되지 않았어요.";
             };
             case ROLLING -> "상시 모집이에요. 현재 접수 여부는 공식 신청처에서 확인해주세요.";
-            case UNTIL_EXHAUSTED -> "예산·인원 소진 시 마감돼요. 현재 접수 여부는 공식 신청처에서 확인해주세요.";
             case UNKNOWN -> ((ApplicationPeriod.Unresolved) period).reason();
         };
     }

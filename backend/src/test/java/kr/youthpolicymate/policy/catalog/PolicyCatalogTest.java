@@ -765,8 +765,6 @@ class PolicyCatalogTest {
             mvc.perform(get("/api/v1/policies").param("recruitmentStatus", state)).andExpect(status().isOk())
                     .andExpect(jsonPath("$.total").value(1)).andExpect(jsonPath("$.items[0].recruitment.status").value(state));
         }
-        mvc.perform(get("/api/v1/policies").param("recruitmentStatus", "UNTIL_EXHAUSTED"))
-                .andExpect(status().isOk()).andExpect(jsonPath("$.total").value(0));
         var body = mapper.writeValueAsString(new BasicConditions(java.time.LocalDate.parse("2000-01-01"), kr.youthpolicymate.eligibility.SeoulDistrict.GANGNAM, BasicConditions.EmploymentStatus.NOT_EMPLOYED));
         mvc.perform(post("/api/v1/policies/checks").param("recruitmentStatus", "OPEN").param("page", "2")
                         .param("q", "필터 지원").param("sort", "RECENT").contentType("application/json").content(body))

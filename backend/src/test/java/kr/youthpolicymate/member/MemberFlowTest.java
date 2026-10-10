@@ -730,6 +730,19 @@ class MemberFlowTest {
     }
 
     @Test
+    @DisplayName("개정 없이 마감일 해석이 바뀌어 예약일이 화면 마감일과 다르면 이전 날짜 알림을 보내지 않는다")
+    void skipsReminderForChangedDeadline() {
+        members.save(first, NUMBER);
+        // 이전 해석이 마감일을 하루 늦게 계산해 예약한 상태다. 현재 마감일은 2026-09-12다.
+        jdbc.sql("UPDATE policy_reminders SET due_on = due_on + 1 WHERE member_id = :member").param("member", first).update();
+        time("2026-09-09T15:00:00Z");
+        members.deliver(first);
+        assertThat(reminders("DELIVERED")).isZero();
+        assertThat(reminders("SKIPPED")).isEqualTo(2);
+        assertThat(notifications(first).items()).isEmpty();
+    }
+
+    @Test
     @DisplayName("마감일이 그대로인 내용 변경은 이미 전달한 당일 마감 알림을 다시 보내지 않는다")
     void doesNotRepeatDeliveredDeadline() {
         members.save(first, NUMBER); members.deliver(first);

@@ -5,6 +5,5 @@ public enum RecruitmentStatus {
     OPEN,
     CLOSED,
     ROLLING,
-    UNTIL_EXHAUSTED,
     UNKNOWN
 }

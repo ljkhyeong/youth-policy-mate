@@ -198,7 +198,7 @@ public class PolicyCatalogStore {
     private static final String AVAILABILITY_ORDER = """
             CASE WHEN p.recruitment_kind = 'PERIOD' AND p.recruitment_opens_at <= :now AND p.recruitment_closes_at > :now THEN 0
                  WHEN p.recruitment_kind = 'PERIOD' AND p.recruitment_opens_at > :now THEN 1
-                 WHEN p.recruitment_kind IN ('ROLLING', 'UNTIL_EXHAUSTED') THEN 2
+                 WHEN p.recruitment_kind = 'ROLLING' THEN 2
                  WHEN p.recruitment_kind = 'UNKNOWN' THEN 3 ELSE 4 END,
             CASE WHEN p.recruitment_kind = 'PERIOD' AND p.recruitment_opens_at <= :now AND p.recruitment_closes_at > :now
                  THEN p.recruitment_closes_at END""";
@@ -217,7 +217,7 @@ public class PolicyCatalogStore {
             case BEFORE_OPENING -> "(p.recruitment_kind = 'PERIOD' AND p.recruitment_opens_at > :now)";
             case OPEN -> "(p.recruitment_kind = 'PERIOD' AND p.recruitment_opens_at <= :now AND p.recruitment_closes_at > :now)";
             case CLOSED -> "(p.recruitment_kind = 'CLOSED' OR (p.recruitment_kind = 'PERIOD' AND p.recruitment_closes_at <= :now))";
-            case ROLLING, UNTIL_EXHAUSTED, UNKNOWN -> {
+            case ROLLING, UNKNOWN -> {
                 parameters.put("recruitmentKind", status.name());
                 yield "p.recruitment_kind = :recruitmentKind";
             }

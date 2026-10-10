@@ -1,14 +1,15 @@
 # 작업 인계
 
-2026-10-09 기준. 개발 이력은 Git과 [개발 문서](docs/development/)에서 확인한다.
+2026-10-10 기준. 개발 이력은 Git과 [개발 문서](docs/development/)에서 확인한다.
 
 ## 현재 작업
 
-- `codex/progressive-policy-discovery`에 어두운 화면, Spring·JDK 표준 기능 정리(2026-10-07), 미사용·중복 코드 정리(2026-10-09)를 로컬에 커밋했다(원격 미반영). 원격 `main`은 `11d32fa`에서 [웹·전체 서버 CI](https://github.com/ljkhyeong/youth-policy-mate/actions/runs/37401169359)를 통과한 상태다.
+- `codex/progressive-policy-discovery`에 어두운 화면, Spring·JDK 표준 기능 정리(2026-10-07), 미사용·중복 코드 정리(2026-10-09), 소진형 상태·저장 정책 마감 열 삭제(2026-10-10)를 로컬에 커밋했다(원격 미반영). 원격 `main`은 `11d32fa`에서 [웹·전체 서버 CI](https://github.com/ljkhyeong/youth-policy-mate/actions/runs/37401169359)를 통과한 상태다.
 - 표준 기능 정리: 운영 DB 전이라는 전제로 직접 구현한 코드와 쓰지 않는 코드·스키마를 정리하고 Flyway를 `V1__baseline_schema.sql`·`V2__seed_reviewed_policy_rules.sql` 두 개로 합쳤다. 오류 `code`가 공통 값으로 바뀌었다(화면이 쓰는 `EMAIL_*`는 그대로). [전체 기록과 동작 변화](docs/development/backend-api-review.md#springjdk-표준-기능-정리-전체--2026-10-07-적용)
-- 미사용·중복 코드 정리: 제거 예정 Spring API 2건, 빈 하나만 만들던 수집 설정 클래스, 읽지 않는 레코드 구성요소, 분야 색·이전 응답 호환 같은 웹 잔재, 회원 화면의 중복 401 처리, 효과 없는 CSS를 정리했다. API 계약·DB 스키마·화면 표시는 그대로다(저장 정책 변경 내용의 네트워크 오류만 안내 문구로 보여준다). 유지한 후보와 이유(`UNTIL_EXHAUSTED`, 저장 정책 마감 열, 관리자 폼 중복 등)는 [정리 기록](docs/development/backend-api-review.md#미사용중복-코드-정리--2026-10-09-적용)에 있다.
-- 검증: 최종 파일에서 `check:backend`·`test:web`·`check:web`·`build:web`·`check:api-types`와 문서 링크 검사를 통과했다. CSS·마크업 변경은 모의 정책 API와 헤드리스 Playwright로 변경 전후 화면 10장이 같음을 확인했다. 실제 외부 호출과 실제 Spring 데이터 화면은 확인하지 않았다.
-- 로컬 DB 볼륨을 2026-10-07에 다시 만들어 V1·V2를 적용하고 온통청년 서울 1~4페이지 40건을 다시 수집했다(전체 730건). 검토 규칙이 있는 12개 정책(4~8월 공고)은 이 범위에 없어 로컬에서는 조건 질문을 확인할 수 없다. 해당 공고가 있는 페이지를 [범위 수집](docs/development/policy-range-collection.md)으로 더 받아야 한다. 이전 볼륨은 `.local/backups/`에 백업했다. 서버 기동·정책 목록·오류 응답은 새 DB로 확인했다. 정기 수집·AI 자동 처리·이메일·알림은 비활성화다. 실제 OAuth·Resend 연동, 이미지 빌드·공유기·TLS·k3s·백업 운영 설정은 사용자가 진행한다. 백업·외부 공급자 데이터의 보관/삭제와 관리자 기록 보관 기준은 남아 있다.
+- 미사용·중복 코드 정리: 제거 예정 Spring API 2건, 빈 하나만 만들던 수집 설정 클래스, 읽지 않는 레코드 구성요소, 분야 색·이전 응답 호환 같은 웹 잔재, 회원 화면의 중복 401 처리, 효과 없는 CSS를 정리했다. 유지한 후보와 이유(관리자 폼 중복 등)는 [정리 기록](docs/development/backend-api-review.md#미사용중복-코드-정리--2026-10-09-적용)에 있다.
+- 소진형 상태·저장 정책 마감 열 삭제: PRD·설계를 먼저 고친 뒤 만들어지지 않던 `UNTIL_EXHAUSTED`와 화면의 `소진 시 마감` 필터를 지웠다(`recruitmentStatus=UNTIL_EXHAUSTED`는 400). `V3__drop_until_exhausted_and_saved_deadline.sql`이 모집 상태 제약을 좁히고 `saved_policies.deadline_on`·`deadline_note`를 지운다. 저장 정책 마감일은 조회 때 계산하고, 이전 마감일로 잡힌 알림은 발송 때 현재 마감일과 다르면 보내지 않는다. 응답 형식은 같다. [삭제 기록](docs/development/backend-api-review.md#소진형-상태저장-정책-마감-열-삭제--2026-10-10-적용)
+- 검증: 최종 파일에서 `check:backend`·`test:web`·`check:web`·`build:web`·`check:api-types`와 문서 링크 검사를 통과했다. 2026-10-09 CSS·마크업 변경은 모의 정책 API와 헤드리스 Playwright로 변경 전후 화면 10장이 같음을 확인했다. V3는 로컬 DB에서 트랜잭션으로 실행해 확인한 뒤 되돌렸다. 실제 외부 호출과 실제 Spring 데이터 화면은 확인하지 않았다.
+- 로컬 DB 볼륨을 2026-10-07에 다시 만들어 V1·V2를 적용하고(V3는 다음 서버 시작 때 적용된다) 온통청년 서울 1~4페이지 40건을 다시 수집했다(전체 730건). 검토 규칙이 있는 12개 정책(4~8월 공고)은 이 범위에 없어 로컬에서는 조건 질문을 확인할 수 없다. 해당 공고가 있는 페이지를 [범위 수집](docs/development/policy-range-collection.md)으로 더 받아야 한다. 이전 볼륨은 `.local/backups/`에 백업했다. 서버 기동·정책 목록·오류 응답은 새 DB로 확인했다. 정기 수집·AI 자동 처리·이메일·알림은 비활성화다. 실제 OAuth·Resend 연동, 이미지 빌드·공유기·TLS·k3s·백업 운영 설정은 사용자가 진행한다. 백업·외부 공급자 데이터의 보관/삭제와 관리자 기록 보관 기준은 남아 있다.
 
 ## 구현·검증 범위
 
@@ -44,7 +45,7 @@
 ## 이어서 작업할 때
 
 - 제품 동작은 [PRD](docs/PRD/0001_product-baseline/spec.md), 기술 선택은 [ADR](docs/ADR/), 적용 스킬은 [AGENTS.md](AGENTS.md)를 따른다.
-- 스키마 변경은 다음 번호(V3부터)의 새 Flyway SQL로 추가한다. 운영 DB를 만든 뒤에는 적용한 파일을 고치지 않는다. 설정을 추가할 때는 `Environment.getProperty` 대신 기존 `*Properties` 레코드에 둔다.
+- 스키마 변경은 다음 번호(V4부터)의 새 Flyway SQL로 추가한다. 운영 DB를 만든 뒤에는 적용한 파일을 고치지 않는다. 설정을 추가할 때는 `Environment.getProperty` 대신 기존 `*Properties` 레코드에 둔다.
 - 로컬 실행은 [개발 환경](docs/development/local-development.md), 실제 정책 서버 연결은 [조회 문서](docs/development/policy-catalog.md)를 참고한다. 현재 프로세스·브랜치·환경 설정은 실행 시점에 확인한다.
 - 최근 검증의 `JAVA_HOME`은 `/Users/lim/.gradle/jdks/eclipse_adoptium-25-aarch64-os_x.2/jdk-25.0.3+9/Contents/Home`이다. `test:ai-reservation-db`는 PostgreSQL 검사로 Docker가 필요하다.
 - 웹 빌드는 도구 내부 포트 사용 권한이 필요하다. 이전 제한 실행의 오류가 Turbopack 캐시에 남아 `frontend/.next/cache/turbopack`만 분리해 해결한 적이 있다. `43b85cd`에서는 정식 권한으로 캐시 변경 없이 통과했다. 같은 증상이 없으면 캐시를 지우지 않는다.

@@ -352,8 +352,8 @@ Temurin 25.0.3·PostgreSQL 18.6 Testcontainers에서 실행했다. 실제 OAuth 
 ### 유지한 것
 
 - 항상 `NEEDS_REVIEW`인 `PolicyCheckItem.status`·`PolicyEvaluation.status`: 공통요건 결과와 별개로 전체 자격이 추가 확인임을 응답 계약으로 밝히고, 조건 비교 API와 정책별 규칙 테스트가 이 값을 검사한다.
-- 생성되지 않는 `UNTIL_EXHAUSTED`: [PRD 3.2](../PRD/0001_product-baseline/spec.md#32-최소-화면-범위)와 [모집 기간 설계](../design/recruitment-period.md)가 소진형을 제품 상태로 정의한다. 원문 파서는 소진 안내를 기간 미확인으로 남긴다. 지우려면 PRD·설계와 API enum·V1 CHECK를 함께 바꿔야 해서 제품 결정으로 남긴다.
-- 저장 정책의 `deadline_on`·`deadline_note`: 조회 때 다시 계산할 수 있지만, 열을 지우면 해석 코드가 바뀐 뒤 화면 마감일과 이미 예약한 알림일 중 어느 쪽을 따를지가 바뀌고 새 Flyway 버전이 필요하다.
+- 생성되지 않는 `UNTIL_EXHAUSTED`: [PRD 3.2](../PRD/0001_product-baseline/spec.md#32-최소-화면-범위)와 [모집 기간 설계](../design/recruitment-period.md)가 소진형을 제품 상태로 정의한다. 원문 파서는 소진 안내를 기간 미확인으로 남긴다. 지우려면 PRD·설계와 API enum·V1 CHECK를 함께 바꿔야 해서 제품 결정으로 남겼다. 2026-10-10 사용자 결정으로 삭제했다([아래 절](#소진형-상태저장-정책-마감-열-삭제--2026-10-10-적용)).
+- 저장 정책의 `deadline_on`·`deadline_note`: 조회 때 다시 계산할 수 있지만, 열을 지우면 해석 코드가 바뀐 뒤 화면 마감일과 이미 예약한 알림일 중 어느 쪽을 따를지가 바뀌고 새 Flyway 버전이 필요하다. 2026-10-10 사용자 결정으로 V3에서 삭제했다([아래 절](#소진형-상태저장-정책-마감-열-삭제--2026-10-10-적용)).
 - 공고 3건의 하드코딩 신청 기간 보정: 원문의 공고기간을 실제 접수기간으로 바로잡은 검토 값이다([미래 청년 일자리](future-youth-jobs-questions.md#원문-차이와-접수-기간)·[이사비](moving-fee-questions.md#원문과-적용-범위)·[청정넷](seoul-youth-network-questions.md#모집-기간과-기준-변경)).
 - 수집 파서: 운영 코드는 이미 `OntongPolicyCapture` 빈 하나를 주입받는다. 테스트만 직접 만든다.
 - 관리자 변경 폼 3개의 요청 ID 재사용·거절/미확인 처리 중복: 대화형 DOM 테스트가 없고 로컬 관리자 로그인을 확인할 수 없어 옮기지 않았다.
@@ -372,3 +372,27 @@ Temurin 25.0.3·PostgreSQL 18.6 Testcontainers에서 실행했다. 실제 OAuth 
 
 - `javac -Xlint:all`로 서버 앱·테스트를 다시 컴파일해 경고가 0건임을 확인했다. 변경 전에는 제거 예정 API 경고가 2건이었다.
 - CSS·마크업 변경은 웹 개발 서버(3103)와 모의 정책 API로 변경 전후를 헤드리스 Playwright에서 비교했다. 조건 입력(1280·500·390px), 정책 목록(같은 세 폭), 상세(1280·390px), 로그인 불가 안내, 내 정책 탭의 화면 전체 스크린샷 10장이 바이트 단위로 같았다. 계산된 스타일 차이는 조건 입력 영역의 `border-top-style`(`none`→`solid`, 두께 0px)뿐이다. 실제 Spring·OAuth·Resend 연동은 확인하지 않았다.
+
+## 소진형 상태·저장 정책 마감 열 삭제 — 2026-10-10 적용
+
+[2026-10-09 정리](#미사용중복-코드-정리--2026-10-09-적용)에서 제품 결정으로 남긴 두 항목을 사용자 결정에 따라 지웠다. PRD·설계 문서를 먼저 고쳤다.
+
+| 대상 | 변경 |
+|---|---|
+| 소진형 상태 | 원문 파서가 만들지 않던 `ApplicationPeriod.UntilExhausted`·`RecruitmentStatus.UNTIL_EXHAUSTED`와 관련 분기, 화면의 `소진 시 마감` 필터·도장 스타일을 지웠다. 예산·인원 소진 안내는 계속 기간 미확인으로 남긴다. OpenAPI enum에서 값이 빠져 `recruitmentStatus=UNTIL_EXHAUSTED`는 400이다. |
+| 저장 정책 마감 열 | `saved_policies.deadline_on`·`deadline_note`를 지웠다. 저장 정책 목록의 `deadline`은 조회 때 현재 개정의 `PolicyRecruitment`로 계산하고, 정렬(마감 정책 뒤로·가까운 마감일·최근 저장)은 Java에서 한다. 응답 형식은 같다. |
+| 마감 알림 | 저장·개정 반영 때 화면과 같은 마감일로 예약한다. 개정 없이 해석 코드만 바뀌면 이전 마감일로 만든 예약은 발송 때 현재 마감일과 달라 보내지 않는다(`SKIPPED`). 새로 확인된 마감일의 예약은 다음 개정 반영 때 만든다. |
+| 스키마 | `V3__drop_until_exhausted_and_saved_deadline.sql`이 남은 `UNTIL_EXHAUSTED` 행을 `UNKNOWN`으로 바꾸고 `policies_recruitment_window` 제약을 좁힌 뒤 두 열을 지운다. 지운 열은 다시 계산할 수 있는 값이다. V3 적용 뒤에는 이전 버전 서버가 저장 정책을 만들지 못하므로 함께 실행하지 않는다. |
+
+### 검증
+
+| 명령 | 결과 | 로그 |
+|---|---|---|
+| `npm run verify -- check:backend` | 서버 전체 테스트·빌드·계약 일치 통과 | `.local/verification/1791600691210-9ba5d370.log` |
+| `npm run generate:api` 후 `npm run verify -- check:api-types` | 계약 차이는 모집 상태 enum 3곳과 마감일 설명 1줄 | `.local/verification/1791600165847-7b6411d1.log` |
+| `npm run verify -- test:web` | 통과 | `.local/verification/1791600168681-064b27ce.log` |
+| `npm run verify -- check:web` | 린트·타입 검사 통과 | `.local/verification/1791600173136-6d356a52.log` |
+| `npm run verify -- build:web` | 프로덕션 빌드 통과 | `.local/verification/1791600831404-c8040aff.log` |
+
+- `MemberFlowTest`가 이전 날짜로 잡힌 예약을 보내지 않는지 검사한다. 저장 정책 목록의 마감일·정렬은 기존 테스트로 확인했다.
+- 로컬 DB(정책 40건, 저장 정책 0건)에서 V3를 트랜잭션 안에서 실행해 제약 교체·열 삭제를 확인하고 되돌렸다. 로컬 DB는 다음 서버 시작 때 V3가 적용된다.

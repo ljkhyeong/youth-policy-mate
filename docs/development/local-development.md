@@ -120,7 +120,7 @@ npm run check:tools
 npm audit
 ```
 
-`test:recruitment`는 `PolicyRecruitmentTest`로 모집 상태·마감일·저장 정책 마감 사유를 검사한다. 서울 날짜 경계·명시적 접수 종료 시각·상시·소진 시 종료·미확인 이유·검토한 공고의 보정 기간을 확인하며 API 인증키·DB·Docker가 필요하지 않다. [모집 기간 구현](recruitment-period.md)에 입력 범위와 실제 원문 해석이 아닌 점을 정리했다.
+`test:recruitment`는 `PolicyRecruitmentTest`로 모집 상태·마감일·저장 정책 마감 사유를 검사한다. 서울 날짜 경계·명시적 접수 종료 시각·상시·명시적 마감·미확인 이유·검토한 공고의 보정 기간을 확인하며 API 인증키·DB·Docker가 필요하지 않다. [모집 기간 구현](recruitment-period.md)에 입력 범위와 실제 원문 해석이 아닌 점을 정리했다.
 
 `test:ai-reservation-db`는 PostgreSQL 18.6에서 AI 호출 기록의 예약·잔액 동시 갱신, 요금·기간·한도 경계, 발송·결과 미확인·정산·취소·무과금 해제와 재생·충돌, 동시 종료와 DB 제약을 검사한다. Docker가 필요하며 외부 AI나 공급자 청구는 사용하지 않는다. [AI 예약·정산 구현](ai-budget-reservation-lifecycle.md)을 따른다.
 

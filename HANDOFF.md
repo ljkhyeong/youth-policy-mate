@@ -4,7 +4,7 @@
 
 ## 현재 작업
 
-- `codex/progressive-policy-discovery`에 어두운 화면, Spring·JDK 표준 기능 정리(2026-10-07), 미사용·중복 코드 정리(2026-10-09), 소진형 상태·저장 정책 마감 열 삭제(2026-10-10)를 로컬에 커밋했다(원격 미반영). 원격 `main`은 `11d32fa`에서 [웹·전체 서버 CI](https://github.com/ljkhyeong/youth-policy-mate/actions/runs/37401169359)를 통과한 상태다.
+- `codex/progressive-policy-discovery`에 어두운 화면, Spring·JDK 표준 기능 정리(2026-10-07), 미사용·중복 코드 정리(2026-10-09), 소진형 상태·저장 정책 마감 열 삭제(2026-10-10)를 2026-10-10 원격 `main`에 반영했다(이전 원격 `main`은 `2065081`). 반영 커밋의 웹·전체 서버 CI 결과는 [GitHub Actions](https://github.com/ljkhyeong/youth-policy-mate/actions/workflows/ci.yml)에서 확인한다.
 - 표준 기능 정리: 운영 DB 전이라는 전제로 직접 구현한 코드와 쓰지 않는 코드·스키마를 정리하고 Flyway를 `V1__baseline_schema.sql`·`V2__seed_reviewed_policy_rules.sql` 두 개로 합쳤다. 오류 `code`가 공통 값으로 바뀌었다(화면이 쓰는 `EMAIL_*`는 그대로). [전체 기록과 동작 변화](docs/development/backend-api-review.md#springjdk-표준-기능-정리-전체--2026-10-07-적용)
 - 미사용·중복 코드 정리: 제거 예정 Spring API 2건, 빈 하나만 만들던 수집 설정 클래스, 읽지 않는 레코드 구성요소, 분야 색·이전 응답 호환 같은 웹 잔재, 회원 화면의 중복 401 처리, 효과 없는 CSS를 정리했다. 유지한 후보와 이유(관리자 폼 중복 등)는 [정리 기록](docs/development/backend-api-review.md#미사용중복-코드-정리--2026-10-09-적용)에 있다.
 - 소진형 상태·저장 정책 마감 열 삭제: PRD·설계를 먼저 고친 뒤 만들어지지 않던 `UNTIL_EXHAUSTED`와 화면의 `소진 시 마감` 필터를 지웠다(`recruitmentStatus=UNTIL_EXHAUSTED`는 400). `V3__drop_until_exhausted_and_saved_deadline.sql`이 모집 상태 제약을 좁히고 `saved_policies.deadline_on`·`deadline_note`를 지운다. 저장 정책 마감일은 조회 때 계산하고, 이전 마감일로 잡힌 알림은 발송 때 현재 마감일과 다르면 보내지 않는다. 응답 형식은 같다. [삭제 기록](docs/development/backend-api-review.md#소진형-상태저장-정책-마감-열-삭제--2026-10-10-적용)
@@ -24,7 +24,7 @@
 - 이메일: 주소 확인·동의·암호화 저장·Outbox·Resend 발송(단일 공급자)과 서명 웹훅, [관리자 발송 현황](docs/development/admin-email-deliveries.md)·[공급자 상태 조회](docs/development/email-provider-status.md), [로그인 없는 수신 해제](docs/development/email-unsubscribe.md), [설정 오류 복구](docs/development/email-settings-recovery.md)·[키 점검과 교체 명령](docs/development/email-key-rotation.md)을 구현했다. 실제 공급자 계정·발신 도메인·외부 수신 확인과 운영 키 관리는 남아 있다. [이메일 구현과 설정](docs/development/member-email-reminders.md)
 - AI: 공고 원문·OpenAI 호출·예산 예약·원 응답·규칙 초안을 연결했다. 응답 유실에는 예약을 유지하고 재호출하지 않으며, 미확인 예약은 관리 명령으로 정산·해제한다. 신규/변경 공고의 자동 추출·수동 정산·[프로젝트 월 비용 조회](docs/development/openai-costs.md)를 제공한다. 요청별 청구 자동 대사·정산과 실제 생성 품질 검증은 남아 있다. 모델·요금·월 한도는 설정값으로 받고 미설정 상태에는 호출하지 않는다. [규칙 추출과 설정](docs/development/ai-rule-drafts.md)·[자동 추출](docs/development/ai-rule-automation.md)
 - 백업: [수동 백업·임시 DB 복구 검증](docs/development/database-backup.md)을 제공한다. PostgreSQL 기본 도구를 사용하며 원본 DB를 덮어쓰지 않는다. 정기 백업의 주기·보관 기간·외부 보관과 운영 DB 전환은 미정이다.
-- 검증 기준: 원격 `main`의 `11d32fa`에서 웹·전체 서버 CI를 통과했다. 최신 로컬 명령·로그는 `npm run verify -- status`와 각 문서의 검증 절에 있다. 실제 비용 조회·운영 키 교체·bfcache 저장/복원 전체 과정·공급자 송수신/상태 조회·홈서버 이미지 실행·실제 검색 색인은 미검증이다.
+- 검증 기준: 직전에 CI 통과를 확인한 원격 커밋은 `11d32fa`(웹·전체 서버)다. 2026-10-10 반영 커밋의 CI는 GitHub Actions에서 확인한다. 최신 로컬 명령·로그는 `npm run verify -- status`와 각 문서의 검증 절에 있다. 실제 비용 조회·운영 키 교체·bfcache 저장/복원 전체 과정·공급자 송수신/상태 조회·홈서버 이미지 실행·실제 검색 색인은 미검증이다.
 - 검증 도구의 성공·실패·실행 중 변경 시나리오와 기존 도구 검사를 통과했다. 컴파일·패키징 명령의 Gradle 실행 계획에 테스트 실행이 없음을 확인했다. `npm run verify -- status`에서 실행 기록을 확인한다. 검증 도구를 정리할 당시에는 앱 기능을 변경하지 않아 전체 앱 테스트를 재실행하지 않았다.
 
 ## 남은 작업

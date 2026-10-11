@@ -169,6 +169,23 @@ class PolicyRecruitmentTest {
         }
     }
 
+    @Test @DisplayName("상시로 수집된 청년예술인 적립계좌는 검토한 원문일 때만 기간 미확인으로 두고 목록 필터도 같은 값을 쓴다")
+    void keepsReviewedYoungArtistSavingsUnresolved() {
+        var number = "20260528005400113226";
+        var reviewedHash = "10d0ad325b17feaafb3eec87cab65012a059ba1eab96de2f7ad1d8d8f164e18f";
+        var rolling = JsonMapper.builder().build().createObjectNode().put("aplyPrdSeCd", "0057002");
+        var now = Instant.parse("2026-10-12T00:00:00Z");
+        var reviewed = PolicyRecruitment.from(number, reviewedHash, rolling, now);
+        assertThat(reviewed.status()).isEqualTo(UNKNOWN);
+        assertThat(reviewed.explanation()).contains("2026년 모집", "예산 소진", "2026년 10월 11일 확인");
+        assertThat(reviewed.deadlineOnSeoul()).isNull();
+        assertThat(PolicyRecruitmentWindow.from(number, reviewedHash, rolling).kind()).isEqualTo("UNKNOWN");
+        assertThat(PolicyRecruitment.from(number, "changed", rolling, now).status()).isEqualTo(ROLLING);
+        assertThat(PolicySourceNotice.forContent(number, reviewedHash)).extracting(PolicySourceNotice::title)
+                .containsExactly("2026년 모집 마감", "연령·소득 기준 확인", "참여 제한 구분");
+        assertThat(PolicySourceNotice.forContent(number, "changed")).isEmpty();
+    }
+
     @Test @DisplayName("검토된 공고의 정확한 마감 시각만 적용하고 원문 변경 시 이전 시각을 중단한다")
     void guardsReviewedClosingTimes() {
         var beforeClose = Instant.parse("2026-04-14T08:59:59Z");

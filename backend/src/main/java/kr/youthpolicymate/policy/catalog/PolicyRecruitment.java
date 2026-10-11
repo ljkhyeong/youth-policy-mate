@@ -66,6 +66,9 @@ public record PolicyRecruitment(RecruitmentStatus status, String explanation, In
             return times(Instant.parse("2026-04-01T01:00:00Z"), Instant.parse("2026-04-14T09:00:00Z"));
         if ("20260722005400213264".equals(number) && "0d98b50fc87fc4e319676be23e6a900304a4434215e997004ed3e1f47bb8dfea".equals(hash))
             return new ApplicationPeriod.Dates(LocalDate.of(2026, 5, 18), LocalDate.of(2026, 5, 31));
+        // 원문은 상시지만 2026년 모집은 예산 소진으로 마감됐다. 다음 모집이 열려도 원문이 같으면 알 수 없어 마감 대신 미확인으로 둔다.
+        if ("20260528005400113226".equals(number) && "10d0ad325b17feaafb3eec87cab65012a059ba1eab96de2f7ad1d8d8f164e18f".equals(hash))
+            return new ApplicationPeriod.Unresolved("2026년 모집은 2월 4일 예산 소진으로 마감됐어요. 2026년 10월 11일 확인 기준 다음 모집 일정은 공지되지 않았어요.");
         return PolicyApplicationPeriod.parse(raw);
     }
     private static ApplicationPeriod.Times times(Instant open, Instant close) {

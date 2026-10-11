@@ -61,7 +61,8 @@ class PolicyCatalogTest {
     private OntongPolicyCapture parser;
     private ObjectNode item;
     private static final Instant AT = Instant.parse("2026-09-05T01:00:00Z");
-    private static final String NUMBER = "20260903005400113371";
+    // 수집 원본의 AI학업장려 학자금대출(…113371)은 검토 규칙이 있어, 검토 전 정책 예시는 번호만 바꿔 쓴다.
+    private static final String NUMBER = "20260903005400199999";
 
     @BeforeEach
     void prepare() throws Exception {
@@ -74,6 +75,7 @@ class PolicyCatalogTest {
         jdbc.sql("DELETE FROM policies").update();
         parser = new OntongPolicyCapture(mapper);
         item = (ObjectNode) parser.parseResponse(OntongFixtures.listBody(mapper), AT).items().getFirst();
+        item.put("plcyNo", NUMBER);
     }
 
     @Test @DisplayName("새 연도 기준을 데이터로 적용하면 서버 재시작 없이 질문·정렬·자동 답변이 함께 바뀐다")
@@ -171,7 +173,7 @@ class PolicyCatalogTest {
         assertThat(evaluation.revision()).isOne();
     }
 
-    @Test @DisplayName("12개 검토 정책이 DB 규칙으로 질문을 제공하고 생년월일로 답할 수 있는 10개 연령 항목을 연결한다")
+    @Test @DisplayName("14개 검토 정책이 DB 규칙으로 질문을 제공하고 생년월일로 답할 수 있는 12개 연령 항목을 연결한다")
     void servesAllDataRules() {
         int prefills = 0;
         var birth = java.time.LocalDate.parse("1992-02-29");
@@ -188,8 +190,8 @@ class PolicyCatalogTest {
                 assertThat(response.checks().getFirst().outcome()).isEqualTo(expected.outcome());
             }
         }
-        assertThat(prefills).isEqualTo(10);
-        assertThat(store.list("", 1, 20, true, null, java.util.Set.of(), AT).total()).isEqualTo(12);
+        assertThat(prefills).isEqualTo(12);
+        assertThat(store.list("", 1, 20, true, null, java.util.Set.of(), AT).total()).isEqualTo(14);
         // 기본 조건의 연령 항목도 같은 규칙 데이터로 비교하고, 연령 연결이 없는 규칙은 판정하지 않는다.
         var compared = checks.check(new BasicConditions(birth, null, null), 1, "", PolicyCheckResponse.Sort.RECENT, null).items();
         assertThat(compared).hasSize(DEFINITIONS.size()).allSatisfy(checked -> {

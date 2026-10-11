@@ -5,7 +5,7 @@ import java.nio.file.*;
 import java.util.*;
 import java.util.regex.Pattern;
 
-/** 시드 마이그레이션의 공고별 규칙을 그대로 읽은 테스트 자료. */
+/** 시드 마이그레이션의 공고별 규칙을 그대로 읽은 테스트 자료. 같은 정책은 나중 번호의 마이그레이션이 덮는다. */
 final class PolicyRuleFixtures {
     static final String EXAM_FEE = "20260527005400113224", WORK_STUDY = "20260821005400113348",
             K_PASS = "20260710005400113257", YOUTH_HOUSING_SAVINGS = "20260616005400113238",
@@ -35,13 +35,24 @@ final class PolicyRuleFixtures {
         try {
             var mapper = JsonMapper.builder().build();
             var definitions = new HashMap<String, PolicyRuleDefinition>();
-            var matcher = Pattern.compile("\\$rule\\$(.*?)\\$rule\\$", Pattern.DOTALL)
-                    .matcher(Files.readString(Path.of("src/main/resources/db/migration/V2__seed_reviewed_policy_rules.sql")));
-            while (matcher.find()) {
-                var definition = mapper.readValue(matcher.group(1), PolicyRuleDefinition.class);
-                definitions.put(definition.policyNumber(), definition);
+            var rule = Pattern.compile("\\$rule\\$(.*?)\\$rule\\$", Pattern.DOTALL);
+            var versioned = Pattern.compile("V(\\d+)__.+\\.sql");
+            try (var files = Files.list(Path.of("src/main/resources/db/migration"))) {
+                for (var file : files.filter(path -> versioned.matcher(path.getFileName().toString()).matches())
+                        .sorted(Comparator.comparingInt(path -> version(versioned, path))).toList()) {
+                    var matcher = rule.matcher(Files.readString(file));
+                    while (matcher.find()) {
+                        var definition = mapper.readValue(matcher.group(1), PolicyRuleDefinition.class);
+                        definitions.put(definition.policyNumber(), definition);
+                    }
+                }
             }
             return Map.copyOf(definitions);
         } catch (Exception failure) { throw new IllegalStateException(failure); }
+    }
+    private static int version(Pattern versioned, Path file) {
+        var matcher = versioned.matcher(file.getFileName().toString());
+        if (!matcher.matches()) throw new IllegalArgumentException(file.toString());
+        return Integer.parseInt(matcher.group(1));
     }
 }

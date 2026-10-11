@@ -1,11 +1,16 @@
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import { RuleEditor } from "./policy-rule-editor";
 import { moveRuleCase, ruleDraftJson, seoulDateTime, type RuleDefinition } from "./policy-rule-editor-model";
 
-const rules = [...readFileSync(new URL("../../../../backend/src/main/resources/db/migration/V2__seed_reviewed_policy_rules.sql", import.meta.url), "utf8")
-  .matchAll(/\$rule\$([\s\S]*?)\$rule\$/g)].map(match => JSON.parse(match[1]) as RuleDefinition);
+// 시드 마이그레이션(V2 이후)의 검토 규칙을 번호 순서로 모두 읽는다.
+const migrations = new URL("../../../../backend/src/main/resources/db/migration/", import.meta.url);
+const migrationVersion = (name: string) => Number(/^V(\d+)__/.exec(name)?.[1]);
+const rules = readdirSync(migrations).filter(name => /^V\d+__.+\.sql$/.test(name))
+  .sort((a, b) => migrationVersion(a) - migrationVersion(b))
+  .flatMap(name => [...readFileSync(new URL(name, migrations), "utf8").matchAll(/\$rule\$([\s\S]*?)\$rule\$/g)])
+  .map(match => JSON.parse(match[1]) as RuleDefinition);
 
 describe("관리자 규칙 편집", () => {
   it("원문 재검토와 새 버전명이 있어야 초안 요청을 만든다", () => {

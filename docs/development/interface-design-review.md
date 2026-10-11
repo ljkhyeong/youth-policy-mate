@@ -312,3 +312,27 @@ Tailwind 4가 `light-dark()`를 변환하지 않고 그대로 내보내며 기�
   - 홈·목록·상세·조건을 1280·390px 어두운 화면으로 열어 가로 넘침이 없었다. 도장·볼펜 동그라미·형광펜 띠·미색 기본 버튼·날짜 입력의 달력 아이콘이 어두운 바탕에서 읽힌다.
 - 개발 모드 웹(3103)에서도 홈·목록·관리자 화면이 하이드레이션 뒤 `data-theme`을 유지했고 하이드레이션·`<script>` 경고가 없었다.
 - 회원 화면(관심 정책·일정·알림)과 관리자 상세 화면은 같은 토큰을 쓰지만 이번에 화면별로 열어 보지 않았다. 확인 후 검증용 서버·웹·브라우저와 로컬 DB를 종료했다.
+
+## 2026-10-11 앱 아이콘 추가
+
+브라우저가 모든 화면에서 `/favicon.ico`를 요청해 404가 났고, 지금까지 화면 검증 기록마다 "기존 favicon 404"로 범위에서 제외해 왔다. 배포 전에 탭·북마크·iOS 홈 화면에 쓸 아이콘을 [화면 기준](../design/webapp-interface.md#시각-기준)의 공고문 모양으로 추가했다.
+
+| 파일 | 내용 |
+|---|---|
+| `frontend/src/app/icon.svg` | 원본. 먹색(`#16181B`) 2px 테두리의 흰 종이, 먹색 줄 세 개, 가운데 줄 뒤 형광펜(`#FFF27A`) 띠 |
+| `frontend/src/app/favicon.ico` | `icon.svg`를 헤드리스 Chromium으로 16·32px PNG로 그린 뒤 PNG를 그대로 담은 ICO로 묶었다 |
+| `frontend/src/app/apple-icon.png` | 180px. iOS가 투명 부분을 검게 칠하므로 흰 바탕을 꽉 채우고 그림을 72% 크기로 가운데 둔다 |
+
+Next.js 파일 규칙이 `<head>`에 `favicon.ico`(32×32)·`icon.svg`(any)·`apple-touch-icon`(180×180) 링크를 만든다. 그림을 바꾸면 `icon.svg`를 고친 뒤 두 이미지 파일을 같은 방법으로 다시 만든다.
+
+### 검증
+
+| 명령 | 결과 | 로그 |
+|---|---|---|
+| `npm run verify -- build:web` | 프로덕션 빌드 통과. `/icon.svg`·`/apple-icon.png`가 정적 경로로 나온다(빌드 경로표에는 `favicon.ico`가 표시되지 않지만 실제로 응답한다) | `.local/verification/1791725328038-0ec169fb.log` |
+| `npm run verify -- check:web` | 린트·경로 타입 생성·타입 검사 통과 | `.local/verification/1791725507373-27bf65b1.log` |
+
+- 운영 모드 웹(3103)에서 `/favicon.ico`(image/x-icon)·`/icon.svg`(image/svg+xml)·`/apple-icon.png`(image/png)가 200이고 `/conditions`의 `<head>`에 세 링크가 있었다.
+- Playwright CLI 헤드리스 Chromium은 `/icon.svg`를 요청했고 페이지 전체에 404 요청이 없었다. 정책 API 서버는 띄우지 않았다.
+- 16·32px를 밝은·어두운 탭 막대 위에 그려 확인했다. 어두운 탭 막대에서는 먹색 테두리가 바탕에 묻히지만 흰 종이와 형광펜 띠는 구분된다.
+- Safari·iOS 실제 기기의 탭·홈 화면 아이콘 표시는 확인하지 않았다.

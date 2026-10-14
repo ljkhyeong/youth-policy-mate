@@ -12,7 +12,7 @@ final class PolicyRuleFixtures {
             SEOUL_YOUTH_NETWORK = "20260520005400213208", MOVING_FEE = "20260614005400213232",
             YOUTH_TOMORROW_SAVINGS = "20260430005400113009", GUARANTEE_FEE = "20260527005400113223",
             HAETSALRON_YOUTH = "20260724005400113307", MISO_YOUTH_FUTURE = "20260421005400112773",
-            FUTURE_YOUTH_JOBS = "20260722005400213264";
+            FUTURE_YOUTH_JOBS = "20260722005400213264", YOUTH_LEAP_BOOTCAMP = "20260714005400113259";
     static final Map<String, PolicyRuleDefinition> DEFINITIONS = load();
     static PolicyRuleDefinition rule(String number) { return DEFINITIONS.get(number); }
     static String version(String number) { return rule(number).ruleVersion(); }

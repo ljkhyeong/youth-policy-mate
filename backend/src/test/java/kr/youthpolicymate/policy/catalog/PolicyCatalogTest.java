@@ -173,7 +173,7 @@ class PolicyCatalogTest {
         assertThat(evaluation.revision()).isOne();
     }
 
-    @Test @DisplayName("14개 검토 정책이 DB 규칙으로 질문을 제공하고 생년월일로 답할 수 있는 12개 연령 항목을 연결한다")
+    @Test @DisplayName("15개 검토 정책이 DB 규칙으로 질문을 제공하고 생년월일로 답할 수 있는 13개 연령 항목을 연결한다")
     void servesAllDataRules() {
         int prefills = 0;
         var birth = java.time.LocalDate.parse("1992-02-29");
@@ -190,8 +190,8 @@ class PolicyCatalogTest {
                 assertThat(response.checks().getFirst().outcome()).isEqualTo(expected.outcome());
             }
         }
-        assertThat(prefills).isEqualTo(12);
-        assertThat(store.list("", 1, 20, true, null, java.util.Set.of(), AT).total()).isEqualTo(14);
+        assertThat(prefills).isEqualTo(13);
+        assertThat(store.list("", 1, 20, true, null, java.util.Set.of(), AT).total()).isEqualTo(15);
         // 기본 조건의 연령 항목도 같은 규칙 데이터로 비교하고, 연령 연결이 없는 규칙은 판정하지 않는다.
         var compared = checks.check(new BasicConditions(birth, null, null), 1, "", PolicyCheckResponse.Sort.RECENT, null).items();
         assertThat(compared).hasSize(DEFINITIONS.size()).allSatisfy(checked -> {

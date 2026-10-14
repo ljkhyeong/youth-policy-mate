@@ -40,11 +40,15 @@ class BasicConditionRulesTest {
         assertThat(result.periodNotice()).contains("마감");
     }
 
-    @Test @DisplayName("서울 자정에 검토 연도가 끝나면 연령 비교를 재사용하지 않는다")
+    @Test @DisplayName("서울 자정에 적용 기간이 끝난 규칙의 연령 비교를 재사용하지 않는다")
     void expiresReviewedComparisons() {
         var input = new BasicConditions(LocalDate.parse("2000-01-01"), kr.youthpolicymate.eligibility.SeoulDistrict.GANGNAM, BasicConditions.EmploymentStatus.NOT_EMPLOYED);
-        assertThat(comparisons(input, Instant.parse("2026-12-31T14:59:59Z"))).isNotEmpty();
-        assertThat(comparisons(input, Instant.parse("2026-12-31T15:00:00Z"))).isEmpty();
+        var seoulYearEnd = Instant.parse("2026-12-31T15:00:00Z");
+        var beforeYearEnd = comparisons(input, seoulYearEnd.minusSeconds(1));
+        var afterYearEnd = comparisons(input, seoulYearEnd);
+        assertThat(beforeYearEnd).containsKey(K_PASS);
+        // 2026년 말까지 검토한 규칙은 모두 멈추고, 1차년도가 2027년 2월에 끝나는 부트캠프만 남는다.
+        assertThat(afterYearEnd).containsOnlyKeys(YOUTH_LEAP_BOOTCAMP);
         assertThat(age(K_PASS, LocalDate.parse("2007-09-06"), Instant.parse("2026-09-05T14:59:59Z")).outcome()).isEqualTo(NOT_MET);
         assertThat(age(K_PASS, LocalDate.parse("2007-09-06"), Instant.parse("2026-09-05T15:00:00Z")).outcome()).isEqualTo(MET);
     }

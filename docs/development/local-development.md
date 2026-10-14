@@ -103,7 +103,7 @@ npm run collect:policy -- --args='fetch 1'
 ```
 
 - `npm run db:down -- -v`는 `docker compose down -v`와 같다. 컨테이너를 이미 내렸다면 `docker volume rm youth-policy-mate_postgres_data`로 볼륨만 지운다.
-- 새 볼륨에는 검토 규칙 14건만 들어 있다. 회원·관심 정책·관리자 보정·운영 명령으로 등록한 규칙 버전 등 로컬에서 만든 데이터는 다시 만들어야 한다.
+- 새 볼륨에는 검토 규칙 15건만 들어 있다. 회원·관심 정책·관리자 보정·운영 명령으로 등록한 규칙 버전 등 로컬에서 만든 데이터는 다시 만들어야 한다.
 - 수집에는 `.env`의 `ONTONG_API_KEY`가 필요하다. `fetch`는 한 페이지(최대 10건)만 가져오므로 페이지 번호를 바꿔 반복하거나 [범위 수집](policy-range-collection.md#설정과-실행)을 사용한다. 검토 규칙은 수집한 원문의 내용 해시가 검토 당시와 같을 때만 질문을 제공한다.
 
 ## 4. 검증 명령과 실제 확인 범위

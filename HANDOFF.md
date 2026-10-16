@@ -4,7 +4,7 @@
 
 ## 현재 작업
 
-- `codex/progressive-policy-discovery`는 원격 `main`(`aec34de`, 2026-10-16 [웹·전체 서버 CI](https://github.com/ljkhyeong/youth-policy-mate/actions/runs/38871037960) 통과) 위에 이번 조건 질문 화면 개선 커밋이 로컬에만 있다. 부트캠프 질문과 PRD 5.2절 보완은 `aec34de`까지 반영돼 있다.
+- `codex/progressive-policy-discovery`의 조건 질문 화면 개선(`4999a38`·`b16ca52`)과 이 인계 갱신을 2026-10-16 원격 `main`에 빨리 감기로 반영했다(이전 원격 `main`은 [CI](https://github.com/ljkhyeong/youth-policy-mate/actions/runs/38871037960)를 통과한 `aec34de`). 반영 커밋의 웹·전체 서버 CI 결과는 [GitHub Actions](https://github.com/ljkhyeong/youth-policy-mate/actions/workflows/ci.yml)에서 확인한다.
 - 조건 질문 화면 개선(2026-10-16): 선택지 361개 중 13%가 20자를 넘어 모바일 선택 상자에서 뒷부분이 잘리던 문제를 고쳤다. 질문마다 `fieldset`·라디오로 모든 선택지를 신청서 칸처럼 펼치고(동그란 칸·볼펜 체크), 답한 질문에 ‘이 답 지우기’를 둔다. 판정·자동 입력·늦은 응답 처리는 바꾸지 않았다. [변경 기록](docs/development/interface-design-review.md#2026-10-16-조건-질문-선택지를-선택-칸으로-변경)·[화면 기준](docs/design/webapp-interface.md#정책-목록상세)
 - 검증: `test:web`·`check:web`·`build:web`을 통과했다. 로컬 DB와 서버·운영 모드 웹으로 헤드리스 확인했다(초점·방향키·Tab·Space·Enter 제출, 생년월일 자동 입력, 질문별·전체 지우기, 390px 어두운 화면). 서버 코드는 바꾸지 않았다. 실제 화면 낭독기와 Safari·Firefox는 확인하지 않았다. 8080의 다른 프로젝트(happyGallery) 서버는 그대로 두었고 검증용 서버·DB는 종료했다.
 - 로컬 DB 볼륨은 2026-10-07에 다시 만들었고 V1~V6이 적용돼 있다. 온통청년 서울 1~4페이지(2026-10-07)와 9·25~28페이지(2026-10-11)를 받아 90건이다(전체 730건). 검토 규칙이 있는 15개 정책 중 12개가 로컬에 있어 질문을 확인할 수 있다. 이전 볼륨은 `.local/backups/`에 백업했다. 정기 수집·AI 자동 처리·이메일·알림은 비활성화다. 실제 OAuth·Resend 연동, 이미지 빌드·공유기·TLS·k3s·백업 운영 설정은 사용자가 진행한다. 백업·외부 공급자 데이터의 보관/삭제와 관리자 기록 보관 기준은 남아 있다.

@@ -1,10 +1,10 @@
 # 작업 인계
 
-2026-10-14 기준. 개발 이력은 Git과 [개발 문서](docs/development/)에서 확인한다.
+2026-10-16 기준. 개발 이력은 Git과 [개발 문서](docs/development/)에서 확인한다.
 
 ## 현재 작업
 
-- `codex/progressive-policy-discovery`는 원격 `main`(`ce5418d`, 2026-10-12 [웹·전체 서버 CI](https://github.com/ljkhyeong/youth-policy-mate/actions/runs/38245059739) 통과) 위에 이번 조건 질문 추가 커밋이 로컬에만 있다. 앱 아이콘·국민취업지원제도·AI학업장려 학자금대출·청년예술인 안내는 `ce5418d`까지 반영돼 있다.
+- `codex/progressive-policy-discovery`의 부트캠프 질문 추가(`622ec49`)·PRD 보완(`4ed1cf4`)과 이 인계 갱신을 2026-10-16 원격 `main`에 빨리 감기로 반영했다(이전 원격 `main`은 [CI](https://github.com/ljkhyeong/youth-policy-mate/actions/runs/38245059739)를 통과한 `ce5418d`). 반영 커밋의 웹·전체 서버 CI 결과는 [GitHub Actions](https://github.com/ljkhyeong/youth-policy-mate/actions/workflows/ci.yml)에서 확인한다.
 - 조건 질문 추가(남은 작업 8, 2026-10-14): 로컬 DB에 원문이 있는 [청년도약 인재양성 부트캠프](docs/development/youth-leap-bootcamp-questions.md)에 공통 참여 조건(연령·일자리 밖·대학 재학) 질문을 `V6__seed_youth_leap_bootcamp_rule.sql`로 추가했다. 1차년도가 끝나는 2027년 2월 말까지 유효한 첫 다년 규칙이다. 대학별로 다른 병역 연장·휴학 처리·단시간 근로 기준은 추가 확인으로 둔다. 청년미래플러스는 운영기관별 차수 모집이 11월 30일에 끝나고 조건이 기관마다 달라 질문을 만들지 않았다. 지난 작업에서 빠졌던 PRD 5.2절의 국민취업지원제도·AI학업장려 문단과 원문 충돌 시 접수 상태 보정 원칙도 채웠다.
 - 검증: `check:backend`(새 PostgreSQL에 V1~V6, 질문 제공 15개·연령 자동 입력 13개)·관련 규칙·편집 화면 테스트를 통과했다. 로컬 DB에 V6을 적용하고 서버·운영 모드 웹으로 헤드리스 확인했다. 8080에는 다른 프로젝트(happyGallery) 서버가 모든 주소로 떠 있어 그대로 두고, 검증용 서버는 127.0.0.1에만 띄운 뒤 종료했다. 로컬 DB도 종료했다.
 - 로컬 DB 볼륨은 2026-10-07에 다시 만들었고 V1~V6이 적용돼 있다. 온통청년 서울 1~4페이지(2026-10-07)와 9·25~28페이지(2026-10-11)를 받아 90건이다(전체 730건). 검토 규칙이 있는 15개 정책 중 12개가 로컬에 있어 질문을 확인할 수 있다. 이전 볼륨은 `.local/backups/`에 백업했다. 정기 수집·AI 자동 처리·이메일·알림은 비활성화다. 실제 OAuth·Resend 연동, 이미지 빌드·공유기·TLS·k3s·백업 운영 설정은 사용자가 진행한다. 백업·외부 공급자 데이터의 보관/삭제와 관리자 기록 보관 기준은 남아 있다.

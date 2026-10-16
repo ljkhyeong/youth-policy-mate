@@ -836,10 +836,18 @@ mark {
   .policy-questionnaire > .text-link { display: inline-flex; margin-top: 22px; }
   .policy-questionnaire > .button-primary + .text-link { margin-left: 20px; }
   .policy-question-fields { display: grid; gap: 24px; margin: 24px 0; }
-  .policy-question-field label { display: block; font-size: 15px; font-weight: 650; line-height: 1.7; }
-  .policy-question-field label span { color: var(--muted); }
+  .policy-question-field { min-width: 0; margin: 0; padding: 0; border: 0; }
+  .policy-question-field > legend { padding: 0; font-size: 15px; font-weight: 650; line-height: 1.7; }
+  .policy-question-field > legend span { color: var(--muted); }
   .policy-question-field > p { color: var(--muted); font-size: 13px; margin: 4px 0 10px; }
-  .policy-question-field select { width: 100%; min-width: 0; min-height: 48px; padding: 10px 30px 10px 12px; border: 1px solid var(--line-strong); border-radius: 0; background: var(--surface); color: var(--ink); font: inherit; font-size: 14px; }
+  /* 선택지는 상황 표시 양식처럼 신청서 칸에 모두 나열한다. 하나만 고르므로 칸을 동그랗게 그린다. */
+  .question-options { display: grid; border: 2px solid var(--ink); }
+  .question-option { position: relative; display: flex; min-height: 48px; align-items: center; gap: 12px; padding: 8px 12px; cursor: pointer; font-size: 14px; line-height: 1.5; }
+  .question-option + .question-option { border-top: 1px solid var(--ink); }
+  .question-option input { position: absolute; width: 1px; height: 1px; margin: 0; opacity: 0; }
+  .question-option .paper-check { border-radius: 50%; }
+  .question-option:has(input:checked) { font-weight: 700; }
+  .question-option:has(input:focus-visible) { outline: 3px solid var(--focus-ring); outline-offset: -4px; }
   .question-actions { display: flex; gap: 10px; flex-wrap: wrap; }
   .question-feedback { color: var(--caution); }
   .policy-question-result { margin-top: 28px; border-top: 1px solid var(--line); padding-top: 24px; }

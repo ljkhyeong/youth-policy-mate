@@ -60,7 +60,7 @@ function QuestionForm({ questions, onChanged }: { questions: Questionnaire; onCh
   const resultHeading = useRef<HTMLHeadingElement>(null);
   useEffect(() => () => request.current?.abort(), []);
   useEffect(() => { if (result) resultHeading.current?.focus(); }, [result]);
-  useEffect(() => { if (started) formRef.current?.querySelector("select")?.focus(); }, [started]);
+  useEffect(() => { if (started) formRef.current?.querySelector("input")?.focus(); }, [started]);
   function change(id: string, value: string) {
     request.current?.abort(); request.current = null;
     setPending(null); setError(""); setResult(null);
@@ -119,25 +119,36 @@ function QuestionForm({ questions, onChanged }: { questions: Questionnaire; onCh
   function clearAnswers() {
     request.current?.abort(); request.current = null;
     clearConfirmedBirth(); setPrefillNotice(""); setAnswers({}); setResult(null); setError(""); setPending(null);
-    formRef.current?.querySelector("select")?.focus();
+    formRef.current?.querySelector("input")?.focus();
   }
   return <>
     <p className="question-scope">{questions.scope}</p>
     <p>{questions.reason}</p>
     <p className="question-privacy">답변은 저장하지 않아요. 확인한 생년월일은 연령 답변에 사용하며, 새로고침하면 지워져요.</p>
     {!started ? <button type="button" className="button-primary" onClick={() => void start()}>질문에 답하기</button> : <form ref={formRef} onSubmit={event => { event.preventDefault(); void evaluate(); }}>
-      <p className="question-privacy">모르는 항목은 비워두거나 ‘모르겠어요’를 선택하세요.</p>
+      <p className="question-privacy">모르는 항목은 비워두거나 ‘모르겠어요’·‘확인 중’ 같은 선택지를 고르세요. 고른 답은 ‘이 답 지우기’로 비울 수 있어요.</p>
       {pending === "prefill" && <p role="status">생년월일을 반영하고 있어요. 직접 답하면 자동 입력을 중단해요.</p>}
       {prefillNotice && <p role="status">{prefillNotice}</p>}
       <div className="policy-question-fields">
-        {questions.questions.map((question, index) => <div className="policy-question-field" key={question.id}>
-          <label htmlFor={`question-${question.id}`}><span>{index + 1}.</span> {question.label}</label>
+        {/* 선택지를 모두 펼쳐 긴 문구가 잘리지 않게 하고, 투명하게 겹친 라디오로 방향키·화면 낭독기를 그대로 쓴다. */}
+        {questions.questions.map((question, index) => <fieldset className="policy-question-field" key={question.id} aria-describedby={`help-${question.id}`}>
+          <legend><span>{index + 1}.</span> {question.label}</legend>
           <p id={`help-${question.id}`}>{question.help}</p>
-          <select id={`question-${question.id}`} aria-describedby={`help-${question.id}`} value={answers[question.id] || ""} onChange={event => change(question.id, event.target.value)}>
-            <option value="">선택해주세요</option>
-            {question.options.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}
-          </select>
-        </div>)}
+          <div className="question-options">
+            {question.options.map(option => <label className="question-option" key={option.value}>
+              <input type="radio" name={`question-${question.id}`} value={option.value}
+                checked={answers[question.id] === option.value} onChange={() => change(question.id, option.value)} />
+              <span className="paper-check" aria-hidden="true" />
+              <span>{option.label}</span>
+            </label>)}
+          </div>
+          {/* 라디오는 선택을 해제할 수 없어, 고른 질문만 미응답으로 되돌린다. 버튼이 사라지므로 같은 질문의 첫 칸으로 초점을 옮긴다. */}
+          {answers[question.id] && <button type="button" className="text-button"
+            aria-label={`이 답 지우기, ${index + 1}번 질문`} onClick={event => {
+              event.currentTarget.closest("fieldset")?.querySelector("input")?.focus();
+              change(question.id, "");
+            }}>이 답 지우기</button>}
+        </fieldset>)}
       </div>
       <div className="question-actions">
         <button type="submit" className="button-primary" disabled={busy}>{pending === "prefill" ? "내 조건 반영 중…" : pending === "evaluate" ? "조건 비교 중…" : "조건 비교"}</button>

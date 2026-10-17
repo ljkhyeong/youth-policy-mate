@@ -1,17 +1,17 @@
 # 작업 인계
 
-2026-10-16 기준. 개발 이력은 Git과 [개발 문서](docs/development/)에서 확인한다.
+2026-10-17 기준. 개발 이력은 Git과 [개발 문서](docs/development/)에서 확인한다.
 
 ## 현재 작업
 
-- `codex/progressive-policy-discovery`의 조건 질문 화면 개선(`4999a38`·`b16ca52`)과 이 인계 갱신을 2026-10-16 원격 `main`에 빨리 감기로 반영했다(이전 원격 `main`은 [CI](https://github.com/ljkhyeong/youth-policy-mate/actions/runs/38871037960)를 통과한 `aec34de`). 반영 커밋의 웹·전체 서버 CI 결과는 [GitHub Actions](https://github.com/ljkhyeong/youth-policy-mate/actions/workflows/ci.yml)에서 확인한다.
-- 조건 질문 화면 개선(2026-10-16): 선택지 361개 중 13%가 20자를 넘어 모바일 선택 상자에서 뒷부분이 잘리던 문제를 고쳤다. 질문마다 `fieldset`·라디오로 모든 선택지를 신청서 칸처럼 펼치고(동그란 칸·볼펜 체크), 답한 질문에 ‘이 답 지우기’를 둔다. 판정·자동 입력·늦은 응답 처리는 바꾸지 않았다. [변경 기록](docs/development/interface-design-review.md#2026-10-16-조건-질문-선택지를-선택-칸으로-변경)·[화면 기준](docs/design/webapp-interface.md#정책-목록상세)
-- 검증: `test:web`·`check:web`·`build:web`을 통과했다. 로컬 DB와 서버·운영 모드 웹으로 헤드리스 확인했다(초점·방향키·Tab·Space·Enter 제출, 생년월일 자동 입력, 질문별·전체 지우기, 390px 어두운 화면). 서버 코드는 바꾸지 않았다. 실제 화면 낭독기와 Safari·Firefox는 확인하지 않았다. 8080의 다른 프로젝트(happyGallery) 서버는 그대로 두었고 검증용 서버·DB는 종료했다.
+- `codex/progressive-policy-discovery`에 공개 목록 지역(자치구) 필터와 띄어쓰기 무관 단어 검색을 추가했다(2026-10-17). 원격 `main`에는 아직 반영하지 않았다(직전 원격 반영은 `b7389ac`).
+- 지역 필터: `GET /api/v1/policies?district=강남구`와 목록 검색 폼의 지역 선택이다. 공고 지역 코드(`regionCodes`)에 그 자치구나 서울 전체 코드가 있거나 코드가 없는 정책만 보여주고, 분야별 수·내 조건 결과에는 적용하지 않는다. 공고 지역 필터일 뿐 거주 자격 판정이 아니며 상수 이름·목록 밖 값은 400이다. 단어 검색: 검색어를 공백으로 나눈 단어가 공백을 뺀 제목·설명·운영 기관에 모두 들어 있어야 하며 목록과 내 조건 결과가 같은 조건을 쓴다. [지역 필터와 단어 검색](docs/development/policy-region-filter.md)·[화면 변경 기록](docs/development/interface-design-review.md#2026-10-17-공개-목록-지역-선택과-단어-검색)
+- 검증: `npm run generate:api`로 계약을 재생성하고 `test:policy-collection`·`check:backend`·`check:api-types`·`test:web`·`check:web`·`build:web`을 통과했다. 로컬 DB 90건과 검증용 서버(8180)·운영 모드 웹(3103)으로 헤드리스 확인했다(1280px 한 줄·390px 세 줄 배치, Tab 순서, 필터 유지, 빈 결과 안내, 자치구별 87~89건). 검증용 서버·웹·브라우저는 종료하고 DB 컨테이너는 중지했다(볼륨 유지). 8080의 다른 프로젝트(happyGallery) 서버는 그대로 두었다. 실제 화면 낭독기·Safari·Firefox는 확인하지 않았다.
 - 로컬 DB 볼륨은 2026-10-07에 다시 만들었고 V1~V6이 적용돼 있다. 온통청년 서울 1~4페이지(2026-10-07)와 9·25~28페이지(2026-10-11)를 받아 90건이다(전체 730건). 검토 규칙이 있는 15개 정책 중 12개가 로컬에 있어 질문을 확인할 수 있다. 이전 볼륨은 `.local/backups/`에 백업했다. 정기 수집·AI 자동 처리·이메일·알림은 비활성화다. 실제 OAuth·Resend 연동, 이미지 빌드·공유기·TLS·k3s·백업 운영 설정은 사용자가 진행한다. 백업·외부 공급자 데이터의 보관/삭제와 관리자 기록 보관 기준은 남아 있다.
 
 ## 구현·검증 범위
 
-- 정책 조회: 로컬 수집 40건(2026-10-07 서울 1~4페이지)의 검색·분야 필터·상세·원문 링크를 제공한다. 공개 목록은 접수 중 정책을 마감 임박순으로 먼저 보여주고 접수 기간인 정책에 D-day를 표시한다. 상세에 온통청년 표기 조건을 참고로 보여주고, 홈은 “요즘 어떤 상황이세요?”로 상황(분야)을 여러 개 고르게 하고 분야별 정책 수를 함께 표시하며, 목록은 분야 여러 개를 함께 고를 수 있다. 여러 분야로 분류된 정책은 분야마다 포함한다. [화면 개편](docs/development/interface-design-review.md#2026-10-05-화면-개편) 검토된 원문 충돌은 상세에서 별도 안내하며 빈 안내 목록이 검토 완료를 뜻하지 않는다. 서울 대상 전체 정책을 수집한 상태는 아니다. [조회](docs/development/policy-catalog.md)·[수집과 재개](docs/development/policy-range-collection.md)·[충돌 안내](docs/development/policy-source-notices.md)
+- 정책 조회: 로컬 수집 90건의 단어 검색(띄어쓰기 무시, 제목·설명·운영 기관)·분야 필터·지역(자치구) 필터·상세·원문 링크를 제공한다. 지역 필터는 공고 지역 코드 기준이라 거주 자격 판정이 아니다. 공개 목록은 접수 중 정책을 마감 임박순으로 먼저 보여주고 접수 기간인 정책에 D-day를 표시한다. 상세에 온통청년 표기 조건을 참고로 보여주고, 홈은 “요즘 어떤 상황이세요?”로 상황(분야)을 여러 개 고르게 하고 분야별 정책 수를 함께 표시하며, 목록은 분야 여러 개를 함께 고를 수 있다. 여러 분야로 분류된 정책은 분야마다 포함한다. [화면 개편](docs/development/interface-design-review.md#2026-10-05-화면-개편) 검토된 원문 충돌은 상세에서 별도 안내하며 빈 안내 목록이 검토 완료를 뜻하지 않는다. 서울 대상 전체 정책을 수집한 상태는 아니다. [조회](docs/development/policy-catalog.md)·[지역 필터와 단어 검색](docs/development/policy-region-filter.md)·[수집과 재개](docs/development/policy-range-collection.md)·[충돌 안내](docs/development/policy-source-notices.md)
 - 화면: ‘형광펜 공고문’ 디자인, 어두운 화면(기기 설정 추종·바닥글 선택), 탭·iOS 홈 화면용 앱 아이콘을 제공한다. Claude Design 디자인 시스템에는 밝은 화면 값만 있다. [화면 기준](docs/design/webapp-interface.md#시각-기준)
 - 공개 페이지: 운영 주소를 기준으로 검색 허용·대표 주소·공개 공유 제목과 설명을 만든다. 정책 목록의 페이지별 주소와 개인/검색/오류 화면의 검색 제외를 구분한다. [설정과 기본 사이트맵](docs/development/public-page-metadata.md)
 - 관리자 수집 예외: `/admin/collection-exceptions`에서 원본·직전 개정 비교와 사유를 남기는 항목 재처리를 제공한다. `/pages`는 페이지 실패, `/replays`는 재처리 이력, `/corrections`는 보정 관리다. 정책명·운영 기관 중 한 항목을 원본과 분리해 보정하고, 새 원본과 충돌하면 현재 내용을 유지한 뒤 관리자가 해소한다. 재처리·보정 기록 테이블에 작업자·사유·적용 개정을 기록하며 같은 요청은 한 번만 처리한다. AI 추출 목록에서는 마지막 시도와 현재 결과·비용 상태를 조회한다. 실제 관리자 계정 연결은 남아 있다. [AI 추출 조회](docs/development/admin-ai-runs.md)·[설정과 계약](docs/development/admin-collection-exceptions.md)·[보정 범위](docs/development/policy-corrections.md)
@@ -37,12 +37,13 @@
 4. 사용자가 Resend 계정·발신 도메인·웹훅을 등록한 뒤 실제 수신·반송·수신 해제를 검증한다. 관리자 상태 조회를 사용하려면 `full_access` 권한의 `RESEND_READ_API_KEY`를 별도로 설정하고 발송 ID가 있는 기록으로 확인한다. 수신 해제 헤더가 DKIM 서명에 포함되는지와 실제 메일 서비스의 버튼·본문 링크를 확인한다. 웹훅·수신 해제·공급자 조회 코드는 모의 연동과 PostgreSQL로 검증했다.
 5. 실제 수집 한도·범위·주기를 정해 정기 수집을 활성화하고 실패 후 재개를 확인한다.
 6. 월 3만 원 예산 안에서 배포·정기 백업의 주기/보관/외부 저장·운영 DB 복구 전환·운영 인증·개인정보 처리 안내·백업/외부 공급자/관리자 기록의 보관·삭제 기준을 정한다. 회원 탈퇴와 현재 DB의 개인 데이터 삭제, 수동 백업·임시 DB 복구 검증·이메일 키 교체 도구는 구현했다. 실제 키 교체 시 모든 API를 중지하고 DB 재암호화 후 새 키로 재시작한다. 이전 백업에 필요한 키의 보관·폐기는 운영자가 정한다. 배포 후 공개 도메인의 검색 메타데이터·robots·사이트맵과 실제 검색 엔진 색인을 확인한다.
-7. 공개 목록 지역 필터를 구현할지 정한다. 전체 수집 범위(5번)를 정한 뒤 자치구 전용 정책의 원문 거주 제한을 확인하고 구현하는 것을 권장한다. [지역 필터 조사](docs/research/public-region-filter.md)
+7. 공개 목록 지역 필터는 구현했다. 전체 수집 범위(5번)를 정한 뒤 자치구 전용 정책의 원문 거주 제한을 확인하고(조사 당시 자치구 전용 2건은 거주 제한 문구가 없었다) 필요하면 정책별 보정 범위를 정한다. 건수가 늘면 `regionCodes` GIN 인덱스와 검색 성능을 검토한다. [지역 필터와 단어 검색](docs/development/policy-region-filter.md)·[지역 필터 조사](docs/research/public-region-filter.md)
 8. 조건 질문을 더 넓힌다. 2026-10-11에 국민취업지원제도·AI학업장려 학자금대출, 2026-10-14에 청년도약 인재양성 부트캠프를 추가했다. 로컬 DB(90건)에 남은 접수 중·상시 정책은 대학·기관 지원사업이나 기관별 조건이 크게 다른 사업이 대부분이라, 다음 후보는 로컬에 없는 서울 청년 주요 정책(전체 730건)에서 고르는 편이 낫다. 해당 공고는 `collect:policy -- --args='fetch <페이지>'`로 받는다(외부 호출이라 사용자가 요청할 때 실행, 범위 수집용 일일 한도·호출 간격은 `.env`에 미설정). AI학업장려 학자금대출 질문은 2026-11-18, 부트캠프 질문은 2027-03-01부터 멈추므로 다음 공고·2차년도 기준을 다시 검토한다. 청년예술인 적립계좌는 다음 모집 공고가 나오면 안내·접수 상태 보정을 다시 검토한다. AI 초안을 켜기 전에는 원문과 공식 안내를 대조해 `youth-policy-rule-data` 절차로 직접 추가한다.
 
 ## 이어서 작업할 때
 
 - 제품 동작은 [PRD](docs/PRD/0001_product-baseline/spec.md), 기술 선택은 [ADR](docs/ADR/), 적용 스킬은 [AGENTS.md](AGENTS.md)를 따른다.
+- 쿼리 매개변수로 enum을 표시 이름으로 받을 때 전역 `Converter`를 쓰지 않는다. Spring 바인더는 변환 실패 뒤 상수 이름으로 다시 변환하므로 컨트롤러에서 `fromLabel`처럼 직접 해석하고, OpenAPI에는 `@Schema(implementation = …)`로 enum을 남긴다.
 - 스키마 변경은 다음 번호(V4부터)의 새 Flyway SQL로 추가한다. 운영 DB를 만든 뒤에는 적용한 파일을 고치지 않는다. 설정을 추가할 때는 `Environment.getProperty` 대신 기존 `*Properties` 레코드에 둔다.
 - 로컬 실행은 [개발 환경](docs/development/local-development.md), 실제 정책 서버 연결은 [조회 문서](docs/development/policy-catalog.md)를 참고한다. 현재 프로세스·브랜치·환경 설정은 실행 시점에 확인한다.
 - 최근 검증의 `JAVA_HOME`은 `/Users/lim/.gradle/jdks/eclipse_adoptium-25-aarch64-os_x.2/jdk-25.0.3+9/Contents/Home`이다. `test:ai-reservation-db`는 PostgreSQL 검사로 Docker가 필요하다.

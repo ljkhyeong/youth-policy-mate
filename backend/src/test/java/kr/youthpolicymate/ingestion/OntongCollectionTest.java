@@ -57,7 +57,7 @@ class OntongCollectionTest {
         });
         service.fetch(run, 1);
         verify(client).fetch("collection-test-key", 1);
-        assertThat(catalog.list("", 1, 20, false, null, java.util.Set.of(), AT).total()).isEqualTo(2);
+        assertThat(catalog.list("", 1, 20, false, null, java.util.Set.of(), null, AT).total()).isEqualTo(2);
         assertThat(store.status(run).getFirst()).contains("처리 2/2", "실패 0");
         assertThatThrownBy(() -> store.received(run,
                 new OntongApiClient.Response(AT.plusSeconds(1), body("덮어쓸 정책"))))
@@ -90,7 +90,7 @@ class OntongCollectionTest {
         assertThat(jdbc.sql("SELECT raw_policy->>'plcyNm' FROM ontong_collection_items WHERE run_id = :id ORDER BY item_index")
                 .param("id", run).query(String.class).list()).containsExactly("첫 정책", "두 번째 정책", "마지막 정책");
         assertThat(store.pending(run)).isEmpty();
-        assertThat(catalog.list("", 1, 20, false, null, java.util.Set.of(), AT).total()).isEqualTo(3);
+        assertThat(catalog.list("", 1, 20, false, null, java.util.Set.of(), null, AT).total()).isEqualTo(3);
         verifyNoInteractions(client);
     }
 
@@ -100,7 +100,7 @@ class OntongCollectionTest {
         var run = UUID.randomUUID();
         when(client.fetch(anyString(), eq(1))).thenReturn(new OntongApiClient.Response(AT, body("정상 정책", "")));
         assertThatThrownBy(() -> service.fetch(run, 1)).hasMessage("ITEMS_REQUIRE_REPROCESSING");
-        assertThat(catalog.list("", 1, 20, false, null, java.util.Set.of(), AT).total()).isOne();
+        assertThat(catalog.list("", 1, 20, false, null, java.util.Set.of(), null, AT).total()).isOne();
         assertThat(store.pending(run)).containsExactly(1);
         assertThatThrownBy(() -> service.applyStored(run)).hasMessage("ITEMS_REQUIRE_REPROCESSING");
         assertThat(store.itemStatus(run)).anyMatch(value -> value.contains("INVALID_ITEM") && value.contains("시도 2"));
@@ -120,7 +120,7 @@ class OntongCollectionTest {
         assertThat(store.pending(run)).containsExactly(0, 1);
         assertThat(jdbc.sql("SELECT outcome FROM ontong_collection_items WHERE run_id = :id ORDER BY item_index")
                 .param("id", run).query(String.class).list()).containsExactly("INVALID_ITEM", "INVALID_ITEM", "APPLIED");
-        var policies = catalog.list("", 1, 20, false, null, java.util.Set.of(), AT);
+        var policies = catalog.list("", 1, 20, false, null, java.util.Set.of(), null, AT);
         assertThat(policies.total()).isOne();
         assertThat(policies.items().getFirst().title()).isEqualTo("정상 정책");
         verifyNoInteractions(client);
@@ -141,7 +141,7 @@ class OntongCollectionTest {
         jdbc.sql("CREATE TRIGGER reject_item_success BEFORE UPDATE ON ontong_collection_items FOR EACH ROW EXECUTE FUNCTION reject_item_success()").update();
         try {
             assertThatThrownBy(() -> service.fetch(run, 1)).hasMessage("ITEMS_REQUIRE_REPROCESSING");
-            assertThat(catalog.list("", 1, 20, false, null, java.util.Set.of(), AT).total()).isEqualTo(2);
+            assertThat(catalog.list("", 1, 20, false, null, java.util.Set.of(), null, AT).total()).isEqualTo(2);
             assertThat(store.pending(run)).containsExactly(1);
             assertThat(itemOutcome(run, 1)).isEqualTo("STORE_FAILED 1");
         } finally {
@@ -149,7 +149,7 @@ class OntongCollectionTest {
             jdbc.sql("DROP FUNCTION reject_item_success()").update();
         }
         service.applyStored(run);
-        assertThat(catalog.list("", 1, 20, false, null, java.util.Set.of(), AT).total()).isEqualTo(3);
+        assertThat(catalog.list("", 1, 20, false, null, java.util.Set.of(), null, AT).total()).isEqualTo(3);
         assertThat(jdbc.sql("SELECT count(*) FROM policy_revisions").query(Long.class).single()).isEqualTo(3);
         assertThat(itemOutcome(run, 1)).isEqualTo("APPLIED 2");
         verify(client, times(1)).fetch(anyString(), eq(1));

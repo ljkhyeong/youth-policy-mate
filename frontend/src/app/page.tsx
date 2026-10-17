@@ -13,7 +13,7 @@ export function generateMetadata() { return publicMetadata("/", siteName, siteDe
 const searchTopics = ["창업", "취업", "장학금", "대출"];
 
 export default async function HomePage() {
-  const [open, counts] = await Promise.all([loadPolicies("", 1, false, "OPEN", 4), loadCategoryCounts()]);
+  const [open, counts] = await Promise.all([loadPolicies({ recruitmentStatus: "OPEN", pageSize: 4 }), loadCategoryCounts()]);
   // 수를 불러오지 못하면 상황과 분야 이름만 표시한다.
   const countOf = (key: PolicyCategoryKey) => counts.status === "available" ? counts.data.items.find(item => item.category === key)?.count : undefined;
   const categoryName = (key: PolicyCategoryKey) => policyCategories.find(item => item.key === key)?.label ?? "";

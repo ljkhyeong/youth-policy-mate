@@ -1,10 +1,12 @@
 package kr.youthpolicymate.policy.catalog;
 
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import kr.youthpolicymate.config.ApiException;
+import kr.youthpolicymate.eligibility.SeoulDistrict;
 import kr.youthpolicymate.policy.RecruitmentStatus;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
@@ -40,16 +42,21 @@ public class PolicyCatalogController {
     }
 
     @GetMapping
-    @Operation(operationId = "listPolicies", summary = "정책 검색·분야(여러 개는 하나라도 해당)·질문 제공 여부·접수 상태 필터. 접수 중인 정책을 먼저, 마감 임박순으로 정렬")
+    @Operation(operationId = "listPolicies", summary = "정책 검색(단어를 모두 포함, 띄어쓰기 무시)·분야(여러 개는 하나라도 해당)·지역(자치구)·질문 제공 여부·접수 상태 필터. 접수 중인 정책을 먼저, 마감 임박순으로 정렬")
     @ApiResponse(responseCode = "400", content = @Content(schema = @Schema(implementation = PolicyApiError.class)))
     public PolicyListResponse list(@RequestParam(defaultValue = "") @Size(max = 80) String q,
                                    @RequestParam(defaultValue = "1") @Min(1) @Max(1000) int page,
                                    @RequestParam(defaultValue = "20") @Min(1) @Max(50) int pageSize,
                                    @RequestParam(defaultValue = "false") boolean questionsOnly,
                                    @RequestParam(required = false) RecruitmentStatus recruitmentStatus,
-                                   @RequestParam(required = false) java.util.List<PolicyCategory> category) {
+                                   @RequestParam(required = false) java.util.List<PolicyCategory> category,
+                                   @RequestParam(required = false) @Parameter(schema = @Schema(implementation = SeoulDistrict.class),
+                                           description = "서울 자치구 표시 이름(강남구 등). 공고 지역 코드에 그 자치구나 서울 전체 코드가 있거나 코드가 없는 정책만 보여준다. 공고 지역 기준이며 거주 자격 판정이 아니다. 빈 값은 전체, 상수 이름·목록 밖 값은 400")
+                                   String district) {
         var categories = category == null ? java.util.Set.<PolicyCategory>of() : java.util.Set.copyOf(category);
-        return store.list(q.strip(), page, pageSize, questionsOnly, recruitmentStatus, categories, clock.instant());
+        // 바인더의 enum 변환은 변환기가 실패해도 상수 이름(GANGNAM)으로 되돌아가므로, JSON과 같은 표시 이름만 직접 받는다. 빈 값은 전체다.
+        var selectedDistrict = district == null || district.isEmpty() ? null : SeoulDistrict.fromLabel(district).orElseThrow(ApiException::invalid);
+        return store.list(q.strip(), page, pageSize, questionsOnly, recruitmentStatus, categories, selectedDistrict, clock.instant());
     }
 
     @GetMapping("/category-counts")

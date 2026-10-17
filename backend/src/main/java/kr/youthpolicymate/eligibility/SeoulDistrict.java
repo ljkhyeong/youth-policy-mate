@@ -38,4 +38,10 @@ public enum SeoulDistrict {
     public String label() {
         return label;
     }
+
+    /** 쿼리 매개변수처럼 JSON 밖에서 받은 표시 이름을 찾는다. 상수 이름(GANGNAM)·목록 밖 값은 빈 Optional이다. */
+    public static java.util.Optional<SeoulDistrict> fromLabel(String label) {
+        for (var district : values()) if (district.label.equals(label)) return java.util.Optional.of(district);
+        return java.util.Optional.empty();
+    }
 }

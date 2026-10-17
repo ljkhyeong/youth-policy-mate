@@ -1,6 +1,7 @@
 package kr.youthpolicymate.policy.catalog;
 
 import kr.youthpolicymate.config.ApiException;
+import kr.youthpolicymate.eligibility.SeoulDistrict;
 import kr.youthpolicymate.policy.RecruitmentStatus;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
@@ -135,7 +136,7 @@ public class PolicyCatalogStore {
 
     @Transactional(readOnly = true, isolation = org.springframework.transaction.annotation.Isolation.REPEATABLE_READ)
     public PolicyListResponse list(String query, int page, int pageSize, boolean questionsOnly, RecruitmentStatus recruitmentStatus,
-                                   java.util.Set<PolicyCategory> categories, Instant now) {
+                                   java.util.Set<PolicyCategory> categories, SeoulDistrict district, Instant now) {
         // 정책번호마다 적용 버전은 하나(policy_rule_heads PK)이므로 키가 겹치지 않는다.
         var reviewed = rules.published().stream().filter(definition -> definition.appliesAt(now))
                 .collect(Collectors.toMap(PolicyRuleDefinition::policyNumber, PolicyRuleDefinition::contentHash));
@@ -147,6 +148,11 @@ public class PolicyCatalogStore {
         if (!categories.isEmpty()) {
             where += " AND " + categoryMatch("categories");
             parameters.put("categories", categories.stream().flatMap(category -> category.labels().stream()).toList());
+        }
+        if (district != null) {
+            where += " AND " + REGION_MATCH;
+            parameters.put("seoulCode", SeoulRegionCodes.SEOUL);
+            parameters.put("districtCode", SeoulRegionCodes.code(district));
         }
         var total = jdbc.sql("SELECT count(*) FROM policies p" + where).params(parameters).query(Long.class).single();
         var items = jdbc.sql("""
@@ -194,6 +200,14 @@ public class PolicyCatalogStore {
                 + " WHERE btrim(part.label, ' ' || chr(9) || chr(10) || chr(13) || chr(160) || chr(12288)) IN (:" + parameter + "))";
     }
 
+    // 지역 필터는 공고 지역 코드(content.regionCodes) 기준이다. 선택한 자치구 코드나 서울 전체 코드가 있으면 포함하고,
+    // 코드가 없는 정책은 지역 미확인으로 보고 포함한다. 서울 코드는 있는데 그 자치구가 없거나 서울 코드가 전혀 없으면 제외한다.
+    // `?` 연산자는 JDBC 자리표시자와 충돌하므로 `@>`를 쓴다. 분야별 수와 내 조건 결과에는 적용하지 않는다.
+    private static final String REGION_MATCH = """
+            (COALESCE(jsonb_array_length(p.content->'regionCodes'), 0) = 0
+                 OR p.content->'regionCodes' @> jsonb_build_array(CAST(:seoulCode AS text))
+                 OR p.content->'regionCodes' @> jsonb_build_array(CAST(:districtCode AS text)))""";
+
     // 공개 목록은 접수 중인 정책을 마감 임박순으로 먼저 보여준다. 검색용 모집 기간과 같은 기준이다.
     private static final String AVAILABILITY_ORDER = """
             CASE WHEN p.recruitment_kind = 'PERIOD' AND p.recruitment_opens_at <= :now AND p.recruitment_closes_at > :now THEN 0
@@ -203,12 +217,24 @@ public class PolicyCatalogStore {
             CASE WHEN p.recruitment_kind = 'PERIOD' AND p.recruitment_opens_at <= :now AND p.recruitment_closes_at > :now
                  THEN p.recruitment_closes_at END""";
 
-    // 목록과 조건 확인이 같은 검색어·접수 상태 조건을 쓴다. strpos는 검색어의 %·_를 패턴으로 해석하지 않는다.
+    // 검색은 제목·설명·운영 기관을 대상으로 한다. 공고 제목은 '취업지원'처럼 붙여 쓰고 사용자는 '취업 지원'처럼 띄어 쓰는 일이 많아,
+    // 비교 대상에서 공백(분야 필터와 같은 일반·탭·줄바꿈·NBSP·전각 공백)을 모두 빼고 검색어도 같은 공백으로 나눈 단어마다 비교한다.
+    private static final String SEARCH_SPACES = "' ' || chr(9) || chr(10) || chr(13) || chr(160) || chr(12288)";
+    private static final String SEARCH_TEXT = "translate(lower((p.content->>'title') || ' ' || (p.content->>'description') || ' ' || (p.content->>'organization')), "
+            + SEARCH_SPACES + ", '')";
+    private static final java.util.regex.Pattern SEARCH_SPLIT = java.util.regex.Pattern.compile("[ \\t\\n\\r\\u00a0\\u3000]+");
+
+    // 목록과 조건 확인이 같은 검색어·접수 상태 조건을 쓴다. 나눈 단어가 모두 들어 있는 정책만 남기며,
+    // strpos는 검색어의 %·_를 패턴으로 해석하지 않는다. 검색어 길이는 컨트롤러가 80자로 제한한다.
     private static String where(String query, RecruitmentStatus status, Instant now, Map<String, Object> parameters) {
-        parameters.put("query", query);
         parameters.put("now", now.atOffset(ZoneOffset.UTC));
-        return " WHERE p.current_revision > 0 AND (:query = '' OR strpos(lower((p.content->>'title') || ' ' || (p.content->>'description')), lower(:query)) > 0)"
-                + recruitmentFilter(status, parameters);
+        var where = new StringBuilder(" WHERE p.current_revision > 0");
+        var terms = SEARCH_SPLIT.splitAsStream(query).filter(term -> !term.isEmpty()).toList();
+        for (int i = 0; i < terms.size(); i++) {
+            where.append(" AND strpos(").append(SEARCH_TEXT).append(", lower(:term").append(i).append(")) > 0");
+            parameters.put("term" + i, terms.get(i));
+        }
+        return where + recruitmentFilter(status, parameters);
     }
 
     private static String recruitmentFilter(RecruitmentStatus status, Map<String, Object> parameters) {

@@ -14,6 +14,10 @@ const policy: components["schemas"]["PolicySummary"] = {
   recruitment: { status: "UNKNOWN", explanation: "신청기간을 확인해주세요.", evaluatedAt: "2026-09-06T00:00:00Z", deadlineOnSeoul: null, daysUntilDeadline: null },
 };
 
+// 화면이 서버에 보내는 조회 조건이다. 고르지 않은 필터는 빈 값으로 함께 전달된다.
+const listQuery = (overrides: NonNullable<Parameters<typeof loadPolicies>[0]> = {}) =>
+  ({ query: "", page: 1, questionsOnly: false, recruitmentStatus: "", categories: [], district: "", pageSize: 20, ...overrides });
+
 describe("정책 목록의 공통요건 질문 탐색", () => {
   it("운영 목록은 페이지별 대표 주소를 쓰고 검색어·필터는 검색 노출에서 제외한다", async () => {
     vi.stubEnv("NODE_ENV", "production"); vi.stubEnv("PUBLIC_APP_URL", "https://policy.example.test");
@@ -40,7 +44,7 @@ describe("정책 목록의 공통요건 질문 탐색", () => {
   it("검색·페이지 이동에 필터를 유지하고 필터 전환은 첫 페이지로 돌아간다", async () => {
     vi.mocked(loadPolicies).mockResolvedValue({ status: "available", data: { items: [policy], page: 2, pageSize: 20, total: 41, hasNext: true } });
     const html = renderToStaticMarkup(await PoliciesPage({ searchParams: Promise.resolve({ q: "시험&지원", page: "2", questionsOnly: "true", recruitmentStatus: "OPEN" }) }));
-    expect(loadPolicies).toHaveBeenCalledWith("시험&지원", 2, true, "OPEN", 20, []);
+    expect(loadPolicies).toHaveBeenCalledWith(listQuery({ query: "시험&지원", page: 2, questionsOnly: true, recruitmentStatus: "OPEN" }));
     expect(html).toContain('type="hidden" name="questionsOnly" value="true"');
     const query = encodeURIComponent("시험&지원");
     expect(html).toContain(`href="/policies?q=${query}&amp;page=3&amp;questionsOnly=true&amp;recruitmentStatus=OPEN"`);
@@ -55,7 +59,7 @@ describe("정책 목록의 공통요건 질문 탐색", () => {
   it("질문이 없는 정책에는 질문 이동을 표시하지 않고 전체 조회를 유지한다", async () => {
     vi.mocked(loadPolicies).mockResolvedValue({ status: "available", data: { items: [{ ...policy, questionnaireAvailable: false }], page: 1, pageSize: 20, total: 1, hasNext: false } });
     const html = renderToStaticMarkup(await PoliciesPage({ searchParams: Promise.resolve({}) }));
-    expect(loadPolicies).toHaveBeenCalledWith("", 1, false, "", 20, []);
+    expect(loadPolicies).toHaveBeenCalledWith(listQuery());
     expect(html).toContain('href="/policies/123"');
     expect(html).not.toContain('href="/policies/123#policy-questions"');
     expect(html).not.toContain('type="hidden" name="questionsOnly"');
@@ -82,7 +86,7 @@ describe("정책 목록의 공통요건 질문 탐색", () => {
     const html = renderToStaticMarkup(await PoliciesPage({ searchParams: Promise.resolve({ q: "지원", questionsOnly: "true", recruitmentStatus: "OPEN", category: ["HOUSING", "JOB", "UNKNOWN_CATEGORY"] }) }));
     const base = "/policies?q=%EC%A7%80%EC%9B%90&amp;page=1&amp;questionsOnly=true&amp;recruitmentStatus=OPEN";
     // 화면 순서(일자리, 주거…)로 정리해 다음 페이지에도 유지한다.
-    expect(loadPolicies).toHaveBeenCalledWith("지원", 1, true, "OPEN", 20, ["JOB", "HOUSING"]);
+    expect(loadPolicies).toHaveBeenCalledWith(listQuery({ query: "지원", questionsOnly: true, recruitmentStatus: "OPEN", categories: ["JOB", "HOUSING"] }));
     expect(html).toContain('href="/policies?q=%EC%A7%80%EC%9B%90&amp;page=2&amp;questionsOnly=true&amp;recruitmentStatus=OPEN&amp;category=JOB&amp;category=HOUSING"');
     expect(html).toContain('type="hidden" name="category" value="JOB"');
     expect(html).toContain('type="hidden" name="category" value="HOUSING"');
@@ -94,12 +98,40 @@ describe("정책 목록의 공통요건 질문 탐색", () => {
     expect(html).toContain(">마감 임박순<");
     vi.mocked(loadPolicies).mockClear();
     const unfiltered = renderToStaticMarkup(await PoliciesPage({ searchParams: Promise.resolve({ category: "UNKNOWN_CATEGORY" }) }));
-    expect(loadPolicies).toHaveBeenCalledWith("", 1, false, "", 20, []);
+    expect(loadPolicies).toHaveBeenCalledWith(listQuery());
     expect(unfiltered).toContain('data-selected="true" href="/policies?q=&amp;page=1">전체 분야<span class="sr-only"> 선택됨</span>');
     expect(unfiltered).toContain("접수 중인 정책부터 마감 임박순");
     const categoryOnly = renderToStaticMarkup(await PoliciesPage({ searchParams: Promise.resolve({ category: ["EDUCATION", "JOB"] }) }));
     expect(categoryOnly).toContain('<p role="status">일자리, 교육·직업훈련 <strong>');
     const closed = renderToStaticMarkup(await PoliciesPage({ searchParams: Promise.resolve({ recruitmentStatus: "CLOSED" }) }));
     expect(closed).not.toContain("policy-order-note");
+  });
+
+  it("지역 필터는 서울 자치구 하나를 골라 다른 필터와 함께 유지하고 공고 지역 기준임을 안내한다", async () => {
+    vi.mocked(loadPolicies).mockResolvedValue({ status: "available", data: { items: [policy], page: 1, pageSize: 20, total: 3, hasNext: true } });
+    const html = renderToStaticMarkup(await PoliciesPage({ searchParams: Promise.resolve({ q: "지원", district: "강남구", category: "JOB", recruitmentStatus: "OPEN" }) }));
+    expect(loadPolicies).toHaveBeenCalledWith(listQuery({ query: "지원", recruitmentStatus: "OPEN", categories: ["JOB"], district: "강남구" }));
+    expect(html).toContain('<option value="">전체 지역</option>');
+    expect(html.match(/<option value="[^"]+구"/g)).toHaveLength(25);
+    expect(html).toContain('value="강남구" selected=""');
+    expect(html).toContain(`href="/policies?q=%EC%A7%80%EC%9B%90&amp;page=2&amp;recruitmentStatus=OPEN&amp;district=${encodeURIComponent("강남구")}&amp;category=JOB"`);
+    expect(html).toContain("‘지원’ 검색 결과 · 일자리 · 강남구 · 접수 기간");
+    expect(html).toContain("선택한 자치구가 공고 지역에 포함된 정책을 보여줘요");
+    expect(html).toContain("검색·필터 초기화");
+    // 지역 코드 이름·목록 밖 값은 무시하고 전체 지역으로 조회한다.
+    vi.mocked(loadPolicies).mockClear();
+    const ignored = renderToStaticMarkup(await PoliciesPage({ searchParams: Promise.resolve({ district: "GANGNAM" }) }));
+    expect(loadPolicies).toHaveBeenCalledWith(listQuery());
+    expect(ignored).not.toContain("공고 지역에 포함된");
+    expect(ignored).toContain('value="" selected=""');
+    // 지역만 고른 빈 결과는 지역 때문임을 안내하고, 지역 필터 결과는 검색에 노출하지 않는다.
+    vi.mocked(loadPolicies).mockResolvedValue({ status: "available", data: { items: [], page: 1, pageSize: 20, total: 0, hasNext: false } });
+    const empty = renderToStaticMarkup(await PoliciesPage({ searchParams: Promise.resolve({ district: "은평구" }) }));
+    expect(empty).toContain('<p role="status">은평구 <strong>0건</strong>');
+    expect(empty).toContain("선택한 지역이 포함된 정책이 없어요");
+    vi.stubEnv("NODE_ENV", "production"); vi.stubEnv("PUBLIC_APP_URL", "https://policy.example.test");
+    const metadata = await generateMetadata({ searchParams: Promise.resolve({ district: "은평구" }) });
+    expect(metadata.robots).toEqual({ index: false, follow: true });
+    expect(metadata.alternates).toBeUndefined();
   });
 });

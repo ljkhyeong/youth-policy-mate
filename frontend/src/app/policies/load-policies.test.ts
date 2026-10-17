@@ -7,7 +7,7 @@ describe("공개 정책 조회", () => {
   it("검색어는 고정 경로의 인수로 전달하고 공개 응답을 재사용하지 않는다", async () => {
     const fetchMock = vi.fn(async () => Response.json({ items: [], page: 2, pageSize: 20, total: 0, hasNext: false }));
     vi.stubGlobal("fetch", fetchMock);
-    const result = await loadPolicies("장학금&취업", 2, true, "OPEN", 20, ["JOB", "EDUCATION"]);
+    const result = await loadPolicies({ query: "장학금&취업", page: 2, questionsOnly: true, recruitmentStatus: "OPEN", categories: ["JOB", "EDUCATION"], district: "강남구" });
     const [address, options] = fetchMock.mock.calls[0] as unknown as [URL, RequestInit];
     expect(address.pathname).toBe("/api/v1/policies");
     expect(address.searchParams.get("q")).toBe("장학금&취업");
@@ -15,13 +15,18 @@ describe("공개 정책 조회", () => {
     expect(address.searchParams.get("questionsOnly")).toBe("true");
     expect(address.searchParams.get("recruitmentStatus")).toBe("OPEN");
     expect(address.searchParams.getAll("category")).toEqual(["JOB", "EDUCATION"]);
+    expect(address.searchParams.get("district")).toBe("강남구");
     expect(options.cache).toBe("no-store");
     expect(result.status).toBe("available");
+    // 고르지 않은 필터는 보내지 않고 첫 페이지 20건이 기본이다.
+    await loadPolicies();
+    const [plain] = fetchMock.mock.calls[1] as unknown as [URL];
+    expect(plain.search).toBe("?q=&page=1&pageSize=20");
   });
 
   it("서버 장애를 빈 검색 결과나 정책 삭제로 바꾸지 않는다", async () => {
     vi.stubGlobal("fetch", vi.fn(async () => new Response("내부 오류", { status: 503 })));
-    expect(await loadPolicies("", 1)).toEqual({ status: "unavailable" });
+    expect(await loadPolicies()).toEqual({ status: "unavailable" });
     expect(await loadPolicy("20260903005400113371")).toEqual({ status: "unavailable" });
   });
 

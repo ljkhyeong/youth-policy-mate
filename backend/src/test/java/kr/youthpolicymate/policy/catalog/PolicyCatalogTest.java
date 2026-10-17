@@ -104,7 +104,7 @@ class PolicyCatalogTest {
         assertThat(evaluated.checks().getFirst().outcome()).isEqualTo(kr.youthpolicymate.eligibility.ConditionOutcome.NOT_MET);
         assertThat(compared.items().getFirst().checks().getFirst().outcome()).isEqualTo(evaluated.checks().getFirst().outcome());
         assertThat(compared.items().getFirst().ruleVersion()).isEqualTo(next.ruleVersion());
-        assertThat(store.list("", 1, 20, true, null, java.util.Set.of(), clock.instant()).total()).isOne();
+        assertThat(store.list("", 1, 20, true, null, java.util.Set.of(), null, clock.instant()).total()).isOne();
         assertThatThrownBy(() -> rules.publish(id, next.ruleVersion(), "rule-test")).hasMessageContaining("이미 적용");
         assertThatThrownBy(() -> jdbc.sql("UPDATE policy_rule_versions SET definition = '{}'::jsonb WHERE id = :id").param("id", id).update())
                 .isInstanceOf(org.springframework.dao.DataAccessException.class);
@@ -138,7 +138,7 @@ class PolicyCatalogTest {
         assertThatThrownBy(() -> questions.prefill(EXAM_FEE, new PolicyQuestions.PrefillRequest(1, current.ruleVersion(), java.time.LocalDate.parse("2000-01-01"))))
                 .isInstanceOf(ApiException.class).hasFieldOrPropertyWithValue("status", HttpStatus.CONFLICT);
         assertThatThrownBy(() -> rules.publish(ids.getFirst(), current.ruleVersion(), "rule-test")).hasMessageContaining("원문이 바뀌");
-        assertThat(store.list("", 1, 20, true, null, java.util.Set.of(), AT).total()).isZero();
+        assertThat(store.list("", 1, 20, true, null, java.util.Set.of(), null, AT).total()).isZero();
     }
 
     @Test @DisplayName("출생일 답변 API는 로그인 없이 사용하고 미래 날짜·오래된 버전을 거부하며 저장하지 않는다")
@@ -191,7 +191,7 @@ class PolicyCatalogTest {
             }
         }
         assertThat(prefills).isEqualTo(13);
-        assertThat(store.list("", 1, 20, true, null, java.util.Set.of(), AT).total()).isEqualTo(15);
+        assertThat(store.list("", 1, 20, true, null, java.util.Set.of(), null, AT).total()).isEqualTo(15);
         // 기본 조건의 연령 항목도 같은 규칙 데이터로 비교하고, 연령 연결이 없는 규칙은 판정하지 않는다.
         var compared = checks.check(new BasicConditions(birth, null, null), 1, "", PolicyCheckResponse.Sort.RECENT, null).items();
         assertThat(compared).hasSize(DEFINITIONS.size()).allSatisfy(checked -> {
@@ -751,7 +751,7 @@ class PolicyCatalogTest {
         var seen = new java.util.HashSet<String>();
         for (int page = 1; page <= 3; page++) {
             org.mockito.Mockito.clearInvocations(jdbc);
-            var result = store.list("필터 지원", page, 10, false, kr.youthpolicymate.policy.RecruitmentStatus.OPEN, java.util.Set.of(), AT);
+            var result = store.list("필터 지원", page, 10, false, kr.youthpolicymate.policy.RecruitmentStatus.OPEN, java.util.Set.of(), null, AT);
             org.mockito.Mockito.verify(jdbc, org.mockito.Mockito.times(3)).sql(org.mockito.ArgumentMatchers.anyString());
             assertThat(result.total()).isEqualTo(24);
             assertThat(result.hasNext()).isEqualTo(page < 3);
@@ -786,20 +786,20 @@ class PolicyCatalogTest {
         for (var time : List.of("2026-09-05T14:59:59.999999Z", "2026-09-05T15:00:00Z", "2026-09-07T14:59:59.999999Z", "2026-09-07T15:00:00Z")) {
             var now = Instant.parse(time);
             var expected = PolicyRecruitment.from(NUMBER, "", item, now).status();
-            assertThat(store.list("", 1, 20, false, expected, java.util.Set.of(), now).items()).singleElement()
+            assertThat(store.list("", 1, 20, false, expected, java.util.Set.of(), null, now).items()).singleElement()
                     .satisfies(policy -> assertThat(policy.recruitment().status()).isEqualTo(expected));
         }
         saveReviewed(MOVING_FEE, "이사비", hash(MOVING_FEE));
         for (var now : List.of(rule(MOVING_FEE).periodNotice().opensAt().minusNanos(1000), rule(MOVING_FEE).periodNotice().opensAt(),
                 rule(MOVING_FEE).periodNotice().closesAt().minusNanos(1000), rule(MOVING_FEE).periodNotice().closesAt())) {
             var expected = PolicyRecruitment.from(MOVING_FEE, hash(MOVING_FEE), item, now).status();
-            assertThat(store.list("이사비", 1, 20, true, expected, java.util.Set.of(), now).items()).singleElement()
+            assertThat(store.list("이사비", 1, 20, true, expected, java.util.Set.of(), null, now).items()).singleElement()
                     .satisfies(policy -> assertThat(policy.recruitment().status()).isEqualTo(expected));
         }
         var current = store.find(MOVING_FEE).orElseThrow();
         importAt(MOVING_FEE, current.content(), "{}", AT.plusSeconds(1), "changed-window", "changed-window");
-        assertThat(store.list("이사비", 1, 20, false, kr.youthpolicymate.policy.RecruitmentStatus.UNKNOWN, java.util.Set.of(), AT).total()).isOne();
-        assertThat(store.list("이사비", 1, 20, false, kr.youthpolicymate.policy.RecruitmentStatus.CLOSED, java.util.Set.of(), AT).total()).isZero();
+        assertThat(store.list("이사비", 1, 20, false, kr.youthpolicymate.policy.RecruitmentStatus.UNKNOWN, java.util.Set.of(), null, AT).total()).isOne();
+        assertThat(store.list("이사비", 1, 20, false, kr.youthpolicymate.policy.RecruitmentStatus.CLOSED, java.util.Set.of(), null, AT).total()).isZero();
     }
 
     @Test @DisplayName("공개 목록은 분야로 좁히고 접수 중인 정책을 마감 임박순으로 먼저 보여준다")
@@ -815,10 +815,10 @@ class PolicyCatalogTest {
         item.put("plcyNo", "988").put("lclsfNm", "일자리").put("aplyYmd", "20261001 ~ 20261031"); save("before-later", AT.plusSeconds(8));
 
         // 마감 임박순은 접수 중에만 적용하고 접수 전은 최근 수집순이다.
-        var numbers = store.list("", 1, 20, false, null, java.util.Set.of(), AT).items().stream().map(PolicySummary::policyNumber).toList();
+        var numbers = store.list("", 1, 20, false, null, java.util.Set.of(), null, AT).items().stream().map(PolicySummary::policyNumber).toList();
         assertThat(numbers).containsSubsequence("986", "984", "982", "988", "985", "983", "981");
-        assertThat(store.list("", 1, 20, false, null, java.util.Set.of(PolicyCategory.JOB), AT).total()).isEqualTo(6);
-        assertThat(store.list("", 1, 20, false, kr.youthpolicymate.policy.RecruitmentStatus.OPEN, java.util.Set.of(PolicyCategory.JOB), AT).items())
+        assertThat(store.list("", 1, 20, false, null, java.util.Set.of(PolicyCategory.JOB), null, AT).total()).isEqualTo(6);
+        assertThat(store.list("", 1, 20, false, kr.youthpolicymate.policy.RecruitmentStatus.OPEN, java.util.Set.of(PolicyCategory.JOB), null, AT).items())
                 .extracting(PolicySummary::policyNumber).containsExactly("984", "982");
         mvc.perform(get("/api/v1/policies").param("category", "FINANCE")).andExpect(status().isOk())
                 .andExpect(jsonPath("$.total").value(2)).andExpect(jsonPath("$.items[0].policyNumber").value("986"))
@@ -849,7 +849,7 @@ class PolicyCatalogTest {
                 .andExpect(jsonPath("$.items[*].count").value(org.hamcrest.Matchers.contains(3, 2, 1, 3, 1)));
         // 홈 상황 항목의 수와 그 분야 하나만 고른 목록의 전체 건수가 같아야 한다.
         for (var count : store.categoryCounts().items()) {
-            assertThat(store.list("", 1, 20, false, null, java.util.Set.of(count.category()), AT).total()).as(count.category().name()).isEqualTo(count.count());
+            assertThat(store.list("", 1, 20, false, null, java.util.Set.of(count.category()), null, AT).total()).as(count.category().name()).isEqualTo(count.count());
         }
         mvc.perform(get("/api/v1/policies").param("category", "HOUSING")).andExpect(status().isOk())
                 .andExpect(jsonPath("$.items[*].policyNumber").value(org.hamcrest.Matchers.contains("999", "995")))
@@ -858,6 +858,56 @@ class PolicyCatalogTest {
         mvc.perform(get("/api/v1/policies").param("category", "JOB", "HOUSING")).andExpect(status().isOk())
                 .andExpect(jsonPath("$.total").value(4))
                 .andExpect(jsonPath("$.items[*].policyNumber").value(org.hamcrest.Matchers.containsInAnyOrder("991", "992", "995", "999")));
+    }
+
+    @Test @DisplayName("지역 필터는 선택한 자치구 코드가 공고 지역에 있는 정책을 보여주고 코드가 없거나 서울 전체인 정책을 유지한다")
+    void filtersPoliciesByDistrictRegionCodes() throws Exception {
+        // zipCd는 공고 지역 코드다. 거주 자격이 아니므로 분야별 수와 내 조건 결과에는 적용하지 않는다.
+        item.put("plcyNo", "971").put("zipCd", "11110,11140,11170,11200,11215,11230,11260,11290,11305,11320,11350,11380,11410,11440,11470,"
+                + "11500,11530,11545,11560,11590,11620,11650,11680,11710,11740,26110"); save("nationwide", AT.plusSeconds(1));
+        item.put("plcyNo", "972").put("zipCd", "11680"); save("gangnam-only", AT.plusSeconds(2));
+        item.put("plcyNo", "973").put("zipCd", "11380, 11470"); save("eunpyeong-yangcheon", AT.plusSeconds(3));
+        item.put("plcyNo", "974").put("zipCd", ""); save("no-region", AT.plusSeconds(4));
+        item.put("plcyNo", "975").put("zipCd", "11000"); save("seoul-city", AT.plusSeconds(5));
+        item.put("plcyNo", "976").put("zipCd", "26110,26140"); save("busan-only", AT.plusSeconds(6));
+        item.put("plcyNo", "977").put("zipCd", "11000,11380"); save("seoul-city-and-eunpyeong", AT.plusSeconds(7));
+
+        mvc.perform(get("/api/v1/policies").param("district", "강남구")).andExpect(status().isOk())
+                .andExpect(jsonPath("$.total").value(5))
+                .andExpect(jsonPath("$.items[*].policyNumber").value(org.hamcrest.Matchers.containsInAnyOrder("971", "972", "974", "975", "977")));
+        // 전체 건수에 먼저 적용한 뒤 페이지를 나누고 검색어·접수 상태와 AND로 묶인다.
+        mvc.perform(get("/api/v1/policies").param("district", "은평구").param("pageSize", "1").param("page", "2")).andExpect(status().isOk())
+                .andExpect(jsonPath("$.total").value(5)).andExpect(jsonPath("$.items.length()").value(1));
+        mvc.perform(get("/api/v1/policies").param("district", "은평구").param("recruitmentStatus", "CLOSED")).andExpect(jsonPath("$.total").value(0));
+        assertThat(store.list("", 1, 20, false, null, java.util.Set.of(), kr.youthpolicymate.eligibility.SeoulDistrict.YANGCHEON, AT).items())
+                .extracting(PolicySummary::policyNumber).containsExactlyInAnyOrder("971", "973", "974", "975", "977");
+        // 빈 값은 전체이고 상수 이름·목록 밖 값은 400이다. 바인더의 enum 변환은 상수 이름을 허용하므로 컨트롤러가 표시 이름만 받는다.
+        mvc.perform(get("/api/v1/policies").param("district", "")).andExpect(status().isOk()).andExpect(jsonPath("$.total").value(7));
+        mvc.perform(get("/api/v1/policies").param("district", "GANGNAM")).andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("INVALID_REQUEST"));
+        mvc.perform(get("/api/v1/policies").param("district", "부산")).andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("INVALID_REQUEST"));
+        mvc.perform(get("/api/v1/policies/category-counts")).andExpect(status().isOk()).andExpect(jsonPath("$.total").value(7));
+    }
+
+    @Test @DisplayName("검색어는 띄어쓰기 차이를 무시하고 나눈 단어가 모두 들어 있는 정책을 제목·설명·운영 기관에서 찾는다")
+    void searchesTermsAcrossSpacing() throws Exception {
+        item.put("plcyNo", "961").put("plcyNm", "청년 미래이음 대출").put("plcyExplnCn", "저금리 생활자금").put("sprvsnInstCdNm", "서민금융진흥원");
+        save("loan", AT.plusSeconds(1));
+        item.put("plcyNo", "962").put("plcyNm", "국민취업지원제도").put("plcyExplnCn", "구직 활동 지원").put("sprvsnInstCdNm", "고용노동부");
+        save("employment", AT.plusSeconds(2));
+
+        for (var query : List.of("청년미래이음", "미래이음 청년", "서민금융", "대출\u3000생활자금", "대출\u00a0청년")) {
+            mvc.perform(get("/api/v1/policies").param("q", query)).andExpect(status().isOk())
+                    .andExpect(jsonPath("$.items[*].policyNumber").value(org.hamcrest.Matchers.contains("961")));
+        }
+        mvc.perform(get("/api/v1/policies").param("q", "취업 지원")).andExpect(status().isOk())
+                .andExpect(jsonPath("$.items[*].policyNumber").value(org.hamcrest.Matchers.contains("962")));
+        // 단어가 서로 다른 정책에 흩어져 있으면 찾지 않고, 공백만 있는 검색어는 전체이며, 내 조건 결과도 같은 검색을 쓴다.
+        mvc.perform(get("/api/v1/policies").param("q", "대출 고용노동부")).andExpect(status().isOk()).andExpect(jsonPath("$.total").value(0));
+        mvc.perform(get("/api/v1/policies").param("q", "\u00a0 \u3000")).andExpect(status().isOk()).andExpect(jsonPath("$.total").value(2));
+        mvc.perform(post("/api/v1/policies/checks").param("q", "취업 지원").contentType("application/json").content("{}"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.total").value(1)).andExpect(jsonPath("$.items[0].policyNumber").value("962"));
     }
 
     private String source(String number) {

@@ -565,7 +565,7 @@ export interface paths {
             readonly path?: never;
             readonly cookie?: never;
         };
-        /** 정책 검색·분야(여러 개는 하나라도 해당)·질문 제공 여부·접수 상태 필터. 접수 중인 정책을 먼저, 마감 임박순으로 정렬 */
+        /** 정책 검색(단어를 모두 포함, 띄어쓰기 무시)·분야(여러 개는 하나라도 해당)·지역(자치구)·질문 제공 여부·접수 상태 필터. 접수 중인 정책을 먼저, 마감 임박순으로 정렬 */
         readonly get: operations["listPolicies"];
         readonly put?: never;
         readonly post?: never;
@@ -3601,6 +3601,8 @@ export interface operations {
                 readonly questionsOnly?: boolean;
                 readonly recruitmentStatus?: "BEFORE_OPENING" | "OPEN" | "CLOSED" | "ROLLING" | "UNKNOWN";
                 readonly category?: readonly ("JOB" | "HOUSING" | "EDUCATION" | "FINANCE" | "PARTICIPATION")[];
+                /** @description 서울 자치구 표시 이름(강남구 등). 공고 지역 코드에 그 자치구나 서울 전체 코드가 있거나 코드가 없는 정책만 보여준다. 공고 지역 기준이며 거주 자격 판정이 아니다. 빈 값은 전체, 상수 이름·목록 밖 값은 400 */
+                readonly district?: "강남구" | "강동구" | "강북구" | "강서구" | "관악구" | "광진구" | "구로구" | "금천구" | "노원구" | "도봉구" | "동대문구" | "동작구" | "마포구" | "서대문구" | "서초구" | "성동구" | "성북구" | "송파구" | "양천구" | "영등포구" | "용산구" | "은평구" | "종로구" | "중구" | "중랑구";
             };
             readonly header?: never;
             readonly path?: never;

@@ -1,5 +1,6 @@
 import type { RecruitmentFilter } from "@/features/policies/policy-recruitment";
 import type { PolicyCategoryKey } from "@/features/policies/policy-category";
+import type { SeoulDistrictName } from "@/features/policies/seoul-district";
 import type { components } from "@/generated/policy-api";
 
 type PolicyList = components["schemas"]["PolicyListResponse"];
@@ -23,12 +24,17 @@ async function load<T>(path: string): Promise<Loaded<T>> {
   }
 }
 
-export function loadPolicies(query: string, page: number, questionsOnly = false, recruitmentStatus: RecruitmentFilter = "", pageSize = 20,
-  categories: readonly PolicyCategoryKey[] = []) {
+export type PolicyListQuery = {
+  query?: string; page?: number; pageSize?: number; questionsOnly?: boolean; recruitmentStatus?: RecruitmentFilter;
+  categories?: readonly PolicyCategoryKey[]; district?: SeoulDistrictName | "";
+};
+
+export function loadPolicies({ query = "", page = 1, pageSize = 20, questionsOnly = false, recruitmentStatus = "", categories = [], district = "" }: PolicyListQuery = {}) {
   const search = new URLSearchParams({ q: query, page: String(page), pageSize: String(pageSize) });
   for (const category of categories) search.append("category", category);
   if (questionsOnly) search.set("questionsOnly", "true");
   if (recruitmentStatus) search.set("recruitmentStatus", recruitmentStatus);
+  if (district) search.set("district", district);
   return load<PolicyList>(`/api/v1/policies?${search}`);
 }
 

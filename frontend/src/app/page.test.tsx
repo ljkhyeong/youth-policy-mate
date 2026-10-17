@@ -19,7 +19,7 @@ describe("홈의 접수 중인 정책", () => {
   it("접수 기간인 실제 정책을 최대 4건 보여주고 전체 접수 중 목록으로 연결한다", async () => {
     vi.mocked(loadPolicies).mockResolvedValue({ status: "available", data: { items: [policy], page: 1, pageSize: 4, total: 5, hasNext: true } });
     const html = renderToStaticMarkup(await HomePage());
-    expect(loadPolicies).toHaveBeenCalledWith("", 1, false, "OPEN", 4);
+    expect(loadPolicies).toHaveBeenCalledWith({ recruitmentStatus: "OPEN", pageSize: 4 });
     expect(html).toContain("지금 접수 중인 정책");
     expect(html).toContain('href="/policies/123"');
     expect(html).toContain("2026.07.07 ~ 2026.12.31");

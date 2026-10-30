@@ -88,7 +88,8 @@ export default async function PoliciesPage({ searchParams }: Props) {
           <select key={recruitmentStatus} id="policy-recruitment-status" name="recruitmentStatus" form="policy-search-form"
             className="condition-policy-sort" defaultValue={recruitmentStatus}><RecruitmentOptions /></select>
         </div>
-        <button type="submit" className="button-primary">검색</button>
+        {/* 목록을 불러오지 못한 화면의 대표 행동은 다시 불러오기라 검색은 보조 버튼으로 낮춘다. */}
+        <button type="submit" className={result.status === "available" ? "button-primary" : "button-secondary"}>검색</button>
       </form>
       {/* 줄 앞 이름표는 눈으로 보는 안내이고, 화면 낭독기는 각 nav의 이름으로 읽는다. */}
       <div className="policy-filter-rows">

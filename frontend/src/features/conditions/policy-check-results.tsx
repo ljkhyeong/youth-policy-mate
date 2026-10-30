@@ -47,7 +47,8 @@ export function PolicyCheckResults({ input }: { input: BasicConditions }) {
       <label className="sr-only" htmlFor="condition-policy-query">정책명·내용 검색</label>
       <input id="condition-policy-query" type="search" maxLength={80} value={draftQuery}
         onChange={event => setDraftQuery(event.target.value)} placeholder="정책명이나 내용을 검색하세요" />
-      <button type="submit" className="button-primary">검색</button>
+      {/* 내 조건 화면의 기본 버튼은 조건 반영 하나다. */}
+      <button type="submit" className="button-secondary">검색</button>
     </form>
     <div className="condition-filters">
       <label className="condition-filter" htmlFor="condition-recruitment-status">접수 상태

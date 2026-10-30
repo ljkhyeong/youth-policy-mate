@@ -374,16 +374,26 @@ mark {
   /* 진행 중이거나 지금 누를 수 없는 버튼이 누를 수 있는 버튼처럼 보이지 않게 한다. */
   :is(.button-primary, .button-secondary, .text-button):disabled { cursor: not-allowed; opacity: 0.5; }
 
+  /* 끝의 ↗·→ 기호가 글자에 붙지 않게 간격을 둔다. 화면 낭독용 문구는 절대 위치라 간격을 만들지 않는다. */
   .text-link {
     display: inline-flex;
     min-height: 44px;
     align-items: center;
+    gap: 4px;
     margin-top: 7px;
     color: var(--pen);
     font-size: 14px;
     font-weight: 700;
     text-decoration: underline;
     text-underline-offset: 4px;
+  }
+
+  /* 안내 문장 속 링크. 줄 높이를 바꾸지 않고 볼펜 밑줄로 링크임을 드러낸다. */
+  .inline-link {
+    color: var(--pen);
+    font-weight: 700;
+    text-decoration: underline;
+    text-underline-offset: 3px;
   }
 
   .conditions-main {
@@ -559,11 +569,10 @@ mark {
     padding-bottom: 72px;
   }
 
-  /* 로딩·빈 결과·오류 안내는 상자로 감싸지 않고 위쪽 굵은 선으로 구역을 나눈다. */
+  /* 로딩·빈 결과·오류 안내는 상자로 감싸지 않고 위쪽 굵은 선으로 구역을 나눈다. 선은 열 폭 전체에 긋고 글 폭은 안쪽에서 제한한다. */
   .state-panel {
     width: 100%;
     min-width: 0;
-    max-width: 42rem;
     border: 0;
     border-top: 3px solid var(--ink);
     border-radius: 0;
@@ -616,8 +625,18 @@ mark {
 
 }
 
+/* 좁은 화면은 부제를 숨겨 브랜드와 메뉴를 한 줄에 두고, 본문을 덮는 고정 머리말 높이를 줄인다. 폭이 모자라면 메뉴가 다음 줄로 내려간다. */
+@media (max-width: 639px) {
+  .app-header-inner { gap: 0 12px; padding-top: 4px; }
+  .brand-sub { display: none; }
+  .brand-link { min-height: 44px; }
+  .main-nav { gap: 0 14px; }
+}
+
 @media (min-width: 900px) {
-  .home-layout { grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr); }
+  /* 접수 중 정책 목록을 숨긴 경우(조회 실패)에는 빈 오른쪽 칸을 남기지 않는다. */
+  .home-layout:has(> .home-open) { grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr); }
+  .home-layout:not(:has(> .home-open)) > .home-start { max-width: 40rem; }
   .home-followup { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 32px 48px; }
 }
 
@@ -653,6 +672,7 @@ mark {
   .policy-card-actions .text-link { margin-top: 0; }
   .policy-card-actions .text-button { padding: 0; font-size: 13px; }
   .policy-question-next { margin: 14px 0 0; padding: 4px 16px 10px; border: 1px dashed var(--ink); }
+  .policy-question-next p { margin: 8px 0 0; }
   .policy-coverage { margin: 14px 0 18px; color: var(--muted); font-family: var(--font-body-serif); font-size: 13px; line-height: 1.75; }
   .policy-coverage a { color: var(--pen); text-decoration: underline; text-underline-offset: 3px; }
   .policy-results-heading { display: flex; flex-wrap: wrap; gap: 8px; align-items: baseline; justify-content: space-between; padding-bottom: 6px; border-bottom: 2px solid var(--ink); font-size: 15px; font-weight: 700; }

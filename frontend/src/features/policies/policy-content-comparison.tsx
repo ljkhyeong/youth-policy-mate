@@ -1,4 +1,5 @@
 import type { components } from "@/generated/policy-api";
+import { formatPolicyPeriod } from "./policy-period";
 
 type PolicyContent = components["schemas"]["PolicyContent"];
 const comparisonFields = {
@@ -7,24 +8,27 @@ const comparisonFields = {
   regionCodes: "지역 코드", sourceModifiedAtText: "온통청년 수정일",
 } satisfies Record<keyof PolicyContent, string>;
 
-export function PolicyContentComparison({ previous, current, previousLabel, currentLabel, showUnchanged = false, fields = Object.keys(comparisonFields) as (keyof PolicyContent)[] }: {
-  previous: PolicyContent; current: PolicyContent; previousLabel: string; currentLabel: string; showUnchanged?: boolean; fields?: readonly (keyof PolicyContent)[];
+export function PolicyContentComparison({ previous, current, previousLabel, currentLabel, showUnchanged = false, formatPeriod = false, fields = Object.keys(comparisonFields) as (keyof PolicyContent)[] }: {
+  previous: PolicyContent; current: PolicyContent; previousLabel: string; currentLabel: string; showUnchanged?: boolean; formatPeriod?: boolean; fields?: readonly (keyof PolicyContent)[];
 }) {
   const changed = fields.filter(field => JSON.stringify(previous[field]) !== JSON.stringify(current[field]));
   const unchanged = fields.filter(field => !changed.includes(field));
+  // 사용자 화면(내 정책)은 신청 기간의 원천 날짜를 YYYY.MM.DD로 보여주고, 관리자 원본 비교는 수집 값을 그대로 둔다.
+  const shown = (content: PolicyContent, field: keyof PolicyContent): PolicyContent[keyof PolicyContent] =>
+    formatPeriod && field === "applicationPeriod" ? formatPolicyPeriod(content.applicationPeriod) : content[field];
   return <>
     <p>{changed.length ? `변경된 항목 ${changed.length}개` : "표시 항목의 변경이 없습니다."}</p>
     {changed.map(field => <section className="exception-section revision-field" key={field}>
       <h3>{comparisonFields[field]}</h3>
       <dl className="revision-values">
-        <div><dt>{previousLabel}</dt><dd><RevisionValue value={previous[field]} /></dd></div>
-        <div><dt>{currentLabel}</dt><dd><RevisionValue value={current[field]} /></dd></div>
+        <div><dt>{previousLabel}</dt><dd><RevisionValue value={shown(previous, field)} /></dd></div>
+        <div><dt>{currentLabel}</dt><dd><RevisionValue value={shown(current, field)} /></dd></div>
       </dl>
     </section>)}
     {showUnchanged && unchanged.length > 0 && <details className="revision-unchanged">
       <summary>동일한 항목 {unchanged.length}개</summary>
       {unchanged.map(field => <section className="exception-section revision-field" key={field}>
-        <h3>{comparisonFields[field]}</h3><RevisionValue value={current[field]} />
+        <h3>{comparisonFields[field]}</h3><RevisionValue value={shown(current, field)} />
       </section>)}
     </details>}
   </>;

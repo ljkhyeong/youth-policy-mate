@@ -53,7 +53,8 @@ export default async function HomePage() {
               <label htmlFor="home-query" className="home-search-label">정책 이름이나 내용으로 찾기</label>
               <form className="policy-search" action="/policies" role="search">
                 <input id="home-query" type="search" name="q" maxLength={80} placeholder="장학금, 취업, 대출…" />
-                <button type="submit" className="button-primary">찾기</button>
+                {/* 홈의 기본 버튼은 상황 표시 양식 하나다. */}
+                <button type="submit" className="button-secondary">찾기</button>
               </form>
               <nav className="home-topics" aria-label="정책 검색어 바로가기">
                 <span>찾아보기</span>

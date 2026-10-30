@@ -69,9 +69,9 @@ export function SavePolicyButton({ policyNumber }: { policyNumber: string }) {
   }
 
   const saved = (state.phase === "ready" || state.phase === "saving") && state.saved;
+  // 문구가 누르면 일어나는 동작(저장/저장 해제)을 말하므로 눌림 상태를 함께 쓰지 않는다. 상세의 기본 버튼은 질문 시작이라 보조 버튼이다.
   return <div className="member-save-panel">
-    <button ref={button} className={saved ? "button-secondary" : "button-primary"} type="button" disabled={state.phase !== "ready"}
-      aria-pressed={(state.phase === "ready" || state.phase === "saving") && state.session.authenticated ? state.saved : undefined} onClick={toggle}>
+    <button ref={button} className="button-secondary" type="button" disabled={state.phase !== "ready"} onClick={toggle}>
       {state.phase === "loading" ? "저장 상태 확인 중…" : state.phase === "saving" ? saved ? "저장 해제 중…" : "저장 중…"
         : state.phase === "unavailable" ? "저장 상태 확인 필요" : saved ? "저장 해제" : "관심 정책 저장"}
     </button>

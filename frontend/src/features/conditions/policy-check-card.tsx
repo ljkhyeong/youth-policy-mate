@@ -24,7 +24,7 @@ export function PolicyCheckCard({ policy, showExplanation }: { policy: PolicyChe
     </div>}
     <details className="check-details"><summary>조건별 결과와 근거 보기</summary><div className="policy-check-details">
       {policy.checks.map(check => <section key={check.label}><h4>{check.label} · {outcomeLabels[check.outcome]}</h4><p className="field-help">입력: {check.providedValue}</p><p>{check.explanation}</p><blockquote>{check.evidence}</blockquote></section>)}
-      <a href={policy.sourceUrl} target="_blank" rel="noopener noreferrer">공식 안내 보기 (새 창)</a>
+      <a href={policy.sourceUrl} className="text-link" target="_blank" rel="noopener noreferrer">공식 안내 보기 <span aria-hidden="true">↗</span><span className="sr-only"> (새 창)</span></a>
     </div></details>
     <div className="policy-card-actions">
       <Link href={`/policies/${policy.policyNumber}`} className="text-link" aria-label={`${policy.title} 지원 내용 보기`}>지원 내용 보기</Link>

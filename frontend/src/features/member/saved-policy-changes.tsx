@@ -49,7 +49,7 @@ export function SavedPolicyChanges({ policyNumber }: { policyNumber: string }) {
         <p className="field-help">같은 정책번호의 저장 당시 내용과 현재 수집 내용을 비교합니다.</p>
         <p className="field-help">저장일: <time dateTime={data.savedAt}>{seoulDateTimeFormat.format(new Date(data.savedAt))}</time><br />
           현재 원본 수집: <time dateTime={data.current.sourceCapturedAt}>{seoulDateTimeFormat.format(new Date(data.current.sourceCapturedAt))}</time> (한국 시간)</p>
-        <PolicyContentComparison previous={data.saved.content} current={data.current.content} previousLabel="저장 당시" currentLabel="현재"
+        <PolicyContentComparison previous={data.saved.content} current={data.current.content} previousLabel="저장 당시" currentLabel="현재" formatPeriod
           fields={["title", "description", "category", "organization", "applicationPeriod", "sections", "links"]} />
       </>}
     </div>

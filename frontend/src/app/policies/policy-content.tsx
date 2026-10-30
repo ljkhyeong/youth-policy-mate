@@ -84,7 +84,8 @@ export function PolicyArticle({ policy }: { policy: Detail }) {
       <section id="policy-official" tabIndex={-1}>
         <h2>공식 안내</h2>
         <div className="policy-official-links">
-          <a href={policy.sourceUrl} className="button-primary" target="_blank" rel="noopener noreferrer">온통청년에서 보기 <span aria-hidden="true">↗</span><span className="sr-only"> (새 창)</span></a>
+          {/* 상세의 기본 버튼은 질문 시작 하나라 공식 안내 링크는 모두 보조 버튼이다. */}
+          <a href={policy.sourceUrl} className="button-secondary" target="_blank" rel="noopener noreferrer">온통청년에서 보기 <span aria-hidden="true">↗</span><span className="sr-only"> (새 창)</span></a>
           {content.links.map((link) => <a key={link.url} href={link.url} className="button-secondary" target="_blank" rel="noopener noreferrer">{link.label}<span className="sr-only"> (새 창)</span></a>)}
         </div>
       </section>

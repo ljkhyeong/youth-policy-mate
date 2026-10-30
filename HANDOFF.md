@@ -1,18 +1,18 @@
 # 작업 인계
 
-2026-10-17 기준. 개발 이력은 Git과 [개발 문서](docs/development/)에서 확인한다.
+2026-10-30 기준. 개발 이력은 Git과 [개발 문서](docs/development/)에서 확인한다.
 
 ## 현재 작업
 
-- `codex/progressive-policy-discovery`에 공개 목록 지역(자치구) 필터와 띄어쓰기 무관 단어 검색을 추가했다(2026-10-17). 원격 `main`에는 아직 반영하지 않았다(직전 원격 반영은 `b7389ac`).
-- 지역 필터: `GET /api/v1/policies?district=강남구`와 목록 검색 폼의 지역 선택이다. 공고 지역 코드(`regionCodes`)에 그 자치구나 서울 전체 코드가 있거나 코드가 없는 정책만 보여주고, 분야별 수·내 조건 결과에는 적용하지 않는다. 공고 지역 필터일 뿐 거주 자격 판정이 아니며 상수 이름·목록 밖 값은 400이다. 단어 검색: 검색어를 공백으로 나눈 단어가 공백을 뺀 제목·설명·운영 기관에 모두 들어 있어야 하며 목록과 내 조건 결과가 같은 조건을 쓴다. [지역 필터와 단어 검색](docs/development/policy-region-filter.md)·[화면 변경 기록](docs/development/interface-design-review.md#2026-10-17-공개-목록-지역-선택과-단어-검색)
-- 검증: `npm run generate:api`로 계약을 재생성하고 `test:policy-collection`·`check:backend`·`check:api-types`·`test:web`·`check:web`·`build:web`을 통과했다. 로컬 DB 90건과 검증용 서버(8180)·운영 모드 웹(3103)으로 헤드리스 확인했다(1280px 한 줄·390px 세 줄 배치, Tab 순서, 필터 유지, 빈 결과 안내, 자치구별 87~89건). 검증용 서버·웹·브라우저는 종료하고 DB 컨테이너는 중지했다(볼륨 유지). 8080의 다른 프로젝트(happyGallery) 서버는 그대로 두었다. 실제 화면 낭독기·Safari·Firefox는 확인하지 않았다.
+- `codex/progressive-policy-discovery`에서 화면 디자인 점검 결과를 반영했다(2026-10-30). 이 브랜치는 원격에 올리지 않았고, 원격 `main`(`b7389ac`) 이후의 지역 필터·단어 검색(`b3011d7`·`10550f5`)과 이번 커밋이 모두 미반영이다.
+- 결과: Claude Design 디자인 시스템과 어긋난 표현을 바로잡았다. `<button>` 버튼만 보통 굵기이던 원인(레이어 밖 `font: inherit`)을 지우고, 머리말·본문·바닥글 가장자리를 `--page-max`·`--page-gutter`로 맞췄다. 선택 상자·이메일 입력은 2px 각진 칸, 상세 조건 질문은 본문 열에 맞췄고, 확인 안내는 점선 상자, 상태 화면은 위쪽 선, 회원 화면 체크 칸은 볼펜 체크로 바꿨다. 정책 찾기 필터에 이름표와 ‘질문 있는 정책’ 한 칸 켜고 끄기를, 정책 목록·알림에 전체 쪽수(`1 / 5페이지`)를 더했다. 서버·API는 바꾸지 않았다. [점검 기록](docs/development/interface-design-review.md#2026-10-30-디자인-점검과-기준-정리)
+- 검증: `test:web`·`check:web`·`build:web`을 통과했다. 로컬 DB 90건·검증용 서버(8180)·웹(개발 3103, 운영 모드 3104)으로 헤드리스 확인했다(1280·390·320px, 밝은·어두운 화면, Tab 순서·질문 필터·체크 칸 키보드 조작, 회원 화면은 응답 모의). 검증용 서버·웹·브라우저는 종료하고 DB 컨테이너는 내렸다(볼륨 유지). 실제 화면 낭독기·Safari·Firefox는 확인하지 않았다.
 - 로컬 DB 볼륨은 2026-10-07에 다시 만들었고 V1~V6이 적용돼 있다. 온통청년 서울 1~4페이지(2026-10-07)와 9·25~28페이지(2026-10-11)를 받아 90건이다(전체 730건). 검토 규칙이 있는 15개 정책 중 12개가 로컬에 있어 질문을 확인할 수 있다. 이전 볼륨은 `.local/backups/`에 백업했다. 정기 수집·AI 자동 처리·이메일·알림은 비활성화다. 실제 OAuth·Resend 연동, 이미지 빌드·공유기·TLS·k3s·백업 운영 설정은 사용자가 진행한다. 백업·외부 공급자 데이터의 보관/삭제와 관리자 기록 보관 기준은 남아 있다.
 
 ## 구현·검증 범위
 
 - 정책 조회: 로컬 수집 90건의 단어 검색(띄어쓰기 무시, 제목·설명·운영 기관)·분야 필터·지역(자치구) 필터·상세·원문 링크를 제공한다. 지역 필터는 공고 지역 코드 기준이라 거주 자격 판정이 아니다. 공개 목록은 접수 중 정책을 마감 임박순으로 먼저 보여주고 접수 기간인 정책에 D-day를 표시한다. 상세에 온통청년 표기 조건을 참고로 보여주고, 홈은 “요즘 어떤 상황이세요?”로 상황(분야)을 여러 개 고르게 하고 분야별 정책 수를 함께 표시하며, 목록은 분야 여러 개를 함께 고를 수 있다. 여러 분야로 분류된 정책은 분야마다 포함한다. [화면 개편](docs/development/interface-design-review.md#2026-10-05-화면-개편) 검토된 원문 충돌은 상세에서 별도 안내하며 빈 안내 목록이 검토 완료를 뜻하지 않는다. 서울 대상 전체 정책을 수집한 상태는 아니다. [조회](docs/development/policy-catalog.md)·[지역 필터와 단어 검색](docs/development/policy-region-filter.md)·[수집과 재개](docs/development/policy-range-collection.md)·[충돌 안내](docs/development/policy-source-notices.md)
-- 화면: ‘형광펜 공고문’ 디자인, 어두운 화면(기기 설정 추종·바닥글 선택), 탭·iOS 홈 화면용 앱 아이콘을 제공한다. Claude Design 디자인 시스템에는 밝은 화면 값만 있다. [화면 기준](docs/design/webapp-interface.md#시각-기준)
+- 화면: ‘형광펜 공고문’ 디자인, 어두운 화면(기기 설정 추종·바닥글 선택), 탭·iOS 홈 화면용 앱 아이콘을 제공한다. 버튼 글자·화면 폭·입력 테두리·안내 상자·상태 화면은 2026-10-30 점검으로 디자인 시스템 기준에 맞췄다. Claude Design 디자인 시스템에는 밝은 화면 값만 있고, 이번 구성 요소 변경(필터 이름표·질문 필터 한 칸·상태 화면)은 아직 반영하지 않았다. [화면 기준](docs/design/webapp-interface.md#시각-기준)
 - 공개 페이지: 운영 주소를 기준으로 검색 허용·대표 주소·공개 공유 제목과 설명을 만든다. 정책 목록의 페이지별 주소와 개인/검색/오류 화면의 검색 제외를 구분한다. [설정과 기본 사이트맵](docs/development/public-page-metadata.md)
 - 관리자 수집 예외: `/admin/collection-exceptions`에서 원본·직전 개정 비교와 사유를 남기는 항목 재처리를 제공한다. `/pages`는 페이지 실패, `/replays`는 재처리 이력, `/corrections`는 보정 관리다. 정책명·운영 기관 중 한 항목을 원본과 분리해 보정하고, 새 원본과 충돌하면 현재 내용을 유지한 뒤 관리자가 해소한다. 재처리·보정 기록 테이블에 작업자·사유·적용 개정을 기록하며 같은 요청은 한 번만 처리한다. AI 추출 목록에서는 마지막 시도와 현재 결과·비용 상태를 조회한다. 실제 관리자 계정 연결은 남아 있다. [AI 추출 조회](docs/development/admin-ai-runs.md)·[설정과 계약](docs/development/admin-collection-exceptions.md)·[보정 범위](docs/development/policy-corrections.md)
 - 조건 질문: 국가근로장학금·응시료 지원·K-패스·청년주택드림청약통장·서울청년정책네트워크·상반기 이사비 지원·청년내일저축계좌·전세보증금반환보증 보증료 지원·햇살론유스·청년 미래이음 대출·미래 청년 일자리 5월 모집·K-뉴딜 아카데미·국민취업지원제도·AI학업장려 학자금대출·청년도약 인재양성 부트캠프를 제공한다. 질문 선택지는 신청서 칸(라디오)으로 모두 펼쳐 보여준다. 정책별 소득·중복지원·참여 제한·보증한도의 미확인을 구분한다. 실제 증빙·기타 제한·선발은 기관 심사가 필요하며 전체 자격은 추가 확인으로 유지한다. [질문 탐색](docs/development/policy-question-discovery.md)·[이사비](docs/development/moving-fee-questions.md)·[저축계좌](docs/development/youth-tomorrow-savings-questions.md)·[보증료](docs/development/guarantee-fee-questions.md)·[햇살론유스](docs/development/haetsalron-youth-questions.md)·[K-뉴딜 아카데미](docs/development/k-newdeal-academy-questions.md)·[미래이음](docs/development/miso-youth-future-questions.md)·[미래 청년 일자리](docs/development/future-youth-jobs-questions.md)·[국민취업지원제도](docs/development/employment-support-questions.md)·[AI학업장려 학자금대출](docs/development/ai-study-loan-questions.md)·[부트캠프](docs/development/youth-leap-bootcamp-questions.md)
@@ -39,6 +39,7 @@
 6. 월 3만 원 예산 안에서 배포·정기 백업의 주기/보관/외부 저장·운영 DB 복구 전환·운영 인증·개인정보 처리 안내·백업/외부 공급자/관리자 기록의 보관·삭제 기준을 정한다. 회원 탈퇴와 현재 DB의 개인 데이터 삭제, 수동 백업·임시 DB 복구 검증·이메일 키 교체 도구는 구현했다. 실제 키 교체 시 모든 API를 중지하고 DB 재암호화 후 새 키로 재시작한다. 이전 백업에 필요한 키의 보관·폐기는 운영자가 정한다. 배포 후 공개 도메인의 검색 메타데이터·robots·사이트맵과 실제 검색 엔진 색인을 확인한다.
 7. 공개 목록 지역 필터는 구현했다. 전체 수집 범위(5번)를 정한 뒤 자치구 전용 정책의 원문 거주 제한을 확인하고(조사 당시 자치구 전용 2건은 거주 제한 문구가 없었다) 필요하면 정책별 보정 범위를 정한다. 건수가 늘면 `regionCodes` GIN 인덱스와 검색 성능을 검토한다. [지역 필터와 단어 검색](docs/development/policy-region-filter.md)·[지역 필터 조사](docs/research/public-region-filter.md)
 8. 조건 질문을 더 넓힌다. 2026-10-11에 국민취업지원제도·AI학업장려 학자금대출, 2026-10-14에 청년도약 인재양성 부트캠프를 추가했다. 로컬 DB(90건)에 남은 접수 중·상시 정책은 대학·기관 지원사업이나 기관별 조건이 크게 다른 사업이 대부분이라, 다음 후보는 로컬에 없는 서울 청년 주요 정책(전체 730건)에서 고르는 편이 낫다. 해당 공고는 `collect:policy -- --args='fetch <페이지>'`로 받는다(외부 호출이라 사용자가 요청할 때 실행, 범위 수집용 일일 한도·호출 간격은 `.env`에 미설정). AI학업장려 학자금대출 질문은 2026-11-18, 부트캠프 질문은 2027-03-01부터 멈추므로 다음 공고·2차년도 기준을 다시 검토한다. 청년예술인 적립계좌는 다음 모집 공고가 나오면 안내·접수 상태 보정을 다시 검토한다. AI 초안을 켜기 전에는 원문과 공식 안내를 대조해 `youth-policy-rule-data` 절차로 직접 추가한다.
+9. 화면 후속 과제가 남아 있다. 내 조건 둘러보기는 ‘최근 수집순’이 기본이라 마감된 정책이 먼저 나오므로, 공개 목록처럼 접수 중 우선·마감 임박순으로 보여주려면 조건 확인 API에 정렬을 추가한다. 상세에는 채운 기본 버튼이 셋이라 대표 행동을 정해야 한다. 모바일 고정 머리말 높이(약 105px)도 검토 대상이다. Claude Design 구성 요소 설명은 앱에 맞춰 갱신해야 한다. [점검 기록](docs/development/interface-design-review.md#2026-10-30-디자인-점검과-기준-정리)
 
 ## 이어서 작업할 때
 

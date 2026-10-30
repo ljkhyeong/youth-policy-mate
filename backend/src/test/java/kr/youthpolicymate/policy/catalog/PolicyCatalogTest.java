@@ -831,6 +831,40 @@ class PolicyCatalogTest {
         mvc.perform(get("/api/v1/policies").param("category", "INVALID")).andExpect(status().isBadRequest());
     }
 
+    @Test @DisplayName("내 조건 결과의 접수 중 우선은 공개 목록과 같은 순서이고, 연령 정렬은 같은 그룹 안에서 이 순서를 따른다")
+    void ordersConditionResultsByAvailability() throws Exception {
+        item.put("aplyPrdSeCd", "0057001");
+        item.put("plcyNo", "981").put("aplyYmd", "20260801 ~ 20260831"); save("closed", AT.plusSeconds(1));
+        item.put("plcyNo", "982").put("aplyYmd", "20260901 ~ 20260930"); save("open-late", AT.plusSeconds(2));
+        item.put("plcyNo", "983").put("aplyPrdSeCd", "0057002").put("aplyYmd", ""); save("rolling", AT.plusSeconds(3));
+        item.put("plcyNo", "984").put("aplyPrdSeCd", "0057001").put("aplyYmd", "20260901 ~ 20260912"); save("open-soon", AT.plusSeconds(4));
+        item.put("plcyNo", "985").put("aplyYmd", "20261001 ~ 20261012"); save("before", AT.plusSeconds(5));
+        var available = List.of("984", "982", "985", "983", "981");
+        var empty = new BasicConditions(null, null, null);
+
+        // 생년월일이 없으면 연령 정렬도 모두 같은 그룹이라 접수 중 우선과 같다. 최근 수집순은 접수 상태를 보지 않는다.
+        assertThat(checks.check(empty, 1, "", PolicyCheckResponse.Sort.OPEN_FIRST, null).items())
+                .extracting(PolicyCheckResponse.Item::policyNumber).containsExactlyElementsOf(available);
+        assertThat(checks.check(empty, 1, "", PolicyCheckResponse.Sort.AGE_MATCH, null).items())
+                .extracting(PolicyCheckResponse.Item::policyNumber).containsExactlyElementsOf(available);
+        assertThat(checks.check(empty, 1, "", PolicyCheckResponse.Sort.RECENT, null).items())
+                .extracting(PolicyCheckResponse.Item::policyNumber).containsExactly("985", "984", "983", "982", "981");
+        assertThat(store.list("", 1, 20, false, null, java.util.Set.of(), null, AT).items())
+                .extracting(PolicySummary::policyNumber).containsExactlyElementsOf(available);
+        mvc.perform(post("/api/v1/policies/checks").param("sort", "OPEN_FIRST").contentType("application/json").content("{}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items[*].policyNumber").value(org.hamcrest.Matchers.contains("984", "982", "985", "983", "981")));
+
+        // 연령 충족(K-패스)·불충족(응시료)은 그룹 순서가 먼저이고, 미확인 그룹 안에서는 접수 중 우선을 따른다.
+        saveReviewed(K_PASS, "K-패스", hash(K_PASS));
+        saveReviewed(EXAM_FEE, "응시료 지원", hash(EXAM_FEE));
+        var ranked = new java.util.ArrayList<>(List.of(K_PASS));
+        ranked.addAll(available);
+        ranked.add(EXAM_FEE);
+        assertThat(checks.check(new BasicConditions(java.time.LocalDate.parse("1990-12-31"), null, null), 1, "", PolicyCheckResponse.Sort.AGE_MATCH, null).items())
+                .extracting(PolicyCheckResponse.Item::policyNumber).containsExactlyElementsOf(ranked);
+    }
+
     @Test @DisplayName("복수 분류 정책은 목록 분야 필터와 분야별 수에 분야마다 포함하고 맞지 않는 분류는 전체 수에만 넣는다")
     void countsPoliciesByCategory() throws Exception {
         item.put("plcyNo", "991").put("lclsfNm", "일자리"); save("job", AT.plusSeconds(1));

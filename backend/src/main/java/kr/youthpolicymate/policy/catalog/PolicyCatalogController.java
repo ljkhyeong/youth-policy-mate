@@ -36,7 +36,9 @@ public class PolicyCatalogController {
             @org.springframework.web.bind.annotation.RequestBody @jakarta.validation.Valid BasicConditions input,
             @RequestParam(defaultValue = "1") @Min(1) @Max(1000) int page,
             @RequestParam(defaultValue = "") @Size(max = 80) String q,
-            @RequestParam(defaultValue = "AGE_MATCH") PolicyCheckResponse.Sort sort,
+            @RequestParam(defaultValue = "AGE_MATCH") @Parameter(description = "OPEN_FIRST: 공개 목록과 같이 접수 중인 정책을 마감 임박순으로 먼저. "
+                    + "AGE_MATCH: 검토된 연령 충족·미확인·불충족 순이고 같은 그룹은 OPEN_FIRST 순서. RECENT: 최근 수집순")
+            PolicyCheckResponse.Sort sort,
             @RequestParam(required = false) RecruitmentStatus recruitmentStatus) {
         return checks.check(input, page, q.strip(), sort, recruitmentStatus);
     }

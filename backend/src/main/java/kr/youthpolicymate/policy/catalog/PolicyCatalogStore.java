@@ -208,7 +208,7 @@ public class PolicyCatalogStore {
                  OR p.content->'regionCodes' @> jsonb_build_array(CAST(:seoulCode AS text))
                  OR p.content->'regionCodes' @> jsonb_build_array(CAST(:districtCode AS text)))""";
 
-    // 공개 목록은 접수 중인 정책을 마감 임박순으로 먼저 보여준다. 검색용 모집 기간과 같은 기준이다.
+    // 공개 목록과 내 조건 결과(접수 중 우선·연령 정렬의 같은 그룹)는 접수 중인 정책을 마감 임박순으로 먼저 보여준다. 검색용 모집 기간과 같은 기준이다.
     private static final String AVAILABILITY_ORDER = """
             CASE WHEN p.recruitment_kind = 'PERIOD' AND p.recruitment_opens_at <= :now AND p.recruitment_closes_at > :now THEN 0
                  WHEN p.recruitment_kind = 'PERIOD' AND p.recruitment_opens_at > :now THEN 1
@@ -278,6 +278,7 @@ public class PolicyCatalogStore {
         var where = where(query, recruitmentStatus, now, parameters);
         var total = jdbc.sql("SELECT count(*) FROM policies p" + where).params(parameters).query(Long.class).single();
         var order = "p.last_collected_at DESC, p.policy_number";
+        if (sort != PolicyCheckResponse.Sort.RECENT) order = AVAILABILITY_ORDER + ", " + order;
         if (sort == PolicyCheckResponse.Sort.AGE_MATCH) {
             // 충족 0·불충족 2만 나열하고 미확인과 비교 없음은 ELSE 1로 둔다.
             var byPriority = comparisons.entrySet().stream().collect(Collectors.groupingBy(entry -> entry.getValue().priority(),

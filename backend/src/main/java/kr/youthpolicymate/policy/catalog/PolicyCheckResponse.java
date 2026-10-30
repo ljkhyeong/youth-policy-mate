@@ -13,5 +13,5 @@ public record PolicyCheckResponse(List<Item> items, int page, long total, boolea
                        @Schema(description = "현재 원문·적용 시점에 맞는 공통요건 질문 제공 여부. 자격·모집 상태와 무관")
                        boolean questionnaireAvailable,
                        @Schema(description = "적용한 연령 규칙 버전. 검토된 비교 기준이 없으면 빈 문자열") String ruleVersion, PolicyRecruitment recruitment) {}
-    public enum Sort { AGE_MATCH, RECENT }
+    public enum Sort { AGE_MATCH, RECENT, OPEN_FIRST }
 }

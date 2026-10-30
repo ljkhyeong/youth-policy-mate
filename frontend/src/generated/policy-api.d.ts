@@ -3673,7 +3673,8 @@ export interface operations {
             readonly query?: {
                 readonly page?: number;
                 readonly q?: string;
-                readonly sort?: "AGE_MATCH" | "RECENT";
+                /** @description OPEN_FIRST: 공개 목록과 같이 접수 중인 정책을 마감 임박순으로 먼저. AGE_MATCH: 검토된 연령 충족·미확인·불충족 순이고 같은 그룹은 OPEN_FIRST 순서. RECENT: 최근 수집순 */
+                readonly sort?: "AGE_MATCH" | "RECENT" | "OPEN_FIRST";
                 readonly recruitmentStatus?: "BEFORE_OPENING" | "OPEN" | "CLOSED" | "ROLLING" | "UNKNOWN";
             };
             readonly header?: never;

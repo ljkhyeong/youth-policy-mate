@@ -7,13 +7,16 @@ import type { operations } from "@/generated/policy-api";
 
 type CheckSort = NonNullable<NonNullable<operations["checkPolicyConditions"]["parameters"]["query"]>["sort"]>;
 
+// 생년월일을 반영하기 전에는 공개 목록처럼 접수 중인 정책부터, 반영한 뒤에는 연령 조건이 맞는 정책부터 보여준다.
+const defaultSort = (input: BasicConditions): CheckSort => input.birthDate ? "AGE_MATCH" : "OPEN_FIRST";
+
 export function PolicyCheckResults({ input }: { input: BasicConditions }) {
   const headingRef = useRef<HTMLHeadingElement>(null);
   useEffect(() => { if (Object.keys(input).length) headingRef.current?.focus(); }, [input]);
   const [page, setPage] = useState(1);
   const [draftQuery, setDraftQuery] = useState("");
   const [query, setQuery] = useState("");
-  const [sort, setSort] = useState<CheckSort>(input.birthDate ? "AGE_MATCH" : "RECENT");
+  const [sort, setSort] = useState<CheckSort>(defaultSort(input));
   const [recruitmentStatus, setRecruitmentStatus] = useState<RecruitmentFilter>("");
   const [response, setResponse] = useState<PolicyChecks | null>(null);
   const [error, setError] = useState("");
@@ -30,7 +33,7 @@ export function PolicyCheckResults({ input }: { input: BasicConditions }) {
   const [previousInput, setPreviousInput] = useState(input);
   if (previousInput !== input) {
     setPreviousInput(input); setResponse(null); setError(""); setPage(1);
-    setSort(input.birthDate ? "AGE_MATCH" : "RECENT");
+    setSort(defaultSort(input));
   }
   function loadPage(next: number) {
     setResponse(null); setError(""); setPage(next); setRetry(value => value + 1);
@@ -55,13 +58,15 @@ export function PolicyCheckResults({ input }: { input: BasicConditions }) {
       <select id="condition-policy-sort" className="condition-policy-sort" value={sort} onChange={event => {
         setSort(event.target.value as CheckSort); loadPage(1);
       }}>
+        <option value="OPEN_FIRST">접수 중 우선</option>
         <option value="AGE_MATCH" disabled={!input.birthDate}>연령 조건 충족 우선</option><option value="RECENT">최근 수집순</option>
       </select></label>
       {(query || recruitmentStatus) && <button type="button" className="button-secondary" onClick={() => {
         setDraftQuery(""); setQuery(""); setRecruitmentStatus(""); loadPage(1);
       }}>검색·필터 초기화</button>}
     </div>
-    <p className="field-help">{input.birthDate ? "연령 조건 충족 우선은 충족 → 미확인 → 불충족 순이며, 모든 정책을 표시해요." : "생년월일을 추가하면 연령 조건이 맞는 정책부터 볼 수 있어요."}</p>
+    <p className="field-help">{input.birthDate ? "연령 조건 충족 우선은 충족 → 미확인 → 불충족 순이고, 같은 순위에서는 접수 중인 정책을 먼저 보여줘요. 모든 정책을 표시해요."
+      : "접수 중 우선은 접수 중인 정책을 마감 임박순으로 먼저 보여줘요. 생년월일을 추가하면 연령 조건이 맞는 정책부터 볼 수 있어요."}</p>
     {error && <div role="alert"><p>{error}</p><button type="button" className="button-secondary" onClick={() => loadPage(page)}>다시 확인하기</button></div>}
     {!response && !error && <p role="status">신청 조건을 불러오고 있어요.</p>}
     {response?.items.length === 0 && <p role="status">{query || recruitmentStatus ? "검색 조건에 맞는 정책이 없어요. 검색어를 바꾸거나 필터를 해제해주세요." : "현재 확인할 정책이 없어요. 내 조건이 불충족이라는 뜻은 아니에요."}</p>}

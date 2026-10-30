@@ -29,7 +29,7 @@ export function PageState({ kind, title, description, label, actions, headingAs:
           {kind === "loading" && <span aria-hidden="true" className="size-4 shrink-0 rounded-full border-2 border-[var(--brand-line)] border-t-[var(--brand)] motion-safe:animate-spin" />}
           {label ?? STATE_LABELS[kind]}
         </p>
-        <Heading id={titleId} ref={headingRef} tabIndex={headingRef ? -1 : undefined} className="max-w-xl text-2xl leading-relaxed font-bold tracking-tight sm:text-3xl">
+        <Heading id={titleId} ref={headingRef} tabIndex={headingRef ? -1 : undefined} className="max-w-xl text-2xl leading-snug font-black tracking-[-0.03em] sm:text-3xl">
           {title}
         </Heading>
         <p className="mt-4 max-w-lg text-sm leading-7 text-[var(--muted)] sm:text-base sm:leading-8">{description}</p>

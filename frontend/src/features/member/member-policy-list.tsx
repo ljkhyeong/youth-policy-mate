@@ -37,7 +37,8 @@ export function MemberPolicyList({ policies, calendar, query, changedOnly, filte
         <button type="button" className="button-secondary" onClick={resetSearch}>초기화</button>
       </form>
       <label className="member-change-filter"><input type="checkbox" checked={changedOnly}
-        onChange={event => onSearch({ q: search.draft, changed: event.target.checked, status: filter })} />변경된 정책만 보기</label>
+        onChange={event => onSearch({ q: search.draft, changed: event.target.checked, status: filter })} />
+        <span className="paper-check" aria-hidden="true" />변경된 정책만 보기</label>
       <p className="field-help">저장 당시와 현재 공고의 개정이 다른 정책을 표시합니다.</p>
       {calendar && <div aria-label="마감 일정 검색">
         <div className="rule-review-field"><label htmlFor="calendar-status">접수 상태</label>

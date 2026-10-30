@@ -46,7 +46,7 @@ export function PolicyCheckResults({ input }: { input: BasicConditions }) {
         onChange={event => setDraftQuery(event.target.value)} placeholder="정책명이나 내용을 검색하세요" />
       <button type="submit" className="button-primary">검색</button>
     </form>
-    <div className="member-toolbar">
+    <div className="condition-filters">
       <label className="condition-filter" htmlFor="condition-recruitment-status">접수 상태
       <select id="condition-recruitment-status" className="condition-policy-sort" value={recruitmentStatus} onChange={event => {
         setRecruitmentStatus(event.target.value as RecruitmentFilter); loadPage(1);

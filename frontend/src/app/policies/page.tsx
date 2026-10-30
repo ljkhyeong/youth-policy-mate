@@ -3,6 +3,7 @@ import Link from "next/link";
 import { cache } from "react";
 import { SiteShell } from "@/components/site-shell";
 import { PageState } from "@/components/page-state";
+import { PageCount } from "@/components/page-count";
 import { loadPolicies, type PolicyListQuery } from "./load-policies";
 import { PolicyCard } from "./policy-content";
 import { recruitmentLabels, RecruitmentOptions, type RecruitmentFilter } from "@/features/policies/policy-recruitment";
@@ -89,19 +90,25 @@ export default async function PoliciesPage({ searchParams }: Props) {
         </div>
         <button type="submit" className="button-primary">검색</button>
       </form>
-      <nav className="category-filter" aria-label="분야 필터, 여러 개 선택 가능">
-        <Link href={pageHref(1, questionsOnly, [])} data-selected={categories.length === 0 || undefined}>
-          전체 분야{categories.length === 0 && <span className="sr-only"> 선택됨</span>}</Link>
-        {policyCategories.map(item => {
-          const chosen = categories.includes(item.key);
-          return <Link key={item.key} href={pageHref(1, questionsOnly, toggled(item.key))} data-selected={chosen || undefined}>
-            {item.label}{chosen && <span className="sr-only"> 선택됨, 누르면 해제</span>}</Link>;
-        })}
-      </nav>
-      <nav className="policy-filters" aria-label="조건 확인 질문 필터">
-        <Link href={pageHref(1, false)} aria-current={!questionsOnly ? "page" : undefined}>전체 정책</Link>
-        <Link href={pageHref(1, true)} aria-current={questionsOnly ? "page" : undefined}>질문 있는 정책</Link>
-      </nav>
+      {/* 줄 앞 이름표는 눈으로 보는 안내이고, 화면 낭독기는 각 nav의 이름으로 읽는다. */}
+      <div className="policy-filter-rows">
+        <span className="filter-label" aria-hidden="true">분야</span>
+        <nav className="category-filter" aria-label="분야 필터, 여러 개 선택 가능">
+          <Link href={pageHref(1, questionsOnly, [])} data-selected={categories.length === 0 || undefined}>
+            전체 분야{categories.length === 0 && <span className="sr-only"> 선택됨</span>}</Link>
+          {policyCategories.map(item => {
+            const chosen = categories.includes(item.key);
+            return <Link key={item.key} href={pageHref(1, questionsOnly, toggled(item.key))} data-selected={chosen || undefined}>
+              {item.label}{chosen && <span className="sr-only"> 선택됨, 누르면 해제</span>}</Link>;
+          })}
+        </nav>
+        <span className="filter-label" aria-hidden="true">조건 확인</span>
+        {/* 질문 필터는 한 칸을 켜고 끈다. */}
+        <nav className="policy-filters" aria-label="조건 확인 질문 필터">
+          <Link href={pageHref(1, !questionsOnly)} data-selected={questionsOnly || undefined}>
+            질문 있는 정책{questionsOnly && <span className="sr-only"> 선택됨, 누르면 해제</span>}</Link>
+        </nav>
+      </div>
       {district && <p className="field-help">선택한 자치구가 공고 지역에 포함된 정책을 보여줘요. 신청 자격은 공고에서 확인해주세요.</p>}
       {questionsOnly && <p className="field-help">질문으로 일부 신청 조건을 비교할 수 있어요. 최종 자격과 접수 여부는 공식 신청처에서 확인해주세요.</p>}
     </section>
@@ -113,7 +120,7 @@ export default async function PoliciesPage({ searchParams }: Props) {
         : <PageState kind="empty" title="표시할 정책이 없어요" description={recruitmentStatus ? "선택한 접수 상태에 맞는 정책이 없어요. 검색어를 바꾸거나 필터를 해제해주세요." : categories.length ? "선택한 분야에 맞는 정책이 없어요. 검색어를 바꾸거나 전체 분야를 확인해주세요." : district ? "선택한 지역이 포함된 정책이 없어요. 지역을 바꾸거나 전체 지역을 확인해주세요." : questionsOnly ? "질문이 있는 정책 중 검색 결과가 없어요. 검색어를 바꾸거나 필터를 해제해주세요." : "검색어를 바꾸거나 전체 정책을 확인해주세요."} actions={<Link href="/policies" className="button-secondary">전체 정책 보기</Link>} />}
       {(page > 1 || result.data.hasNext) && <nav aria-label="정책 목록 페이지" className="policy-pagination">
         {page > 1 && <Link href={pageHref(page - 1)} className="button-secondary">이전</Link>}
-        <span>{page}페이지</span>
+        <PageCount page={page} total={result.data.total} pageSize={result.data.pageSize} />
         {result.data.hasNext && <Link href={pageHref(page + 1)} className="button-secondary">다음</Link>}
       </nav>}
     </> : <PageState kind="error" title="정책을 불러오지 못했어요" description="잠시 후 다시 시도해주세요." actions={<RetryPolicies />} />}

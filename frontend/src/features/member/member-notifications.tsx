@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useRef, useState, type RefObject } from "react";
 import { describeFailure, memberApi, type NotificationFilter, type Notifications } from "./member-api";
 import { seoulDateTimeFormat as receivedAt } from "@/lib/seoul-date";
+import { PageCount } from "@/components/page-count";
 import { readMemberLocation } from "./member-location";
 
 function isCurrentRequest(controller: AbortController, page: number, filter: NotificationFilter) {
@@ -129,7 +130,7 @@ function NotificationList({ csrf, active, onUnreadCount, loginHref, page, filter
     </article>)}
     {data && (page > 1 || data.hasNext) && <nav className="policy-pagination" aria-label="알림 페이지">
       <button type="button" className="button-secondary" disabled={busy || page === 1} onClick={() => changePage(page - 1)}>이전</button>
-      <span>{page}페이지</span>
+      <PageCount page={page} total={data.total} pageSize={data.pageSize} />
       <button type="button" className="button-secondary" disabled={busy || !data.hasNext} onClick={() => changePage(page + 1)}>다음</button>
     </nav>}
   </section>;

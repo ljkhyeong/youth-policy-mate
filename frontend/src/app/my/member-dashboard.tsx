@@ -139,7 +139,7 @@ export function MemberDashboard() {
     </div></div>}
     {notice && <p role="status">{notice}</p>}
     {busy && <p role="status">{pending === "load" ? "내 정책을 불러오고 있어요." : pending === "remove" ? "저장을 해제하고 있어요." : pending === "logout" ? "로그아웃 중이에요." : "탈퇴 처리 중이에요."}</p>}
-    {session?.authenticated && <div className="member-toolbar member-account-toolbar"><strong>{session.displayName}님의 정책</strong><Link href="/conditions">내 조건 관리</Link><button ref={refreshButton} type="button" className="text-button" disabled={busy} onClick={reloadData}>새로고침</button><button type="button" className="text-button" disabled={busy} onClick={() => runAction("logout")}>로그아웃</button></div>}
+    {session?.authenticated && <div className="member-toolbar member-account-toolbar"><strong>{session.displayName}님의 정책</strong><Link href="/conditions" className="text-link">내 조건 관리</Link><button ref={refreshButton} type="button" className="text-button" disabled={busy} onClick={reloadData}>새로고침</button><button type="button" className="text-button" disabled={busy} onClick={() => runAction("logout")}>로그아웃</button></div>}
     <nav className="member-tabs" aria-label="내 정책 보기">
       {(["saved", "calendar", "notifications"] as const).map(value => <Link href={getMemberHref({ ...location, view: value })} scroll={false} aria-current={tab === value ? "page" : undefined} key={value}>{value === "saved" ? "관심 정책" : value === "calendar" ? "마감 일정" : `알림${unreadCount ? ` (${unreadCount})` : ""}`}</Link>)}
     </nav>

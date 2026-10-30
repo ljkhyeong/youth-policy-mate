@@ -48,10 +48,12 @@ describe("정책 목록의 공통요건 질문 탐색", () => {
     expect(html).toContain('type="hidden" name="questionsOnly" value="true"');
     const query = encodeURIComponent("시험&지원");
     expect(html).toContain(`href="/policies?q=${query}&amp;page=3&amp;questionsOnly=true&amp;recruitmentStatus=OPEN"`);
-    expect(html).toContain(`href="/policies?q=${query}&amp;page=1&amp;recruitmentStatus=OPEN"`);
+    // 켜진 질문 필터 칸을 누르면 필터를 끄고 첫 페이지로 돌아간다.
+    expect(html).toContain(`data-selected="true" href="/policies?q=${query}&amp;page=1&amp;recruitmentStatus=OPEN">질문 있는 정책<span class="sr-only"> 선택됨, 누르면 해제</span>`);
     expect(html).toContain(`href="/policies?q=${query}&amp;page=1&amp;questionsOnly=true&amp;recruitmentStatus=OPEN"`);
     expect(html).toContain('href="/policies/123#policy-questions"');
     expect(html).toContain("41건");
+    expect(html).toContain('<span aria-hidden="true">2 / 3페이지</span><span class="sr-only">3페이지 중 2페이지</span>');
     expect(html).toContain('value="OPEN" selected=""');
     expect(html).toContain('form="policy-search-form"');
   });
@@ -63,6 +65,7 @@ describe("정책 목록의 공통요건 질문 탐색", () => {
     expect(html).toContain('href="/policies/123"');
     expect(html).not.toContain('href="/policies/123#policy-questions"');
     expect(html).not.toContain('type="hidden" name="questionsOnly"');
+    expect(html).toContain('href="/policies?q=&amp;page=1&amp;questionsOnly=true">질문 있는 정책</a>');
   });
 
   it("질문 필터의 빈 검색 결과를 자격 불충족으로 안내하지 않는다", async () => {
@@ -79,6 +82,9 @@ describe("정책 목록의 공통요건 질문 탐색", () => {
     expect(html).toContain("첫 페이지 보기");
     expect(html).toContain(`href="/policies?q=${encodeURIComponent("시험")}&amp;page=1&amp;questionsOnly=true"`);
     expect(html).not.toContain("질문이 있는 정책 중 검색 결과가 없어요");
+    // 전체 쪽수(1)를 넘은 쪽에서는 틀린 전체 쪽수 대신 현재 쪽만 보인다.
+    expect(html).toContain("<span>2페이지</span>");
+    expect(html).not.toContain("페이지 중");
   });
 
   it("분야 필터는 여러 개를 더하고 빼며 검색어·접수 상태·질문 필터를 유지하고 잘못된 분야는 무시한다", async () => {
@@ -94,6 +100,8 @@ describe("정책 목록의 공통요건 질문 탐색", () => {
     expect(html).toContain(`data-selected="true" href="${base}&amp;category=JOB">주거<span class="sr-only"> 선택됨, 누르면 해제</span>`);
     expect(html).toContain(`href="${base}&amp;category=JOB&amp;category=HOUSING&amp;category=FINANCE">금융·복지·문화</a>`);
     expect(html).toContain(`href="${base}">전체 분야</a>`);
+    // 질문 필터를 끄면 고른 분야는 그대로 두고 질문 필터만 뺀다.
+    expect(html).toContain('data-selected="true" href="/policies?q=%EC%A7%80%EC%9B%90&amp;page=1&amp;recruitmentStatus=OPEN&amp;category=JOB&amp;category=HOUSING">질문 있는 정책');
     expect(html).toContain("‘지원’ 검색 결과 · 일자리, 주거 · 접수 기간");
     expect(html).toContain(">마감 임박순<");
     vi.mocked(loadPolicies).mockClear();
@@ -115,6 +123,8 @@ describe("정책 목록의 공통요건 질문 탐색", () => {
     expect(html.match(/<option value="[^"]+구"/g)).toHaveLength(25);
     expect(html).toContain('value="강남구" selected=""');
     expect(html).toContain(`href="/policies?q=%EC%A7%80%EC%9B%90&amp;page=2&amp;recruitmentStatus=OPEN&amp;district=${encodeURIComponent("강남구")}&amp;category=JOB"`);
+    // 질문 필터를 켜도 지역·분야는 유지한다.
+    expect(html).toContain(`href="/policies?q=%EC%A7%80%EC%9B%90&amp;page=1&amp;questionsOnly=true&amp;recruitmentStatus=OPEN&amp;district=${encodeURIComponent("강남구")}&amp;category=JOB">질문 있는 정책</a>`);
     expect(html).toContain("‘지원’ 검색 결과 · 일자리 · 강남구 · 접수 기간");
     expect(html).toContain("선택한 자치구가 공고 지역에 포함된 정책을 보여줘요");
     expect(html).toContain("검색·필터 초기화");

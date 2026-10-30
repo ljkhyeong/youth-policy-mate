@@ -55,6 +55,9 @@
   --radius-card: 0;
   --radius-control: 0;
   --shadow-card: none;
+  /* 머리말 선·본문·바닥글이 같은 가장자리를 쓰도록 한 곳에서 정한다. 여백은 화면 폭에 따라 아래 미디어 쿼리에서 바꾼다. */
+  --page-max: 68rem;
+  --page-gutter: 24px;
   /* 볼펜 체크와 동그라미. 데이터 URI라 변수를 쓸 수 없어 --pen 값을 직접 넣었고, 어두운 화면 블록에 밝은 --pen 값으로 한 벌 더 둔다. */
   --pen-check: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 30 30'%3E%3Cpath d='M4 16C8 19 10 23 12 26C16 16 22 8 29 2' fill='none' stroke='%231f3fae' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
   --pen-circle: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 40' preserveAspectRatio='none'%3E%3Cpath d='M8 22C6 8 40 2 70 5C96 8 99 26 80 33C58 40 18 38 7 27C2 21 10 12 22 9' fill='none' stroke='%231f3fae' stroke-width='2.2' stroke-linecap='round' vector-effect='non-scaling-stroke'/%3E%3C/svg%3E");
@@ -110,11 +113,7 @@ body {
   background: var(--page);
 }
 
-button,
-input,
-select {
-  font: inherit;
-}
+/* 폼 컨트롤의 글꼴 상속은 Tailwind preflight(@layer base)가 맡는다. 레이어 밖에 다시 두면 @layer components의 버튼 글자 크기·굵기를 덮어쓴다. */
 
 mark {
   padding: 0 2px;
@@ -156,9 +155,9 @@ mark {
 
   .app-shell > main {
     width: 100%;
-    max-width: 72rem;
+    max-width: calc(var(--page-max) + 2 * var(--page-gutter));
     margin-inline: auto;
-    padding-inline: 24px;
+    padding-inline: var(--page-gutter);
   }
 
   .app-header {
@@ -172,8 +171,8 @@ mark {
   .app-header-inner {
     display: flex;
     flex-wrap: wrap;
-    width: calc(100% - 48px);
-    max-width: 69rem;
+    width: calc(100% - 2 * var(--page-gutter));
+    max-width: var(--page-max);
     margin-inline: auto;
     padding-top: 10px;
     align-items: flex-end;
@@ -210,8 +209,8 @@ mark {
   .nav-link[aria-current="page"] { font-weight: 900; box-shadow: inset 0 -5px 0 var(--ink); }
 
   .app-footer {
-    width: calc(100% - 48px);
-    max-width: 72rem;
+    width: calc(100% - 2 * var(--page-gutter));
+    max-width: var(--page-max);
     margin: auto auto 0;
     border-top: 1px solid var(--line);
     padding: 20px 0 32px;
@@ -233,7 +232,6 @@ mark {
   .theme-switch input:focus-visible + span { outline: 3px solid var(--focus-ring); outline-offset: 2px; }
 
   .home-main {
-    max-width: 72rem !important;
     flex: 1;
     padding-top: 36px;
     padding-bottom: 56px;
@@ -250,6 +248,9 @@ mark {
   .home-followup { display: grid; gap: 24px; margin-top: 52px; border-top: 3px solid var(--ink); padding-top: 22px; }
   .home-followup h2 { margin: 0 0 6px; font-size: 16px; font-weight: 900; }
   .home-followup p { max-width: 34rem; margin: 0; color: var(--muted); font-family: var(--font-body-serif); font-size: 14px; line-height: 1.8; }
+  /* 넓은 화면의 세 단은 설명 길이가 달라도 링크를 같은 높이에 둔다. */
+  .home-followup > div { display: flex; flex-direction: column; align-items: flex-start; }
+  .home-followup .text-link { margin-top: auto; padding-top: 7px; }
 
   .home-open { min-width: 0; }
   .home-section-heading { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; padding-bottom: 6px; border-bottom: 2px solid var(--ink); }
@@ -287,12 +288,16 @@ mark {
 
   /* 분야는 색이 아니라 글자로 쓴다. */
   .category-chip + .category-chip::before { content: "·"; margin: 0 4px; }
-  .category-filter { display: flex; gap: 8px; margin: 10px -4px 0; padding: 4px; overflow-x: auto; scrollbar-width: none; }
+  /* 정책 찾기의 분야·질문 필터 줄. 줄 앞 이름표 다음 칸에서 칩이 시작해 두 줄의 칩이 같은 세로선에 놓인다. */
+  .policy-filter-rows { display: grid; grid-template-columns: max-content minmax(0, 1fr); align-items: center; gap: 4px 12px; margin-top: 10px; }
+  .filter-label { font-size: 13px; font-weight: 900; }
+  .policy-filter-rows .policy-filters { margin: 0; }
+  .category-filter { display: flex; gap: 8px; margin: 0 -4px; padding: 4px; overflow-x: auto; scrollbar-width: none; }
   /* 칩 안의 화면 낭독용 문구(절대 위치)가 스크롤 상자 밖으로 나가 페이지 폭을 늘리지 않게 칩을 기준으로 둔다. */
   .category-filter a, .policy-filters a { position: relative; flex: 0 0 auto; display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 12px 0 10px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); font-size: 14px; font-weight: 500; text-decoration: none; }
   .category-filter a::before, .policy-filters a::before { content: ""; flex-shrink: 0; width: 16px; height: 16px; border: 2px solid var(--ink); }
-  .category-filter a[data-selected], .policy-filters a[aria-current="page"] { border: 2px solid var(--ink); padding: 0 11px 0 9px; font-weight: 900; }
-  .category-filter a[data-selected]::after, .policy-filters a[aria-current="page"]::after { content: ""; position: absolute; left: 6px; top: 5px; width: 26px; height: 26px; background: var(--pen-check) center / contain no-repeat; }
+  .category-filter a[data-selected], .policy-filters a:is([data-selected], [aria-current="page"]) { border: 2px solid var(--ink); padding: 0 11px 0 9px; font-weight: 900; }
+  .category-filter a[data-selected]::after, .policy-filters a:is([data-selected], [aria-current="page"])::after { content: ""; position: absolute; left: 6px; top: 5px; width: 26px; height: 26px; background: var(--pen-check) center / contain no-repeat; }
   .recruitment-status { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; }
   .recruitment-dday { color: var(--pen); font-family: var(--font-hand); font-size: 23px; font-weight: 400; line-height: 1; white-space: nowrap; font-variant-numeric: tabular-nums; }
 
@@ -366,6 +371,9 @@ mark {
     width: 100%;
   }
 
+  /* 진행 중이거나 지금 누를 수 없는 버튼이 누를 수 있는 버튼처럼 보이지 않게 한다. */
+  :is(.button-primary, .button-secondary, .text-button):disabled { cursor: not-allowed; opacity: 0.5; }
+
   .text-link {
     display: inline-flex;
     min-height: 44px;
@@ -383,10 +391,6 @@ mark {
     flex: 1;
     padding-top: 42px;
     padding-bottom: 64px;
-  }
-
-  .conditions-intro {
-    padding-inline: 4px;
   }
 
   .inline-security-note {
@@ -513,15 +517,17 @@ mark {
     color: var(--ink-soft);
   }
 
+  /* 이용할 수 없는 기능의 안내. 디자인 시스템의 확인 안내처럼 면 대신 먹색 점선 상자에 쓴다. */
   .availability-note {
     display: flex;
     align-items: flex-start;
     gap: 10px;
     margin-top: 22px;
+    border: 1px dashed var(--ink);
     border-radius: 0;
-    background: var(--brand-tint);
-    padding: 16px;
-    color: var(--brand-strong);
+    background: none;
+    padding: 14px 16px;
+    color: var(--ink);
     text-align: left;
   }
 
@@ -535,7 +541,7 @@ mark {
 
   .availability-note strong + p {
     margin-top: 3px;
-    color: var(--brand);
+    color: var(--ink-soft);
   }
 
   .data-retention-note {
@@ -553,19 +559,24 @@ mark {
     padding-bottom: 72px;
   }
 
+  /* 로딩·빈 결과·오류 안내는 상자로 감싸지 않고 위쪽 굵은 선으로 구역을 나눈다. */
   .state-panel {
     width: 100%;
     min-width: 0;
     max-width: 42rem;
-    border: 1px solid var(--line);
+    border: 0;
+    border-top: 3px solid var(--ink);
     border-radius: 0;
-    background: var(--surface);
-    padding: 28px;
+    background: none;
+    padding: 24px 0 0;
   }
 
   .state-panel[data-kind="error"] {
-    border-color: var(--danger-line);
+    border-top-color: var(--danger-line);
   }
+
+  /* 목록 결과 제목의 먹색 선 바로 아래에서는 선을 겹쳐 긋지 않는다. */
+  .policy-results-heading + .state-panel { border-top: 0; padding-top: 28px; }
 
   .state-actions {
     display: flex;
@@ -576,12 +587,7 @@ mark {
 }
 
 @media (min-width: 640px) {
-  .app-shell > main { padding-inline: 32px; }
-  .app-header-inner { width: calc(100% - 64px); }
-
-  .app-footer {
-    width: calc(100% - 64px);
-  }
+  :root { --page-gutter: 32px; }
 
   .home-main {
     padding-top: 48px;
@@ -595,12 +601,7 @@ mark {
 }
 
 @media (max-width: 420px) {
-  .app-shell > main { padding-inline: 18px; }
-  .app-header-inner { width: calc(100% - 36px); }
-
-  .app-footer {
-    width: calc(100% - 36px);
-  }
+  :root { --page-gutter: 18px; }
 
   .brand-link {
     font-size: 15px;
@@ -643,7 +644,6 @@ mark {
   .policy-search-panel { margin-top: 20px; padding: 0 0 18px; border-bottom: 2px solid var(--ink); }
   .policy-search-panel .policy-search { display: grid; grid-template-columns: minmax(0, 1fr) auto auto auto; margin: 0; }
   .policy-search-select select { width: 100%; height: 100%; }
-  .policy-search-panel .policy-filters { margin-top: 10px; }
   .policy-search-panel .field-help { margin-bottom: 0; }
   .policy-search input { min-width: 0; flex: 1; border: 2px solid var(--ink); border-radius: 0; background: var(--surface); padding: 13px 14px; font-size: 16px; }
   .policy-search .button-primary { flex-shrink: 0; }
@@ -652,7 +652,7 @@ mark {
   .policy-card-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 0 20px; margin-top: 6px; }
   .policy-card-actions .text-link { margin-top: 0; }
   .policy-card-actions .text-button { padding: 0; font-size: 13px; }
-  .policy-question-next { margin: 14px 0 0; padding: 4px 16px 10px; background: var(--surface-sunken); }
+  .policy-question-next { margin: 14px 0 0; padding: 4px 16px 10px; border: 1px dashed var(--ink); }
   .policy-coverage { margin: 14px 0 18px; color: var(--muted); font-family: var(--font-body-serif); font-size: 13px; line-height: 1.75; }
   .policy-coverage a { color: var(--pen); text-decoration: underline; text-underline-offset: 3px; }
   .policy-results-heading { display: flex; flex-wrap: wrap; gap: 8px; align-items: baseline; justify-content: space-between; padding-bottom: 6px; border-bottom: 2px solid var(--ink); font-size: 15px; font-weight: 700; }
@@ -728,8 +728,8 @@ mark {
   /* 좁은 화면은 검색어 한 줄, 지역·접수 상태 한 줄, 검색 버튼 한 줄로 놓는다. */
   .policy-search-panel .policy-search { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
   .policy-search-panel .policy-search input, .policy-search-panel .policy-search .button-primary { grid-column: 1 / -1; }
-  .policy-search-panel .policy-filters { gap: 4px; }
-  .policy-search-panel .policy-filters a { padding-inline: 10px; font-size: 13px; }
+  /* 분야 칩 줄은 화면 오른쪽 끝까지 이어 스크롤해, 끝에서 잘린 칩으로 뒤에 칩이 더 있음을 보여준다. */
+  .category-filter { margin-right: calc(-1 * var(--page-gutter)); padding-right: var(--page-gutter); }
   .policy-coverage { font-size: 12px; }
 }
 @media (max-width: 420px) { .policy-official-links { flex-direction: column; } }
@@ -764,7 +764,10 @@ mark {
 .member-panel .button-primary { margin-top: 12px; }
 .member-toolbar, .member-save-panel { display: flex; align-items: center; flex-wrap: wrap; gap: 16px; margin: 24px 0; }
 .member-save-panel > p { flex-basis: 100%; font-size: 14px; color: var(--muted); }
+/* 저장 결과를 알릴 빈 상태 줄은 화면 낭독기가 변화를 읽도록 남기되, 내용이 없을 때는 줄 간격을 만들지 않게 흐름에서 뺀다. */
+.member-save-panel > p[role="status"]:empty { position: absolute; }
 .member-toolbar strong { margin-right: auto; }
+.member-toolbar .text-link { margin-top: 0; }
 .member-tabs { display: flex; gap: 8px; margin: 24px 0 8px; border-bottom: 2px solid var(--ink); }
 .member-tabs a { padding: 14px 18px; color: var(--ink); font-weight: 500; text-align: center; text-decoration: none; }
 .member-tabs a[aria-current] { font-weight: 900; border-bottom: 4px solid var(--ink); }
@@ -780,22 +783,26 @@ mark {
 /* 달력에 마감일을 볼펜으로 동그라미 친 모양 */
 .member-deadline strong { position: relative; margin: 4px 0; padding: 2px 6px; font-size: 19px; font-weight: 600; }
 .member-deadline strong::after { content: ""; position: absolute; inset: -6px -7px; background: var(--pen-circle) center / 100% 100% no-repeat; pointer-events: none; }
-.saved-policy-changes { margin: 12px 0 20px; }
+.saved-policy-changes { margin: 4px 0 8px; }
 .member-calendar-filter { width: 100%; min-height: 48px; padding: 10px 12px; border: 2px solid var(--ink); border-radius: 0; background: var(--surface); color: inherit; font: inherit; }
 .member-calendar-filter:focus-visible { outline: 3px solid var(--focus-ring); outline-offset: 2px; }
 .member-policy-search { margin-top: 0; }
 .member-policy-search .button-primary { margin-top: 0; }
-.member-change-filter { display: flex; align-items: center; gap: 10px; min-height: 44px; margin-top: 12px; cursor: pointer; }
-.member-change-filter input { width: 18px; height: 18px; accent-color: var(--brand); }
+/* 체크박스는 신청서 칸에 볼펜 체크를 그린다. 실제 체크박스는 투명하게 겹쳐 키보드·화면 낭독기가 그대로 쓴다. */
+.member-change-filter, .withdrawal-confirmation { position: relative; display: flex; align-items: center; gap: 10px; min-height: 44px; cursor: pointer; }
+.member-change-filter { margin-top: 12px; }
+.member-change-filter input, .withdrawal-confirmation input { position: absolute; width: 1px; height: 1px; margin: 0; opacity: 0; }
+:is(.member-change-filter, .withdrawal-confirmation):has(input:focus-visible) > .paper-check { outline: 3px solid var(--focus-ring); outline-offset: 3px; }
+.withdrawal-confirmation:has(input:disabled) { cursor: not-allowed; opacity: 0.5; }
 @media (max-width: 600px) { .member-account-toolbar > strong { flex-basis: 100%; } }
 .member-change { color: var(--caution); background: var(--caution-tint); padding: 6px 10px; font-size: 14px; }
 .member-email-disclosure { margin-bottom: 20px; }
 .member-email-disclosure > summary { width: fit-content; padding: 12px 0; cursor: pointer; font-weight: 650; }
 .member-email-disclosure > summary:focus-visible { outline: 3px solid var(--focus-ring); outline-offset: 2px; }
 .member-withdrawal { margin-top: 32px; }
-.withdrawal-confirmation { display: flex; align-items: center; gap: 10px; padding: 12px 0; }
-.withdrawal-confirmation input { width: 20px; height: 20px; flex-shrink: 0; accent-color: var(--brand); }
-.member-panel[data-read="true"] { background: var(--surface-sunken); }
+.withdrawal-confirmation { padding: 12px 0; }
+/* 읽은 알림은 면을 칠하지 않고 보조 글자색으로 낮춘다. */
+.member-panel[data-read="true"] :is(h2 a, p) { color: var(--muted); }
 .policy-check-results { margin-top: 36px; padding-top: 24px; border-top: 3px solid var(--ink); text-align: left; }
 .policy-check-results > h2 { font-size: 24px; font-weight: 900; }
 .policy-check-results > p { margin: 12px 0; line-height: 1.7; }
@@ -810,7 +817,7 @@ mark {
 .condition-disclosure > form, .condition-disclosure > .condition-disclosure-body { padding: 0 18px 18px; }
 .condition-disclosure.is-nested { margin-top: 18px; border: 1px dashed var(--ink); background: none; }
 .condition-optional { padding: 0 6px; border: 1px solid var(--ink); color: var(--ink-soft); font-size: 11px; font-weight: 700; }
-.condition-workspace > .form-notice { margin: 12px 4px 0; }
+.condition-workspace > .form-notice { margin: 12px 0 0; }
 .check-card { margin-top: 12px; }
 .check-card h3 { margin: 10px 0 0; font-size: 19px; font-weight: 900; letter-spacing: -.03em; line-height: 1.4; }
 .check-card h3 a { color: var(--ink); text-decoration: none; }
@@ -823,14 +830,16 @@ mark {
 .policy-check-details section { margin: 20px 0; }
 .policy-check-details h4 { font-weight: 750; margin: 8px 0; }
 .policy-check-details p { margin: 8px 0; }
-.policy-check-details blockquote { white-space: pre-wrap; overflow-wrap: anywhere; border-left: 3px solid var(--line); padding: 12px; margin-top: 12px; background: var(--surface-sunken); line-height: 1.8; font-size: 14px; max-height: 320px; overflow-y: auto; }
+/* 원문 근거 인용. 왼쪽 강조선 대신 가는 선 상자에 공고 본문처럼 명조로 둔다. */
+.policy-check-details blockquote { white-space: pre-wrap; overflow-wrap: anywhere; border: 1px solid var(--line); padding: 12px 14px; margin: 12px 0 0; font-family: var(--font-body-serif); line-height: 1.8; font-size: 14px; max-height: 320px; overflow-y: auto; }
 .condition-member-controls { padding: 18px 0; border-block: 1px solid var(--line); margin: 12px 0 24px; text-align: left; }
-@media (max-width: 600px) { .member-main { margin-top: 28px; } .member-panel { padding: 20px; } .member-toolbar { gap: 12px; } .member-tabs a { padding: 12px; flex: 1; } }
+@media (max-width: 600px) { .member-main { margin-top: 28px; } .member-panel { padding-block: 20px; } .member-toolbar { gap: 12px; } .member-tabs a { padding: 12px; flex: 1; } }
 @media (max-width: 600px) { .member-policy-search { flex-wrap: wrap; } .member-policy-search input { flex-basis: 100%; } }
 
 @layer components {
-  .policy-questionnaire { scroll-margin-top: 100px; margin-top: 24px; padding: clamp(18px, 4vw, 28px); border: 1px solid transparent; border-radius: var(--radius-card); background: var(--surface); box-shadow: var(--shadow-card); }
-  .policy-questionnaire > h2 { margin: 0 0 14px; font-size: 20px; font-weight: 750; letter-spacing: -.04em; }
+  /* 조건 질문은 본문 뒤의 새 구역이다. 상자 대신 굵은 먹색 선으로 나누고 본문과 같은 왼쪽 가장자리에 맞춘다. */
+  .policy-questionnaire { scroll-margin-top: 100px; margin-top: 32px; padding-top: 22px; border-top: 3px solid var(--ink); }
+  .policy-questionnaire > h2 { margin: 0 0 14px; font-size: 22px; font-weight: 900; letter-spacing: -.03em; }
   .policy-questionnaire p { margin: 10px 0; font-size: 14px; line-height: 1.8; overflow-wrap: anywhere; }
   .policy-questionnaire .question-scope { font-weight: 700; }
   .policy-questionnaire .question-privacy { color: var(--muted); font-size: 13px; }
@@ -852,7 +861,7 @@ mark {
   .question-actions { display: flex; gap: 10px; flex-wrap: wrap; }
   .question-feedback { color: var(--caution); }
   .policy-question-result { margin-top: 28px; border-top: 1px solid var(--line); padding-top: 24px; }
-  .policy-question-result h3 { font-size: 18px; margin: 0; scroll-margin-top: 100px; }
+  .policy-question-result h3 { font-size: 18px; font-weight: 900; margin: 0; scroll-margin-top: 100px; }
   .question-result-label { font-weight: 700; }
   .question-checks { padding: 0; list-style: none; display: grid; gap: 18px; margin: 20px 0; }
   .question-checks > li { padding-bottom: 18px; border-bottom: 1px solid var(--line); }
@@ -861,26 +870,34 @@ mark {
   .question-checks span[data-outcome="MET"] { color: var(--positive); }
   .question-checks span[data-outcome="NOT_MET"] { color: var(--danger); }
   .question-checks summary { font-size: 13px; cursor: pointer; color: var(--muted); }
-  .question-remaining { font-size: 14px; line-height: 1.8; padding: 16px; border-radius: 0; background: var(--caution-tint); color: var(--caution); }
-  .question-remaining ul { padding-left: 18px; margin: 8px 0 0; }
+  /* 최종 신청 자격의 남은 확인 사항. 디자인 시스템의 확인 안내처럼 먹색 점선 상자에 쓴다. */
+  .question-remaining { font-size: 14px; line-height: 1.8; padding: 14px 16px; border: 1px dashed var(--ink); border-radius: 0; color: var(--ink); }
+  /* 여러 줄로 감기는 항목이 이어 붙어 보이지 않게 글머리 기호를 둔다. */
+  .question-remaining ul { padding-left: 18px; margin: 8px 0 0; list-style: disc; }
 }
 
 .email-settings { margin-block-end: 1.25rem; }
 .email-settings fieldset { border: 0; padding: 0; margin: 1.25rem 0; display: grid; gap: .6rem; min-width: 0; }
 .email-settings label { font-weight: 650; }
-.email-settings input { width: 100%; min-width: 0; padding: .8rem 1rem; border: 1px solid var(--line-strong); border-radius: .75rem; background: var(--surface); color: inherit; }
+.email-settings input { width: 100%; min-width: 0; min-height: 52px; padding: 12px 14px; border: 2px solid var(--line-strong); border-radius: 0; background: var(--surface); color: inherit; font-size: 16px; }
 .email-settings input:focus-visible { outline: 3px solid var(--focus-ring); outline-offset: 2px; }
 .email-settings button { width: fit-content; max-width: 100%; }
 .email-current { padding-block: .8rem; overflow-wrap: anywhere; }
 .email-current .text-button { display: block; margin-top: .8rem; }
 
-.condition-policy-sort { max-width: 100%; border: 1px solid var(--line-strong); border-radius: 0; background: var(--surface); padding: 10px 12px; font-size: 16px; }
-.condition-filter { display: inline-flex; align-items: center; gap: 12px; max-width: 100%; }
+.condition-policy-sort { max-width: 100%; min-height: 48px; border: 2px solid var(--line-strong); border-radius: 0; background: var(--surface); padding: 10px 12px; color: inherit; font-size: 16px; }
+/* 내 조건 둘러보기의 접수 상태·정렬은 레이블을 위에 둔 두 칸으로 나란히 둔다. */
+.condition-filters { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: end; gap: 12px; margin: 20px 0 0; }
+.condition-filters > .button-secondary { grid-column: 1 / -1; justify-self: start; }
+.condition-filter { display: grid; gap: 6px; min-width: 0; color: var(--ink-soft); font-size: 13px; font-weight: 700; }
+.condition-filter .condition-policy-sort { width: 100%; color: var(--ink); font-weight: 400; }
+/* 휴대폰 폭에서 두 칸이면 ‘연령 조건 충족 우선’ 같은 선택값이 잘리므로 한 칸씩 쌓는다. */
+@media (max-width: 479px) { .condition-filters { grid-template-columns: minmax(0, 1fr); } }
 
 .rule-review-search { display: grid; gap: 12px; }
 .rule-review-field { display: grid; gap: 8px; min-width: 0; }
 .rule-review-search label { font-weight: 650; }
-.rule-review-search input, .rule-review-search select { width: 100%; min-width: 0; min-height: 48px; border: 1px solid var(--line-strong); border-radius: 0; background: var(--surface); padding: 10px 12px; color: inherit; font: inherit; }
+.rule-review-search input, .rule-review-search select { width: 100%; min-width: 0; min-height: 48px; border: 2px solid var(--line-strong); border-radius: 0; background: var(--surface); padding: 10px 12px; color: inherit; font: inherit; }
 .rule-review-search :is(input, select):focus-visible { outline: 3px solid var(--focus-ring); outline-offset: 2px; }
 .rule-review-search .form-actions { display: flex; flex-direction: row; align-items: center; gap: 16px; margin: 0; padding: 0; border: 0; }
 .rule-review-search .button-primary { width: auto; margin: 0; }
@@ -900,7 +917,7 @@ mark {
 .rule-condition legend { font-weight: 700; font-size: 14px; }
 .rule-condition .rule-review-confirm { margin: 10px 0; }
 .rule-condition-picker { display: grid; gap: 8px; margin-top: 18px; font-size: 14px; font-weight: 700; }
-.rule-condition-picker select { width: 100%; min-width: 0; min-height: 48px; border: 1px solid var(--line-strong); border-radius: 0; background: var(--surface); padding: 10px; }
+.rule-condition-picker select { width: 100%; min-width: 0; min-height: 48px; border: 2px solid var(--line-strong); border-radius: 0; background: var(--surface); padding: 10px; }
 .rule-editor button:disabled { opacity: 0.45; cursor: default; }
 .rule-editor .form-actions button { min-height: 44px; }
 @media (max-width: 640px) {
